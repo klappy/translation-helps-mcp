@@ -1,0 +1,49 @@
+{
+  "name": "translation-helps-api",
+  "version": "1.0.0",
+  "description": "Serverless API for Bible translation resources via Netlify Functions",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "tsc",
+    "test": "vitest",
+    "test:watch": "vitest watch",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "deploy": "netlify deploy --prod",
+    "logs": "netlify functions:log"
+  },
+  "dependencies": {
+    "@netlify/functions": "^2.4.1",
+    "@upstash/redis": "^1.28.0",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.8",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/translation-helps-api.git"
+  },
+  "keywords": [
+    "bible",
+    "translation",
+    "api",
+    "serverless",
+    "netlify-functions",
+    "door43"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

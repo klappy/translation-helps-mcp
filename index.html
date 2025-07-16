@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Translation Helps API 🙏</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        line-height: 1.6;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        min-height: 100vh;
+      }
+      .container {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2rem;
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+      }
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+      }
+      .endpoint {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+      }
+      .endpoint h3 {
+        margin-top: 0;
+        color: #fff;
+      }
+      code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.2rem 0.5rem;
+        border-radius: 5px;
+        font-family: "Monaco", "Menlo", monospace;
+      }
+      .test-button {
+        background: #4caf50;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 0.5rem;
+      }
+      .test-button:hover {
+        background: #45a049;
+      }
+      #results {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        white-space: pre-wrap;
+        font-family: monospace;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🙏 Translation Helps API</h1>
+      <p>A serverless API for Bible translation resources</p>
+
+      <div class="endpoint">
+        <h3>🏥 Health Check</h3>
+        <p><code>GET /api/health</code></p>
+        <button class="test-button" onclick="testEndpoint('/api/health')">Test Health</button>
+      </div>
+
+      <div class="endpoint">
+        <h3>📖 Fetch Resources</h3>
+        <p><code>GET /api/fetch-resources?reference=John 3:16</code></p>
+        <button
+          class="test-button"
+          onclick="testEndpoint('/api/fetch-resources?reference=John 3:16')"
+        >
+          Test John 3:16
+        </button>
+        <button
+          class="test-button"
+          onclick="testEndpoint('/api/fetch-resources?reference=Genesis 1:1')"
+        >
+          Test Genesis 1:1
+        </button>
+      </div>
+
+      <div class="endpoint">
+        <h3>🌍 Get Languages</h3>
+        <p><code>GET /api/get-languages</code></p>
+        <button class="test-button" onclick="testEndpoint('/api/get-languages')">
+          Test Languages
+        </button>
+      </div>
+
+      <h3>🧪 Test Results</h3>
+      <div id="results">Click a test button to see API responses...</div>
+
+      <div style="margin-top: 2rem; text-align: center; opacity: 0.8">
+        <p>Built with ❤️ for Bible translators worldwide</p>
+        <p><small>Powered by Netlify Functions + Door43 Content Service</small></p>
+      </div>
+    </div>
+
+    <script>
+      async function testEndpoint(path) {
+        const resultsDiv = document.getElementById("results");
+        resultsDiv.textContent = "Loading...";
+
+        try {
+          const response = await fetch(path);
+          const data = await response.json();
+          resultsDiv.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          resultsDiv.textContent = `Error: ${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>
