@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "netlify dev",
-    "build": "tsc",
+    "prebuild": "echo '{\"version\": \"'$npm_package_version'\"}' > netlify/functions/_shared/version.json",
+    "build": "tsc && cp netlify/functions/_shared/version.json dist/netlify/functions/_shared/",
     "test": "vitest",
     "test:watch": "vitest watch",
     "lint": "eslint . --ext .ts,.tsx",
