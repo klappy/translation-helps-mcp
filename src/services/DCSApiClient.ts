@@ -284,7 +284,13 @@ export class DCSApiClient {
           id: lang.lc,
           code: lang.lc,
           name: lang.ln || lang.ang || lang.lc, // ln = local name, ang = anglicized name
+          romanizedName: lang.ang, // ang = anglicized/romanized name
           direction: lang.ld || "ltr", // ld = language direction
+          region: lang.lr, // lr = language region
+          homeCountry: lang.hc, // hc = home country
+          countryCodes: lang.cc, // cc = country codes array
+          alternativeNames: lang.alt, // alt = alternative names array
+          isGatewayLanguage: lang.gw, // gw = gateway language boolean
         });
       }
     });

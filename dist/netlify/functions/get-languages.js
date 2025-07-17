@@ -73,7 +73,13 @@ export const handler = async (event, context) => {
         const transformedLanguages = languages.map((lang) => ({
             code: lang.code,
             name: lang.name,
+            romanizedName: lang.romanizedName,
             direction: lang.direction,
+            region: lang.region,
+            homeCountry: lang.homeCountry,
+            countryCodes: lang.countryCodes,
+            alternativeNames: lang.alternativeNames,
+            isGatewayLanguage: lang.isGatewayLanguage,
             // Add common resource types that are typically available
             resources: ["scripture", "notes", "questions", "words", "links"],
         }));
