@@ -4,6 +4,12 @@
  */
 
 import { Handler } from "@netlify/functions";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Import version from package.json (single source of truth)
+const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf-8"));
+const VERSION = packageJson.version;
 
 export const handler: Handler = async (event, context) => {
   console.log("Health check requested");
@@ -39,7 +45,7 @@ export const handler: Handler = async (event, context) => {
     const response = {
       status: "healthy",
       timestamp: new Date().toISOString(),
-      version: "1.1.0",
+      version: VERSION,
       environment: process.env.NODE_ENV || "production",
       endpoints: [
         "/api/health",
