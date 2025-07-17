@@ -74,6 +74,9 @@ export class ResourceAggregator {
                 return undefined;
             }
             const catalogData = (await catalogResponse.json());
+            console.log(`📊 Catalog returned ${catalogData.data?.length || 0} resources`);
+            console.log(`📦 First resource:`, catalogData.data?.[0]?.name);
+            const resource = catalogData.data?.[0];
             const scriptures = [];
             // Process each Bible resource
             for (const resource of catalogData.data || []) {
@@ -141,8 +144,10 @@ export class ResourceAggregator {
                 console.warn(`❌ No translation notes resource found for ${options.language}`);
                 return [];
             }
+            console.log(`🔍 Looking for book identifier: ${reference.book.toLowerCase()}`);
+            console.log(`📋 Available ingredients:`, resource.ingredients?.map((i) => i.identifier).join(", "));
             // Find the correct file from ingredients array - THIS IS THE KEY!
-            const ingredient = resource.ingredients?.find((ing) => ing.identifier === reference.book.toLowerCase());
+            const ingredient = resource.ingredients?.find((ing) => ing.identifier.toLowerCase() === reference.book.toLowerCase());
             if (!ingredient) {
                 console.warn(`❌ No ingredient found for book ${reference.book}`);
                 return [];
@@ -159,7 +164,10 @@ export class ResourceAggregator {
             }
             const tsvData = await response.text();
             console.log(`📝 Got TSV data (${tsvData.length} chars)`);
-            return this.parseTNFromTSV(tsvData, reference);
+            console.log(`📄 First 200 chars of TSV:`, tsvData.substring(0, 200));
+            const parsed = this.parseTNFromTSV(tsvData, reference);
+            console.log(`✅ Parsed ${parsed.length} translation notes`);
+            return parsed;
         }
         catch (error) {
             console.error("Error fetching translation notes:", error);
@@ -184,7 +192,7 @@ export class ResourceAggregator {
                 return [];
             }
             // Find the correct file from ingredients array
-            const ingredient = resource.ingredients?.find((ing) => ing.identifier === reference.book.toLowerCase());
+            const ingredient = resource.ingredients?.find((ing) => ing.identifier.toLowerCase() === reference.book.toLowerCase());
             if (!ingredient) {
                 console.warn(`❌ No ingredient found for book ${reference.book}`);
                 return [];
@@ -226,7 +234,7 @@ export class ResourceAggregator {
                 return [];
             }
             // Find the correct TWL file from ingredients array
-            const twlIngredient = twlResource.ingredients?.find((ing) => ing.identifier === reference.book.toLowerCase());
+            const twlIngredient = twlResource.ingredients?.find((ing) => ing.identifier.toLowerCase() === reference.book.toLowerCase());
             if (!twlIngredient) {
                 console.warn(`❌ No TWL ingredient found for book ${reference.book}`);
                 return [];
@@ -357,24 +365,38 @@ export class ResourceAggregator {
         try {
             const lines = tsvData.split("\n");
             const notes = [];
+            // Skip header line
+            if (lines.length > 0 && lines[0].startsWith("Reference")) {
+                lines.shift();
+            }
             for (const line of lines) {
                 if (!line.trim())
                     continue;
                 const columns = line.split("\t");
-                if (columns.length < 9)
-                    continue; // Expected TN format
-                const [book, chapter, verse, id, supportReference, originalQuote, occurrence, glQuote, tnText,] = columns;
+                if (columns.length < 7)
+                    continue; // Expected TN format has at least 7 columns
+                const [ref, // e.g., "1:1" or "front:intro"
+                id, tags, supportReference, quote, occurrence, noteText,] = columns;
+                // Skip intro notes
+                if (ref.includes("intro"))
+                    continue;
+                // Parse the reference (e.g., "1:1" -> chapter 1, verse 1)
+                const refMatch = ref.match(/(\d+):(\d+)/);
+                if (!refMatch)
+                    continue;
+                const chapterNum = parseInt(refMatch[1]);
+                const verseNum = parseInt(refMatch[2]);
                 // Filter by reference
-                if (book !== reference.book)
+                if (chapterNum !== reference.chapter)
                     continue;
-                if (parseInt(chapter) !== reference.chapter)
+                if (reference.verse && verseNum !== reference.verse)
                     continue;
-                if (reference.verse && parseInt(verse) !== reference.verse)
-                    continue;
+                // Clean up the note text (replace \n with actual newlines)
+                const cleanNote = noteText ? noteText.replace(/\\n/g, "\n").trim() : "";
                 notes.push({
-                    reference: `${book} ${chapter}:${verse}`,
-                    quote: originalQuote || glQuote || "",
-                    note: tnText || "",
+                    reference: `${reference.book} ${chapterNum}:${verseNum}`,
+                    quote: quote || "",
+                    note: cleanNote,
                 });
             }
             return notes;
@@ -388,22 +410,30 @@ export class ResourceAggregator {
         try {
             const lines = tsvData.split("\n");
             const questions = [];
+            // Skip header line
+            if (lines.length > 0 && lines[0].startsWith("Reference")) {
+                lines.shift();
+            }
             for (const line of lines) {
                 if (!line.trim())
                     continue;
                 const columns = line.split("\t");
-                if (columns.length < 5)
-                    continue; // Expected TQ format
-                const [book, chapter, verse, id, question] = columns;
+                if (columns.length < 7)
+                    continue; // Expected TQ format has at least 7 columns
+                const [ref, id, tags, quote, occurrence, question, response] = columns;
+                // Parse the reference (e.g., "1:1" -> chapter 1, verse 1)
+                const refMatch = ref.match(/(\d+):(\d+)/);
+                if (!refMatch)
+                    continue;
+                const chapterNum = parseInt(refMatch[1]);
+                const verseNum = parseInt(refMatch[2]);
                 // Filter by reference
-                if (book !== reference.book)
+                if (chapterNum !== reference.chapter)
                     continue;
-                if (parseInt(chapter) !== reference.chapter)
-                    continue;
-                if (reference.verse && parseInt(verse) !== reference.verse)
+                if (reference.verse && verseNum !== reference.verse)
                     continue;
                 questions.push({
-                    reference: `${book} ${chapter}:${verse}`,
+                    reference: `${reference.book} ${chapterNum}:${verseNum}`,
                     question: question || "",
                 });
             }
