@@ -26,3 +26,16 @@ node_modules/
 
 # Local Netlify folder
 .netlify
+
+# Build output
+dist/
+build/
+
+# Test output
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# MCP related
+.mcp-cache/
