@@ -44,11 +44,13 @@ export interface Language {
   id: string;
   code: string;
   name: string;
+  romanizedName?: string;
   direction: "ltr" | "rtl";
   region?: string;
-  country?: string;
-  gateway_language?: boolean;
-  heart_language?: boolean;
+  homeCountry?: string;
+  countryCodes?: string[];
+  alternativeNames?: string[];
+  isGatewayLanguage?: boolean;
 }
 
 // Resource interfaces
