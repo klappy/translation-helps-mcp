@@ -4,6 +4,7 @@
  */
 
 import { Reference } from "./reference-parser";
+import { extractVerseText, extractVerseRange, extractChapterText } from "./usfm-extractor";
 
 export interface ResourceOptions {
   language: string;
@@ -502,53 +503,22 @@ export class ResourceAggregator {
     }
   }
 
-  private extractVerseFromUSFM(usfm: string, reference: Reference): string {
+  private extractVerseFromUSFM(usfm: string, reference: Reference): string | null {
     try {
-      // Very basic USFM parsing - extract verse text
-      const lines = usfm.split("\n");
-      const chapterPattern = new RegExp(`\\\\c ${reference.chapter}\\b`);
-      const versePattern = reference.verse ? new RegExp(`\\\\v ${reference.verse}\\b`) : null;
-
-      let inChapter = false;
-      let inVerse = !reference.verse; // If no verse specified, include whole chapter
-      let text = "";
-
-      for (const line of lines) {
-        if (chapterPattern.test(line)) {
-          inChapter = true;
-          continue;
-        }
-
-        if (inChapter && versePattern && versePattern.test(line)) {
-          inVerse = true;
-          // Extract text after verse marker
-          const verseText = line.replace(/\\v \d+\s*/, "");
-          text += verseText + " ";
-          continue;
-        }
-
-        if (inChapter && inVerse) {
-          // Stop at next verse or chapter
-          if (/\\v \d+/.test(line) || /\\c \d+/.test(line)) {
-            if (reference.verse) break; // Stop if we were looking for specific verse
-          }
-
-          // Clean USFM markers and add text
-          const cleanLine = line
-            .replace(/\\[a-z]+[*]?\s*/g, "") // Remove USFM markers
-            .replace(/\s+/g, " ") // Normalize whitespace
-            .trim();
-
-          if (cleanLine) {
-            text += cleanLine + " ";
-          }
-        }
+      // Handle different reference types
+      if (reference.verse && reference.verseEnd) {
+        // Verse range
+        return extractVerseRange(usfm, reference.chapter, reference.verse, reference.verseEnd);
+      } else if (reference.verse) {
+        // Single verse
+        return extractVerseText(usfm, reference.chapter, reference.verse);
+      } else {
+        // Full chapter
+        return extractChapterText(usfm, reference.chapter);
       }
-
-      return text.trim();
     } catch (error) {
       console.error("Error extracting verse from USFM:", error);
-      return "";
+      return null;
     }
   }
 
@@ -650,13 +620,5 @@ export class ResourceAggregator {
     }
 
     return links;
-  }
-
-  private extractChapterFromUSFM(usfm: string, chapter: number): string | null {
-    // Implementation for extracting full chapter
-    // This is a simplified version - you'd want more robust parsing
-    const chapterRegex = new RegExp(`\\\\c\\s+${chapter}\\s+([^\\\\c]+)`, "s");
-    const match = usfm.match(chapterRegex);
-    return match ? match[1].trim() : null;
   }
 }
