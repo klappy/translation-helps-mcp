@@ -1,0 +1,11 @@
+# Task ID: 15
+# Title: Create resource-specific TSV parsers
+# Status: pending
+# Dependencies: 3
+# Priority: high
+# Description: Build parsers for each resource type's unique TSV column structure
+# Details:
+Each resource type has different TSV columns: Translation Notes use Note/Quote/Occurrence/Reference, Translation Questions use Reference/ID/Tags/Quote/Question/Response. Need type-safe parsers for each.
+
+# Test Strategy:
+

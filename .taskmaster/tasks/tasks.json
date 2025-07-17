@@ -71,7 +71,54 @@
         ],
         "priority": "high",
         "details": "Build a robust API client that handles all DCS catalog endpoints including /owners, /languages, and resource fetching. Include proper error handling and response parsing.",
-        "testStrategy": "Unit test each API method with mocked responses, integration test against real DCS API endpoints"
+        "testStrategy": "Unit test each API method with mocked responses, integration test against real DCS API endpoints",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create DCS API client base class",
+            "description": "Design and implement the core DCS API client class with base configuration, headers, and common request handling",
+            "details": "Create a TypeScript class that handles base URL configuration, common headers, and basic HTTP request methods for the Door43 Content Service API",
+            "status": "in-progress",
+            "dependencies": [],
+            "parentTaskId": 3
+          },
+          {
+            "id": 2,
+            "title": "Implement catalog endpoints methods",
+            "description": "Add methods for fetching organizations, languages, and resources from DCS catalog API",
+            "details": "Implement getOwners(), getLanguages(), getResources() methods with proper TypeScript interfaces for API responses",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 3
+          },
+          {
+            "id": 3,
+            "title": "Add error handling and retries",
+            "description": "Implement robust error handling with retry logic for network failures and API errors",
+            "details": "Add exponential backoff retry mechanism, proper error types, and logging for debugging API issues",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 3
+          },
+          {
+            "id": 4,
+            "title": "Create TypeScript interfaces for API responses",
+            "description": "Define comprehensive TypeScript interfaces for all DCS API response types",
+            "details": "Create interfaces for Owner, Language, Resource, and other API response objects with proper typing",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 3
+          },
+          {
+            "id": 5,
+            "title": "Add unit tests for DCS client",
+            "description": "Write comprehensive unit tests for all DCS API client methods",
+            "details": "Create test suites with mocked HTTP responses to test each API method, error scenarios, and retry logic",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 3
+          }
+        ]
       },
       {
         "id": 4,
@@ -226,7 +273,7 @@
     ],
     "metadata": {
       "created": "2025-07-16T23:38:38.925Z",
-      "updated": "2025-07-17T00:43:36.471Z",
+      "updated": "2025-07-17T01:04:50.871Z",
       "description": "Tasks for master context"
     }
   }

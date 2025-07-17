@@ -1,6 +1,6 @@
 # Task ID: 2
 # Title: Create health check endpoint
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: high
 # Description: Implement a basic health check Netlify Function to verify deployment
