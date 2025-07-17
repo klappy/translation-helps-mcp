@@ -8,7 +8,7 @@ import { DCSApiClient } from "../../src/services/DCSApiClient.js";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-// Get version from package.json for cache invalidation
+// Get version directly from package.json - SINGLE SOURCE OF TRUTH!
 const packageJsonPath = join(process.cwd(), "package.json");
 const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 const API_VERSION = packageJson.version;
