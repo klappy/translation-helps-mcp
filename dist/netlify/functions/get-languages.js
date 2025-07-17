@@ -3,6 +3,10 @@
  * GET /api/get-languages
  */
 import { DCSApiClient } from "../../src/services/DCSApiClient.js";
+// Simple in-memory cache for development (5 minute TTL)
+let languageCache = {};
+let cacheTimestamp = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 export const handler = async (event, context) => {
     console.log("Get languages requested");
     const headers = {
@@ -30,18 +34,28 @@ export const handler = async (event, context) => {
         };
     }
     try {
-        // Parse query parameters - organization is optional, gets ALL languages by default
-        const params = event.queryStringParameters || {};
-        const { organization } = params;
-        if (organization) {
-            console.log(`Fetching languages from DCS API for organization: ${organization}...`);
+        // Create cache key for all languages
+        const cacheKey = "all";
+        const now = Date.now();
+        // Check cache first
+        if (languageCache[cacheKey] &&
+            cacheTimestamp[cacheKey] &&
+            now - cacheTimestamp[cacheKey] < CACHE_TTL) {
+            console.log(`Returning cached languages`);
+            return {
+                statusCode: 200,
+                headers: {
+                    ...headers,
+                    "Cache-Control": "public, max-age=300",
+                    "X-Cache": "HIT",
+                },
+                body: JSON.stringify(languageCache[cacheKey]),
+            };
         }
-        else {
-            console.log("Fetching ALL languages from DCS API...");
-        }
-        // Use our new DCS API client to fetch language data
+        console.log("Fetching ALL languages from DCS dedicated languages endpoint...");
+        // Use our new DCS API client to fetch language data from the fast endpoint
         const dcsClient = new DCSApiClient();
-        const response = await dcsClient.getLanguages(organization);
+        const response = await dcsClient.getLanguages();
         if (!response.success) {
             console.error("Failed to fetch languages from DCS:", response.error);
             return {
@@ -64,23 +78,29 @@ export const handler = async (event, context) => {
             resources: ["scripture", "notes", "questions", "words", "links"],
         }));
         console.log(`Successfully fetched ${transformedLanguages.length} languages`);
+        // Prepare response
+        const responseData = {
+            success: true,
+            data: transformedLanguages,
+            count: transformedLanguages.length,
+            timestamp: new Date().toISOString(),
+            metadata: {
+                source: "Door43 Content Service",
+                cached: false,
+                responseTime: Date.now(),
+            },
+        };
+        // Store in cache
+        languageCache[cacheKey] = responseData;
+        cacheTimestamp[cacheKey] = now;
         return {
             statusCode: 200,
             headers: {
                 ...headers,
-                "Cache-Control": "public, max-age=3600", // Cache for 1 hour
+                "Cache-Control": "public, max-age=300",
+                "X-Cache": "MISS",
             },
-            body: JSON.stringify({
-                success: true,
-                data: transformedLanguages,
-                count: transformedLanguages.length,
-                timestamp: new Date().toISOString(),
-                metadata: {
-                    source: "Door43 Content Service",
-                    cached: false,
-                    responseTime: Date.now(),
-                },
-            }),
+            body: JSON.stringify(responseData),
         };
     }
     catch (error) {
