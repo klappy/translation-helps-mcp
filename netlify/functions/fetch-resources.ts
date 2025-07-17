@@ -5,7 +5,7 @@
 
 import type { Handler } from "@netlify/functions";
 import { parseReference } from "./_shared/reference-parser";
-import { ResourceAggregator } from "./_shared/resource-aggregator";
+import { ResourceAggregator } from "../../src/services/ResourceAggregator.js";
 import { cache } from "./_shared/cache";
 import { corsHeaders, errorResponse } from "./_shared/utils";
 
@@ -62,7 +62,17 @@ export const handler: Handler = async (event) => {
       return errorResponse(400, `Invalid Bible reference: ${reference}`, "INVALID_REFERENCE");
     }
 
-    // Prepare options
+    // Convert Reference to ParsedReference for our ResourceAggregator
+    const parsedReference = {
+      book: parsedRef.book,
+      chapter: parsedRef.chapter,
+      verse: parsedRef.verse,
+      endVerse: parsedRef.verseEnd,
+      originalText: parsedRef.original,
+      isValid: true, // If parseReference succeeded, it's valid
+    };
+
+    // Prepare options for our new ResourceAggregator
     const options = {
       language: lang,
       organization: org,
@@ -71,11 +81,16 @@ export const handler: Handler = async (event) => {
         : ["scripture", "notes", "questions", "words", "links"],
     };
 
-    // Fetch resources
-    const aggregator = new ResourceAggregator();
-    const resourceData = await aggregator.fetchResources(parsedRef, options);
+    console.log("Fetching resources using new DCS API client", {
+      reference: parsedReference.originalText,
+      options,
+    });
 
-    // Build response
+    // Use our new ResourceAggregator with DCS API client
+    const aggregator = new ResourceAggregator(lang, org);
+    const resourceData = await aggregator.aggregateResources(parsedReference, options);
+
+    // Build response using the aggregated data
     const response = {
       reference: {
         book: parsedRef.book,
@@ -84,27 +99,33 @@ export const handler: Handler = async (event) => {
         verse: parsedRef.verse,
         verseEnd: parsedRef.verseEnd,
         citation: parsedRef.citation,
+        original: parsedRef.original,
       },
+      language: resourceData.language,
+      organization: resourceData.organization,
       scripture: resourceData.scripture || null,
       translationNotes: resourceData.translationNotes || [],
       translationQuestions: resourceData.translationQuestions || [],
       translationWords: resourceData.translationWords || [],
       translationWordLinks: resourceData.translationWordLinks || [],
       metadata: {
-        language: lang,
-        organization: org,
-        timestamp: new Date().toISOString(),
-        resourcesFound: Object.keys(resourceData).filter((key) => {
-          const value = (resourceData as any)[key];
-          return value && (Array.isArray(value) ? value.length > 0 : true);
-        }),
+        timestamp: resourceData.timestamp,
+        resourcesRequested: options.resources,
+        resourcesFound: {
+          scripture: !!resourceData.scripture,
+          notes: (resourceData.translationNotes || []).length,
+          questions: (resourceData.translationQuestions || []).length,
+          words: (resourceData.translationWords || []).length,
+          links: (resourceData.translationWordLinks || []).length,
+        },
         responseTime: Date.now() - startTime,
         cached: false,
+        source: "Door43 Content Service via DCS API",
       },
     };
 
     // Cache the successful response
-    await cache.set(cacheKey, response, 3600); // 1 hour TTL
+    await cache.set(cacheKey, response, 1800); // 30 minutes TTL
 
     // Log metrics
     console.log("METRIC", {
@@ -114,7 +135,9 @@ export const handler: Handler = async (event) => {
       reference: reference,
       language: lang,
       organization: org,
-      resourcesFound: response.metadata.resourcesFound.length,
+      resourcesFound: Object.values(response.metadata.resourcesFound).reduce((sum: number, val) => {
+        return sum + (typeof val === "number" ? val : val ? 1 : 0);
+      }, 0),
     });
 
     return {

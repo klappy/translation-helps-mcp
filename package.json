@@ -1,6 +1,6 @@
 {
   "name": "translation-helps-api",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Serverless API for Bible translation resources via Netlify Functions",
   "type": "module",
   "scripts": {
