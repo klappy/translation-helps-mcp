@@ -6,6 +6,12 @@
 import { ParsedReference } from "../parsers/referenceParser.js";
 import { DCSApiClient } from "./DCSApiClient.js";
 import { logger } from "../utils/logger.js";
+import {
+  extractVerseText,
+  extractVerseRange,
+  extractChapterText,
+  validateCleanText,
+} from "../utils/usfmExtractor.js";
 
 export interface ResourceOptions {
   language: string;
@@ -48,6 +54,7 @@ export interface AggregatedResources {
   language: string;
   organization: string;
   scripture?: Scripture;
+  scriptures?: Scripture[]; // Added for multiple scriptures
   translationNotes?: TranslationNote[];
   translationQuestions?: TranslationQuestion[];
   translationWords?: TranslationWord[];
@@ -88,13 +95,18 @@ export class ResourceAggregator {
       timestamp: new Date().toISOString(),
     };
 
-    // Process each requested resource type in parallel for performance
+    // Fetch all resources in parallel
     const promises: Promise<void>[] = [];
 
     if (options.resources.includes("scripture")) {
       promises.push(
-        this.fetchScripture(reference, options).then((scripture) => {
-          result.scripture = scripture;
+        this.fetchScripture(reference, options).then((scriptures) => {
+          if (scriptures && scriptures.length > 0) {
+            // Return all translations as an array
+            result.scriptures = scriptures;
+            // Keep backward compatibility with single scripture
+            result.scripture = scriptures[0];
+          }
         })
       );
     }
@@ -149,57 +161,109 @@ export class ResourceAggregator {
   }
 
   /**
-   * Fetch scripture text from DCS
+   * Fetch scripture text from DCS using INGREDIENTS PATTERN
    */
   private async fetchScripture(
     reference: ParsedReference,
     options: ResourceOptions
-  ): Promise<Scripture | undefined> {
+  ): Promise<Scripture[] | undefined> {
     try {
-      // Try different Bible translations in order of preference
-      const translations = ["ult", "ust", "bible"];
+      // STEP 1: Get resource metadata from catalog
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=Bible,Aligned%20Bible`;
+      const searchResponse = await fetch(searchUrl);
 
-      for (const translation of translations) {
-        const repoName = `${options.language}_${translation}`;
-        const filePath = this.getBookFileName(reference.book, "usfm");
+      if (!searchResponse.ok) {
+        logger.warn("Failed to search catalog for Bible resources");
+        return undefined;
+      }
 
-        logger.debug("Fetching scripture", {
-          organization: options.organization,
-          repo: repoName,
-          file: filePath,
-          translation,
-        });
+      const searchData = (await searchResponse.json()) as { data?: any[] };
+      const bibleResources = searchData.data || [];
 
+      logger.debug(`Found ${bibleResources.length} Bible resources in catalog`);
+
+      const allTranslations: Scripture[] = [];
+
+      // STEP 2: Try each Bible resource using INGREDIENTS
+      for (const resource of bibleResources) {
+        const resourceName = resource.name;
+
+        // Skip translation helps resources
+        if (
+          resourceName.includes("_tn") ||
+          resourceName.includes("_tq") ||
+          resourceName.includes("_tw") ||
+          resourceName.includes("_twl")
+        ) {
+          continue;
+        }
+
+        logger.debug(`Trying Bible resource: ${resourceName}`);
+
+        // STEP 3: USE THE INGREDIENTS ARRAY!!! (The #1 Discovery)
+        const bookId = reference.book.toLowerCase();
+        const ingredient = resource.ingredients?.find(
+          (ing: any) =>
+            ing.identifier === bookId ||
+            ing.identifier === reference.book.toUpperCase() ||
+            ing.identifier === reference.book
+        );
+
+        if (!ingredient || !ingredient.path) {
+          logger.debug(`No ingredient found for ${bookId} in ${resourceName}`);
+          continue;
+        }
+
+        logger.debug(`Found ingredient path: ${ingredient.path}`);
+
+        // STEP 4: Fetch the actual USFM file using the ingredient path
         const response = await this.dcsClient.getRawFileContent(
           options.organization,
-          repoName,
-          filePath
+          resourceName,
+          ingredient.path
         );
 
         if (response.success && response.data) {
-          const cleanText = this.extractVerseFromUSFM(response.data, reference);
+          // Extract the requested portion
+          let extractedText = "";
 
-          if (cleanText) {
-            return {
-              text: cleanText,
-              rawUsfm: response.data,
-              translation: translation.toUpperCase(),
-            };
+          if (reference.endVerse && reference.endVerse !== reference.verse) {
+            // Handle verse range
+            extractedText = this.extractVerseRange(response.data, reference);
+          } else if (!reference.verse || reference.verse === 0) {
+            // Handle full chapter
+            extractedText = this.extractChapterText(response.data, reference);
+          } else {
+            // Single verse extraction
+            const verseText = this.extractVerseFromUSFM(response.data, reference);
+            extractedText = verseText || "";
+          }
+
+          if (extractedText) {
+            logger.info(`Successfully extracted scripture from ${resourceName}`);
+            allTranslations.push({
+              text: extractedText,
+              translation: resourceName.replace(/^[a-z]+_/, "").toUpperCase(),
+            });
           }
         }
       }
 
-      logger.warn("No scripture found for reference", {
-        reference: this.formatReference(reference),
-        language: options.language,
-        organization: options.organization,
-      });
+      if (allTranslations.length === 0) {
+        logger.warn("No scripture found after trying all available Bible resources", {
+          reference: this.formatReference(reference),
+          language: options.language,
+          organization: options.organization,
+          availableResources: bibleResources.map((r: any) => r.name),
+        });
+        return undefined;
+      }
 
-      return undefined;
+      return allTranslations;
     } catch (error) {
       logger.error("Error fetching scripture", {
+        error,
         reference: this.formatReference(reference),
-        error: error instanceof Error ? error.message : String(error),
       });
       return undefined;
     }
@@ -435,66 +499,117 @@ export class ResourceAggregator {
       EPH: "49",
       PHP: "50",
       COL: "51",
-      "1TH": "52",
-      "2TH": "53",
-      "1TI": "54",
-      "2TI": "55",
-      TIT: "56",
-      PHM: "57",
-      HEB: "58",
-      JAS: "59",
-      "1PE": "60",
-      "2PE": "61",
-      "1JN": "62",
-      "2JN": "63",
-      "3JN": "64",
-      JUD: "65",
-      REV: "66",
+      "1TH": "53", // Fixed - was 52
+      "2TH": "54", // Fixed - was 53
+      "1TI": "55", // Fixed - was 54
+      "2TI": "56", // Fixed - was 55
+      TIT: "57", // Confirmed on DCS
+      PHM: "58", // Fixed - was 57
+      HEB: "59", // Fixed - was 58
+      JAS: "60", // Fixed - was 59
+      "1PE": "61", // Fixed - was 60
+      "2PE": "62", // Fixed - was 61
+      "1JN": "63", // Fixed - was 62
+      "2JN": "64", // Fixed - was 63
+      "3JN": "65", // Fixed - was 64
+      JUD: "66", // Fixed - was 65
+      REV: "67", // Fixed - was 66
     };
     return bookNumbers[book.toUpperCase()] || "01";
   }
 
   /**
-   * Extract verse text from USFM content
+   * Extract verse from USFM content using clean extraction approach
    */
   private extractVerseFromUSFM(usfm: string, reference: ParsedReference): string | null {
-    if (!reference.chapter || !reference.verse) {
+    if (!reference.chapter || !reference.verse || !usfm) {
       return null;
     }
 
     try {
-      const lines = usfm.split("\n");
-      let inChapter = false;
-      let verseText = "";
+      // Use our USFM extractor utility
+      const cleanText = extractVerseText(usfm, reference.chapter, reference.verse);
 
-      for (const line of lines) {
-        // Check for chapter marker
-        if (line.startsWith("\\c ")) {
-          const chapterNum = parseInt(line.substring(3).trim());
-          inChapter = chapterNum === reference.chapter;
-          continue;
-        }
-
-        if (!inChapter) continue;
-
-        // Check for verse marker
-        if (line.includes(`\\v ${reference.verse} `)) {
-          verseText = line.substring(
-            line.indexOf(`\\v ${reference.verse} `) + `\\v ${reference.verse} `.length
-          );
-          // Remove USFM markup
-          verseText = verseText.replace(/\\[a-z]+\*?/g, "").trim();
-          break;
-        }
+      if (cleanText && validateCleanText(cleanText)) {
+        console.log(`✅ Clean verse text extracted: ${cleanText.substring(0, 100)}...`);
+        return cleanText;
+      } else {
+        console.warn(
+          `⚠️ USFM extraction failed validation for ${reference.chapter}:${reference.verse}`
+        );
+        return null;
       }
-
-      return verseText || null;
     } catch (error) {
       logger.error("Error extracting verse from USFM", {
         reference: this.formatReference(reference),
         error: error instanceof Error ? error.message : String(error),
       });
       return null;
+    }
+  }
+
+  /**
+   * Extract a verse range from USFM content
+   */
+  private extractVerseRange(usfm: string, reference: ParsedReference): string {
+    if (!reference.chapter || !reference.verse || !reference.endVerse) {
+      return "";
+    }
+
+    try {
+      // Use our USFM extractor utility for verse range extraction
+      const cleanText = extractVerseRange(
+        usfm,
+        reference.chapter,
+        reference.verse,
+        reference.endVerse
+      );
+
+      if (cleanText && validateCleanText(cleanText)) {
+        console.log(
+          `✅ Clean verse range text extracted: ${reference.chapter}:${reference.verse}-${reference.endVerse}`
+        );
+        return cleanText;
+      } else {
+        console.warn(`⚠️ USFM range extraction failed validation`);
+        return "";
+      }
+    } catch (error) {
+      logger.error("Error extracting verse range from USFM", {
+        reference: this.formatReference(reference),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return "";
+    }
+  }
+
+  /**
+   * Extract chapter text from USFM content
+   */
+  private extractChapterText(usfm: string, reference: ParsedReference): string {
+    if (!reference.chapter) {
+      return "";
+    }
+
+    try {
+      // Use our USFM extractor utility for chapter extraction
+      const cleanText = extractChapterText(usfm, reference.chapter);
+
+      if (cleanText && validateCleanText(cleanText)) {
+        console.log(`✅ Clean chapter text extracted for chapter ${reference.chapter}`);
+        return cleanText;
+      } else {
+        console.warn(
+          `⚠️ USFM chapter extraction failed validation for chapter ${reference.chapter}`
+        );
+        return "";
+      }
+    } catch (error) {
+      logger.error("Error extracting chapter text from USFM", {
+        reference: this.formatReference(reference),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return "";
     }
   }
 

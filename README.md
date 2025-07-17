@@ -23,33 +23,16 @@ The MCP server is deployed as Netlify Functions, providing a serverless API that
 
 ## Key Features
 
-### 1. Multi-Organization Support
-
-- Fetch resources from any organization on Door43
-- Dynamic discovery of available languages per organization
-- Support for all Door43 content types
-
-### 2. Resource Types
-
-- **Scripture**: Bible text in USFM format
-- **Translation Notes**: Verse-by-verse study notes
-- **Translation Questions**: Comprehension questions
-- **Translation Words**: Key term definitions
-- **Translation Academy**: Translation principles
-
-### 3. LLM Optimization
-
-- Clean text extraction from USFM format
-- Removal of alignment markers and metadata
-- Preservation of punctuation for accurate quoting
-- Optimized context preparation
-
-### 4. Performance Features
-
-- Multi-level caching strategy
-- Request deduplication
-- Efficient resource aggregation
-- Minimal API calls
+- **Multi-Translation Scripture Support**: Fetches ALL available Bible translations (ULT, UST, T4T, UEB, etc.) dynamically
+- **Clean Text Extraction**: Returns only the readable Bible text without USFM markup or alignment data
+- **Flexible Reference Support**: Single verses, verse ranges (e.g., "John 3:16-18"), or entire chapters
+- **Translation Notes**: Contextual study notes for verses
+- **Translation Questions**: Comprehension and discussion questions
+- **Translation Words**: Key biblical terms with definitions
+- **Dynamic Resource Discovery**: Uses the DCS Ingredients Array pattern for reliable resource resolution
+- **High-Performance Caching**: Multi-level caching with request deduplication
+- **CORS Support**: Ready for browser-based applications
+- **TypeScript**: Full type safety and modern JavaScript features
 
 ## API Endpoints
 
@@ -194,3 +177,51 @@ For issues and questions:
 - Open an issue on GitHub
 - Check the documentation
 - Review the implementation examples
+
+## API Response Format
+
+```json
+{
+  "reference": {
+    "book": "JHN",
+    "bookName": "John",
+    "chapter": 3,
+    "verse": 16,
+    "citation": "John 3:16"
+  },
+  "scripture": {
+    "text": "For God so loved the world...",
+    "translation": "ULT"
+  },
+  "scriptures": [
+    {
+      "text": "For God so loved the world...",
+      "translation": "ULT"
+    },
+    {
+      "text": "God loved the people of the world so much...",
+      "translation": "UST"
+    },
+    {
+      "text": "God loved the people in the world so much...",
+      "translation": "T4T"
+    },
+    {
+      "text": "For God loved the world in this way...",
+      "translation": "UEB"
+    }
+  ],
+  "translationNotes": [...],
+  "translationQuestions": [...],
+  "translationWords": [...],
+  "metadata": {
+    "resourcesFound": {
+      "scripture": true,
+      "scriptures": 4,
+      "notes": 15,
+      "questions": 3,
+      "words": 5
+    }
+  }
+}
+```

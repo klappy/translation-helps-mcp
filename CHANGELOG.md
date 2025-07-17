@@ -1,9 +1,36 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to the Translation Helps API will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [1.3.0] - 2024-12-20
+
+### Added
+
+- **Multi-Translation Scripture Support**: API now returns ALL available Bible translations (ULT, UST, T4T, UEB, etc.) in a new `scriptures` array
+- **Dynamic Bible Resource Discovery**: Automatically finds all available Bible translations using the DCS catalog API
+- **Clean Text Extraction**: Implemented proper USFM text extraction that removes all markup and alignment data
+- **Verse Range Support**: Can now request ranges like "Titus 1:1-3" or entire chapters
+- **Enhanced Scripture Response**: Each translation includes both clean text and translation identifier
+
+### Changed
+
+- Scripture fetching now uses the **Ingredients Array Pattern** for reliable resource resolution
+- Removed `rawUsfm` field from responses (clean text only)
+- Scripture field structure now includes translation identifier
+- Book number mapping is no longer hardcoded - uses ingredients array from catalog
+
+### Fixed
+
+- Fixed missing book numbers for Titus and Philemon
+- Fixed USFM extraction to properly handle verse ranges and full chapters
+- Fixed issues with hardcoded file naming conventions
+
+### Technical Improvements
+
+- Migrated from hardcoded book-to-file mappings to dynamic ingredients-based resolution
+- Implemented comprehensive USFM text cleaning utilities
+- Added support for emergency text extraction fallbacks
+- Improved error handling and logging throughout the scripture pipeline
 
 ## [1.1.0] - 2025-01-17
 

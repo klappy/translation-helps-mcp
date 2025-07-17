@@ -329,6 +329,240 @@ describe("USFM extraction", () => {
 });
 ```
 
+## 🧩 SEPARATION OF CONCERNS
+
+### Module Categories
+
+| Layer         | Responsibility                         | Examples                               |
+| ------------- | -------------------------------------- | -------------------------------------- |
+| **UI**        | Pure presentation based on props       | `VerseView`, `TranslationNotesPanel`   |
+| **Context**   | App-wide state management              | `ReferenceContext`, `ResourcesContext` |
+| **Services**  | Data fetching, transformation, caching | `twService.js`, `dcsClient.js`         |
+| **Hooks**     | Custom React hooks for logic           | `useLoadResources.js`                  |
+| **Utilities** | Pure functions                         | `parseTsv.js`, `markdownUtils.js`      |
+
+### Design Rules
+
+- ✅ One primary responsibility per file
+- ✅ No UI logic in services or helpers
+- ✅ Services can access external resources, helpers cannot
+- ✅ Functions should be composable and reusable
+- ✅ Test each layer independently
+- ❌ Avoid stateful modules or deeply nested logic
+- ❌ Avoid mixing fetch logic with rendering logic
+
+### Module Documentation Pattern
+
+```javascript
+/**
+ * twlService.js
+ * Responsible for:
+ * - Fetching and caching TWL files
+ * - Filtering links by verse
+ * - Returning rc:// URIs pointing to TW articles
+ */
+```
+
+## 🔗 RC LINKS SPECIFICATION
+
+### URI Structure
+
+```
+rc://<language>/<resource>/<version>/<path>
+```
+
+### Components
+
+- **language**: ISO 639-1 code (`en`, `es`) or `*` for current context
+- **resource**: Resource ID (`ult`, `tn`, `tw`, `ta`, `tq`, `twl`)
+- **version**: Version ID (`master`, `latest`, or specific)
+- **path**: Resource-specific path
+
+### Supported Namespaces
+
+```javascript
+// Scripture
+rc://en/ult/gen/01/01          // Genesis 1:1
+rc://*/ult/mat/05/03-12        // Dynamic language
+
+// Translation Notes
+rc://en/tn/help/gen/01/01      // Notes for Genesis 1:1
+
+// Translation Words
+rc://en/tw/dict/bible/kt/create    // Key term
+rc://en/tw/dict/bible/names/paul   // Person name
+rc://*/tw/dict/bible/kt/faith      // Dynamic language
+
+// Translation Academy
+rc://en/ta/man/translate/translate-names
+rc://*/ta/man/translate/figs-metaphor
+
+// Translation Questions
+rc://en/tq/gen/01              // Questions for Genesis 1
+
+// Translation Word List
+rc://en/twl/gen                // TWL for Genesis
+```
+
+### Wildcard Language Resolution
+
+```javascript
+// When * is used, resolve to current context
+"rc://*/tw/dict/bible/kt/create" → "rc://en/tw/dict/bible/kt/create" // If English
+"rc://*/tw/dict/bible/kt/create" → "rc://es/tw/dict/bible/kt/create" // If Spanish
+```
+
+### URL Mapping
+
+```javascript
+// Organization context support (v0.4.7+)
+rc://en/ta/man/translate/translate-names
+→ https://git.door43.org/{organization}/en_ta/raw/branch/master/translate/translate-names/
+  ├── title.md
+  ├── sub-title.md
+  └── 01.md
+
+rc://en/tw/dict/bible/kt/create
+→ https://git.door43.org/{organization}/en_tw/raw/branch/master/bible/kt/create.md
+```
+
+### RC Link Processing
+
+```javascript
+// Convert text with RC links to clickable components
+processRcLinks(content, onRcLinkClick, contextLanguage);
+
+// Create clickable RC link
+<RcLink rcUri='rc://*/tw/dict/bible/kt/create' onClick={handler}>
+  create
+</RcLink>;
+```
+
+## 🔄 LIFECYCLE PATTERNS
+
+### The NEW Simple Architecture
+
+```
+1. User navigates to verse
+2. ResourcesContext loads verse-specific data
+3. All panels display data from context
+4. That's it!
+```
+
+### DEPRECATED Complex Patterns
+
+The old lifecycle document shows complex manifest loading, which has been **completely eliminated**. Always use the simple verse-loading pattern.
+
+## 🎨 THEME SYSTEM PATTERNS
+
+### CSS Variables Architecture
+
+```css
+/* ETEN Lab Brand Colors */
+:root {
+  --color-primary: #c1d72e; /* ETEN Lab green */
+  --color-primary-light: #d1e74e; /* Hover states */
+  --color-primary-dark: #a1c70e; /* Active states */
+  --color-text-on-primary: #000000; /* Black for WCAG compliance */
+}
+
+/* Dark Theme (Default - matches etenlab.org) */
+[data-theme="dark"] {
+  --color-background: #000000; /* Pure black */
+  --color-surface: #1a1a1a; /* Dark grey surfaces */
+  --color-footer: #262626; /* ETEN Lab footer grey */
+  --color-text: #ffffff; /* White text */
+}
+
+/* Light Theme */
+[data-theme="light"] {
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-text: #1e293b;
+}
+```
+
+### Theme System Principles
+
+1. **CSS-Only**: 10x faster than JavaScript theming
+2. **40+ Variables**: Complete design system
+3. **Dark Default**: Matches ETEN Lab website
+4. **WCAG Compliance**: Black text on green buttons
+5. **Zero JavaScript**: Pure CSS theme switching
+
+### Critical Theme Fixes
+
+```javascript
+// ❌ NEVER hardcode colors
+color: "#ffffff";
+backgroundColor: "#333333";
+borderColor: "#1976d2";
+
+// ✅ ALWAYS use CSS variables
+color: "var(--color-text)";
+backgroundColor: "var(--color-surface)";
+borderColor: "var(--color-primary)";
+```
+
+### Font System
+
+```css
+/* ETEN Lab Font Hierarchy */
+--font-family-primary: "Figtree", system-ui; /* UI elements */
+--font-family-heading: "Jura", var(--font-family-primary); /* Headers */
+--font-family-body: "Madefor Text", var(--font-family-primary); /* Content */
+--font-family-meta: "DIN Next", var(--font-family-primary); /* Metadata */
+--font-family-mono: Monaco, Menlo, monospace; /* Code */
+
+/* Font Loading Performance */
+@font-face {
+  font-family: "Figtree";
+  src: url("/fonts/figtree-400.ttf");
+  font-display: swap; /* Text visible during load */
+}
+```
+
+### Theme Toggle Implementation
+
+```javascript
+// Dark theme default with localStorage persistence
+const [theme, setTheme] = useState(() => {
+  const saved = localStorage.getItem("theme");
+  return saved || "dark"; // Dark default
+});
+
+// Apply theme to document
+useEffect(() => {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("theme", theme);
+}, [theme]);
+```
+
+### Scrollbar Theming
+
+```css
+/* WebKit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-surface);
+}
+```
+
 ## 🤖 LLM SYSTEM PROMPT PATTERNS
 
 ### Critical Constraints
@@ -465,7 +699,7 @@ Feature complete! Documentation:
 
 ### The Showcase Lesson
 
-On 2025-01-08, proper branching was skipped during showcase implementation. The lesson:
+Early in the project development (July 16-17, 2025), proper branching was skipped during showcase implementation. The lesson:
 
 > **Process discipline is as important as technical excellence.**
 
@@ -481,6 +715,8 @@ On 2025-01-08, proper branching was skipped during showcase implementation. The 
 6. **Modifying netlify.toml** - Hand-tuned configuration
 7. **Skipping validation** - USFM contamination in LLM context
 8. **Working on wrong branch** - Always use feature branches
+9. **Hardcoding colors** - Breaks theme system
+10. **Mixing concerns** - Keep services/UI/utils separate
 
 ### Common Pitfalls
 
@@ -491,6 +727,8 @@ On 2025-01-08, proper branching was skipped during showcase implementation. The 
 5. **Missing error boundaries**: Graceful degradation required
 6. **Ignoring cache**: 90% performance improvement possible
 7. **Skipping git workflow**: Process discipline matters
+8. **Using inline styles**: Always use CSS variables
+9. **Complex lifecycles**: Use simple verse-loading pattern
 
 ## 📋 Implementation Checklist
 
@@ -509,6 +747,10 @@ When implementing any feature:
 - [ ] Follow existing patterns exactly
 - [ ] Update version and CHANGELOG
 - [ ] Document in README if user-facing
+- [ ] Use CSS variables for theming
+- [ ] Test both light and dark themes
+- [ ] Follow separation of concerns
+- [ ] Handle RC links properly
 
 ## 🎓 Key Lessons
 
@@ -519,6 +761,9 @@ When implementing any feature:
 5. **Test everything** - Especially environment consistency
 6. **Document discoveries** - Save weeks of debugging for others
 7. **Process discipline** - As important as technical excellence
+8. **CSS > JavaScript** - 10x faster theme switching
+9. **Separate concerns** - Keep modules focused
+10. **Follow patterns** - They solved these problems already
 
 ## 🔗 Related Documentation
 

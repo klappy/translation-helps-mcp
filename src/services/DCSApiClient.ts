@@ -329,7 +329,160 @@ export class DCSApiClient {
     if (params.page) queryParams.append("page", params.page.toString());
 
     const endpoint = `/catalog/search?${queryParams.toString()}`;
-    return this.makeRequest<Resource[]>(endpoint);
+    const response = await this.makeRequest<any>(endpoint);
+
+    // CRITICAL FIX: Handle catalog API response structure
+    if (response.success && response.data) {
+      // Catalog API returns { ok: true, data: [...], last_updated: "..." }
+      const catalogData = response.data.data || response.data;
+      return {
+        ...response,
+        data: Array.isArray(catalogData) ? catalogData : [],
+      };
+    }
+
+    return response;
+  }
+
+  /**
+   * Get resource metadata with ingredients array - THE CRITICAL METHOD!
+   * This is what the documentation says we MUST use instead of hardcoded paths
+   */
+  public async getResourceMetadata(
+    language: string,
+    organization: string,
+    subject?: string
+  ): Promise<DCSResponse<Resource[]>> {
+    const queryParams = new URLSearchParams();
+
+    // CRITICAL: Must include metadataType=rc to get ingredients array
+    queryParams.append("metadataType", "rc");
+    queryParams.append("lang", language);
+    // DON'T filter by subject - get ALL resources so we can find translation helps
+    // Translation resources have subjects like "TSV Translation Notes" not "Bible"
+    queryParams.append("owner", organization);
+    queryParams.append("stage", "prod");
+    queryParams.append("limit", "100");
+
+    const endpoint = `/catalog/search?${queryParams.toString()}`;
+
+    logger.debug("Fetching resource metadata with ingredients", {
+      language,
+      organization,
+      subject,
+      endpoint,
+    });
+
+    const response = await this.makeRequest<any>(endpoint);
+
+    // CRITICAL FIX: Handle catalog API response structure
+    if (response.success && response.data) {
+      // Catalog API returns { ok: true, data: [...], last_updated: "..." }
+      const catalogData = response.data.data || response.data;
+      return {
+        ...response,
+        data: Array.isArray(catalogData) ? catalogData : [],
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error,
+      statusCode: response.statusCode,
+      headers: response.headers,
+    };
+  }
+
+  /**
+   * Get specific resource metadata by resource type (tn, tq, tw, etc.)
+   */
+  public async getSpecificResourceMetadata(
+    language: string,
+    organization: string,
+    resourceType: string
+  ): Promise<DCSResponse<Resource | null>> {
+    const response = await this.getResourceMetadata(language, organization);
+
+    if (!response.success || !response.data) {
+      return {
+        success: false,
+        error: response.error,
+        statusCode: response.statusCode,
+        headers: response.headers,
+      };
+    }
+
+    // Find the specific resource type in the catalog results
+    const resource = response.data.find(
+      (r: any) =>
+        r.name?.endsWith(`_${resourceType}`) ||
+        r.subject?.toLowerCase().includes(resourceType.toLowerCase())
+    );
+
+    return {
+      success: true,
+      data: resource || null,
+      statusCode: response.statusCode,
+      headers: response.headers,
+    };
+  }
+
+  /**
+   * Get organizations/owners using the optimized endpoint
+   */
+  public async getOrganizations(): Promise<DCSResponse<Owner[]>> {
+    const endpoint = "/catalog/list/owners";
+
+    logger.debug("Fetching organizations from catalog");
+
+    const response = await this.makeRequest<any>(endpoint);
+
+    if (!response.success || !response.data) {
+      return {
+        success: false,
+        error: response.error,
+        statusCode: response.statusCode,
+        headers: response.headers,
+      };
+    }
+
+    // Parse the response structure
+    const organizations: Owner[] = [];
+    const orgData = response.data?.data || response.data || [];
+
+    orgData.forEach((org: any) => {
+      if (org.login) {
+        organizations.push({
+          id: org.id || 0,
+          login: org.login,
+          full_name: org.full_name || org.login,
+          email: org.email || "",
+          avatar_url: org.avatar_url || "",
+          language: org.language || "en",
+          is_admin: org.is_admin || false,
+          last_login: org.last_login || "",
+          created: org.created || new Date().toISOString(),
+          restricted: org.restricted || false,
+          active: org.active !== false,
+          prohibit_login: org.prohibit_login || false,
+          location: org.location || "",
+          website: org.website || "",
+          description: org.description || "",
+          visibility: org.visibility || "public",
+          followers_count: org.followers_count || 0,
+          following_count: org.following_count || 0,
+          starred_repos_count: org.starred_repos_count || 0,
+          username: org.username || org.login,
+        });
+      }
+    });
+
+    return {
+      success: true,
+      data: organizations,
+      statusCode: response.statusCode,
+      headers: response.headers,
+    };
   }
 
   /**

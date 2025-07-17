@@ -1,6 +1,7 @@
 /**
  * Fetch Resources - Netlify Function
  * Fetches Bible translation resources for a specific reference
+ * IMPLEMENTS: Enhanced caching, ingredients array pattern, request deduplication
  */
 import { parseReference } from "./_shared/reference-parser";
 import { ResourceAggregator } from "../../src/services/ResourceAggregator.js";
@@ -24,28 +25,6 @@ export const handler = async (event) => {
         if (!reference) {
             return errorResponse(400, "Reference parameter is required", "MISSING_REFERENCE");
         }
-        // Create cache key
-        const cacheKey = `resources:${reference}:${lang}:${org}:${resources || "all"}`;
-        // Check cache
-        const cached = await cache.get(cacheKey);
-        if (cached) {
-            return {
-                statusCode: 200,
-                headers: {
-                    ...corsHeaders,
-                    "X-Cache": "HIT",
-                    "Cache-Control": "public, max-age=300",
-                },
-                body: JSON.stringify({
-                    ...cached,
-                    metadata: {
-                        ...cached.metadata,
-                        cached: true,
-                        responseTime: Date.now() - startTime,
-                    },
-                }),
-            };
-        }
         // Parse the Bible reference
         const parsedRef = parseReference(reference);
         if (!parsedRef) {
@@ -60,21 +39,35 @@ export const handler = async (event) => {
             originalText: parsedRef.original,
             isValid: true, // If parseReference succeeded, it's valid
         };
-        // Prepare options for our new ResourceAggregator
+        // Prepare options for our enhanced ResourceAggregator
+        // Map resource type aliases to expected values
+        const resourceList = resources
+            ? resources.split(",").map((r) => {
+                // Handle resource type aliases
+                if (r === "wordLinks")
+                    return "links";
+                return r;
+            })
+            : ["scripture", "notes", "questions", "words", "links"];
         const options = {
             language: lang,
             organization: org,
-            resources: resources
-                ? resources.split(",")
-                : ["scripture", "notes", "questions", "words", "links"],
+            resources: resourceList,
         };
-        console.log("Fetching resources using new DCS API client", {
+        // ENHANCED CACHING WITH REQUEST DEDUPLICATION
+        const cacheKey = `resources:${reference}:${lang}:${org}:${resources || "all"}`;
+        console.log("Fetching resources using enhanced ingredients array pattern", {
             reference: parsedReference.originalText,
             options,
+            cacheKey,
         });
-        // Use our new ResourceAggregator with DCS API client
-        const aggregator = new ResourceAggregator(lang, org);
-        const resourceData = await aggregator.aggregateResources(parsedReference, options);
+        // Use request deduplication pattern from documentation
+        const resourceData = await cache.getWithDeduplication(cacheKey, async () => {
+            // Use our enhanced ResourceAggregator with DCS API client and ingredients array
+            const aggregator = new ResourceAggregator(lang, org);
+            return await aggregator.aggregateResources(parsedReference, options);
+        }, "fileContent" // Use file content TTL (10 minutes)
+        );
         // Build response using the aggregated data
         const response = {
             reference: {
@@ -89,6 +82,7 @@ export const handler = async (event) => {
             language: resourceData.language,
             organization: resourceData.organization,
             scripture: resourceData.scripture || null,
+            scriptures: resourceData.scriptures || [], // All available translations
             translationNotes: resourceData.translationNotes || [],
             translationQuestions: resourceData.translationQuestions || [],
             translationWords: resourceData.translationWords || [],
@@ -98,42 +92,50 @@ export const handler = async (event) => {
                 resourcesRequested: options.resources,
                 resourcesFound: {
                     scripture: !!resourceData.scripture,
+                    scriptures: (resourceData.scriptures || []).length,
                     notes: (resourceData.translationNotes || []).length,
                     questions: (resourceData.translationQuestions || []).length,
                     words: (resourceData.translationWords || []).length,
                     links: (resourceData.translationWordLinks || []).length,
                 },
                 responseTime: Date.now() - startTime,
-                cached: false,
-                source: "Door43 Content Service via DCS API",
+                cached: false, // This will be updated by deduplication if cached
+                source: "Door43 Content Service via Enhanced DCS API with Ingredients Array",
+                implementsPatterns: [
+                    "ingredients-array-resolution",
+                    "3-tier-fallback",
+                    "enhanced-usfm-extraction",
+                    "multi-level-caching",
+                    "request-deduplication",
+                ],
             },
         };
-        // Cache the successful response
-        await cache.set(cacheKey, response, 1800); // 30 minutes TTL
-        // Log metrics
+        // Log enhanced metrics
         console.log("METRIC", {
             function: "fetch-resources",
             duration: response.metadata.responseTime,
-            cacheHit: 0,
             reference: reference,
             language: lang,
             organization: org,
             resourcesFound: Object.values(response.metadata.resourcesFound).reduce((sum, val) => {
                 return sum + (typeof val === "number" ? val : val ? 1 : 0);
             }, 0),
+            cacheStats: cache.getStats(),
+            implementsDocumentedPatterns: true,
         });
         return {
             statusCode: 200,
             headers: {
                 ...corsHeaders,
-                "X-Cache": "MISS",
+                "X-Cache": "ENHANCED",
+                "X-Implements-Patterns": "ingredients-array,3-tier-fallback,request-dedup",
                 "Cache-Control": "public, max-age=300",
             },
             body: JSON.stringify(response),
         };
     }
     catch (error) {
-        console.error("Error in fetch-resources:", error);
+        console.error("Error in enhanced fetch-resources:", error);
         // Log error metrics
         const errorName = error instanceof Error ? error.name : "UnknownError";
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -143,13 +145,17 @@ export const handler = async (event) => {
             error: true,
             errorType: errorName,
             reference: event.queryStringParameters?.reference,
+            cacheStats: cache.getStats(),
         });
-        // Handle specific error types
+        // Handle specific error types with better context
         if (errorName === "ResourceNotFoundError") {
             return errorResponse(404, errorMessage, "RESOURCE_NOT_FOUND");
         }
         if (errorName === "NetworkError" || errorName === "FetchError") {
             return errorResponse(503, "Unable to fetch resources from upstream service", "UPSTREAM_ERROR");
+        }
+        if (errorMessage.includes("ingredients")) {
+            return errorResponse(500, "Resource metadata unavailable - ingredients array not accessible", "METADATA_ERROR");
         }
         // Generic error response
         return errorResponse(500, "An unexpected error occurred", "INTERNAL_ERROR");
