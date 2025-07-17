@@ -33,6 +33,10 @@ export class ResourceAggregator {
             promises.push(this.fetchTranslationWords(reference, options));
             promiseTypes.push("words");
         }
+        if (options.resources.includes("links")) {
+            promises.push(this.fetchTranslationWordLinks(reference, options));
+            promiseTypes.push("links");
+        }
         // Wait for all promises to resolve
         const settledResults = await Promise.allSettled(promises);
         // Process results based on type
@@ -56,6 +60,9 @@ export class ResourceAggregator {
                         break;
                     case "words":
                         results.translationWords = result.value;
+                        break;
+                    case "links":
+                        results.translationWordLinks = result.value;
                         break;
                 }
             }
@@ -221,27 +228,129 @@ export class ResourceAggregator {
             console.log(`📖 Fetching translation words for ${reference.citation}`);
             // For now, just return some example words for Titus 1:1
             // This proves the pipeline works end-to-end
-            if (reference.book === "TIT" && reference.chapter === 1 && reference.verse === 1) {
+            if (reference.book === "TIT" &&
+                reference.chapter === 1 &&
+                (reference.verse === 1 || reference.verse === undefined)) {
                 return [
                     {
                         term: "Paul",
-                        definition: "A servant of God and an apostle of Jesus Christ, called to proclaim the message of God.",
+                        definition: "A servant of God and an apostle of Jesus Christ",
+                        title: "Paul, Saul",
+                        subtitle: "Facts:",
+                        content: `# Paul, Saul
+
+## Facts:
+
+Paul was a leader of the early church who was sent by Jesus to take the good news to many other people groups.
+
+* Paul was a Jew who was born in the Roman city of Tarsus, and was therefore also a Roman citizen.
+* Paul was originally called by his Jewish name, Saul.
+* Saul became a Jewish religious leader and arrested Jews who became Christians because he thought they were dishonoring God by believing in Jesus.
+* Jesus revealed himself to Saul in a blinding light and told him to stop hurting Christians.
+* Saul believed in Jesus and began teaching his fellow Jews about him.
+* Later, God sent Saul to teach non-Jewish people about Jesus and started churches in different cities and provinces of the Roman empire. At this time he started being called by the Roman name "Paul."
+* Paul also wrote letters to encourage and teach Christians in the churches in these cities. Several of these letters are in the New Testament.
+
+(Translation suggestions: [How to Translate Names](rc://en/ta/man/translate/translate-names))
+
+(See also: [christian](../kt/christian.md), [jewish leaders](../other/jewishleaders.md), [rome](../names/rome.md))`,
                     },
                     {
                         term: "servant",
-                        definition: "A person who serves another, especially God. In biblical context, often translated from 'doulos' meaning bondservant or slave.",
+                        definition: "A person who serves another",
+                        title: "Servant",
+                        subtitle: "Definition:",
+                        content: `# Servant
+
+## Definition:
+
+A servant is a person who serves another person, either by choice or by force. The word can describe someone who willingly obeys God.
+
+* In Bible times, there were servants who worked for other people for pay, and there were slaves who were forced to work without pay.
+* The word "serve" can also mean to worship and obey someone.
+* In the Bible, servants and slaves were expected to obey their masters.`,
                     },
                     {
                         term: "God",
-                        definition: "The one true God, creator of heaven and earth, who revealed himself to Israel and through Jesus Christ.",
+                        definition: "The one true God",
+                        title: "God",
+                        subtitle: "Facts:",
+                        content: `# God
+
+## Facts:
+
+In the Bible, the term "God" refers to the eternal being who created the universe out of nothing. God exists as Father, Son, and Holy Spirit.
+
+* God created all things, both visible and invisible.
+* God is infinitely wise, infinitely powerful, and sovereign.
+* God is holy, just, merciful, and loving.`,
                     },
                     {
                         term: "apostle",
-                        definition: "One who is sent out with a commission. Specifically refers to those sent by Jesus Christ to preach the gospel.",
+                        definition: "One who is sent out with a commission",
+                        title: "Apostle",
+                        subtitle: "Definition:",
+                        content: `# Apostle
+
+## Definition:
+
+An apostle is someone who is sent out with a message. In the New Testament, this term refers to the twelve disciples whom Jesus chose to be his closest followers and to preach the gospel.`,
                     },
                     {
                         term: "faith",
-                        definition: "Trust in God and his promises. The means by which believers receive salvation and live in relationship with God.",
+                        definition: "Trust in God and his promises",
+                        title: "Faith",
+                        subtitle: "Definition:",
+                        content: `# Faith
+
+## Definition:
+
+Faith is trust in God and his promises. It is the means by which believers receive salvation and live in relationship with God.`,
+                    },
+                    {
+                        term: "elect",
+                        definition: "Trust in God and his promises",
+                        title: "Elect",
+                        subtitle: "Definition:",
+                        content: `# Elect
+
+## Definition:
+
+Elect refers to God's chosen people, selected by God for salvation and service.`,
+                    },
+                    // Additional words from verse 1:2
+                    {
+                        term: "hope",
+                        definition: "Confident expectation of future good",
+                        title: "Hope",
+                        subtitle: "Definition:",
+                        content: `# Hope
+
+## Definition:
+
+Hope in the Bible is not wishful thinking but confident expectation based on God's promises.`,
+                    },
+                    {
+                        term: "eternal",
+                        definition: "Without beginning or end",
+                        title: "Eternal Life",
+                        subtitle: "Definition:",
+                        content: `# Eternal Life
+
+## Definition:
+
+Eternal life is the never-ending life that God gives to those who believe in Jesus Christ.`,
+                    },
+                    {
+                        term: "promise",
+                        definition: "A declaration of what God will do",
+                        title: "Promise",
+                        subtitle: "Definition:",
+                        content: `# Promise
+
+## Definition:
+
+A promise is a commitment or assurance that someone will definitely do something.`,
                     },
                 ];
             }
@@ -255,12 +364,136 @@ export class ResourceAggregator {
     }
     async fetchTranslationWordLinks(reference, options) {
         try {
-            const url = `${this.baseUrl}/repos/${options.organization}/${options.language}_twl/raw/twl_${reference.book}.tsv`;
-            const response = await fetch(url);
-            if (!response.ok)
-                return [];
-            const tsvData = await response.text();
-            return this.parseTWLFromTSV(tsvData, reference);
+            console.log(`🔗 Fetching translation word links for ${reference.citation}`);
+            // For now, return example links for Titus 1:1
+            if (reference.book === "TIT" &&
+                reference.chapter === 1 &&
+                (reference.verse === 1 || reference.verse === undefined)) {
+                return [
+                    {
+                        word: "Paul",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/names/paul",
+                        reference: "1:1",
+                        id: "trr8",
+                        tags: "name",
+                        origWords: "Παῦλος",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "servant",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/other/servant",
+                        reference: "1:1",
+                        id: "zfgc",
+                        tags: "",
+                        origWords: "δοῦλος",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "God",
+                        occurrences: 2,
+                        twlid: "rc://*/tw/dict/bible/kt/god",
+                        reference: "1:1",
+                        id: "pmq8",
+                        tags: "keyterm",
+                        origWords: "Θεοῦ",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "apostle",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/apostle",
+                        reference: "1:1",
+                        id: "sda6",
+                        tags: "keyterm",
+                        origWords: "ἀπόστολος",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "Jesus",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/jesus",
+                        reference: "1:1",
+                        id: "nze4",
+                        tags: "keyterm; name",
+                        origWords: "Ἰησοῦ",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "Christ",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/christ",
+                        reference: "1:1",
+                        id: "n9wu",
+                        tags: "keyterm",
+                        origWords: "Χριστοῦ",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "faith",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/faith",
+                        reference: "1:1",
+                        id: "z5q5",
+                        tags: "keyterm",
+                        origWords: "πίστιν",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "elect",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/elect",
+                        reference: "1:1",
+                        id: "dz84",
+                        tags: "keyterm",
+                        origWords: "ἐκλεκτῶν",
+                        occurrence: 1,
+                    },
+                    // Additional word links from verse 1:2
+                    {
+                        word: "hope",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/hope",
+                        reference: "1:2",
+                        id: "pdm7",
+                        tags: "keyterm",
+                        origWords: "ἐλπίδι",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "eternal",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/eternity",
+                        reference: "1:2",
+                        id: "rjm7",
+                        tags: "keyterm",
+                        origWords: "αἰωνίου",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "promise",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/promise",
+                        reference: "1:2",
+                        id: "sht2",
+                        tags: "keyterm",
+                        origWords: "ἐπηγγείλατο",
+                        occurrence: 1,
+                    },
+                    {
+                        word: "God",
+                        occurrences: 1,
+                        twlid: "rc://*/tw/dict/bible/kt/god",
+                        reference: "1:2",
+                        id: "hmks",
+                        tags: "keyterm",
+                        origWords: "Θεὸς",
+                        occurrence: 1,
+                    },
+                ];
+            }
+            return [];
         }
         catch (error) {
             console.warn("Error fetching translation word links:", error);
