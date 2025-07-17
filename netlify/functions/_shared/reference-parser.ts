@@ -283,7 +283,58 @@ export function parseReference(input: string): Reference | null {
   // Clean the input
   const cleanInput = input.trim();
 
-  // Regex to match various reference formats
+  // Try book-only pattern first (e.g., "Philemon", "Jude", "Obadiah")
+  const bookOnlyRegex = /^(\d?\s*\w+)$/i;
+  const bookOnlyMatch = cleanInput.match(bookOnlyRegex);
+
+  if (bookOnlyMatch) {
+    const [, bookStr] = bookOnlyMatch;
+    const normalizedBook = bookStr.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
+    const bookInfo = BOOK_MAPPINGS[normalizedBook];
+
+    if (bookInfo) {
+      return {
+        book: bookInfo.code,
+        bookName: bookInfo.name,
+        chapter: 1, // Default to chapter 1 for book-only references
+        citation: bookInfo.name,
+        original: cleanInput,
+      };
+    }
+  }
+
+  // Try chapter range pattern (e.g., "Titus 1-2", "1 Timothy 1-3")
+  const chapterRangeRegex = /^(\d?\s*\w+)[\s\.]*(\d+)[-–—]\s*(\d+)$/i;
+  const chapterRangeMatch = cleanInput.match(chapterRangeRegex);
+
+  if (chapterRangeMatch) {
+    const [, bookStr, startChapterStr, endChapterStr] = chapterRangeMatch;
+    const normalizedBook = bookStr.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
+    const bookInfo = BOOK_MAPPINGS[normalizedBook];
+
+    if (bookInfo) {
+      const startChapter = parseInt(startChapterStr);
+      const endChapter = parseInt(endChapterStr);
+
+      if (
+        !isNaN(startChapter) &&
+        !isNaN(endChapter) &&
+        startChapter >= 1 &&
+        endChapter >= startChapter
+      ) {
+        return {
+          book: bookInfo.code,
+          bookName: bookInfo.name,
+          chapter: startChapter,
+          verseEnd: endChapter, // Reuse verseEnd to store end chapter for ranges
+          citation: `${bookInfo.name} ${startChapter}-${endChapter}`,
+          original: cleanInput,
+        };
+      }
+    }
+  }
+
+  // Original regex for standard patterns
   // Supports: "John 3:16", "Jn 3:16-18", "Genesis 1", "1 Corinthians 13:4-7"
   const referenceRegex = /^(\d?\s*\w+)[\s\.]*(\d+)(?:[:\.]\s*(\d+)(?:[-–—]\s*(\d+))?)?$/i;
 
