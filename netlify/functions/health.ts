@@ -4,7 +4,13 @@
  */
 
 import { Handler } from "@netlify/functions";
-import { VERSION } from "./_shared/version";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Get version directly from package.json - SINGLE SOURCE OF TRUTH!
+const packageJsonPath = join(process.cwd(), "package.json");
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+const VERSION = packageJson.version;
 
 export const handler: Handler = async (event, context) => {
   console.log("Health check requested");
