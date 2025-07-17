@@ -1,0 +1,233 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Set up project infrastructure",
+        "description": "Initialize the project with TypeScript, build system, and basic Netlify Functions structure",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Create the foundational project structure including package.json, tsconfig.json, Netlify configuration, and basic directory structure for the MCP server implementation.",
+        "testStrategy": "Verify build process works, TypeScript compiles without errors, and basic Netlify dev server runs locally",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update package.json with required dependencies",
+            "description": "Add TypeScript, Netlify CLI, MCP SDK, and other required packages",
+            "details": "Install and configure: typescript, @types/node, @netlify/functions, @modelcontextprotocol/sdk, tsx for development, and other necessary dependencies",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1
+          },
+          {
+            "id": 2,
+            "title": "Create TypeScript configuration",
+            "description": "Set up tsconfig.json with proper settings for Node.js and Netlify Functions",
+            "details": "Configure TypeScript for ES2022, Node.js module resolution, strict type checking, and output to dist directory",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1
+          },
+          {
+            "id": 3,
+            "title": "Set up Netlify configuration",
+            "description": "Create netlify.toml with Functions configuration and build settings",
+            "details": "Configure Netlify Functions directory, Node.js version, build commands, and environment settings in netlify.toml",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1
+          },
+          {
+            "id": 4,
+            "title": "Create project directory structure",
+            "description": "Set up the folder structure for src, tests, and Netlify functions",
+            "details": "Create directories: src/, src/services/, src/utils/, src/types/, netlify/functions/, tests/, and update .gitignore",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Create health check endpoint",
+        "description": "Implement a basic health check Netlify Function to verify deployment",
+        "status": "done",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "details": "Create a simple health check endpoint at /api/health that returns status, version, and timestamp. This will verify Netlify Functions are working correctly.",
+        "testStrategy": "Test locally with netlify dev, then deploy and verify the endpoint returns 200 OK with expected JSON response"
+      },
+      {
+        "id": 3,
+        "title": "Implement DCS API client",
+        "description": "Create a client service for interacting with the Door43 Content Service API",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "details": "Build a robust API client that handles all DCS catalog endpoints including /owners, /languages, and resource fetching. Include proper error handling and response parsing.",
+        "testStrategy": "Unit test each API method with mocked responses, integration test against real DCS API endpoints"
+      },
+      {
+        "id": 4,
+        "title": "Build catalog service",
+        "description": "Create service layer for fetching organizations, languages, and resources from DCS",
+        "status": "pending",
+        "dependencies": [
+          3
+        ],
+        "priority": "high",
+        "details": "Implement catalogService with methods for getOrganizations(), getLanguages(org), and getResources(org, lang). Use proper TypeScript interfaces for all data structures.",
+        "testStrategy": "Test with known organizations like unfoldingWord, verify correct data transformation and error handling"
+      },
+      {
+        "id": 5,
+        "title": "Implement caching system",
+        "description": "Build multi-level cache with request deduplication",
+        "status": "pending",
+        "dependencies": [
+          3
+        ],
+        "priority": "high",
+        "details": "Create CacheManager class with memory cache, TTL management, and request deduplication to prevent API hammering. Different TTLs for different resource types.",
+        "testStrategy": "Test cache hits/misses, TTL expiration, concurrent request deduplication, memory usage"
+      },
+      {
+        "id": 6,
+        "title": "Create USFM text extractor",
+        "description": "Build system to extract clean text from USFM format for LLM consumption",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "details": "Implement unified server-side USFM extraction using regex patterns. Remove alignment markers, word attributes, and all USFM markup while preserving punctuation.",
+        "testStrategy": "Test with various USFM samples including aligned text, verify clean output matches expected format"
+      },
+      {
+        "id": 7,
+        "title": "Build reference parser",
+        "description": "Create parser for various Bible reference formats",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "medium",
+        "details": "Parse references like 'John 3:16', 'Gen 1:1-5', '1 Corinthians 13:4-7' into structured format with book, chapter, verse. Handle multiple languages and book name variations.",
+        "testStrategy": "Test with comprehensive list of reference formats, edge cases, and invalid inputs"
+      },
+      {
+        "id": 8,
+        "title": "Implement resource aggregator",
+        "description": "Create service to fetch and combine all resource types for a reference",
+        "status": "pending",
+        "dependencies": [
+          4,
+          5,
+          6
+        ],
+        "priority": "high",
+        "details": "Build ResourceAggregator that fetches scripture, notes, questions, and words in parallel. Uses caching and handles partial failures gracefully.",
+        "testStrategy": "Test parallel fetching, partial failure scenarios, response aggregation format"
+      },
+      {
+        "id": 9,
+        "title": "Create Netlify Functions",
+        "description": "Implement all API endpoints as Netlify Functions",
+        "status": "pending",
+        "dependencies": [
+          2,
+          8
+        ],
+        "priority": "high",
+        "details": "Create functions for fetch-resources, get-languages, get-organizations. Proper error handling, CORS headers, and response formatting.",
+        "testStrategy": "Test each function locally and deployed, verify error responses and CORS headers"
+      },
+      {
+        "id": 10,
+        "title": "Set up MCP server structure",
+        "description": "Implement the MCP server with tool definitions and handlers",
+        "status": "pending",
+        "dependencies": [
+          9
+        ],
+        "priority": "high",
+        "details": "Create MCP server using the SDK, define tools for fetch-resources, get-languages, etc. Implement proper tool schemas and response formatting.",
+        "testStrategy": "Test MCP tools with mock client, verify tool discovery and execution"
+      },
+      {
+        "id": 11,
+        "title": "Write comprehensive tests",
+        "description": "Create unit and integration tests for all components",
+        "status": "pending",
+        "dependencies": [
+          10
+        ],
+        "priority": "medium",
+        "details": "Write tests for all services, endpoints, and edge cases. Include performance tests and load testing for cache system.",
+        "testStrategy": "Achieve 80%+ code coverage, all tests pass in CI environment"
+      },
+      {
+        "id": 12,
+        "title": "Configure deployment and monitoring",
+        "description": "Set up production deployment with CI/CD and monitoring",
+        "status": "pending",
+        "dependencies": [
+          11
+        ],
+        "priority": "medium",
+        "details": "Configure Netlify deployment, GitHub Actions CI/CD, error tracking, and performance monitoring. Create deployment documentation.",
+        "testStrategy": "Successful automated deployment, monitoring dashboards working, alerts configured"
+      },
+      {
+        "id": 13,
+        "title": "Implement ingredients-based file resolution",
+        "description": "Create a robust file path resolution system using the ingredients array from catalog API",
+        "details": "Files don't follow predictable naming! They use numbered prefixes like '57-TIT.usfm'. Must check ingredients array first, then fall back to standard naming conventions. This is CRITICAL for the entire system to work.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          3
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Handle verse bridges and special references",
+        "description": "Implement support for verse bridges (4-5), chapter intros (1:intro), and book intros (front:intro)",
+        "details": "USFM contains verse bridges like '\\v 4-5' that need special regex handling. Also need to handle chapter introduction notes (1:intro) and book introduction notes (front:intro). This is more complex than simple verse extraction.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          6
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Create resource-specific TSV parsers",
+        "description": "Build parsers for each resource type's unique TSV column structure",
+        "details": "Each resource type has different TSV columns: Translation Notes use Note/Quote/Occurrence/Reference, Translation Questions use Reference/ID/Tags/Quote/Question/Response. Need type-safe parsers for each.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          3
+        ],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-16T23:38:38.925Z",
+      "updated": "2025-07-17T00:43:36.471Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

@@ -95,7 +95,7 @@ export const handler: Handler = async (event) => {
         organization: org,
         timestamp: new Date().toISOString(),
         resourcesFound: Object.keys(resourceData).filter((key) => {
-          const value = resourceData[key];
+          const value = (resourceData as any)[key];
           return value && (Array.isArray(value) ? value.length > 0 : true);
         }),
         responseTime: Date.now() - startTime,
@@ -130,20 +130,23 @@ export const handler: Handler = async (event) => {
     console.error("Error in fetch-resources:", error);
 
     // Log error metrics
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
     console.log("METRIC", {
       function: "fetch-resources",
       duration: Date.now() - startTime,
       error: true,
-      errorType: error.name,
+      errorType: errorName,
       reference: event.queryStringParameters?.reference,
     });
 
     // Handle specific error types
-    if (error.name === "ResourceNotFoundError") {
-      return errorResponse(404, error.message, "RESOURCE_NOT_FOUND");
+    if (errorName === "ResourceNotFoundError") {
+      return errorResponse(404, errorMessage, "RESOURCE_NOT_FOUND");
     }
 
-    if (error.name === "NetworkError" || error.name === "FetchError") {
+    if (errorName === "NetworkError" || errorName === "FetchError") {
       return errorResponse(
         503,
         "Unable to fetch resources from upstream service",

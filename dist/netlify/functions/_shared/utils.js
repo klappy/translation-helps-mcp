@@ -5,10 +5,10 @@
  * CORS headers for API responses
  */
 export const corsHeaders = {
-    'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGINS || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
-    'Content-Type': 'application/json',
+    "Access-Control-Allow-Origin": process.env.ALLOWED_ORIGINS || "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
+    "Content-Type": "application/json",
 };
 /**
  * Create a standardized error response
@@ -19,7 +19,7 @@ export function errorResponse(statusCode, message, code, details) {
         headers: corsHeaders,
         body: JSON.stringify({
             error: message,
-            code: code || 'ERROR',
+            code: code || "ERROR",
             details,
             timestamp: new Date().toISOString(),
         }),
@@ -42,10 +42,10 @@ export function successResponse(data, headers) {
  * Validate API key if required
  */
 export function validateApiKey(headers) {
-    if (process.env.REQUIRE_API_KEY !== 'true') {
+    if (process.env.REQUIRE_API_KEY !== "true") {
         return true;
     }
-    const apiKey = headers['x-api-key'] || headers['X-API-Key'];
+    const apiKey = headers["x-api-key"] || headers["X-API-Key"];
     return apiKey === process.env.API_KEY;
 }
 /**
@@ -65,7 +65,7 @@ export function parseJsonBody(body) {
  * Log metrics for monitoring
  */
 export function logMetric(functionName, metrics) {
-    console.log('METRIC', {
+    console.log("METRIC", {
         function: functionName,
         timestamp: new Date().toISOString(),
         ...metrics,
@@ -76,9 +76,9 @@ export function logMetric(functionName, metrics) {
  */
 export function createCacheKey(parts) {
     return parts
-        .filter(part => part !== undefined)
-        .map(part => String(part).toLowerCase().replace(/\s+/g, '-'))
-        .join(':');
+        .filter((part) => part !== undefined)
+        .map((part) => String(part).toLowerCase().replace(/\s+/g, "-"))
+        .join(":");
 }
 /**
  * Parse comma-separated values
@@ -86,7 +86,10 @@ export function createCacheKey(parts) {
 export function parseCommaSeparated(value) {
     if (!value)
         return [];
-    return value.split(',').map(v => v.trim()).filter(Boolean);
+    return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
 }
 /**
  * Calculate TTL based on resource type
@@ -102,7 +105,7 @@ export function getResourceTTL(resourceType) {
         search: 60 * 60, // 1 hour
         context: 15 * 60, // 15 minutes
     };
-    return ttls[resourceType] || parseInt(process.env.DEFAULT_TTL || '3600');
+    return ttls[resourceType] || parseInt(process.env.DEFAULT_TTL || "3600");
 }
 /**
  * Format duration for logging
@@ -118,7 +121,7 @@ export function formatDuration(ms) {
  * Sleep utility for rate limiting
  */
 export function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 /**
  * Chunk array into smaller arrays
@@ -136,8 +139,8 @@ export function chunk(array, size) {
 export function deepMerge(target, source) {
     const result = { ...target };
     for (const key in source) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-            result[key] = deepMerge(result[key] || {}, source[key]);
+        if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+            result[key] = deepMerge((result[key] || {}), source[key]);
         }
         else {
             result[key] = source[key];

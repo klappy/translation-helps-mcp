@@ -17,9 +17,17 @@ import { handleExtractReferences } from "./tools/extractReferences.js";
 // Tool parameter schemas
 const FetchResourcesSchema = z.object({
     reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
-    language: z.string().optional().describe('Language code (default: "en")'),
-    organization: z.string().optional().describe('Organization (default: "unfoldingWord")'),
-    resources: z.array(z.string()).optional().describe("Resource types to fetch"),
+    language: z.string().optional().default("en").describe('Language code (default: "en")'),
+    organization: z
+        .string()
+        .optional()
+        .default("unfoldingWord")
+        .describe('Organization (default: "unfoldingWord")'),
+    resources: z
+        .array(z.string())
+        .optional()
+        .default(["scripture", "notes", "questions", "words", "links"])
+        .describe("Resource types to fetch"),
 });
 const SearchResourcesSchema = z.object({
     language: z.string().optional().describe("Filter by language"),
@@ -117,14 +125,15 @@ async function main() {
             }
         }
         catch (error) {
-            logger.error("Tool execution failed", { name, error: error.message });
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error("Tool execution failed", { name, error: errorMessage });
             if (error instanceof z.ZodError) {
                 throw new McpError(ErrorCode.InvalidParams, `Invalid parameters: ${error.message}`);
             }
             if (error instanceof McpError) {
                 throw error;
             }
-            throw new McpError(ErrorCode.InternalError, `Tool execution failed: ${error.message}`);
+            throw new McpError(ErrorCode.InternalError, `Tool execution failed: ${errorMessage}`);
         }
     });
     // Start the server
