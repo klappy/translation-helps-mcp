@@ -37,11 +37,19 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    console.log("Fetching languages from DCS API...");
+    // Parse query parameters - organization is optional, gets ALL languages by default
+    const params = event.queryStringParameters || {};
+    const { organization } = params;
 
-    // Use our new DCS API client to fetch real language data
+    if (organization) {
+      console.log(`Fetching languages from DCS API for organization: ${organization}...`);
+    } else {
+      console.log("Fetching ALL languages from DCS API...");
+    }
+
+    // Use our new DCS API client to fetch language data
     const dcsClient = new DCSApiClient();
-    const response = await dcsClient.getLanguages();
+    const response = await dcsClient.getLanguages(organization);
 
     if (!response.success) {
       console.error("Failed to fetch languages from DCS:", response.error);

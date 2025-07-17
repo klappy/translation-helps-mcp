@@ -255,10 +255,20 @@ export class DCSApiClient {
   }
 
   /**
-   * Get languages from DCS catalog
+   * Get languages from DCS catalog for a specific organization
    */
-  public async getLanguages(): Promise<DCSResponse<Language[]>> {
-    const endpoint = "/catalog/search?limit=10000&stage=prod";
+  public async getLanguages(organization?: string): Promise<DCSResponse<Language[]>> {
+    const queryParams = new URLSearchParams({
+      limit: organization ? "1000" : "5000", // Fewer results when getting all organizations
+      stage: "prod",
+    });
+
+    // Filter by organization if provided
+    if (organization) {
+      queryParams.append("owner", organization);
+    }
+
+    const endpoint = `/catalog/search?${queryParams.toString()}`;
     const response = await this.makeRequest<Resource[]>(endpoint);
 
     if (!response.success || !response.data) {
