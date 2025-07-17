@@ -3,6 +3,8 @@
 [build]
   functions = "netlify/functions"
   publish = "."
+  # Set API_VERSION from package.json during build
+  command = "export API_VERSION=$(node -p \"require('./package.json').version\") && echo \"API_VERSION=$API_VERSION\" >> .env && npm run build"
 
 [build.environment]
   NODE_VERSION = "18"

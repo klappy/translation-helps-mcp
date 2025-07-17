@@ -180,15 +180,62 @@ export class ResourceAggregator {
     options: ResourceOptions
   ): Promise<TranslationNote[]> {
     try {
-      const url = `${this.baseUrl}/repos/${options.organization}/${options.language}_tn/raw/tn_${reference.book}.tsv`;
+      console.log(`📚 Fetching translation notes for ${reference.citation}`);
+
+      // Search catalog for Translation Notes
+      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Notes&lang=${options.language}&owner=${options.organization}`;
+      console.log(`🔍 Searching catalog: ${catalogUrl}`);
+
+      const catalogResponse = await fetch(catalogUrl);
+      if (!catalogResponse.ok) {
+        console.warn(`❌ Catalog search failed for translation notes`);
+        return [];
+      }
+
+      const catalogData = (await catalogResponse.json()) as {
+        data?: Array<{
+          name: string;
+          ingredients?: Array<{
+            identifier: string;
+            path: string;
+          }>;
+        }>;
+      };
+      const resource = catalogData.data?.[0];
+
+      if (!resource) {
+        console.warn(`❌ No translation notes resource found for ${options.language}`);
+        return [];
+      }
+
+      // Find the correct file from ingredients array - THIS IS THE KEY!
+      const ingredient = resource.ingredients?.find(
+        (ing: any) => ing.identifier === reference.book.toLowerCase()
+      );
+
+      if (!ingredient) {
+        console.warn(`❌ No ingredient found for book ${reference.book}`);
+        return [];
+      }
+
+      console.log(`✅ Found ingredient: ${ingredient.path} for ${reference.book}`);
+
+      // Build the URL using the ingredient path
+      const fileName = ingredient.path.replace("./", "");
+      const url = `${this.baseUrl}/repos/${options.organization}/${resource.name}/raw/${fileName}`;
+      console.log(`📥 Fetching notes from: ${url}`);
 
       const response = await fetch(url);
-      if (!response.ok) return [];
+      if (!response.ok) {
+        console.warn(`❌ Failed to fetch notes: ${response.status}`);
+        return [];
+      }
 
       const tsvData = await response.text();
+      console.log(`📝 Got TSV data (${tsvData.length} chars)`);
       return this.parseTNFromTSV(tsvData, reference);
     } catch (error) {
-      console.warn("Error fetching translation notes:", error);
+      console.error("Error fetching translation notes:", error);
       return [];
     }
   }
@@ -198,15 +245,62 @@ export class ResourceAggregator {
     options: ResourceOptions
   ): Promise<TranslationQuestion[]> {
     try {
-      const url = `${this.baseUrl}/repos/${options.organization}/${options.language}_tq/raw/tq_${reference.book}.tsv`;
+      console.log(`❓ Fetching translation questions for ${reference.citation}`);
+
+      // Search catalog for Translation Questions
+      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Questions&lang=${options.language}&owner=${options.organization}`;
+      console.log(`🔍 Searching catalog: ${catalogUrl}`);
+
+      const catalogResponse = await fetch(catalogUrl);
+      if (!catalogResponse.ok) {
+        console.warn(`❌ Catalog search failed for translation questions`);
+        return [];
+      }
+
+      const catalogData = (await catalogResponse.json()) as {
+        data?: Array<{
+          name: string;
+          ingredients?: Array<{
+            identifier: string;
+            path: string;
+          }>;
+        }>;
+      };
+      const resource = catalogData.data?.[0];
+
+      if (!resource) {
+        console.warn(`❌ No translation questions resource found for ${options.language}`);
+        return [];
+      }
+
+      // Find the correct file from ingredients array
+      const ingredient = resource.ingredients?.find(
+        (ing) => ing.identifier === reference.book.toLowerCase()
+      );
+
+      if (!ingredient) {
+        console.warn(`❌ No ingredient found for book ${reference.book}`);
+        return [];
+      }
+
+      console.log(`✅ Found ingredient: ${ingredient.path} for ${reference.book}`);
+
+      // Build the URL using the ingredient path
+      const fileName = ingredient.path.replace("./", "");
+      const url = `${this.baseUrl}/repos/${options.organization}/${resource.name}/raw/${fileName}`;
+      console.log(`📥 Fetching questions from: ${url}`);
 
       const response = await fetch(url);
-      if (!response.ok) return [];
+      if (!response.ok) {
+        console.warn(`❌ Failed to fetch questions: ${response.status}`);
+        return [];
+      }
 
       const tsvData = await response.text();
+      console.log(`❓ Got TSV data (${tsvData.length} chars)`);
       return this.parseTQFromTSV(tsvData, reference);
     } catch (error) {
-      console.warn("Error fetching translation questions:", error);
+      console.error("Error fetching translation questions:", error);
       return [];
     }
   }
@@ -215,9 +309,139 @@ export class ResourceAggregator {
     reference: Reference,
     options: ResourceOptions
   ): Promise<TranslationWord[]> {
-    // For now, return empty array - this would require more complex logic
-    // to determine which words are relevant for the specific verse
-    return [];
+    try {
+      console.log(`📖 Fetching translation words for ${reference.citation}`);
+
+      // First, get the Translation Words Links to find which words are in this verse
+      const twlCatalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Words%20Links&lang=${options.language}&owner=${options.organization}`;
+      console.log(`🔍 Searching catalog for TWL: ${twlCatalogUrl}`);
+
+      const twlCatalogResponse = await fetch(twlCatalogUrl);
+      if (!twlCatalogResponse.ok) {
+        console.warn(`❌ Catalog search failed for translation word links`);
+        return [];
+      }
+
+      const twlCatalogData = (await twlCatalogResponse.json()) as {
+        data?: Array<{
+          name: string;
+          ingredients?: Array<{
+            identifier: string;
+            path: string;
+          }>;
+        }>;
+      };
+      const twlResource = twlCatalogData.data?.[0];
+
+      if (!twlResource) {
+        console.warn(`❌ No translation word links resource found for ${options.language}`);
+        return [];
+      }
+
+      // Find the correct TWL file from ingredients array
+      const twlIngredient = twlResource.ingredients?.find(
+        (ing) => ing.identifier === reference.book.toLowerCase()
+      );
+
+      if (!twlIngredient) {
+        console.warn(`❌ No TWL ingredient found for book ${reference.book}`);
+        return [];
+      }
+
+      console.log(`✅ Found TWL ingredient: ${twlIngredient.path} for ${reference.book}`);
+
+      // Fetch the TWL file
+      const twlFileName = twlIngredient.path.replace("./", "");
+      const twlUrl = `${this.baseUrl}/repos/${options.organization}/${twlResource.name}/raw/${twlFileName}`;
+      console.log(`📥 Fetching word links from: ${twlUrl}`);
+
+      const twResponse = await fetch(twlUrl);
+      if (!twResponse.ok) {
+        console.warn(`❌ Failed to fetch word links: ${twResponse.status}`);
+        return [];
+      }
+
+      const twData = await twResponse.text();
+      console.log(`🔗 Got TWL data (${twData.length} chars)`);
+
+      // Parse TWL data to get word links for this reference
+      const wordLinks = this.parseTWLFromTSV(twData, reference);
+
+      // Now fetch the actual Translation Words resource
+      const twCatalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Translation%20Words&lang=${options.language}&owner=${options.organization}`;
+      const twCatalogResponse = await fetch(twCatalogUrl);
+
+      if (!twCatalogResponse.ok) {
+        console.warn(`❌ Catalog search failed for translation words`);
+        // Convert word links to basic translation words
+        return wordLinks.map((link) => ({
+          term: link.word,
+          definition: `Translation word: ${link.word}`,
+        }));
+      }
+
+      const twCatalogData = (await twCatalogResponse.json()) as { data?: Array<{ name: string }> };
+      const twResourceData = twCatalogData.data?.[0];
+
+      if (!twResourceData) {
+        console.warn(`❌ No translation words resource found`);
+        // Convert word links to basic translation words
+        return wordLinks.map((link) => ({
+          term: link.word,
+          definition: `Translation word: ${link.word}`,
+        }));
+      }
+
+      // For each word link, fetch the actual word content
+      const words: TranslationWord[] = [];
+      for (const link of wordLinks) {
+        try {
+          const wordId = link.twlid?.split("/").pop()?.replace(".md", "") || link.word;
+          const wordUrl = `${this.baseUrl}/repos/${options.organization}/${twResourceData.name}/raw/bible/kt/${wordId}.md`;
+          const wordResponse = await fetch(wordUrl);
+
+          if (wordResponse.ok) {
+            const content = await wordResponse.text();
+            words.push({
+              term: link.word,
+              definition: content.split("\n")[0] || content, // First line as definition
+              content,
+            });
+          } else {
+            // Try other paths (other/ folder)
+            const otherUrl = `${this.baseUrl}/repos/${options.organization}/${twResourceData.name}/raw/bible/other/${wordId}.md`;
+            const otherResponse = await fetch(otherUrl);
+
+            if (otherResponse.ok) {
+              const content = await otherResponse.text();
+              words.push({
+                term: link.word,
+                definition: content.split("\n")[0] || content, // First line as definition
+                content,
+              });
+            } else {
+              // Just create a basic word entry without content
+              words.push({
+                term: link.word,
+                definition: `Translation word: ${link.word}`,
+              });
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch word content for ${link.word}:`, error);
+          words.push({
+            term: link.word,
+            definition: `Translation word: ${link.word}`,
+          });
+        }
+      }
+
+      console.log(`📚 Found ${words.length} translation words`);
+      return words;
+    } catch (error) {
+      console.error("Error fetching translation words:", error);
+      return [];
+    }
   }
 
   private async fetchTranslationWordLinks(
@@ -362,40 +586,30 @@ export class ResourceAggregator {
   }
 
   private parseTWLFromTSV(tsvData: string, reference: Reference): TranslationWordLink[] {
-    try {
-      const lines = tsvData.split("\n");
-      const links: TranslationWordLink[] = [];
+    const lines = tsvData.split("\n");
+    const links: TranslationWordLink[] = [];
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
+    for (const line of lines) {
+      const parts = line.split("\t");
+      if (parts.length < 9) continue;
 
-        const columns = line.split("\t");
-        if (columns.length < 6) continue; // Expected TWL format
+      const [chapterStr, verseStr, , , , twlid] = parts;
+      const chapter = parseInt(chapterStr);
+      const verse = parseInt(verseStr);
 
-        const [book, chapter, verse, id, tags, originalWords] = columns;
+      if (chapter === reference.chapter && verse === reference.verse) {
+        // Parse the TWL ID to get the word
+        const word = twlid?.split("/").pop()?.replace(".md", "") || twlid || "";
 
-        // Filter by reference
-        if (book !== reference.book) continue;
-        if (parseInt(chapter) !== reference.chapter) continue;
-        if (reference.verse && parseInt(verse) !== reference.verse) continue;
-
-        if (tags) {
-          const words = tags.split(",").map((tag) => tag.trim());
-          words.forEach((word) => {
-            links.push({
-              word: word,
-              occurrences: 1,
-              twlid: id,
-            });
-          });
-        }
+        links.push({
+          word,
+          occurrences: 1,
+          twlid,
+        });
       }
-
-      return links;
-    } catch (error) {
-      console.error("Error parsing TWL TSV:", error);
-      return [];
     }
+
+    return links;
   }
 
   private getBookNumber(bookCode: string): string {

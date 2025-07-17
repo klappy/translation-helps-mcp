@@ -2,12 +2,8 @@
  * Health Check Endpoint
  * GET /api/health
  */
-import { readFileSync } from "fs";
-import { join } from "path";
-// Get version directly from package.json - SINGLE SOURCE OF TRUTH!
-const packageJsonPath = join(process.cwd(), "package.json");
-const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-const VERSION = packageJson.version;
+// Version from environment variable (set by Netlify) or package.json version for local dev
+const VERSION = process.env.API_VERSION || "1.3.0";
 export const handler = async (event, context) => {
     console.log("Health check requested");
     const headers = {
