@@ -255,21 +255,12 @@ export class DCSApiClient {
   }
 
   /**
-   * Get languages from DCS catalog for a specific organization
+   * Get languages from DCS catalog using the dedicated languages endpoint
    */
-  public async getLanguages(organization?: string): Promise<DCSResponse<Language[]>> {
-    const queryParams = new URLSearchParams({
-      limit: organization ? "1000" : "5000", // Fewer results when getting all organizations
-      stage: "prod",
-    });
-
-    // Filter by organization if provided
-    if (organization) {
-      queryParams.append("owner", organization);
-    }
-
-    const endpoint = `/catalog/search?${queryParams.toString()}`;
-    const response = await this.makeRequest<Resource[]>(endpoint);
+  public async getLanguages(): Promise<DCSResponse<Language[]>> {
+    // Use the dedicated languages endpoint - much faster!
+    const endpoint = "/catalog/list/languages?stage=prod";
+    const response = await this.makeRequest<any>(endpoint);
 
     if (!response.success || !response.data) {
       return {
@@ -280,32 +271,26 @@ export class DCSApiClient {
       };
     }
 
-    // Extract unique languages from catalog resources
-    const languageMap = new Map<string, Language>();
+    // Parse the dedicated languages endpoint response
+    const languages: Language[] = [];
 
-    // Handle the actual DCS API response structure
-    const resources = Array.isArray(response.data)
-      ? response.data
-      : (response.data as any)?.data || [];
+    // Handle the response structure from /catalog/list/languages
+    const languageData = response.data?.data || response.data || [];
 
-    resources.forEach((resource: any) => {
-      if (resource.language) {
-        const langCode = resource.language;
-        const langTitle = resource.language_title || langCode;
-        const langDirection = resource.language_direction || "ltr";
-
-        if (!languageMap.has(langCode)) {
-          languageMap.set(langCode, {
-            id: langCode,
-            code: langCode,
-            name: langTitle,
-            direction: langDirection,
-          });
-        }
+    languageData.forEach((lang: any) => {
+      if (lang.lc) {
+        // lc = language code
+        languages.push({
+          id: lang.lc,
+          code: lang.lc,
+          name: lang.ln || lang.ang || lang.lc, // ln = local name, ang = anglicized name
+          direction: lang.ld || "ltr", // ld = language direction
+        });
       }
     });
 
-    const languages = Array.from(languageMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    // Sort languages by name for consistent ordering
+    languages.sort((a, b) => a.name.localeCompare(b.name));
 
     return {
       success: true,
