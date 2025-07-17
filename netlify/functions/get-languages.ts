@@ -5,6 +5,13 @@
 
 import { Handler } from "@netlify/functions";
 import { DCSApiClient } from "../../src/services/DCSApiClient.js";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Get version from package.json for cache invalidation
+const packageJsonPath = join(process.cwd(), "package.json");
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+const API_VERSION = packageJson.version;
 
 // Simple in-memory cache for development (5 minute TTL)
 let languageCache: { [key: string]: any } = {};
@@ -42,8 +49,8 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    // Create cache key for all languages
-    const cacheKey = "all";
+    // Create cache key for all languages - include version for cache invalidation on releases
+    const cacheKey = `all-v${API_VERSION}`;
     const now = Date.now();
 
     // Check cache first
@@ -53,6 +60,17 @@ export const handler: Handler = async (event, context) => {
       now - cacheTimestamp[cacheKey] < CACHE_TTL
     ) {
       console.log(`Returning cached languages`);
+
+      // Update cached response metadata to show it's from cache
+      const cachedResponse = {
+        ...languageCache[cacheKey],
+        metadata: {
+          ...languageCache[cacheKey].metadata,
+          cached: true,
+          cacheAge: Math.round((now - cacheTimestamp[cacheKey]) / 1000), // seconds
+        },
+      };
+
       return {
         statusCode: 200,
         headers: {
@@ -60,7 +78,7 @@ export const handler: Handler = async (event, context) => {
           "Cache-Control": "public, max-age=300",
           "X-Cache": "HIT",
         },
-        body: JSON.stringify(languageCache[cacheKey]),
+        body: JSON.stringify(cachedResponse),
       };
     }
 
@@ -110,6 +128,7 @@ export const handler: Handler = async (event, context) => {
       timestamp: new Date().toISOString(),
       metadata: {
         source: "Door43 Content Service",
+        apiVersion: API_VERSION,
         cached: false,
         responseTime: Date.now(),
       },
