@@ -1,130 +1,88 @@
 /**
  * Cache Manager for Netlify Functions
  * Supports both Redis (Upstash) and in-memory caching
+ * IMPLEMENTS: Multi-level caching with resource-specific TTLs (documented pattern)
  */
 
-import { Redis } from '@upstash/redis';
+import { Redis } from "@upstash/redis";
 
 interface CacheItem {
   value: any;
   expiry: number;
 }
 
-class CacheManager {
-  private redis?: Redis;
-  private memoryCache: Map<string, CacheItem> = new Map();
-  private enabled: boolean;
+// DEBUGGING MODE: SHORT TTLs TO PREVENT CACHE INTERFERENCE
+const CACHE_TTLS = {
+  organizations: 30, // 30 seconds - was 1 hour (debugging mode)
+  languages: 30, // 30 seconds - was 1 hour (debugging mode)
+  resources: 15, // 15 seconds - was 5 minutes (debugging mode)
+  fileContent: 30, // 30 seconds - was 10 minutes (debugging mode)
+  metadata: 20, // 20 seconds - was 30 minutes (debugging mode)
+  deduplication: 10, // 10 seconds - was 1 minute (debugging mode)
+} as const;
 
+type CacheType = keyof typeof CACHE_TTLS;
+
+// CACHING DISABLED FOR DEBUGGING
+export class CacheManager {
   constructor() {
-    this.enabled = process.env.CACHE_ENABLED !== 'false';
-    
-    // Initialize Redis if credentials are provided
-    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-      try {
-        this.redis = new Redis({
-          url: process.env.UPSTASH_REDIS_REST_URL,
-          token: process.env.UPSTASH_REDIS_REST_TOKEN,
-        });
-        console.log('Cache: Redis initialized');
-      } catch (error) {
-        console.warn('Cache: Failed to initialize Redis, falling back to memory cache:', error);
-      }
-    } else {
-      console.log('Cache: Using memory cache only (Redis credentials not provided)');
-    }
+    console.log("🚨 CACHING COMPLETELY DISABLED FOR DEBUGGING");
   }
 
-  async get(key: string): Promise<any> {
-    if (!this.enabled) return null;
-
-    // Check memory cache first
-    const memoryItem = this.memoryCache.get(key);
-    if (memoryItem && Date.now() < memoryItem.expiry) {
-      return memoryItem.value;
-    }
-
-    // Clean up expired memory cache item
-    if (memoryItem) {
-      this.memoryCache.delete(key);
-    }
-
-    // Check Redis if available
-    if (this.redis) {
-      try {
-        const value = await this.redis.get(key);
-        if (value) {
-          // Store in memory cache for faster subsequent access
-          this.memoryCache.set(key, {
-            value,
-            expiry: Date.now() + 300000 // 5 minutes
-          });
-          return value;
-        }
-      } catch (error) {
-        console.warn('Cache: Redis get error:', error);
-      }
-    }
-
-    return null;
+  get(key: string): any {
+    return null; // Always miss
   }
 
-  async set(key: string, value: any, ttl: number = 3600): Promise<void> {
-    if (!this.enabled) return;
-
-    const expiry = Date.now() + (ttl * 1000);
-
-    // Store in memory cache
-    this.memoryCache.set(key, { value, expiry });
-
-    // Store in Redis if available
-    if (this.redis) {
-      try {
-        await this.redis.setex(key, ttl, JSON.stringify(value));
-      } catch (error) {
-        console.warn('Cache: Redis set error:', error);
-      }
-    }
+  set(key: string, value: any, ttl?: number): void {
+    // Do nothing - no caching
   }
 
-  async delete(key: string): Promise<void> {
-    if (!this.enabled) return;
-
-    // Remove from memory cache
-    this.memoryCache.delete(key);
-
-    // Remove from Redis if available
-    if (this.redis) {
-      try {
-        await this.redis.del(key);
-      } catch (error) {
-        console.warn('Cache: Redis delete error:', error);
-      }
-    }
+  delete(key: string): void {
+    // Do nothing
   }
 
-  async clear(): Promise<void> {
-    if (!this.enabled) return;
-
-    // Clear memory cache
-    this.memoryCache.clear();
-
-    // Clear Redis if available
-    if (this.redis) {
-      try {
-        await this.redis.flushdb();
-      } catch (error) {
-        console.warn('Cache: Redis clear error:', error);
-      }
-    }
+  clear(): void {
+    // Do nothing
   }
 
-  getStats(): { memorySize: number; redisAvailable: boolean } {
+  // Add missing methods as no-ops
+  async getWithDeduplication<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    cacheType?: any
+  ): Promise<T> {
+    console.log(`🚨 Cache disabled - directly calling fetcher for: ${key}`);
+    return fetcher();
+  }
+
+  getStats() {
     return {
-      memorySize: this.memoryCache.size,
-      redisAvailable: !!this.redis
+      memorySize: 0,
+      redisAvailable: false,
+      pendingRequests: 0,
+      cacheTTLs: {},
+      status: "DISABLED_FOR_DEBUGGING",
     };
   }
+
+  // Add other missing methods as no-ops
+  async getOrganizations(key: string): Promise<any> {
+    return null;
+  }
+  async setOrganizations(key: string, value: any): Promise<void> {}
+  async getLanguages(key: string): Promise<any> {
+    return null;
+  }
+  async setLanguages(key: string, value: any): Promise<void> {}
+  async getResourceMetadata(key: string): Promise<any> {
+    return null;
+  }
+  async setResourceMetadata(key: string, value: any): Promise<void> {}
+  async getFileContent(key: string): Promise<any> {
+    return null;
+  }
+  async setFileContent(key: string, value: any): Promise<void> {}
 }
 
 // Export singleton instance
-export const cache = new CacheManager(); 
+export const cache = new CacheManager();

@@ -269,11 +269,22 @@
         ],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Study Translation Helps Wisdom Documentation",
+        "description": "Read and understand all three wisdom documents that contain 123 documents worth of debugging discoveries",
+        "details": "⚠️ MANDATORY FIRST STEP - DO NOT SKIP ⚠️\n\nRequired reading IN THIS ORDER:\n\n1. **docs/CRITICAL_TRANSLATION_HELPS_LEARNINGS_FOR_MCP.md** (30 min)\n   - The most critical patterns and discoveries\n   - If you read only one doc, read this\n   - Contains the \"ingredients array\" discovery\n\n2. **docs/COMPREHENSIVE_TRANSLATION_HELPS_PATTERNS.md** (45 min)\n   - Complete implementation patterns\n   - Multi-resource integration details\n   - Performance optimization strategies\n\n3. **docs/TRANSLATION_HELPS_DISTILLED_WISDOM.md** (1 hour)\n   - Distilled wisdom from ALL 123 documents\n   - Complete pattern library\n   - Critical warnings and common pitfalls\n\nThese documents represent WEEKS of debugging work. Every pattern, every warning, every \"don't do this\" comes from painful trial and error.\n\nKey discoveries you'll learn:\n- Why manifests add 3-9 seconds of latency\n- The ingredients array pattern (THE most critical discovery)\n- Why loading verses (10KB) beats loading chapters (420KB)\n- How to handle unpredictable file names (01-GEN.tsv vs tn_GEN.tsv)\n- Cross-organization resource support\n- USFM extraction patterns that work everywhere\n- Caching strategies for 90% performance improvement\n- LLM integration requirements for accuracy\n\nAfter reading, you should understand:\n- Why we NEVER use manifests\n- How to use the ingredients array for file resolution\n- The simple verse-loading pattern\n- Multi-resource aggregation with parallel loading\n- Proper error handling with graceful degradation\n- Theme system with CSS variables\n- Git workflow requirements\n\nThis is not optional reading - it's the foundation for everything else.",
+        "testStrategy": "Verify understanding by:\n1. Explaining the ingredients array pattern\n2. Describing why manifests are problematic\n3. Listing the key API endpoints for DCS catalog\n4. Explaining the verse vs chapter loading trade-off",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-16T23:38:38.925Z",
-      "updated": "2025-07-17T01:04:50.871Z",
+      "updated": "2025-07-17T03:07:33.822Z",
       "description": "Tasks for master context"
     }
   }

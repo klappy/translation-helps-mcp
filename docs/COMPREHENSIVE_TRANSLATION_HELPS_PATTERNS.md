@@ -435,6 +435,56 @@ if (tqManifest) {
 const questions = await getQuestionsForVerse(bookId, chapter, verse, org, lang, customFilePath);
 ```
 
+## 🚫 HARDCODED RESOURCE FIXES
+
+### Problem: Hardcoded "ult" Resource ID
+
+```javascript
+// ❌ WRONG - Always uses ULT regardless of user selection
+const scriptureResourceId = reference?.resourceId || "ult";
+
+// ✅ CORRECT - Dynamic from context
+const { resourceId } = useReferenceContext();
+const scriptureResourceId = resourceId || "ult";
+```
+
+### Problem: Broken USFM Text Extraction
+
+```javascript
+// ❌ BROKEN - $1 wasn't capturing anything
+verseText = verseText.replace(/\\w\s+[^|]*\|[^\\*]*\\*\\w\\*/g, "$1");
+
+// ✅ FIXED - Proper capture groups
+verseText = verseText.replace(/\\w\s+([^|\\]*)\|[^\\]*\\*([^\\]*)\\w\\*/g, "$1");
+```
+
+### Problem: Missing Verse Bridge Support
+
+```javascript
+// ✅ Enhanced verse bridge detection
+const bridgeRegex = /\\v\s+(\d+)-(\d+)\s+([\s\S]*?)(?=(\\v\s+[\d\-]+|\\c\s+\d+|$))/gm;
+let bridgeMatch;
+while ((bridgeMatch = bridgeRegex.exec(usfmText)) !== null) {
+  const startVerse = parseInt(bridgeMatch[1]);
+  const endVerse = parseInt(bridgeMatch[2]);
+  if (targetVerse >= startVerse && targetVerse <= endVerse) {
+    match = [bridgeMatch[0], bridgeMatch[3]];
+    break;
+  }
+}
+```
+
+### Problem: LLM Chat Hardcoded Titles
+
+```javascript
+// ❌ WRONG - Generic title
+prompt += `\n\n[SCRIPTURE] Scripture Text:\n"${resources.scripture}"`;
+
+// ✅ CORRECT - Dynamic title from metadata
+const scriptureTitle = contextData.metadata?.manifestTitles?.scripture || "Scripture Text";
+prompt += `\n\n[SCRIPTURE] ${scriptureTitle}:\n"${resources.scripture}"`;
+```
+
 ## 🌐 API PATTERNS
 
 ### DCS Catalog API Structure
@@ -474,6 +524,107 @@ if (!apiResponse?.data || !Array.isArray(apiResponse.data)) {
 
 // Always filter invalid entries
 const validOrgs = data.filter((org) => org && org.login);
+```
+
+## 🔌 MULTI-RESOURCE INTEGRATION ARCHITECTURE
+
+### Unified Resource Manager Pattern
+
+```javascript
+// Single interface for multiple resource providers
+class UnifiedResourceManager {
+  constructor() {
+    this.providers = {
+      dcs: new DCSService(), // Existing text resources
+      fia: new FiaService(), // Audio/video learning
+      vbd: new VBDService(), // Visual Bible Dictionary
+      media: new MediaService(), // Google Drive media
+    };
+  }
+
+  async getResourcesForReference(book, chapter, verse) {
+    // Parallel loading from all providers
+    const results = await Promise.all([
+      this.providers.dcs.getResources(book, chapter, verse),
+      this.providers.fia.getPericope(book, chapter, verse),
+      this.providers.vbd.getRelatedVideos(book, chapter, verse),
+      this.providers.media.getAssets(book, chapter, verse),
+    ]);
+
+    return this.mergeResults(results);
+  }
+}
+```
+
+### Resource Type Definitions
+
+```typescript
+interface Resource {
+  id: string;
+  type: "text" | "audio" | "video" | "image";
+  source: "dcs" | "fia" | "vbd" | "media";
+  language: string;
+  metadata: ResourceMetadata;
+}
+
+interface FiaResource extends Resource {
+  pericope: Pericope;
+  steps: Step[]; // 6-step oral learning process
+  mediaAssets: MediaAsset[];
+  terms: Term[];
+}
+```
+
+### GraphQL Integration Pattern
+
+```javascript
+// Apollo Client for FIA GraphQL
+import { ApolloClient, InMemoryCache } from "@apollo/client";
+
+const fiaClient = new ApolloClient({
+  uri: "https://api.fiaproject.org/graphql",
+  cache: new InMemoryCache(),
+  headers: {
+    authorization: localStorage.getItem("fia-token") || "",
+  },
+});
+```
+
+### Media Caching Strategy
+
+```javascript
+// Progressive Web App media cache
+class MediaCache {
+  async cacheMedia(url, metadata) {
+    const cache = await caches.open("fia-media-v1");
+    const response = await fetch(url);
+    await cache.put(url, response);
+    await this.saveMetadata(url, metadata);
+  }
+
+  async getMedia(url) {
+    const cache = await caches.open("fia-media-v1");
+    return await cache.match(url);
+  }
+}
+```
+
+### Unified Authentication
+
+```javascript
+// Single auth manager for multiple providers
+class AuthManager {
+  async authenticate(provider) {
+    switch (provider) {
+      case "fia":
+        return await this.fiaAuth();
+      case "google":
+        return await this.googleAuth();
+      case "youtube":
+        return await this.youtubeAuth();
+    }
+  }
+}
 ```
 
 ## 🎯 RESOURCE SERVICE PATTERNS
@@ -775,6 +926,9 @@ element.innerText; // Breaks in tests
 
 // ❌ NEVER change NODE_ENV in production
 // Keep as: NODE_ENV = "development"  // This is intentional!
+
+// ❌ NEVER hardcode resource IDs
+const resourceId = "ult"; // Always get from context
 ```
 
 ## 📋 IMPLEMENTATION CHECKLIST
@@ -795,6 +949,8 @@ Before implementing ANY feature:
 - [ ] Add simple caching with TTL
 - [ ] Follow GitFlow branching
 - [ ] Deploy through proper environments
+- [ ] Check for hardcoded values
+- [ ] Use dynamic resource IDs
 
 ## 🔗 Key Documentation References
 
@@ -808,5 +964,7 @@ From translation-helps project:
 - `cross-organization-resource-loading.md` - Multi-org support
 - `seamless-context-slipstreaming.md` - Chat context switching
 - `deployment-setup-guide.md` - Environment configuration
+- `hardcoded-ult-issue-resolution.md` - Dynamic resource fixes
+- `multi-resource-api-comparison.md` - Multi-provider architecture
 
 Remember: Every pattern here represents WEEKS of debugging. Follow them exactly!

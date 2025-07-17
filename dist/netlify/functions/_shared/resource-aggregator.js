@@ -68,11 +68,16 @@ export class ResourceAggregator {
             const translations = ["ult", "ust", "bible"];
             for (const translation of translations) {
                 try {
-                    const url = `${this.baseUrl}/repos/${options.organization}/${options.language}_${translation}/raw/${this.getBookNumber(reference.book)}-${reference.book}.usfm`;
+                    const bookNumber = this.getBookNumber(reference.book);
+                    const url = `${this.baseUrl}/repos/${options.organization}/${options.language}_${translation}/raw/${bookNumber}-${reference.book}.usfm`;
+                    console.log(`🔍 Trying to fetch scripture from: ${url}`);
                     const response = await fetch(url);
+                    console.log(`📡 Response status: ${response.status} for ${translation}`);
                     if (response.ok) {
                         const usfm = await response.text();
+                        console.log(`📜 Got USFM text (${usfm.length} chars) for ${translation}`);
                         const cleanText = this.extractVerseFromUSFM(usfm, reference);
+                        console.log(`✨ Extracted text: ${cleanText ? cleanText.substring(0, 100) + "..." : "NOTHING"}`);
                         if (cleanText) {
                             return {
                                 text: cleanText,
@@ -87,6 +92,7 @@ export class ResourceAggregator {
                     continue;
                 }
             }
+            console.log(`❌ No scripture found for ${reference.citation} after trying all translations`);
             return undefined;
         }
         catch (error) {
@@ -315,14 +321,17 @@ export class ResourceAggregator {
             "2TH": "54",
             "1TI": "55",
             "2TI": "56",
-            HEB: "58",
-            JAS: "59",
-            "1PE": "60",
-            "2PE": "61",
-            "1JN": "62",
-            "2JN": "63",
-            "3JN": "64",
-            REV: "66",
+            TIT: "57", // Titus
+            PHM: "58", // Philemon
+            HEB: "59", // Hebrews
+            JAS: "60", // James
+            "1PE": "61", // 1 Peter
+            "2PE": "62", // 2 Peter
+            "1JN": "63", // 1 John
+            "2JN": "64", // 2 John
+            "3JN": "65", // 3 John
+            JUD: "66", // Jude
+            REV: "67", // Revelation
         };
         return bookNumbers[bookCode] || "01";
     }
