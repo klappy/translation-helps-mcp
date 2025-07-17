@@ -43,10 +43,14 @@ export interface TranslationWordLink {
 
 export interface ResourceData {
   scripture?: Scripture;
+  scriptures?: Scripture[]; // Array of all available translations
   translationNotes?: TranslationNote[];
   translationQuestions?: TranslationQuestion[];
   translationWords?: TranslationWord[];
   translationWordLinks?: TranslationWordLink[];
+  language?: string;
+  organization?: string;
+  timestamp?: string;
 }
 
 export class ResourceAggregator {
@@ -57,71 +61,64 @@ export class ResourceAggregator {
   }
 
   async fetchResources(reference: Reference, options: ResourceOptions): Promise<ResourceData> {
-    const results: ResourceData = {};
+    const results: ResourceData = {
+      language: options.language,
+      organization: options.organization,
+      timestamp: new Date().toISOString(),
+    };
 
     // Create promises for parallel fetching
-    const promises = [];
+    const promises: Promise<any>[] = [];
+    const promiseTypes: string[] = [];
 
     if (options.resources.includes("scripture")) {
       promises.push(this.fetchScripture(reference, options));
+      promiseTypes.push("scripture");
     }
 
     if (options.resources.includes("notes")) {
       promises.push(this.fetchTranslationNotes(reference, options));
+      promiseTypes.push("notes");
     }
 
     if (options.resources.includes("questions")) {
       promises.push(this.fetchTranslationQuestions(reference, options));
+      promiseTypes.push("questions");
     }
 
     if (options.resources.includes("words")) {
       promises.push(this.fetchTranslationWords(reference, options));
+      promiseTypes.push("words");
     }
 
-    if (options.resources.includes("links")) {
-      promises.push(this.fetchTranslationWordLinks(reference, options));
-    }
-
-    // Execute all fetches in parallel
+    // Wait for all promises to resolve
     const settledResults = await Promise.allSettled(promises);
 
-    // Process results
-    let resultIndex = 0;
-
-    if (options.resources.includes("scripture")) {
-      const result = settledResults[resultIndex++];
+    // Process results based on type
+    settledResults.forEach((result, index) => {
       if (result.status === "fulfilled") {
-        results.scripture = result.value as Scripture | undefined;
+        const type = promiseTypes[index];
+        switch (type) {
+          case "scripture":
+            const scriptureArray = result.value as Scripture[];
+            if (scriptureArray && scriptureArray.length > 0) {
+              results.scriptures = scriptureArray;
+              // Set the first one (usually ULT) as the main scripture
+              results.scripture = scriptureArray[0];
+            }
+            break;
+          case "notes":
+            results.translationNotes = result.value as TranslationNote[];
+            break;
+          case "questions":
+            results.translationQuestions = result.value as TranslationQuestion[];
+            break;
+          case "words":
+            results.translationWords = result.value as TranslationWord[];
+            break;
+        }
       }
-    }
-
-    if (options.resources.includes("notes")) {
-      const result = settledResults[resultIndex++];
-      if (result.status === "fulfilled") {
-        results.translationNotes = result.value as TranslationNote[];
-      }
-    }
-
-    if (options.resources.includes("questions")) {
-      const result = settledResults[resultIndex++];
-      if (result.status === "fulfilled") {
-        results.translationQuestions = result.value as TranslationQuestion[];
-      }
-    }
-
-    if (options.resources.includes("words")) {
-      const result = settledResults[resultIndex++];
-      if (result.status === "fulfilled") {
-        results.translationWords = result.value as TranslationWord[];
-      }
-    }
-
-    if (options.resources.includes("links")) {
-      const result = settledResults[resultIndex++];
-      if (result.status === "fulfilled") {
-        results.translationWordLinks = result.value as TranslationWordLink[];
-      }
-    }
+    });
 
     return results;
   }
@@ -129,46 +126,89 @@ export class ResourceAggregator {
   private async fetchScripture(
     reference: Reference,
     options: ResourceOptions
-  ): Promise<Scripture | undefined> {
+  ): Promise<Scripture[] | undefined> {
     try {
-      // Try to fetch ULT first, then fall back to other translations
-      const translations = ["ult", "ust", "bible"];
+      console.log(`📖 Fetching scripture for ${reference.citation}`);
 
-      for (const translation of translations) {
+      // Search catalog for Bible resources
+      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Bible,Aligned%20Bible&lang=${options.language}&owner=${options.organization}&type=text`;
+      console.log(`🔍 Searching catalog: ${catalogUrl}`);
+
+      const catalogResponse = await fetch(catalogUrl);
+      if (!catalogResponse.ok) {
+        console.warn(`❌ Catalog search failed for Bible resources`);
+        return undefined;
+      }
+
+      const catalogData = (await catalogResponse.json()) as {
+        data?: Array<{
+          name: string;
+          ingredients?: Array<{
+            identifier: string;
+            path: string;
+          }>;
+        }>;
+      };
+
+      const scriptures: Scripture[] = [];
+
+      // Process each Bible resource
+      for (const resource of catalogData.data || []) {
+        if (!resource.ingredients) continue;
+
+        // Find the correct file from ingredients array
+        const ingredient = resource.ingredients.find(
+          (ing) => ing.identifier === reference.book.toLowerCase()
+        );
+
+        if (!ingredient) {
+          console.warn(`❌ No ingredient found for book ${reference.book} in ${resource.name}`);
+          continue;
+        }
+
+        console.log(
+          `✅ Found ingredient: ${ingredient.path} for ${reference.book} in ${resource.name}`
+        );
+
+        // Build the URL using the ingredient path
+        const fileName = ingredient.path.replace("./", "");
+        const url = `${this.baseUrl}/repos/${options.organization}/${resource.name}/raw/${fileName}`;
+        console.log(`📥 Fetching scripture from: ${url}`);
+
         try {
-          const bookNumber = this.getBookNumber(reference.book);
-          const url = `${this.baseUrl}/repos/${options.organization}/${options.language}_${translation}/raw/${bookNumber}-${reference.book}.usfm`;
-
-          console.log(`🔍 Trying to fetch scripture from: ${url}`);
-
           const response = await fetch(url);
-          console.log(`📡 Response status: ${response.status} for ${translation}`);
+          if (!response.ok) {
+            console.warn(`❌ Failed to fetch scripture: ${response.status}`);
+            continue;
+          }
 
-          if (response.ok) {
-            const usfm = await response.text();
-            console.log(`📜 Got USFM text (${usfm.length} chars) for ${translation}`);
+          const usfm = await response.text();
+          console.log(`📜 Got USFM text (${usfm.length} chars) from ${resource.name}`);
 
-            const cleanText = this.extractVerseFromUSFM(usfm, reference);
+          const cleanText = this.extractVerseFromUSFM(usfm, reference);
+          if (cleanText) {
             console.log(
-              `✨ Extracted text: ${cleanText ? cleanText.substring(0, 100) + "..." : "NOTHING"}`
+              `✨ Extracted text from ${resource.name}: ${cleanText.substring(0, 50)}...`
             );
 
-            if (cleanText) {
-              return {
-                text: cleanText,
-                rawUsfm: usfm,
-                translation: translation.toUpperCase(),
-              };
-            }
+            // Extract translation abbreviation from resource name (e.g., en_ult -> ULT)
+            const translationMatch = resource.name.match(/_([^_]+)$/);
+            const translation = translationMatch
+              ? translationMatch[1].toUpperCase()
+              : resource.name;
+
+            scriptures.push({
+              text: cleanText,
+              translation: translation,
+            });
           }
         } catch (error) {
-          console.warn(`Failed to fetch ${translation} for ${reference.citation}:`, error);
-          continue;
+          console.warn(`Failed to fetch ${resource.name}:`, error);
         }
       }
 
-      console.log(`❌ No scripture found for ${reference.citation} after trying all translations`);
-      return undefined;
+      console.log(`📚 Found ${scriptures.length} scripture translations`);
+      return scriptures.length > 0 ? scriptures : undefined;
     } catch (error) {
       console.error("Error fetching scripture:", error);
       return undefined;
@@ -612,52 +652,11 @@ export class ResourceAggregator {
     return links;
   }
 
-  private getBookNumber(bookCode: string): string {
-    // Map book codes to numbers used in filenames
-    const bookNumbers: Record<string, string> = {
-      GEN: "01",
-      EXO: "02",
-      LEV: "03",
-      NUM: "04",
-      DEU: "05",
-      JOS: "06",
-      JDG: "07",
-      RUT: "08",
-      "1SA": "09",
-      "2SA": "10",
-      PSA: "19",
-      PRO: "20",
-      ISA: "23",
-      JER: "24",
-      MAT: "41",
-      MRK: "42",
-      LUK: "43",
-      JHN: "44",
-      ACT: "45",
-      ROM: "46",
-      "1CO": "47",
-      "2CO": "48",
-      GAL: "49",
-      EPH: "50",
-      PHP: "51",
-      COL: "52",
-      "1TH": "53",
-      "2TH": "54",
-      "1TI": "55",
-      "2TI": "56",
-      TIT: "57", // Titus
-      PHM: "58", // Philemon
-      HEB: "59", // Hebrews
-      JAS: "60", // James
-      "1PE": "61", // 1 Peter
-      "2PE": "62", // 2 Peter
-      "1JN": "63", // 1 John
-      "2JN": "64", // 2 John
-      "3JN": "65", // 3 John
-      JUD: "66", // Jude
-      REV: "67", // Revelation
-    };
-
-    return bookNumbers[bookCode] || "01";
+  private extractChapterFromUSFM(usfm: string, chapter: number): string | null {
+    // Implementation for extracting full chapter
+    // This is a simplified version - you'd want more robust parsing
+    const chapterRegex = new RegExp(`\\\\c\\s+${chapter}\\s+([^\\\\c]+)`, "s");
+    const match = usfm.match(chapterRegex);
+    return match ? match[1].trim() : null;
   }
 }

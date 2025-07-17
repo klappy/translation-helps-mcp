@@ -6,7 +6,7 @@
 
 import type { Handler } from "@netlify/functions";
 import { parseReference } from "./_shared/reference-parser";
-import { ResourceAggregator } from "../../src/services/ResourceAggregator.js";
+import { ResourceAggregator } from "./_shared/resource-aggregator";
 import { cache } from "./_shared/cache";
 import { corsHeaders, errorResponse } from "./_shared/utils";
 
@@ -33,20 +33,21 @@ export const handler: Handler = async (event) => {
       return errorResponse(400, "Reference parameter is required", "MISSING_REFERENCE");
     }
 
-    // Parse the Bible reference
+    // Parse the reference
     const parsedRef = parseReference(reference);
     if (!parsedRef) {
-      return errorResponse(400, `Invalid Bible reference: ${reference}`, "INVALID_REFERENCE");
+      return errorResponse(400, "Invalid scripture reference format");
     }
 
-    // Convert Reference to ParsedReference for our ResourceAggregator
+    // Build the reference object for the new ResourceAggregator
     const parsedReference = {
       book: parsedRef.book,
+      bookName: parsedRef.bookName,
       chapter: parsedRef.chapter,
       verse: parsedRef.verse,
-      endVerse: parsedRef.verseEnd,
-      originalText: parsedRef.original,
-      isValid: true, // If parseReference succeeded, it's valid
+      verseEnd: parsedRef.verseEnd,
+      citation: parsedRef.citation,
+      original: parsedRef.original,
     };
 
     // Prepare options for our enhanced ResourceAggregator
@@ -69,7 +70,7 @@ export const handler: Handler = async (event) => {
     const cacheKey = `resources:${reference}:${lang}:${org}:${resources || "all"}`;
 
     console.log("Fetching resources using enhanced ingredients array pattern", {
-      reference: parsedReference.originalText,
+      reference: parsedReference.original,
       options,
       cacheKey,
     });
@@ -79,8 +80,8 @@ export const handler: Handler = async (event) => {
       cacheKey,
       async () => {
         // Use our enhanced ResourceAggregator with DCS API client and ingredients array
-        const aggregator = new ResourceAggregator(lang, org);
-        return await aggregator.aggregateResources(parsedReference, options);
+        const aggregator = new ResourceAggregator();
+        return await aggregator.fetchResources(parsedReference, options);
       },
       "fileContent" // Use file content TTL (10 minutes)
     );
