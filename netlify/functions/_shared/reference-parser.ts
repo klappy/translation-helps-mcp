@@ -103,6 +103,16 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   jer: { code: "JER", name: "Jeremiah" },
   je: { code: "JER", name: "Jeremiah" },
 
+  // Obadiah
+  obadiah: { code: "OBA", name: "Obadiah" },
+  oba: { code: "OBA", name: "Obadiah" },
+  ob: { code: "OBA", name: "Obadiah" },
+
+  // Haggai
+  haggai: { code: "HAG", name: "Haggai" },
+  hag: { code: "HAG", name: "Haggai" },
+  hg: { code: "HAG", name: "Haggai" },
+
   // Matthew
   matthew: { code: "MAT", name: "Matthew" },
   matt: { code: "MAT", name: "Matthew" },
@@ -191,6 +201,11 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   "2tim": { code: "2TI", name: "2 Timothy" },
   "2ti": { code: "2TI", name: "2 Timothy" },
 
+  // Philemon
+  philemon: { code: "PHM", name: "Philemon" },
+  phm: { code: "PHM", name: "Philemon" },
+  pm: { code: "PHM", name: "Philemon" },
+
   // Titus
   titus: { code: "TIT", name: "Titus" },
   tit: { code: "TIT", name: "Titus" },
@@ -232,6 +247,10 @@ const BOOK_MAPPINGS: Record<string, { code: string; name: string }> = {
   "3john": { code: "3JN", name: "3 John" },
   "3jn": { code: "3JN", name: "3 John" },
   "3jo": { code: "3JN", name: "3 John" },
+
+  // Jude
+  jude: { code: "JUD", name: "Jude" },
+  jud: { code: "JUD", name: "Jude" },
 
   // Revelation
   revelation: { code: "REV", name: "Revelation" },
