@@ -1,0 +1,11 @@
+# Task ID: 6
+# Title: Create USFM text extractor
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Build system to extract clean text from USFM format for LLM consumption
+# Details:
+Implement unified server-side USFM extraction using regex patterns. Remove alignment markers, word attributes, and all USFM markup while preserving punctuation.
+
+# Test Strategy:
+Test with various USFM samples including aligned text, verify clean output matches expected format

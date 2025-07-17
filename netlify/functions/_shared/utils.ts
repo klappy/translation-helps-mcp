@@ -2,16 +2,16 @@
  * Shared utilities for Netlify Functions
  */
 
-import type { HandlerResponse } from '@netlify/functions';
+import type { HandlerResponse } from "@netlify/functions";
 
 /**
  * CORS headers for API responses
  */
 export const corsHeaders = {
-  'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGINS || '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
-  'Content-Type': 'application/json',
+  "Access-Control-Allow-Origin": process.env.ALLOWED_ORIGINS || "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
+  "Content-Type": "application/json",
 };
 
 /**
@@ -28,7 +28,7 @@ export function errorResponse(
     headers: corsHeaders,
     body: JSON.stringify({
       error: message,
-      code: code || 'ERROR',
+      code: code || "ERROR",
       details,
       timestamp: new Date().toISOString(),
     }),
@@ -38,10 +38,7 @@ export function errorResponse(
 /**
  * Create a standardized success response
  */
-export function successResponse(
-  data: any,
-  headers?: Record<string, string>
-): HandlerResponse {
+export function successResponse(data: any, headers?: Record<string, string>): HandlerResponse {
   return {
     statusCode: 200,
     headers: {
@@ -56,11 +53,11 @@ export function successResponse(
  * Validate API key if required
  */
 export function validateApiKey(headers: Record<string, string>): boolean {
-  if (process.env.REQUIRE_API_KEY !== 'true') {
+  if (process.env.REQUIRE_API_KEY !== "true") {
     return true;
   }
 
-  const apiKey = headers['x-api-key'] || headers['X-API-Key'];
+  const apiKey = headers["x-api-key"] || headers["X-API-Key"];
   return apiKey === process.env.API_KEY;
 }
 
@@ -80,11 +77,8 @@ export function parseJsonBody<T>(body: string | null): T | null {
 /**
  * Log metrics for monitoring
  */
-export function logMetric(
-  functionName: string,
-  metrics: Record<string, any>
-): void {
-  console.log('METRIC', {
+export function logMetric(functionName: string, metrics: Record<string, any>): void {
+  console.log("METRIC", {
     function: functionName,
     timestamp: new Date().toISOString(),
     ...metrics,
@@ -96,9 +90,9 @@ export function logMetric(
  */
 export function createCacheKey(parts: (string | number | undefined)[]): string {
   return parts
-    .filter(part => part !== undefined)
-    .map(part => String(part).toLowerCase().replace(/\s+/g, '-'))
-    .join(':');
+    .filter((part) => part !== undefined)
+    .map((part) => String(part).toLowerCase().replace(/\s+/g, "-"))
+    .join(":");
 }
 
 /**
@@ -106,7 +100,10 @@ export function createCacheKey(parts: (string | number | undefined)[]): string {
  */
 export function parseCommaSeparated(value: string | undefined): string[] {
   if (!value) return [];
-  return value.split(',').map(v => v.trim()).filter(Boolean);
+  return value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -115,16 +112,16 @@ export function parseCommaSeparated(value: string | undefined): string[] {
 export function getResourceTTL(resourceType: string): number {
   const ttls: Record<string, number> = {
     scripture: 7 * 24 * 60 * 60, // 7 days
-    notes: 24 * 60 * 60,         // 24 hours
-    questions: 24 * 60 * 60,     // 24 hours
-    words: 7 * 24 * 60 * 60,     // 7 days
-    links: 24 * 60 * 60,         // 24 hours
-    languages: 24 * 60 * 60,     // 24 hours
-    search: 60 * 60,             // 1 hour
-    context: 15 * 60,            // 15 minutes
+    notes: 24 * 60 * 60, // 24 hours
+    questions: 24 * 60 * 60, // 24 hours
+    words: 7 * 24 * 60 * 60, // 7 days
+    links: 24 * 60 * 60, // 24 hours
+    languages: 24 * 60 * 60, // 24 hours
+    search: 60 * 60, // 1 hour
+    context: 15 * 60, // 15 minutes
   };
 
-  return ttls[resourceType] || parseInt(process.env.DEFAULT_TTL || '3600');
+  return ttls[resourceType] || parseInt(process.env.DEFAULT_TTL || "3600");
 }
 
 /**
@@ -140,7 +137,7 @@ export function formatDuration(ms: number): string {
  * Sleep utility for rate limiting
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -157,19 +154,16 @@ export function chunk<T>(array: T[], size: number): T[][] {
 /**
  * Deep merge objects
  */
-export function deepMerge<T extends Record<string, any>>(
-  target: T,
-  source: Partial<T>
-): T {
+export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
   const result = { ...target };
 
   for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(result[key] || {}, source[key] as any);
+    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+      result[key] = deepMerge((result[key] || {}) as any, source[key] as any);
     } else {
       result[key] = source[key] as any;
     }
   }
 
   return result;
-} 
+}

@@ -1,308 +1,196 @@
-# Translation Helps API 🙏
+# Translation Helps MCP Server
 
-A serverless API built with Netlify Functions that provides Bible translation resources to AI assistants and applications.
+A Model Context Protocol (MCP) server providing access to Bible translation resources through Netlify Functions. This server enables AI assistants and other applications to fetch scripture, translation notes, questions, and other biblical resources for any language and organization.
 
-## 🚀 Quick Deploy to Netlify
+## Overview
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/yourusername/translation-helps-api)
+This project implements an MCP server that provides:
 
-### 1. One-Click Setup
+- Access to scripture in multiple languages and versions
+- Translation notes, questions, and word definitions
+- Support for multiple organizations (unfoldingWord, Wycliffe, etc.)
+- Clean text extraction optimized for LLM consumption
+- Efficient caching and performance optimization
 
-1. Click the "Deploy to Netlify" button above
-2. Connect your GitHub account
-3. Give your site a name
-4. Click "Deploy site"
-5. Your API will be live at `https://your-site-name.netlify.app`
+## Architecture
 
-### 2. Manual Setup
+The MCP server is deployed as Netlify Functions, providing a serverless API that can be consumed by:
+
+- AI assistants (Claude, GPT, etc.) via MCP protocol
+- Web applications
+- Mobile applications
+- Desktop applications
+
+## Key Features
+
+### 1. Multi-Organization Support
+
+- Fetch resources from any organization on Door43
+- Dynamic discovery of available languages per organization
+- Support for all Door43 content types
+
+### 2. Resource Types
+
+- **Scripture**: Bible text in USFM format
+- **Translation Notes**: Verse-by-verse study notes
+- **Translation Questions**: Comprehension questions
+- **Translation Words**: Key term definitions
+- **Translation Academy**: Translation principles
+
+### 3. LLM Optimization
+
+- Clean text extraction from USFM format
+- Removal of alignment markers and metadata
+- Preservation of punctuation for accurate quoting
+- Optimized context preparation
+
+### 4. Performance Features
+
+- Multi-level caching strategy
+- Request deduplication
+- Efficient resource aggregation
+- Minimal API calls
+
+## API Endpoints
+
+### Core Functions
+
+#### `GET /fetch-resources`
+
+Fetches and aggregates all available resources for a scripture reference.
+
+```javascript
+// Example request
+{
+  "organization": "unfoldingWord",
+  "language": "en",
+  "reference": "Genesis 1:1"
+}
+
+// Returns scripture text, notes, questions, and words
+```
+
+#### `GET /get-languages`
+
+Lists all available languages for an organization.
+
+```javascript
+// Example request
+{
+  "organization": "unfoldingWord"
+}
+
+// Returns array of language codes and names
+```
+
+#### `GET /health`
+
+Health check endpoint for monitoring.
+
+## Documentation
+
+- [MCP Data Fetching Patterns](MCP_DATA_FETCHING_PATTERNS.md) - Comprehensive guide to API integration patterns
+- [USFM LLM Preparation Guide](USFM_LLM_PREPARATION_GUIDE.md) - How to extract clean text for AI consumption
+- [Netlify Functions Architecture](NETLIFY_FUNCTIONS_ARCHITECTURE.md) - Technical architecture details
+- [Implementation Checklist](MCP_IMPLEMENTATION_CHECKLIST.md) - Development roadmap
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- Netlify CLI
+- Git
+
+### Installation
 
 ```bash
-# Clone this repository
-git clone https://github.com/yourusername/translation-helps-api.git
-cd translation-helps-api
+# Clone the repository
+git clone https://github.com/yourusername/translation-helps-mcp.git
+cd translation-helps-mcp
 
 # Install dependencies
 npm install
 
-# Install Netlify CLI
-npm install -g netlify-cli
-
-# Login to Netlify
-netlify login
-
-# Initialize the project
-netlify init
-
-# Run locally
+# Start local development
 netlify dev
 ```
 
-Your local API will be available at `http://localhost:8888`
+### Testing Locally
 
-## 📖 API Endpoints
+```bash
+# Test health endpoint
+curl http://localhost:8888/.netlify/functions/health
 
-### Fetch Resources
-```http
-GET /api/fetch-resources?reference=John+3:16&lang=en&org=unfoldingWord
+# Test language fetching
+curl "http://localhost:8888/.netlify/functions/get-languages?organization=unfoldingWord"
+
+# Test resource fetching
+curl "http://localhost:8888/.netlify/functions/fetch-resources?organization=unfoldingWord&language=en&reference=John%203:16"
 ```
 
-**Example Response:**
+## Deployment
+
+### Deploy to Netlify
+
+1. Fork this repository
+2. Connect to Netlify
+3. Deploy with default settings
+
+### Environment Variables
+
+No environment variables required - all data is fetched from public APIs.
+
+## MCP Tool Integration
+
+### Available Tools
+
+1. **fetch-resources** - Fetch scripture and study resources
+2. **get-languages** - List available languages
+3. **get-organizations** - List content organizations
+4. **extract-references** - Parse scripture references from text
+
+### Example MCP Configuration
+
 ```json
 {
-  "reference": {
-    "book": "JHN",
-    "chapter": 3,
-    "verse": 16,
-    "citation": "John 3:16"
-  },
-  "scripture": {
-    "text": "For God so loved the world, that he gave his only Son...",
-    "translation": "ULT"
-  },
-  "translationNotes": [
-    {
-      "reference": "JHN 3:16",
-      "quote": "loved",
-      "note": "The Greek word ἀγαπάω (agapaō) refers to divine love..."
+  "mcpServers": {
+    "translation-helps": {
+      "command": "node",
+      "args": ["path/to/translation-helps-mcp/src/index.js"],
+      "env": {}
     }
-  ],
-  "metadata": {
-    "language": "en",
-    "organization": "unfoldingWord",
-    "cached": false,
-    "timestamp": "2024-01-27T10:00:00Z"
   }
 }
 ```
 
-### Search Resources
-```http
-GET /api/search-resources?lang=es&type=scripture
-```
+## Data Sources
 
-### Health Check
-```http
-GET /api/health
-```
+All data is fetched from the Door43 Content Service (DCS):
 
-## 🧪 Test the API
+- Catalog API: `https://git.door43.org/api/v1/catalog`
+- Resource files: `https://git.door43.org/{org}/{lang}_{resource}/`
 
-Once deployed, test your API:
+## Contributing
 
-```bash
-# Test basic functionality
-curl "https://your-site-name.netlify.app/api/fetch-resources?reference=John+3:16"
+1. Read the [Development Guidelines](docs/development-guidelines.md)
+2. Check the [Implementation Checklist](MCP_IMPLEMENTATION_CHECKLIST.md)
+3. Submit pull requests with clear descriptions
 
-# Test health endpoint
-curl "https://your-site-name.netlify.app/api/health"
+## License
 
-# Test with specific language
-curl "https://your-site-name.netlify.app/api/fetch-resources?reference=Juan+3:16&lang=es"
-```
+This project is licensed under the MIT License. See [LICENSE](LICENSE) file for details.
 
-## ⚙️ Configuration
+## Acknowledgments
 
-### Environment Variables
+- Built on patterns from the [translation-helps](https://github.com/unfoldingWord/translation-helps-rcl) project
+- Powered by the [Door43](https://door43.org) platform
+- Uses the [Model Context Protocol](https://github.com/modelcontextprotocol/specification)
 
-Set these in your Netlify dashboard under Site settings → Environment variables:
+## Support
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DCS_API_URL` | ✅ | `https://git.door43.org/api/v1` | Door43 Content Service API URL |
-| `CACHE_ENABLED` | ❌ | `true` | Enable/disable caching |
-| `UPSTASH_REDIS_REST_URL` | ❌ | - | Redis cache URL (optional) |
-| `UPSTASH_REDIS_REST_TOKEN` | ❌ | - | Redis cache token (optional) |
-| `ALLOWED_ORIGINS` | ❌ | `*` | CORS allowed origins |
+For issues and questions:
 
-### Optional: Redis Caching
-
-For better performance, set up free Redis caching:
-
-1. Sign up at [Upstash](https://upstash.com) (free tier available)
-2. Create a Redis database
-3. Copy the REST URL and Token
-4. Add them to your Netlify environment variables
-
-## 🔧 Local Development
-
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Create `.env` file:**
-   ```env
-   DCS_API_URL=https://git.door43.org/api/v1
-   CACHE_ENABLED=true
-   ```
-
-3. **Run locally:**
-   ```bash
-   netlify dev
-   ```
-
-4. **Test locally:**
-   ```bash
-   curl "http://localhost:8888/api/fetch-resources?reference=John+3:16"
-   ```
-
-## 📚 Usage Examples
-
-### JavaScript/TypeScript
-```javascript
-const client = {
-  baseUrl: 'https://your-site.netlify.app/api',
-  
-  async fetchResources(reference, options = {}) {
-    const params = new URLSearchParams({
-      reference,
-      lang: options.language || 'en',
-      org: options.organization || 'unfoldingWord'
-    });
-    
-    const response = await fetch(`${this.baseUrl}/fetch-resources?${params}`);
-    return response.json();
-  }
-};
-
-// Usage
-const resources = await client.fetchResources('John 3:16');
-console.log(resources.scripture.text);
-```
-
-### Python
-```python
-import requests
-
-def fetch_resources(reference, language='en', organization='unfoldingWord'):
-    url = 'https://your-site.netlify.app/api/fetch-resources'
-    params = {
-        'reference': reference,
-        'lang': language,
-        'org': organization
-    }
-    
-    response = requests.get(url, params=params)
-    return response.json()
-
-# Usage
-resources = fetch_resources('John 3:16')
-print(resources['scripture']['text'])
-```
-
-### cURL
-```bash
-# Basic usage
-curl "https://your-site.netlify.app/api/fetch-resources?reference=John+3:16"
-
-# Spanish resources
-curl "https://your-site.netlify.app/api/fetch-resources?reference=Juan+3:16&lang=es"
-
-# Only scripture and notes
-curl "https://your-site.netlify.app/api/fetch-resources?reference=John+3:16&resources=scripture,notes"
-```
-
-## 🤖 AI Assistant Integration
-
-This API is designed to work with AI assistants. Here's how to use it:
-
-### Claude/ChatGPT
-```
-I need help with Bible translation. Can you fetch resources for John 3:16 using this API: https://your-site.netlify.app/api/fetch-resources?reference=John+3:16
-```
-
-### Custom AI Tools
-You can create tools that call these endpoints to provide contextual Bible translation help to AI assistants.
-
-## 🛠️ Supported Resources
-
-- **Scripture Text**: Clean, readable Bible text from USFM files
-- **Translation Notes**: Explanatory notes for translators
-- **Translation Questions**: Comprehension and checking questions
-- **Translation Words**: Key biblical term definitions
-- **Translation Word Links**: Connections between terms and verses
-
-## 🌍 Supported Languages
-
-The API supports any language available in the Door43 Content Service, including:
-
-- English (en)
-- Spanish (es)
-- French (fr)
-- Portuguese (pt)
-- Swahili (sw)
-- And many more...
-
-## 📊 Performance
-
-- **Cold start**: < 1 second
-- **Cached responses**: < 100ms
-- **Uncached responses**: < 2 seconds
-- **Global CDN**: Automatic edge deployment
-- **Auto-scaling**: Handles 1 to millions of requests
-
-## 💰 Cost
-
-Using Netlify's free tier:
-- 125,000 function invocations/month (free)
-- 100GB bandwidth (free)
-- Estimated cost: **$0** for most usage
-
-For high usage:
-- ~$0.0001 per request
-- ~$25/month for 1M requests
-
-## 🔒 Security
-
-- HTTPS only
-- CORS configured
-- Input validation
-- Rate limiting
-- No sensitive data stored
-
-## 📈 Monitoring
-
-Your Netlify dashboard provides:
-- Request counts
-- Response times
-- Error rates
-- Geographic distribution
-
-## 🆘 Troubleshooting
-
-### API Not Responding
-1. Check your site is deployed: `https://your-site.netlify.app`
-2. Check the health endpoint: `https://your-site.netlify.app/api/health`
-3. Verify environment variables in Netlify dashboard
-
-### No Resources Found
-1. Verify the reference format: "John 3:16" not "john 3:16"
-2. Check if the language/organization combination exists
-3. Try a known working reference like "John 3:16" with "en" and "unfoldingWord"
-
-### Slow Responses
-1. Enable Redis caching (see Configuration above)
-2. Check the DCS API status
-3. Monitor your Netlify function logs
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test locally with `netlify dev`
-5. Submit a pull request
-
-## 📝 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Door43](https://door43.org) for providing the translation resources
-- [unfoldingWord](https://www.unfoldingword.org/) for the open-source Bible translations
-- [Netlify](https://netlify.com) for the serverless platform
-
----
-
-**Ready to help Bible translators worldwide! 🌍** 
+- Open an issue on GitHub
+- Check the documentation
+- Review the implementation examples

@@ -43,15 +43,20 @@ export async function handleFetchResources(args) {
         };
         // Fetch resources using aggregator
         const aggregator = new ResourceAggregator();
-        const resources = await aggregator.fetchResources(reference, options);
+        const resources = await aggregator.aggregateResources(reference, options);
         // Build response
         const response = {
             reference: {
                 book: reference.book,
                 chapter: reference.chapter,
                 verse: reference.verse,
-                verseEnd: reference.verseEnd,
-                citation: formatCitation(reference),
+                verseEnd: reference.endVerse,
+                citation: formatCitation({
+                    book: reference.book,
+                    chapter: reference.chapter,
+                    verse: reference.verse,
+                    endVerse: reference.endVerse,
+                }, `${args.organization} ${args.language} Translation`, args.organization, args.language),
             },
             scripture: resources.scripture
                 ? {
@@ -68,8 +73,9 @@ export async function handleFetchResources(args) {
                 language: args.language,
                 organization: args.organization,
                 timestamp: new Date().toISOString(),
-                resourcesFound: Object.keys(resources).filter((key) => resources[key] && (Array.isArray(resources[key]) ? resources[key].length > 0 : true)),
-                tokenEstimate: estimateTokens(resources),
+                resourcesFound: Object.keys(resources).filter((key) => resources[key] &&
+                    (Array.isArray(resources[key]) ? resources[key].length > 0 : true)),
+                tokenEstimate: estimateTokens(JSON.stringify(resources)),
                 responseTime: Date.now() - startTime,
             },
         };
@@ -88,9 +94,10 @@ export async function handleFetchResources(args) {
         };
     }
     catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error("Failed to fetch resources", {
             reference: args.reference,
-            error: error.message,
+            error: errorMessage,
             responseTime: Date.now() - startTime,
         });
         return {
@@ -98,7 +105,7 @@ export async function handleFetchResources(args) {
                 {
                     type: "text",
                     text: JSON.stringify({
-                        error: error.message,
+                        error: errorMessage,
                         reference: args.reference,
                         timestamp: new Date().toISOString(),
                     }, null, 2),

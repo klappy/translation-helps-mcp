@@ -1,0 +1,11 @@
+# Task ID: 9
+# Title: Create Netlify Functions
+# Status: pending
+# Dependencies: 2, 8
+# Priority: high
+# Description: Implement all API endpoints as Netlify Functions
+# Details:
+Create functions for fetch-resources, get-languages, get-organizations. Proper error handling, CORS headers, and response formatting.
+
+# Test Strategy:
+Test each function locally and deployed, verify error responses and CORS headers
