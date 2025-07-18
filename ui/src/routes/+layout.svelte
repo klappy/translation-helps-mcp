@@ -135,7 +135,7 @@
 				<div class="flex items-center space-x-4">
 					<!-- GitHub Link -->
 					<a
-						href="https://github.com/your-repo/translation-helps-mcp"
+						href="https://github.com/klappy/translation-helps-mcp"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="hidden items-center space-x-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-gray-300 transition-all duration-200 hover:bg-white/10 hover:text-white sm:flex"
@@ -189,7 +189,7 @@
 
 					<div class="border-t border-white/10 pt-4">
 						<a
-							href="https://github.com/your-repo/translation-helps-mcp"
+							href="https://github.com/klappy/translation-helps-mcp"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="flex items-center space-x-3 rounded-lg p-3 text-gray-300 transition-all duration-200 hover:bg-white/5 hover:text-white"
@@ -235,7 +235,7 @@
 					</p>
 					<div class="flex items-center space-x-4">
 						<a
-							href="https://github.com/your-repo/translation-helps-mcp"
+							href="https://github.com/klappy/translation-helps-mcp"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="flex items-center space-x-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-gray-300 transition-all duration-200 hover:bg-white/10 hover:text-white"
@@ -291,7 +291,7 @@
 					</div>
 					<div class="flex items-center space-x-6 text-sm text-gray-400">
 						<a
-							href="https://github.com/your-repo/translation-helps-mcp"
+							href="https://github.com/klappy/translation-helps-mcp"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="transition-colors hover:text-white">GitHub</a

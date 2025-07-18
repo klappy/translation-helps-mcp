@@ -13,7 +13,7 @@ This guide will help you get the Translation Helps MCP server running locally an
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/translation-helps-mcp.git
+git clone https://github.com/klappy/translation-helps-mcp.git
 cd translation-helps-mcp
 npm install
 ```
