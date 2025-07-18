@@ -81,12 +81,7 @@
 			description: 'Fetch and display Bible verses',
 			icon: BookOpen,
 			color: 'from-blue-500 to-cyan-500',
-			examples: [
-				'Show me Titus 1:1',
-				'Display John 3:16',
-				'Get Genesis 1:1-3',
-				'Fetch Psalm 23:1'
-			]
+			examples: ['Show me Titus 1:1', 'Display John 3:16', 'Get Genesis 1:1-3', 'Fetch Psalm 23:1']
 		},
 		{
 			title: 'Translation Notes',
@@ -126,7 +121,7 @@
 		}
 	];
 
-			// Initialize with welcome message and LLM
+	// Initialize with welcome message and LLM
 	onMount(async () => {
 		messages = [
 			{
@@ -471,6 +466,13 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		console.log('=== DEBUG: Citations ===');
 		console.log(citations);
 
+		// Log the word detection specifically
+		const wordMatchDebug = userMessage.match(/["']([^"']+)["']/);
+		console.log('=== DEBUG: Word detection ===');
+		console.log('User message:', userMessage);
+		console.log('Word match:', wordMatchDebug);
+		console.log('Extracted word:', wordMatchDebug ? wordMatchDebug[1] : 'No word found');
+
 		// Generate AI response with citations
 		const llmResponse = await browserLLM.generateResponse(userMessage, contextPrompt);
 
@@ -574,27 +576,30 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 			>
 		</h1>
 		<p class="mx-auto max-w-3xl text-xl text-gray-300">
-			This is a <strong>reference implementation</strong> showing how to integrate our Translation Helps MCP Server with a browser-based AI model. 
-			The AI runs entirely on your device - no servers needed! It can fetch and display Bible resources based on your queries, but has limited reasoning capabilities.
+			This is a <strong>reference implementation</strong> showing how to integrate our Translation Helps
+			MCP Server with a browser-based AI model. The AI runs entirely on your device - no servers needed!
+			It can fetch and display Bible resources based on your queries, but has limited reasoning capabilities.
 		</p>
-		<div class="mt-4 mx-auto max-w-2xl rounded-lg bg-green-500/10 border border-green-500/20 p-4">
-			<div class="flex items-center space-x-2 mb-2">
+		<div class="mx-auto mt-4 max-w-2xl rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+			<div class="mb-2 flex items-center space-x-2">
 				<Zap class="h-4 w-4 text-green-400" />
 				<span class="text-sm font-medium text-green-300">Runs on Your Device!</span>
 			</div>
 			<p class="text-sm text-green-200">
-				The AI model runs completely on your phone, laptop, or tablet - no servers involved! Your Bible questions stay private and local. 
-				Only the Bible resource requests go to our MCP server.
+				The AI model runs completely on your phone, laptop, or tablet - no servers involved! Your
+				Bible questions stay private and local. Only the Bible resource requests go to our MCP
+				server.
 			</p>
 		</div>
-		<div class="mt-4 mx-auto max-w-2xl rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-4">
-			<div class="flex items-center space-x-2 mb-2">
+		<div class="mx-auto mt-4 max-w-2xl rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
+			<div class="mb-2 flex items-center space-x-2">
 				<AlertCircle class="h-4 w-4 text-yellow-400" />
 				<span class="text-sm font-medium text-yellow-300">Demo Limitations</span>
 			</div>
 			<p class="text-sm text-yellow-200">
-				This uses a small, limited AI model for demonstration purposes. It can search and display relevant Bible resources, 
-				but cannot provide deep theological analysis or complex reasoning. It's designed to show the MCP integration capabilities.
+				This uses a small, limited AI model for demonstration purposes. It can search and display
+				relevant Bible resources, but cannot provide deep theological analysis or complex reasoning.
+				It's designed to show the MCP integration capabilities.
 			</p>
 		</div>
 	</div>
@@ -616,7 +621,9 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 						<div>
 							<h2 class="text-lg font-semibold text-white">Bible Resource Assistant</h2>
 							<div class="flex items-center space-x-2">
-								<p class="text-sm text-gray-400">Reference Implementation • Translation Helps MCP Server</p>
+								<p class="text-sm text-gray-400">
+									Reference Implementation • Translation Helps MCP Server
+								</p>
 								{#if llmStatus === 'initializing'}
 									<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
 										<Loader2 class="h-3 w-3 animate-spin text-yellow-400" />
@@ -800,7 +807,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 										</div>
 									{/if}
 
-																		<!-- Rich Data Display -->
+									<!-- Rich Data Display -->
 									{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
 										{#each message.apiCalls as call}
 											{#if call.status === 'success' && call.response}
@@ -825,7 +832,9 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 									<!-- Clean Debug Panel -->
 									{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
 										<!-- Debug Toggle Bar -->
-										<div class="mt-4 flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2">
+										<div
+											class="mt-4 flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2"
+										>
 											<div class="flex items-center space-x-2">
 												<Code class="h-3 w-3 text-gray-400" />
 												<span class="text-xs text-gray-300">Debug Info</span>
@@ -854,22 +863,27 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 
 										<!-- Expanded Debug Panel -->
 										{#if expandedMessages.has(message.id)}
-											<div class="mt-2 rounded-lg bg-gray-900/50 p-4 space-y-4">
+											<div class="mt-2 space-y-4 rounded-lg bg-gray-900/50 p-4">
 												<!-- Raw Response Content -->
 												<div>
-													<h4 class="text-xs font-semibold text-gray-200 mb-2">Raw AI Response</h4>
-													<pre class="max-h-32 overflow-auto rounded bg-black/50 p-3 text-xs text-gray-300">{message.content}</pre>
+													<h4 class="mb-2 text-xs font-semibold text-gray-200">Raw AI Response</h4>
+													<pre
+														class="max-h-32 overflow-auto rounded bg-black/50 p-3 text-xs text-gray-300">{message.content}</pre>
 												</div>
 
 												<!-- API Calls Summary -->
 												<div>
-													<h4 class="text-xs font-semibold text-gray-200 mb-2">API Calls Summary</h4>
-													<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+													<h4 class="mb-2 text-xs font-semibold text-gray-200">
+														API Calls Summary
+													</h4>
+													<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 														{#each message.apiCalls as call}
 															<div class="flex items-center space-x-2 rounded bg-gray-800/50 p-2">
 																<svelte:component
 																	this={call.status === 'success' ? CheckCircle2 : AlertCircle}
-																	class="h-3 w-3 {call.status === 'success' ? 'text-green-400' : 'text-red-400'}"
+																	class="h-3 w-3 {call.status === 'success'
+																		? 'text-green-400'
+																		: 'text-red-400'}"
 																/>
 																<div class="min-w-0 flex-1">
 																	<div class="truncate font-mono text-xs text-purple-300">
@@ -879,17 +893,25 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 																		<Timer class="h-2 w-2" />
 																		<span>{call.responseTime.toFixed(0)}ms</span>
 																		{#if call.endpoint === '/api/fetch-translation-notes' && call.response?.translationNotes}
-																			<span class="text-yellow-300">• {call.response.translationNotes.length} notes</span>
+																			<span class="text-yellow-300"
+																				>• {call.response.translationNotes.length} notes</span
+																			>
 																		{/if}
 																		{#if call.endpoint === '/api/fetch-scripture'}
 																			{#if call.response?.scriptures}
-																				<span class="text-yellow-300">• {call.response.scriptures.length} translations</span>
+																				<span class="text-yellow-300"
+																					>• {call.response.scriptures.length} translations</span
+																				>
 																			{:else if call.response?.scripture}
-																				<span class="text-yellow-300">• {call.response.scripture.text?.length} chars</span>
+																				<span class="text-yellow-300"
+																					>• {call.response.scripture.text?.length} chars</span
+																				>
 																			{/if}
 																		{/if}
 																		{#if call.endpoint === '/api/fetch-translation-words' && call.response?.translationWords}
-																			<span class="text-yellow-300">• {call.response.translationWords.length} words</span>
+																			<span class="text-yellow-300"
+																				>• {call.response.translationWords.length} words</span
+																			>
 																		{/if}
 																	</div>
 																</div>
@@ -900,30 +922,50 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 
 												<!-- Detailed API Call Data -->
 												<div>
-													<h4 class="text-xs font-semibold text-gray-200 mb-2">Detailed API Data</h4>
+													<h4 class="mb-2 text-xs font-semibold text-gray-200">
+														Detailed API Data
+													</h4>
 													<div class="space-y-3">
 														{#each message.apiCalls as call, index}
 															<div class="rounded bg-gray-800/30 p-3">
 																<div class="mb-2 flex items-center justify-between">
 																	<div class="flex items-center space-x-2">
-																		<span class="font-mono text-sm text-purple-300">{call.endpoint}</span>
+																		<span class="font-mono text-sm text-purple-300"
+																			>{call.endpoint}</span
+																		>
 																		<span class="text-gray-400">—</span>
-																		<span class="{call.status === 'success' ? 'text-green-400' : 'text-red-400'}">{call.status}</span>
-																		<span class="text-gray-400">({call.responseTime.toFixed(0)}ms)</span>
+																		<span
+																			class={call.status === 'success'
+																				? 'text-green-400'
+																				: 'text-red-400'}>{call.status}</span
+																		>
+																		<span class="text-gray-400"
+																			>({call.responseTime.toFixed(0)}ms)</span
+																		>
 																	</div>
 																</div>
 
 																<!-- Parameters -->
 																<div class="mb-2">
 																	<div class="text-xs text-gray-400">Parameters:</div>
-																	<pre class="mt-1 max-h-20 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(call.params, null, 2)}</pre>
+																	<pre
+																		class="mt-1 max-h-20 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																			call.params,
+																			null,
+																			2
+																		)}</pre>
 																</div>
 
 																<!-- Response Data -->
 																{#if call.response}
 																	<div class="mb-2">
 																		<div class="text-xs text-yellow-300">Response Data:</div>
-																		<pre class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(call.response, null, 2)}</pre>
+																		<pre
+																			class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																				call.response,
+																				null,
+																				2
+																			)}</pre>
 																	</div>
 																{/if}
 															</div>
