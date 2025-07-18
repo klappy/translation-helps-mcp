@@ -5,6 +5,15 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
+	server: {
+		proxy: {
+			'/.netlify/functions': {
+				target: 'http://localhost:8888',
+				changeOrigin: true,
+				secure: false
+			}
+		}
+	},
 	test: {
 		projects: [
 			{

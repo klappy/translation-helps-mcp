@@ -1,6 +1,6 @@
 # Translation Helps MCP Server
 
-A high-performance, serverless API for aggregating Bible translation resources from Door43. Built with Netlify Functions, TypeScript, and SvelteKit. **v2.1.0**
+A high-performance, serverless API for aggregating Bible translation resources from Door43. Built with Netlify Functions, TypeScript, and SvelteKit. **v3.1.0**
 
 > **Reference Implementation**: This project includes a demo chat interface showing how to integrate the API with a local AI model. The chat demo runs entirely on your device - no servers required for the AI processing!
 
@@ -192,7 +192,14 @@ Currently supports resources from:
 
 ## 📝 Changelog
 
-### v2.1.0 (2025-01-XX)
+### v3.1.0 (2025-01-XX)
+
+- **LLM-First AI Architecture**: Replaced brittle regex parsing with intelligent LLM-driven response generation
+- **Simplified AI Service**: Streamlined BrowserLLM service to leverage natural language understanding
+- **Enhanced Development Setup**: Fixed TypeScript configuration and build process issues
+- **Improved Caching**: Better cache management and development workflow
+
+### v3.0.0 (2025-01-XX)
 
 - **Word Lookup Feature**: Added support for looking up translation words by term (e.g., "grace") in addition to reference-based lookups
 - **MCP Tools**: Added new MCP tools for browsing and getting translation words
