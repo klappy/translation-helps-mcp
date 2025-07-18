@@ -167,3 +167,29 @@ export function deepMerge<T extends Record<string, any>>(target: T, source: Part
 
   return result;
 }
+
+/**
+ * Add response time to any response object
+ */
+export function addResponseTime<T extends Record<string, any>>(
+  data: T,
+  startTime: number
+): T & { responseTime: number } {
+  const responseTime = Date.now() - startTime;
+  return {
+    ...data,
+    responseTime,
+  };
+}
+
+/**
+ * Create a response with timing information
+ */
+export function timedResponse<T extends Record<string, any>>(
+  data: T,
+  startTime: number,
+  headers?: Record<string, string>
+): HandlerResponse {
+  const responseData = addResponseTime(data, startTime);
+  return successResponse(responseData, headers);
+}

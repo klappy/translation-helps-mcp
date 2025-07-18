@@ -6,6 +6,7 @@
 
 import { ResourceAggregator } from "./_shared/resource-aggregator";
 import { parseReference } from "./_shared/reference-parser";
+import { timedResponse } from "./_shared/utils";
 import { z } from "zod";
 
 // Configuration schema with defaults
@@ -16,6 +17,8 @@ const configSchema = z.object({
 });
 
 export const handler = async (event: any) => {
+  const startTime = Date.now();
+
   // Set CORS headers
   const headers = {
     "Access-Control-Allow-Origin": "*",
@@ -75,14 +78,11 @@ export const handler = async (event: any) => {
 
     // Fetch resources
     const aggregator = new ResourceAggregator();
-    const startTime = Date.now();
     const resourceData = await aggregator.fetchResources(parsedRef, {
       language: config.language,
       organization: config.organization,
       resources: resourceTypes,
     });
-
-    const responseTime = Date.now() - startTime;
 
     // Add metadata
     const response = {
@@ -94,7 +94,6 @@ export const handler = async (event: any) => {
         resources: resourceTypes,
       },
       metadata: {
-        responseTime,
         cached: false,
       },
       summary: {
@@ -106,11 +105,7 @@ export const handler = async (event: any) => {
       },
     };
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(response),
-    };
+    return timedResponse(response, startTime, headers);
   } catch (error) {
     console.error("❌ Fetch Resources Error:", error);
     return {

@@ -1,5 +1,6 @@
 import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify/functions";
 import { parseReference } from "./_shared/reference-parser";
+import { timedResponse } from "./_shared/utils";
 
 interface TranslationQuestion {
   reference: string;
@@ -18,6 +19,8 @@ export const handler: Handler = async (
   event: HandlerEvent,
   context: HandlerContext
 ): Promise<HandlerResponse> => {
+  const startTime = Date.now();
+
   // Handle CORS
   if (event.httpMethod === "OPTIONS") {
     return {
@@ -157,14 +160,7 @@ export const handler: Handler = async (
       organization,
     };
 
-    return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(result),
-    };
+    return timedResponse(result, startTime);
   } catch (error) {
     console.error("Error in fetch-translation-questions:", error);
     return {
