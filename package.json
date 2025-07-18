@@ -1,6 +1,6 @@
 {
   "name": "translation-helps-api",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "description": "Serverless API for aggregating Bible translation resources from Door43",
   "type": "module",
   "scripts": {
@@ -18,6 +18,7 @@
     "logs": "netlify functions:log"
   },
   "dependencies": {
+    "@netlify/blobs": "^10.0.6",
     "@netlify/functions": "^2.4.1",
     "@upstash/redis": "^1.28.0",
     "node-fetch": "^3.3.2",
@@ -39,7 +40,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/translation-helps-api.git"
+    "url": "https://github.com/klappy/translation-helps-mcp.git"
   },
   "keywords": [
     "bible",
@@ -49,6 +50,6 @@
     "netlify-functions",
     "door43"
   ],
-  "author": "Your Name",
+  "author": "Christopher Klapp",
   "license": "MIT"
 }

@@ -2,6 +2,7 @@
  * Health Check Endpoint
  * GET /api/health
  */
+import { cache } from "./_shared/cache";
 // Version from environment variable (set by Netlify) or package.json version for local dev
 const VERSION = process.env.API_VERSION || "1.3.0";
 export const handler = async (event, context) => {
@@ -46,6 +47,7 @@ export const handler = async (event, context) => {
             ],
             uptime: process.uptime(),
             memoryUsage: process.memoryUsage(),
+            cache: cache.getStats(),
         };
         return {
             statusCode: 200,

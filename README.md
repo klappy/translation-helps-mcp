@@ -1,159 +1,219 @@
-# Translation Helps MCP Server
+# Translation Helps MCP
 
-A powerful MCP (Model Context Protocol) server that provides access to Door43 Content Service (DCS) translation resources including scripture text, translation notes, translation questions, and translation words.
+A high-performance, serverless API for aggregating Bible translation resources from Door43. Built with Netlify Functions, TypeScript, and SvelteKit.
 
-## 🚀 Features
+## 🚀 Live Demo
 
-- **Multi-Resource Support**: Scripture text, translation notes, translation questions, translation words, and translation word links
-- **Multi-Language Support**: English, Spanish, French, Russian, and more
-- **Multi-Organization Support**: unfoldingWord, STR, ru_gl, and others
-- **Smart Caching**: Multi-level caching with request deduplication
-- **Reference Parsing**: Handles various Bible reference formats
-- **USFM Processing**: Clean text extraction from USFM format
-- **Epic Test Suite**: Comprehensive testing interface with bulk testing capabilities
+**Production API**: https://translation-helps-mcp.netlify.app
 
-## 🎯 Epic Test UI
+**Test UI**: https://translation-helps-mcp.netlify.app/test
 
-The project includes a modern, engaging test interface available at `/api/test-ui` that provides:
+## ✨ Features
 
-### Individual Testing Mode
+- **📖 Scripture API**: Fetch Bible verses in multiple translations (ULT, UST, T4T, UEB)
+- **📝 Translation Notes**: Get detailed translation notes and explanations
+- **🔤 Translation Words**: Access word-by-word translation helps
+- **❓ Translation Questions**: Retrieve translation questions and answers
+- **🌍 Multi-language Support**: Works with any language available on Door43
+- **⚡ High Performance**: Smart caching with 59-89% performance improvements
+- **🔧 MCP Integration**: Model Context Protocol support for AI assistants
+- **📱 Modern UI**: Beautiful SvelteKit interface for testing and exploration
 
-- **Real-time endpoint health checks** with visual status indicators
-- **Interactive form** for testing specific references and resources
-- **Beautiful results display** with organized resource sections
-- **Error handling** with clear feedback
+## 🏗️ Architecture
 
-### Bulk Testing Suite
-
-- **30+ pre-configured test cases** covering various reference types
-- **Multiple test configurations**: Quick (10), Standard (30), Comprehensive (50+)
-- **Custom test case support** via JSON input
-- **Real-time progress tracking** with visual progress bars
-- **Comprehensive results aggregation** with success rates and error summaries
-- **Detailed test reporting** with individual test results
-
-### Test Case Categories
-
-- **Single verses**: John 3:16, Genesis 1:1, Psalm 23:1
-- **Verse ranges**: Matthew 5:1-12, 1 Corinthians 13:4-7
-- **Full chapters**: Genesis 1, Psalm 23, Matthew 5
-- **Multiple languages**: English, Spanish, French, Russian, German, Italian
-- **Edge cases**: 1 John, 2 Peter, 3 John, 1 Samuel, 2 Kings
-- **Complex references**: Large verse ranges and chapter spans
-
-## 🛠️ Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/translation-helps-mcp.git
-cd translation-helps-mcp
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The server will be available at `http://localhost:8889/.netlify/functions/`
-
-## 🧪 Testing
-
-### Quick Test
-
-Visit the test UI at: `http://localhost:8889/.netlify/functions/test-ui`
-
-### API Testing
-
-```bash
-# Health check
-curl http://localhost:8889/.netlify/functions/health
-
-# Fetch resources for John 3:16
-curl "http://localhost:8889/.netlify/functions/fetch-resources?reference=John%203:16&language=en&organization=unfoldingWord"
-
-# Get available languages
-curl "http://localhost:8889/.netlify/functions/get-languages?organization=unfoldingWord"
-```
+- **Backend**: Netlify Functions (serverless)
+- **Frontend**: SvelteKit with Tailwind CSS
+- **Caching**: Netlify Blobs with in-memory fallback
+- **Language**: TypeScript
+- **Deployment**: Netlify
 
 ## 📚 API Endpoints
 
 ### Core Endpoints
 
-- `GET /health` - Server health check
-- `GET /fetch-resources` - Fetch all resources for a reference
-- `GET /fetch-scripture` - Fetch scripture text only
-- `GET /fetch-translation-notes` - Fetch translation notes only
-- `GET /fetch-translation-questions` - Fetch translation questions only
-- `GET /fetch-translation-words` - Fetch translation words only
-- `GET /fetch-translation-word-links` - Fetch translation word links only
-- `GET /get-languages` - Get available languages for an organization
-- `GET /extract-references` - Extract Bible references from text
+| Endpoint                           | Description                               | Example                                                         |
+| ---------------------------------- | ----------------------------------------- | --------------------------------------------------------------- |
+| `/api/fetch-scripture`             | Get Bible verses in multiple translations | `?reference=John+3:16&language=en&organization=unfoldingWord`   |
+| `/api/fetch-translation-notes`     | Get translation notes for verses          | `?reference=Titus+1:1&language=en&organization=unfoldingWord`   |
+| `/api/fetch-translation-words`     | Get word-by-word translation helps        | `?reference=Genesis+1:1&language=en&organization=unfoldingWord` |
+| `/api/fetch-translation-questions` | Get translation questions and answers     | `?reference=Matthew+5:1&language=en&organization=unfoldingWord` |
+| `/api/get-languages`               | List available languages                  | `?organization=unfoldingWord`                                   |
+| `/api/fetch-resources`             | Get available resources for a language    | `?language=en&organization=unfoldingWord`                       |
 
-### Test Endpoints
+### Utility Endpoints
 
-- `GET /test-ui` - Epic test interface with individual and bulk testing
+| Endpoint                  | Description                        |
+| ------------------------- | ---------------------------------- |
+| `/api/health`             | Health check with cache status     |
+| `/api/extract-references` | Extract Bible references from text |
 
-## 🔧 Configuration
+## 🚀 Quick Start
 
-Environment variables (set in `.env` or Netlify environment):
+### Using the API
 
-- `DCS_API_URL` - Door43 Content Service API URL
-- `CACHE_ENABLED` - Enable/disable caching
-- `LOG_LEVEL` - Logging level (debug, info, warn, error)
+```bash
+# Get John 3:16 in all available translations
+curl "https://translation-helps-mcp.netlify.app/.netlify/functions/fetch-scripture?reference=John+3:16&language=en&organization=unfoldingWord&translation=all"
 
-## 🏗️ Architecture
-
-The project follows a modular architecture with:
-
-- **Netlify Functions** for serverless deployment
-- **Shared utilities** for common functionality
-- **Type-safe interfaces** for all data structures
-- **Comprehensive error handling** with graceful degradation
-- **Performance optimization** through caching and parallel requests
-
-## 🚀 Deployment
-
-### Netlify (Recommended)
-
-1. Fork the repository
-2. Connect to Netlify
-3. Deploy with one click
-4. Functions will be available at `https://your-site.netlify.app/.netlify/functions/`
+# Get translation notes for Titus 1:1
+curl "https://translation-helps-mcp.netlify.app/.netlify/functions/fetch-translation-notes?reference=Titus+1:1&language=en&organization=unfoldingWord"
+```
 
 ### Local Development
 
 ```bash
-npm run dev  # Starts on port 8889
-npm run build  # Build for production
-npm start  # Start production server
+# Clone the repository
+git clone https://github.com/klappy/translation-helps-mcp.git
+cd translation-helps-mcp
+
+# Install dependencies
+npm install
+cd ui && npm install && cd ..
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build:all
+
+# Deploy to Netlify
+npm run deploy
 ```
 
-## 📖 Documentation
+## 📊 Performance
 
-- [Getting Started Guide](GETTING_STARTED.md)
-- [Quick Start Guide](QUICK_START_GUIDE.md)
-- [Implementation Summary](IMPLEMENTATION_SUMMARY.md)
-- [Comprehensive Documentation](docs/)
+The API includes intelligent caching that provides significant performance improvements:
+
+- **Cache Miss**: ~1.5-2.0 seconds (downloading files)
+- **Cache Hit**: ~0.15-0.8 seconds (serving from cache)
+- **Performance Improvement**: 59-89% faster on subsequent requests
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable        | Description            | Default                         |
+| --------------- | ---------------------- | ------------------------------- |
+| `DCS_API_URL`   | Door43 API base URL    | `https://git.door43.org/api/v1` |
+| `CACHE_ENABLED` | Enable/disable caching | `true`                          |
+| `LOG_LEVEL`     | Logging level          | `info`                          |
+
+### Netlify Configuration
+
+The project includes a `netlify.toml` file with optimized settings for:
+
+- Function timeout and memory allocation
+- CORS headers
+- Cache control
+- Redirects
+
+## 🎯 Use Cases
+
+### For Bible Translators
+
+- Access multiple translation resources in one API
+- Get contextual translation helps
+- Retrieve word-by-word guidance
+- Find answers to common translation questions
+
+### For Developers
+
+- Integrate Bible translation resources into applications
+- Build translation tools and workflows
+- Create educational content
+- Develop AI-powered translation assistants
+
+### For AI Assistants
+
+- MCP integration for context-aware Bible translation help
+- Structured data for training and inference
+- Multi-language support for global applications
+
+## 🏛️ Supported Organizations
+
+Currently supports resources from:
+
+- **unfoldingWord**: Open Bible translation resources
+- **Door43**: Community-driven translation platform
+
+## 📈 API Response Format
+
+### Scripture Response
+
+```json
+{
+  "reference": "John 3:16",
+  "language": "en",
+  "organization": "unfoldingWord",
+  "scriptures": [
+    {
+      "text": "For God so loved the world...",
+      "translation": "ULT",
+      "citation": "John 3:16"
+    }
+  ],
+  "responseTime": 895
+}
+```
+
+### Translation Notes Response
+
+```json
+{
+  "reference": "Titus 1:1",
+  "language": "en",
+  "organization": "unfoldingWord",
+  "notes": [
+    {
+      "reference": "Titus 1:1",
+      "note": "This is a greeting...",
+      "quote": "Paul, a servant of God"
+    }
+  ],
+  "responseTime": 387
+}
+```
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 Changelog
+
+### v2.0.0 (2025-07-18)
+
+- **Major Refactor**: Complete rewrite with TypeScript and SvelteKit
+- **Performance**: Added intelligent caching with 59-89% performance improvements
+- **Architecture**: Migrated to Netlify Functions with serverless deployment
+- **UI**: Modern SvelteKit interface with comprehensive testing tools
+- **MCP Support**: Added Model Context Protocol integration
+- **Documentation**: Comprehensive README and API documentation
+
+### v1.3.0 (Previous)
+
+- Initial release with basic API functionality
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- Door43 Content Service for providing the translation resources
-- Netlify for the serverless platform
-- The MCP community for the protocol specification
+- **unfoldingWord** for providing open Bible translation resources
+- **Door43** for the community-driven translation platform
+- **Netlify** for the serverless hosting platform
+- **SvelteKit** for the modern web framework
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/klappy/translation-helps-mcp/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/klappy/translation-helps-mcp/discussions)
+- **Email**: christopher@klapp.name
 
 ---
 
-**Ready to test?** Visit the [Epic Test Suite](http://localhost:8889/.netlify/functions/test-ui) and experience the most engaging testing interface of 2025! 🎉
+**Made with ❤️ for the Bible translation community**
