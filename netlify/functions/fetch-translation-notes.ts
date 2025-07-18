@@ -1,6 +1,7 @@
 import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify/functions";
 import { parseReference } from "./_shared/reference-parser";
 import { timedResponse } from "./_shared/utils";
+import { cache } from "./_shared/cache";
 
 interface TranslationNote {
   reference: string;
@@ -142,22 +143,35 @@ export const handler: Handler = async (
     const fileUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
     console.log(`🔗 Fetching from: ${fileUrl}`);
 
-    const fileResponse = await fetch(fileUrl);
-    if (!fileResponse.ok) {
-      console.error(`❌ Failed to fetch TN file: ${fileResponse.status}`);
-      return {
-        statusCode: 500,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({
-          error: "Failed to fetch translation notes content",
-          language,
-          organization,
-        }),
-      };
-    }
+    // Try to get from cache first
+    const cacheKey = `tsv:${fileUrl}`;
+    let tsvData = await cache.getFileContent(cacheKey);
 
-    const tsvData = await fileResponse.text();
-    console.log(`📄 Downloaded ${tsvData.length} characters of TSV data`);
+    if (!tsvData) {
+      console.log(`🔄 Cache miss for TN file, downloading...`);
+      const fileResponse = await fetch(fileUrl);
+      if (!fileResponse.ok) {
+        console.error(`❌ Failed to fetch TN file: ${fileResponse.status}`);
+        return {
+          statusCode: 500,
+          headers: { "Access-Control-Allow-Origin": "*" },
+          body: JSON.stringify({
+            error: "Failed to fetch translation notes content",
+            language,
+            organization,
+          }),
+        };
+      }
+
+      tsvData = await fileResponse.text();
+      console.log(`📄 Downloaded ${tsvData.length} characters of TSV data`);
+
+      // Cache the file content
+      await cache.setFileContent(cacheKey, tsvData);
+      console.log(`💾 Cached TN file (${tsvData.length} chars)`);
+    } else {
+      console.log(`✅ Cache hit for TN file (${tsvData.length} chars)`);
+    }
 
     // Parse the TSV data
     const notes = parseTNFromTSV(tsvData, reference, includeIntro);

@@ -2,6 +2,7 @@ import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify
 import { parseReference } from "./_shared/reference-parser";
 import { extractVerseText, extractVerseRange, extractChapterText } from "./_shared/usfm-extractor";
 import { timedResponse } from "./_shared/utils";
+import { cache } from "./_shared/cache";
 
 interface ScriptureResponse {
   scripture?: {
@@ -193,16 +194,29 @@ export const handler: Handler = async (
       console.log(`📥 Fetching scripture from: ${url}`);
 
       try {
-        const response = await fetch(url);
-        console.log(`📊 Response status: ${response.status}`);
+        // Try to get from cache first
+        const cacheKey = `usfm:${url}`;
+        let usfm = await cache.getFileContent(cacheKey);
 
-        if (!response.ok) {
-          console.error(`❌ Failed to fetch scripture from ${resource.name}: ${response.status}`);
-          continue;
+        if (!usfm) {
+          console.log(`🔄 Cache miss for ${resource.name}, downloading...`);
+          const response = await fetch(url);
+          console.log(`📊 Response status: ${response.status}`);
+
+          if (!response.ok) {
+            console.error(`❌ Failed to fetch scripture from ${resource.name}: ${response.status}`);
+            continue;
+          }
+
+          usfm = await response.text();
+          console.log(`📜 Got USFM text from ${resource.name} (${usfm.length} chars)`);
+
+          // Cache the file content
+          await cache.setFileContent(cacheKey, usfm);
+          console.log(`💾 Cached ${resource.name} (${usfm.length} chars)`);
+        } else {
+          console.log(`✅ Cache hit for ${resource.name} (${usfm.length} chars)`);
         }
-
-        const usfm = await response.text();
-        console.log(`📜 Got USFM text from ${resource.name} (${usfm.length} chars)`);
 
         // Extract the requested text
         let text: string | null = null;
