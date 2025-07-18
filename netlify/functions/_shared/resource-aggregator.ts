@@ -36,6 +36,9 @@ export interface TranslationWord {
   title?: string;
   subtitle?: string;
   content?: string;
+  titleContent?: string;
+  subtitleContent?: string;
+  mainContent?: string;
 }
 
 export interface TranslationWordLink {
@@ -398,7 +401,12 @@ export class ResourceAggregator {
 
   public async fetchTranslationWords(
     reference: Reference,
-    options: ResourceOptions
+    options: ResourceOptions,
+    includeSections: {
+      title?: boolean;
+      subtitle?: boolean;
+      content?: boolean;
+    } = { title: true, subtitle: true, content: true }
   ): Promise<TranslationWord[]> {
     try {
       console.log(`📖 Fetching translation words for ${reference.citation}`);
@@ -428,7 +436,7 @@ export class ResourceAggregator {
 
       for (const rcUri of rcUris) {
         try {
-          const article = await this.fetchTranslationWordArticle(rcUri, options);
+          const article = await this.fetchTranslationWordArticle(rcUri, options, includeSections);
           if (article) {
             translationWords.push(article);
           }
@@ -450,7 +458,12 @@ export class ResourceAggregator {
    */
   private async fetchTranslationWordArticle(
     rcUri: string,
-    options: ResourceOptions
+    options: ResourceOptions,
+    includeSections: {
+      title?: boolean;
+      subtitle?: boolean;
+      content?: boolean;
+    } = { title: true, subtitle: true, content: true }
   ): Promise<TranslationWord | null> {
     try {
       if (!rcUri || !rcUri.startsWith("rc://")) {
@@ -465,36 +478,98 @@ export class ResourceAggregator {
         return null;
       }
 
-      // Convert rc:// URI to DCS raw file URL
-      const url = this.rcUriToUrl(rcUri, options.language, options.organization);
-      console.log(`📥 Fetching TW article from: ${url}`);
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.warn(`📭 Article not found: ${rcUri}`);
-          return null;
-        }
-        throw new Error(`Failed to fetch article: ${response.status} ${response.statusText}`);
-      }
-
-      const markdown = await response.text();
-      const parsedArticle = this.parseMarkdown(markdown);
-
       // Extract the word term from the rc:// URI
       const wordTerm = rcUri.split("/").pop() || "Unknown";
 
-      return {
+      // Build URL for the article
+      const articleUrl = this.rcUriToUrl(rcUri, options.language, options.organization);
+
+      console.log(`📥 Fetching TW article from: ${articleUrl}`);
+
+      // Fetch the main article content
+      const response = await fetch(articleUrl);
+      if (!response.ok) {
+        console.warn(
+          `❌ Failed to fetch article ${rcUri}: ${response.status} ${response.statusText}`
+        );
+        return null;
+      }
+
+      const markdownContent = await response.text();
+
+      // Parse the markdown content to extract different sections
+      const parsedContent = this.parseTranslationWordMarkdown(markdownContent);
+
+      // Build the response based on requested sections
+      const result: TranslationWord = {
         term: wordTerm,
-        definition: parsedArticle.title || wordTerm,
-        title: parsedArticle.title || wordTerm,
-        subtitle: "Definition:",
-        content: parsedArticle.content || markdown,
+        definition: parsedContent.title || wordTerm,
+        title: parsedContent.title || wordTerm,
+        subtitle: parsedContent.subtitle || "Definition:",
+        content: markdownContent, // Always include the full content
       };
+
+      // Add section-specific content based on parameters
+      if (includeSections.title && parsedContent.title) {
+        result.titleContent = parsedContent.title;
+      }
+
+      if (includeSections.subtitle && parsedContent.subtitle) {
+        result.subtitleContent = parsedContent.subtitle;
+      }
+
+      if (includeSections.content) {
+        result.mainContent = parsedContent.mainContent || markdownContent;
+      }
+
+      return result;
     } catch (error) {
       console.error(`❌ Error fetching TW article ${rcUri}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Parses translation word markdown to extract title, subtitle, and main content
+   */
+  private parseTranslationWordMarkdown(markdown: string): {
+    title: string;
+    subtitle: string;
+    mainContent: string;
+  } {
+    const lines = markdown.split("\n");
+    let title = "";
+    let subtitle = "";
+    let mainContent = "";
+    let currentSection = "";
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      // Extract title (first # heading)
+      if (line.startsWith("# ") && !title) {
+        title = line.substring(2).trim();
+        continue;
+      }
+
+      // Extract subtitle (first ## heading)
+      if (line.startsWith("## ") && !subtitle) {
+        subtitle = line.substring(3).trim();
+        currentSection = subtitle;
+        continue;
+      }
+
+      // Collect main content (everything after the first ## heading)
+      if (currentSection) {
+        mainContent += line + "\n";
+      }
+    }
+
+    return {
+      title: title,
+      subtitle: subtitle,
+      mainContent: mainContent.trim(),
+    };
   }
 
   /**

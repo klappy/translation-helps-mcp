@@ -1,91 +1,47 @@
 # Translation Helps MCP Server
 
-A Model Context Protocol (MCP) server providing access to Bible translation resources through Netlify Functions. This server enables AI assistants and other applications to fetch scripture, translation notes, questions, and other biblical resources for any language and organization.
+A powerful MCP (Model Context Protocol) server that provides access to Door43 Content Service (DCS) translation resources including scripture text, translation notes, translation questions, and translation words.
 
-## Overview
+## 🚀 Features
 
-This project implements an MCP server that provides:
+- **Multi-Resource Support**: Scripture text, translation notes, translation questions, translation words, and translation word links
+- **Multi-Language Support**: English, Spanish, French, Russian, and more
+- **Multi-Organization Support**: unfoldingWord, STR, ru_gl, and others
+- **Smart Caching**: Multi-level caching with request deduplication
+- **Reference Parsing**: Handles various Bible reference formats
+- **USFM Processing**: Clean text extraction from USFM format
+- **Epic Test Suite**: Comprehensive testing interface with bulk testing capabilities
 
-- Access to scripture in multiple languages and versions
-- Translation notes, questions, and word definitions
-- Support for multiple organizations (unfoldingWord, Wycliffe, etc.)
-- Clean text extraction optimized for LLM consumption
-- Efficient caching and performance optimization
+## 🎯 Epic Test UI
 
-## Architecture
+The project includes a modern, engaging test interface available at `/api/test-ui` that provides:
 
-The MCP server is deployed as Netlify Functions, providing a serverless API that can be consumed by:
+### Individual Testing Mode
 
-- AI assistants (Claude, GPT, etc.) via MCP protocol
-- Web applications
-- Mobile applications
-- Desktop applications
+- **Real-time endpoint health checks** with visual status indicators
+- **Interactive form** for testing specific references and resources
+- **Beautiful results display** with organized resource sections
+- **Error handling** with clear feedback
 
-## Key Features
+### Bulk Testing Suite
 
-- **Multi-Translation Scripture Support**: Fetches ALL available Bible translations (ULT, UST, T4T, UEB, etc.) dynamically
-- **Clean Text Extraction**: Returns only the readable Bible text without USFM markup or alignment data
-- **Flexible Reference Support**: Single verses, verse ranges (e.g., "John 3:16-18"), or entire chapters
-- **Translation Notes**: Contextual study notes for verses
-- **Translation Questions**: Comprehension and discussion questions
-- **Translation Words**: Key biblical terms with definitions
-- **Dynamic Resource Discovery**: Uses the DCS Ingredients Array pattern for reliable resource resolution
-- **High-Performance Caching**: Multi-level caching with request deduplication
-- **CORS Support**: Ready for browser-based applications
-- **TypeScript**: Full type safety and modern JavaScript features
+- **30+ pre-configured test cases** covering various reference types
+- **Multiple test configurations**: Quick (10), Standard (30), Comprehensive (50+)
+- **Custom test case support** via JSON input
+- **Real-time progress tracking** with visual progress bars
+- **Comprehensive results aggregation** with success rates and error summaries
+- **Detailed test reporting** with individual test results
 
-## API Endpoints
+### Test Case Categories
 
-### Core Functions
+- **Single verses**: John 3:16, Genesis 1:1, Psalm 23:1
+- **Verse ranges**: Matthew 5:1-12, 1 Corinthians 13:4-7
+- **Full chapters**: Genesis 1, Psalm 23, Matthew 5
+- **Multiple languages**: English, Spanish, French, Russian, German, Italian
+- **Edge cases**: 1 John, 2 Peter, 3 John, 1 Samuel, 2 Kings
+- **Complex references**: Large verse ranges and chapter spans
 
-#### `GET /fetch-resources`
-
-Fetches and aggregates all available resources for a scripture reference.
-
-```javascript
-// Example request
-{
-  "organization": "unfoldingWord",
-  "language": "en",
-  "reference": "Genesis 1:1"
-}
-
-// Returns scripture text, notes, questions, and words
-```
-
-#### `GET /get-languages`
-
-Lists all available languages for an organization.
-
-```javascript
-// Example request
-{
-  "organization": "unfoldingWord"
-}
-
-// Returns array of language codes and names
-```
-
-#### `GET /health`
-
-Health check endpoint for monitoring.
-
-## Documentation
-
-- [MCP Data Fetching Patterns](MCP_DATA_FETCHING_PATTERNS.md) - Comprehensive guide to API integration patterns
-- [USFM LLM Preparation Guide](USFM_LLM_PREPARATION_GUIDE.md) - How to extract clean text for AI consumption
-- [Netlify Functions Architecture](NETLIFY_FUNCTIONS_ARCHITECTURE.md) - Technical architecture details
-- [Implementation Checklist](MCP_IMPLEMENTATION_CHECKLIST.md) - Development roadmap
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- Netlify CLI
-- Git
-
-### Installation
+## 🛠️ Installation
 
 ```bash
 # Clone the repository
@@ -95,133 +51,109 @@ cd translation-helps-mcp
 # Install dependencies
 npm install
 
-# Start local development
-netlify dev
+# Start development server
+npm run dev
 ```
 
-### Testing Locally
+The server will be available at `http://localhost:8889/.netlify/functions/`
+
+## 🧪 Testing
+
+### Quick Test
+
+Visit the test UI at: `http://localhost:8889/.netlify/functions/test-ui`
+
+### API Testing
 
 ```bash
-# Test health endpoint
-curl http://localhost:8888/.netlify/functions/health
+# Health check
+curl http://localhost:8889/.netlify/functions/health
 
-# Test language fetching
-curl "http://localhost:8888/.netlify/functions/get-languages?organization=unfoldingWord"
+# Fetch resources for John 3:16
+curl "http://localhost:8889/.netlify/functions/fetch-resources?reference=John%203:16&language=en&organization=unfoldingWord"
 
-# Test resource fetching
-curl "http://localhost:8888/.netlify/functions/fetch-resources?organization=unfoldingWord&language=en&reference=John%203:16"
+# Get available languages
+curl "http://localhost:8889/.netlify/functions/get-languages?organization=unfoldingWord"
 ```
 
-## Deployment
+## 📚 API Endpoints
 
-### Deploy to Netlify
+### Core Endpoints
 
-1. Fork this repository
+- `GET /health` - Server health check
+- `GET /fetch-resources` - Fetch all resources for a reference
+- `GET /fetch-scripture` - Fetch scripture text only
+- `GET /fetch-translation-notes` - Fetch translation notes only
+- `GET /fetch-translation-questions` - Fetch translation questions only
+- `GET /fetch-translation-words` - Fetch translation words only
+- `GET /fetch-translation-word-links` - Fetch translation word links only
+- `GET /get-languages` - Get available languages for an organization
+- `GET /extract-references` - Extract Bible references from text
+
+### Test Endpoints
+
+- `GET /test-ui` - Epic test interface with individual and bulk testing
+
+## 🔧 Configuration
+
+Environment variables (set in `.env` or Netlify environment):
+
+- `DCS_API_URL` - Door43 Content Service API URL
+- `CACHE_ENABLED` - Enable/disable caching
+- `LOG_LEVEL` - Logging level (debug, info, warn, error)
+
+## 🏗️ Architecture
+
+The project follows a modular architecture with:
+
+- **Netlify Functions** for serverless deployment
+- **Shared utilities** for common functionality
+- **Type-safe interfaces** for all data structures
+- **Comprehensive error handling** with graceful degradation
+- **Performance optimization** through caching and parallel requests
+
+## 🚀 Deployment
+
+### Netlify (Recommended)
+
+1. Fork the repository
 2. Connect to Netlify
-3. Deploy with default settings
+3. Deploy with one click
+4. Functions will be available at `https://your-site.netlify.app/.netlify/functions/`
 
-### Environment Variables
+### Local Development
 
-No environment variables required - all data is fetched from public APIs.
-
-## MCP Tool Integration
-
-### Available Tools
-
-1. **fetch-resources** - Fetch scripture and study resources
-2. **get-languages** - List available languages
-3. **get-organizations** - List content organizations
-4. **extract-references** - Parse scripture references from text
-
-### Example MCP Configuration
-
-```json
-{
-  "mcpServers": {
-    "translation-helps": {
-      "command": "node",
-      "args": ["path/to/translation-helps-mcp/src/index.js"],
-      "env": {}
-    }
-  }
-}
+```bash
+npm run dev  # Starts on port 8889
+npm run build  # Build for production
+npm start  # Start production server
 ```
 
-## Data Sources
+## 📖 Documentation
 
-All data is fetched from the Door43 Content Service (DCS):
+- [Getting Started Guide](GETTING_STARTED.md)
+- [Quick Start Guide](QUICK_START_GUIDE.md)
+- [Implementation Summary](IMPLEMENTATION_SUMMARY.md)
+- [Comprehensive Documentation](docs/)
 
-- Catalog API: `https://git.door43.org/api/v1/catalog`
-- Resource files: `https://git.door43.org/{org}/{lang}_{resource}/`
+## 🤝 Contributing
 
-## Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-1. Read the [Development Guidelines](docs/development-guidelines.md)
-2. Check the [Implementation Checklist](MCP_IMPLEMENTATION_CHECKLIST.md)
-3. Submit pull requests with clear descriptions
+## 📄 License
 
-## License
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) file for details.
+## 🙏 Acknowledgments
 
-## Acknowledgments
+- Door43 Content Service for providing the translation resources
+- Netlify for the serverless platform
+- The MCP community for the protocol specification
 
-- Built on patterns from the [translation-helps](https://github.com/unfoldingWord/translation-helps-rcl) project
-- Powered by the [Door43](https://door43.org) platform
-- Uses the [Model Context Protocol](https://github.com/modelcontextprotocol/specification)
+---
 
-## Support
-
-For issues and questions:
-
-- Open an issue on GitHub
-- Check the documentation
-- Review the implementation examples
-
-## API Response Format
-
-```json
-{
-  "reference": {
-    "book": "JHN",
-    "bookName": "John",
-    "chapter": 3,
-    "verse": 16,
-    "citation": "John 3:16"
-  },
-  "scripture": {
-    "text": "For God so loved the world...",
-    "translation": "ULT"
-  },
-  "scriptures": [
-    {
-      "text": "For God so loved the world...",
-      "translation": "ULT"
-    },
-    {
-      "text": "God loved the people of the world so much...",
-      "translation": "UST"
-    },
-    {
-      "text": "God loved the people in the world so much...",
-      "translation": "T4T"
-    },
-    {
-      "text": "For God loved the world in this way...",
-      "translation": "UEB"
-    }
-  ],
-  "translationNotes": [...],
-  "translationQuestions": [...],
-  "translationWords": [...],
-  "metadata": {
-    "resourcesFound": {
-      "scripture": true,
-      "scriptures": 4,
-      "notes": 15,
-      "questions": 3,
-      "words": 5
-    }
-  }
-}
-```
+**Ready to test?** Visit the [Epic Test Suite](http://localhost:8889/.netlify/functions/test-ui) and experience the most engaging testing interface of 2025! 🎉
