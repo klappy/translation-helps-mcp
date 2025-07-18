@@ -270,31 +270,98 @@ export class ResourceAggregator {
   }
 
   /**
-   * Fetch translation notes from DCS
+   * Fetch translation notes from DCS using INGREDIENTS PATTERN
    */
   private async fetchTranslationNotes(
     reference: ParsedReference,
     options: ResourceOptions
   ): Promise<TranslationNote[]> {
     try {
-      const repoName = `${options.language}_tn`;
-      const filePath = `tn_${reference.book}.tsv`;
+      // STEP 1: Get resource metadata from catalog
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Notes`;
+      const searchResponse = await fetch(searchUrl);
 
-      logger.debug("Fetching translation notes", {
-        organization: options.organization,
-        repo: repoName,
-        file: filePath,
-      });
-
-      const response = await this.dcsClient.getRawFileContent(
-        options.organization,
-        repoName,
-        filePath
-      );
-
-      if (response.success && response.data) {
-        return this.parseTNFromTSV(response.data, reference);
+      if (!searchResponse.ok) {
+        logger.warn("Failed to search catalog for translation notes resources");
+        return [];
       }
+
+      const searchData = (await searchResponse.json()) as { data?: any[] };
+      const tnResources = searchData.data || [];
+
+      logger.debug(`Found ${tnResources.length} translation notes resources in catalog`);
+
+      // STEP 2: Try each translation notes resource using INGREDIENTS
+      for (const resource of tnResources) {
+        const resourceName = resource.name;
+
+        // Skip non-translation notes resources
+        if (!resourceName.includes("_tn")) {
+          continue;
+        }
+
+        logger.debug(`Trying translation notes resource: ${resourceName}`);
+
+        // STEP 3: Get the ingredients array from resource metadata
+        const metadataUrl = `https://git.door43.org/api/v1/catalog/search?metadataType=rc&lang=${options.language}&owner=${options.organization}&name=${resourceName}`;
+        const metadataResponse = await fetch(metadataUrl);
+
+        if (!metadataResponse.ok) {
+          logger.warn(`Failed to get metadata for ${resourceName}`);
+          continue;
+        }
+
+        const metadataData = (await metadataResponse.json()) as { data?: any[] };
+        const resourceMetadata = metadataData.data?.[0];
+
+        if (!resourceMetadata || !resourceMetadata.ingredients) {
+          logger.warn(`No ingredients found for ${resourceName}`);
+          continue;
+        }
+
+        // STEP 4: Find the TSV file for the specific book
+        const tnFileName = `tn_${reference.book}.tsv`;
+
+        let targetFile = null;
+        for (const ingredient of resourceMetadata.ingredients) {
+          if (ingredient.path === tnFileName || ingredient.path.endsWith(`/${tnFileName}`)) {
+            targetFile = ingredient;
+            break;
+          }
+        }
+
+        if (!targetFile) {
+          logger.debug(`No translation notes file found for ${reference.book} in ${resourceName}`);
+          continue;
+        }
+
+        // STEP 5: Fetch the TSV file content
+        const fileUrl = `https://git.door43.org/api/v1/repos/${options.organization}/${resourceName}/raw/master/${targetFile.path}`;
+        const fileResponse = await fetch(fileUrl);
+
+        if (!fileResponse.ok) {
+          logger.warn(`Failed to fetch translation notes file: ${targetFile.path}`);
+          continue;
+        }
+
+        const tsvData = await fileResponse.text();
+
+        if (tsvData) {
+          const notes = this.parseTNFromTSV(tsvData, reference);
+          if (notes.length > 0) {
+            logger.info(
+              `Successfully fetched ${notes.length} translation notes from ${resourceName}`
+            );
+            return notes;
+          }
+        }
+      }
+
+      logger.warn("No translation notes found for reference", {
+        reference: this.formatReference(reference),
+        language: options.language,
+        organization: options.organization,
+      });
 
       return [];
     } catch (error) {
@@ -344,31 +411,99 @@ export class ResourceAggregator {
   }
 
   /**
-   * Fetch translation words from DCS
+   * Fetch translation words from DCS using INGREDIENTS PATTERN
    */
   private async fetchTranslationWords(
     reference: ParsedReference,
     options: ResourceOptions
   ): Promise<TranslationWord[]> {
     try {
-      const repoName = `${options.language}_tw`;
-      const filePath = `tw_${reference.book}.tsv`;
+      // STEP 1: Get resource metadata from catalog
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Words`;
+      const searchResponse = await fetch(searchUrl);
 
-      logger.debug("Fetching translation words", {
-        organization: options.organization,
-        repo: repoName,
-        file: filePath,
-      });
-
-      const response = await this.dcsClient.getRawFileContent(
-        options.organization,
-        repoName,
-        filePath
-      );
-
-      if (response.success && response.data) {
-        return this.parseTWFromTSV(response.data, reference);
+      if (!searchResponse.ok) {
+        logger.warn("Failed to search catalog for translation words resources");
+        return [];
       }
+
+      const searchData = (await searchResponse.json()) as { data?: any[] };
+      const twResources = searchData.data || [];
+
+      logger.debug(`Found ${twResources.length} translation words resources in catalog`);
+
+      // STEP 2: Try each translation words resource using INGREDIENTS
+      for (const resource of twResources) {
+        const resourceName = resource.name;
+
+        // Skip non-translation words resources
+        if (!resourceName.includes("_tw")) {
+          continue;
+        }
+
+        logger.debug(`Trying translation words resource: ${resourceName}`);
+
+        // STEP 3: Get the ingredients array from resource metadata
+        const metadataUrl = `https://git.door43.org/api/v1/catalog/search?metadataType=rc&lang=${options.language}&owner=${options.organization}&name=${resourceName}`;
+        const metadataResponse = await fetch(metadataUrl);
+
+        if (!metadataResponse.ok) {
+          logger.warn(`Failed to get metadata for ${resourceName}`);
+          continue;
+        }
+
+        const metadataData = (await metadataResponse.json()) as { data?: any[] };
+        const resourceMetadata = metadataData.data?.[0];
+
+        if (!resourceMetadata || !resourceMetadata.ingredients) {
+          logger.warn(`No ingredients found for ${resourceName}`);
+          continue;
+        }
+
+        // STEP 4: Find the TSV file for the specific book
+        const bookFileName = this.getBookFileName(reference.book, "tsv");
+        const twFileName = `tw_${reference.book}.tsv`;
+
+        let targetFile = null;
+        for (const ingredient of resourceMetadata.ingredients) {
+          if (ingredient.path === twFileName || ingredient.path.endsWith(`/${twFileName}`)) {
+            targetFile = ingredient;
+            break;
+          }
+        }
+
+        if (!targetFile) {
+          logger.debug(`No translation words file found for ${reference.book} in ${resourceName}`);
+          continue;
+        }
+
+        // STEP 5: Fetch the TSV file content
+        const fileUrl = `https://git.door43.org/api/v1/repos/${options.organization}/${resourceName}/raw/master/${targetFile.path}`;
+        const fileResponse = await fetch(fileUrl);
+
+        if (!fileResponse.ok) {
+          logger.warn(`Failed to fetch translation words file: ${targetFile.path}`);
+          continue;
+        }
+
+        const tsvData = await fileResponse.text();
+
+        if (tsvData) {
+          const words = this.parseTWFromTSV(tsvData, reference);
+          if (words.length > 0) {
+            logger.info(
+              `Successfully fetched ${words.length} translation words from ${resourceName}`
+            );
+            return words;
+          }
+        }
+      }
+
+      logger.warn("No translation words found for reference", {
+        reference: this.formatReference(reference),
+        language: options.language,
+        organization: options.organization,
+      });
 
       return [];
     } catch (error) {
@@ -381,31 +516,100 @@ export class ResourceAggregator {
   }
 
   /**
-   * Fetch translation word links from DCS
+   * Fetch translation word links from DCS using INGREDIENTS PATTERN
    */
   private async fetchTranslationWordLinks(
     reference: ParsedReference,
     options: ResourceOptions
   ): Promise<TranslationWordLink[]> {
     try {
-      const repoName = `${options.language}_twl`;
-      const filePath = `twl_${reference.book}.tsv`;
+      // STEP 1: Get resource metadata from catalog
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Word%20Links`;
+      const searchResponse = await fetch(searchUrl);
 
-      logger.debug("Fetching translation word links", {
-        organization: options.organization,
-        repo: repoName,
-        file: filePath,
-      });
-
-      const response = await this.dcsClient.getRawFileContent(
-        options.organization,
-        repoName,
-        filePath
-      );
-
-      if (response.success && response.data) {
-        return this.parseTWLFromTSV(response.data, reference);
+      if (!searchResponse.ok) {
+        logger.warn("Failed to search catalog for translation word links resources");
+        return [];
       }
+
+      const searchData = (await searchResponse.json()) as { data?: any[] };
+      const twlResources = searchData.data || [];
+
+      logger.debug(`Found ${twlResources.length} translation word links resources in catalog`);
+
+      // STEP 2: Try each translation word links resource using INGREDIENTS
+      for (const resource of twlResources) {
+        const resourceName = resource.name;
+
+        // Skip non-translation word links resources
+        if (!resourceName.includes("_twl")) {
+          continue;
+        }
+
+        logger.debug(`Trying translation word links resource: ${resourceName}`);
+
+        // STEP 3: Get the ingredients array from resource metadata
+        const metadataUrl = `https://git.door43.org/api/v1/catalog/search?metadataType=rc&lang=${options.language}&owner=${options.organization}&name=${resourceName}`;
+        const metadataResponse = await fetch(metadataUrl);
+
+        if (!metadataResponse.ok) {
+          logger.warn(`Failed to get metadata for ${resourceName}`);
+          continue;
+        }
+
+        const metadataData = (await metadataResponse.json()) as { data?: any[] };
+        const resourceMetadata = metadataData.data?.[0];
+
+        if (!resourceMetadata || !resourceMetadata.ingredients) {
+          logger.warn(`No ingredients found for ${resourceName}`);
+          continue;
+        }
+
+        // STEP 4: Find the TSV file for the specific book
+        const twlFileName = `twl_${reference.book}.tsv`;
+
+        let targetFile = null;
+        for (const ingredient of resourceMetadata.ingredients) {
+          if (ingredient.path === twlFileName || ingredient.path.endsWith(`/${twlFileName}`)) {
+            targetFile = ingredient;
+            break;
+          }
+        }
+
+        if (!targetFile) {
+          logger.debug(
+            `No translation word links file found for ${reference.book} in ${resourceName}`
+          );
+          continue;
+        }
+
+        // STEP 5: Fetch the TSV file content
+        const fileUrl = `https://git.door43.org/api/v1/repos/${options.organization}/${resourceName}/raw/master/${targetFile.path}`;
+        const fileResponse = await fetch(fileUrl);
+
+        if (!fileResponse.ok) {
+          logger.warn(`Failed to fetch translation word links file: ${targetFile.path}`);
+          continue;
+        }
+
+        const tsvData = await fileResponse.text();
+
+        if (tsvData) {
+          const links = this.parseTWLFromTSV(tsvData, reference);
+          if (links.length > 0) {
+            logger.info(
+              `Successfully fetched ${links.length} translation word links from ${resourceName}`
+            );
+            return links;
+          }
+        }
+      }
+
+      logger.warn("No translation word links found for reference", {
+        reference: this.formatReference(reference),
+        language: options.language,
+        organization: options.organization,
+      });
 
       return [];
     } catch (error) {

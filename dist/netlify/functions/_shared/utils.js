@@ -148,3 +148,20 @@ export function deepMerge(target, source) {
     }
     return result;
 }
+/**
+ * Add response time to any response object
+ */
+export function addResponseTime(data, startTime) {
+    const responseTime = Date.now() - startTime;
+    return {
+        ...data,
+        responseTime,
+    };
+}
+/**
+ * Create a response with timing information
+ */
+export function timedResponse(data, startTime, headers) {
+    const responseData = addResponseTime(data, startTime);
+    return successResponse(responseData, headers);
+}

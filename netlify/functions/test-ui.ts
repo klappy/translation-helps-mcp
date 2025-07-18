@@ -74,7 +74,7 @@ export const handler: Handler = async (
                             <option value="fetch-translation-word-links">Translation Word Links</option>
                             <option value="fetch-resources">All Resources</option>
                         </select>
-                    </div>
+        </div>
                 </div>
                 
                 <div class="flex flex-wrap gap-4">
@@ -109,11 +109,11 @@ export const handler: Handler = async (
                         🎲 Run Bulk Tests
                     </button>
                 </div>
-            </div>
-            
+                </div>
+                
             <div id="bulkResults" class="mt-6"></div>
         </div>
-
+        
         <!-- Debug Logs -->
         <div class="card rounded-xl p-6">
             <h2 class="text-2xl font-semibold mb-4">📋 Debug Information</h2>
@@ -231,7 +231,7 @@ export const handler: Handler = async (
                         'Total: <span class="timing-success">' + result.totalTime + 'ms</span> | ' +
                         'Data: ' + result.dataCount + ' items' +
                         '</div>';
-                } else {
+                        } else {
                     resultDiv.innerHTML = 
                         '<div class="font-medium text-red-400">❌ ' + result.endpoint + '</div>' +
                         '<div class="text-sm text-gray-300">Error: ' + result.error + '</div>';
@@ -256,7 +256,7 @@ export const handler: Handler = async (
                 
                 if (result.success) {
                     results.passed++;
-                } else {
+                        } else {
                     results.failed++;
                 }
                 
@@ -329,7 +329,7 @@ export const handler: Handler = async (
     </script>
 </body>
 </html>
-  `;
+`;
 
   return {
     statusCode: 200,

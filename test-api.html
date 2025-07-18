@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Translation Helps API Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        min-height: 100vh;
+      }
+      .container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 20px;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+      }
+      button {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 5px;
+      }
+      button:hover {
+        opacity: 0.9;
+      }
+      .results {
+        margin-top: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        padding: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .endpoint {
+        margin-bottom: 15px;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+      }
+      .endpoint h3 {
+        margin: 0 0 10px 0;
+        color: #ffd700;
+      }
+      .status {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+      .status.success {
+        color: #4caf50;
+      }
+      .status.error {
+        color: #f44336;
+      }
+      .status.loading {
+        color: #ff9800;
+      }
+      pre {
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚀 Translation Helps API Test</h1>
+
+      <div class="form-group">
+        <label for="reference">Bible Reference:</label>
+        <input type="text" id="reference" value="John 3:16" placeholder="e.g., John 3:16" />
+      </div>
+
+      <div class="form-group">
+        <label for="language">Language:</label>
+        <select id="language">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="organization">Organization:</label>
+        <select id="organization">
+          <option value="unfoldingWord">unfoldingWord</option>
+          <option value="bible">Bible</option>
+        </select>
+      </div>
+
+      <button onclick="testAllEndpoints()">🧪 Test All Endpoints</button>
+      <button onclick="clearResults()">🗑️ Clear Results</button>
+
+      <div id="results" class="results"></div>
+    </div>
+
+    <script>
+      const endpoints = [
+        { name: "Scripture", path: "/.netlify/functions/fetch-scripture" },
+        { name: "Translation Notes", path: "/.netlify/functions/fetch-translation-notes" },
+        { name: "Translation Questions", path: "/.netlify/functions/fetch-translation-questions" },
+        { name: "Translation Words", path: "/.netlify/functions/fetch-translation-words" },
+        {
+          name: "Translation Word Links",
+          path: "/.netlify/functions/fetch-translation-word-links",
+        },
+        { name: "All Resources", path: "/.netlify/functions/fetch-resources" },
+      ];
+
+      async function testEndpoint(endpoint) {
+        const reference = document.getElementById("reference").value;
+        const language = document.getElementById("language").value;
+        const organization = document.getElementById("organization").value;
+
+        const params = new URLSearchParams({
+          reference: reference,
+          language: language,
+          organization: organization,
+        });
+
+        const url = `${endpoint.path}?${params.toString()}`;
+
+        const resultDiv = document.createElement("div");
+        resultDiv.className = "endpoint";
+        resultDiv.innerHTML = `
+                <h3>${endpoint.name}</h3>
+                <div class="status loading">⏳ Loading...</div>
+                <div>URL: ${url}</div>
+            `;
+
+        document.getElementById("results").appendChild(resultDiv);
+
+        try {
+          const startTime = performance.now();
+          const response = await fetch(url);
+          const endTime = performance.now();
+          const responseTime = (endTime - startTime).toFixed(0);
+
+          if (response.ok) {
+            const data = await response.json();
+            resultDiv.innerHTML = `
+                        <h3>${endpoint.name}</h3>
+                        <div class="status success">✅ Success (${responseTime}ms)</div>
+                        <div>URL: ${url}</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+          } else {
+            const errorText = await response.text();
+            resultDiv.innerHTML = `
+                        <h3>${endpoint.name}</h3>
+                        <div class="status error">❌ Error (${response.status})</div>
+                        <div>URL: ${url}</div>
+                        <pre>${errorText}</pre>
+                    `;
+          }
+        } catch (error) {
+          resultDiv.innerHTML = `
+                    <h3>${endpoint.name}</h3>
+                    <div class="status error">❌ Network Error</div>
+                    <div>URL: ${url}</div>
+                    <pre>${error.message}</pre>
+                `;
+        }
+      }
+
+      async function testAllEndpoints() {
+        document.getElementById("results").innerHTML = "";
+
+        for (const endpoint of endpoints) {
+          await testEndpoint(endpoint);
+          // Small delay between requests
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+
+      function clearResults() {
+        document.getElementById("results").innerHTML = "";
+      }
+    </script>
+  </body>
+</html>
