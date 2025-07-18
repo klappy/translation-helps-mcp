@@ -13,6 +13,13 @@ interface TranslationWord {
 
 interface WordsResponse {
   translationWords?: TranslationWord[];
+  citation?: {
+    resource: string;
+    organization: string;
+    language: string;
+    url: string;
+    version: string;
+  };
   error?: string;
   language?: string;
   organization?: string;
@@ -95,6 +102,13 @@ export const handler: Handler = async (
 
     const result: WordsResponse = {
       translationWords,
+      citation: {
+        resource: "Translation Words",
+        organization,
+        language,
+        url: `https://git.door43.org/${organization}/${language}_tw`,
+        version: "master",
+      },
       language,
       organization,
     };

@@ -10,6 +10,14 @@ interface TranslationNote {
 
 interface NotesResponse {
   translationNotes?: TranslationNote[];
+  citation?: {
+    resource: string;
+    title: string;
+    organization: string;
+    language: string;
+    url: string;
+    version: string;
+  };
   error?: string;
   language?: string;
   organization?: string;
@@ -156,6 +164,14 @@ export const handler: Handler = async (
 
     const result: NotesResponse = {
       translationNotes: notes,
+      citation: {
+        resource: resource.name,
+        title: resource.title,
+        organization,
+        language,
+        url: fileUrl,
+        version: "master",
+      },
       language,
       organization,
     };

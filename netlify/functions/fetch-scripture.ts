@@ -7,6 +7,13 @@ interface ScriptureResponse {
   scripture?: {
     text: string;
     translation: string;
+    citation: {
+      resource: string;
+      organization: string;
+      language: string;
+      url: string;
+      version: string;
+    };
   };
   error?: string;
   language?: string;
@@ -88,6 +95,7 @@ export const handler: Handler = async (
     const catalogData = (await catalogResponse.json()) as {
       data?: Array<{
         name: string;
+        title?: string;
         ingredients?: Array<{
           identifier: string;
           path: string;
@@ -211,6 +219,13 @@ export const handler: Handler = async (
       scripture: {
         text,
         translation: actualTranslation,
+        citation: {
+          resource: resource.title || resource.name,
+          organization,
+          language,
+          url,
+          version: "master", // Assuming a default version for now
+        },
       },
       language,
       organization,

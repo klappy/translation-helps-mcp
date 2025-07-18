@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"postbuild": "node scripts/create-route-files.js",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -48,8 +49,10 @@
 		"vitest-browser-svelte": "^0.1.0"
 	},
 	"dependencies": {
+		"@mlc-ai/web-llm": "^0.2.79",
 		"@types/node": "^24.0.14",
 		"@xenova/transformers": "^2.17.2",
-		"lucide-svelte": "^0.525.0"
+		"lucide-svelte": "^0.525.0",
+		"marked": "^16.1.1"
 	}
 }

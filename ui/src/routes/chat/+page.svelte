@@ -29,7 +29,11 @@
 	} from 'lucide-svelte';
 	import BibleVerse from '$lib/components/BibleVerse.svelte';
 	import TranslationWord from '$lib/components/TranslationWord.svelte';
-	import { browserLLM } from '$lib/services/BrowserLLM';
+	import { BrowserLLM } from '$lib/services/BrowserLLM';
+	import { marked } from 'marked';
+
+	// Create an instance of the AI system
+	const browserLLM = new BrowserLLM();
 
 	// Types
 	interface ChatMessage {
@@ -370,28 +374,57 @@ I have access to comprehensive Bible resources including:
 
 		// Now generate AI response with context
 		let contextPrompt = userMessage;
+		let citations: any = {};
 
 		// Add Bible context to the prompt
 		const successfulCalls = apiCalls.filter((call) => call.status === 'success');
+		console.log('=== DEBUG: Successful API calls ===');
+		console.log(successfulCalls);
+
 		if (successfulCalls.length > 0) {
 			contextPrompt += '\n\nBible Context:\n';
 			successfulCalls.forEach((call) => {
+				console.log(`=== DEBUG: Processing ${call.endpoint} ===`);
+				console.log('Response:', call.response);
+
 				if (call.response) {
-					if (call.endpoint === '/api/fetch-scripture' && call.response.verses) {
-						contextPrompt += `Scripture: ${call.response.verses.map((v: any) => `${v.reference}: ${v.text}`).join(' ')}\n`;
+					if (call.endpoint === '/api/fetch-scripture' && call.response.scripture) {
+						console.log('Scripture found:', call.response.scripture);
+						contextPrompt += `Scripture: ${call.response.scripture.text}\n`;
+						if (call.response.scripture.citation) {
+							citations.scripture = call.response.scripture.citation;
+						}
 					}
-					if (call.endpoint === '/api/fetch-translation-notes' && call.response.notes) {
-						contextPrompt += `Translation Notes: ${call.response.notes.map((n: any) => n.note).join(' ')}\n`;
+					if (call.endpoint === '/api/fetch-translation-notes' && call.response.translationNotes) {
+						console.log('Translation notes found:', call.response.translationNotes);
+						// Pass notes as individual items separated by double newlines
+						const notesText = call.response.translationNotes.map((n: any) => n.note).join('\n\n');
+						console.log('DEBUG: notesText string:', notesText);
+						const notesArray = notesText.split('\n\n');
+						console.log('DEBUG: notesArray after split:', notesArray);
+						contextPrompt += `Translation Notes: ${notesText}\n`;
+						if (call.response.citation) {
+							citations.translationNotes = call.response.citation;
+						}
 					}
-					if (call.endpoint === '/api/fetch-translation-words' && call.response.words) {
-						contextPrompt += `Word Definitions: ${call.response.words.map((w: any) => `${w.title}: ${w.content}`).join(' ')}\n`;
+					if (call.endpoint === '/api/fetch-translation-words' && call.response.translationWords) {
+						console.log('Translation words found:', call.response.translationWords);
+						contextPrompt += `Word Definitions: ${call.response.translationWords.map((w: any) => `${w.term}: ${w.definition}`).join(' ')}\n`;
+						if (call.response.citation) {
+							citations.translationWords = call.response.citation;
+						}
 					}
 				}
 			});
 		}
 
-		// Generate AI response
-		const llmResponse = await browserLLM.generateResponse(contextPrompt, 512, 0.7);
+		console.log('=== DEBUG: Final context prompt ===');
+		console.log(contextPrompt);
+		console.log('=== DEBUG: Citations ===');
+		console.log(citations);
+
+		// Generate AI response with citations
+		const llmResponse = await browserLLM.generateResponse(contextPrompt);
 
 		const responseTime = performance.now() - startTime;
 
@@ -635,8 +668,10 @@ I have access to comprehensive Bible resources including:
 											<span class="text-sm text-gray-400">AI is thinking...</span>
 										</div>
 									{:else}
-										<div class="prose prose-invert max-w-none">
-											{@html message.content.replace(/\n/g, '<br>')}
+										<div
+											class="prose prose-invert prose-headings:text-white prose-headings:font-semibold prose-h2:text-xl prose-h2:mb-4 prose-h3:text-lg prose-h3:mb-3 prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-4 prose-blockquote:border-l-4 prose-blockquote:border-purple-500 prose-blockquote:bg-purple-500/10 prose-blockquote:pl-4 prose-blockquote:py-2 prose-blockquote:my-4 prose-strong:text-white prose-strong:font-semibold prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:text-gray-300 prose-li:mb-1 prose-hr:border-white/20 prose-hr:my-6 max-w-none"
+										>
+											{@html marked(message.content)}
 										</div>
 									{/if}
 
@@ -800,4 +835,50 @@ I have access to comprehensive Bible resources including:
 			{/if}
 		</div>
 	</div>
+
+	<!-- Debug Panel -->
+	{#if messages.length > 1}
+		<div class="mt-8 rounded-lg bg-gray-900/80 p-4 text-xs text-gray-200">
+			<h3 class="mb-2 font-bold">Debug Panel</h3>
+			{#each messages as message, i}
+				{#if message.apiCalls}
+					<div class="mb-2">
+						<div class="font-semibold">Message {i + 1} API Calls:</div>
+						{#each message.apiCalls as call}
+							<div class="mb-1 ml-2">
+								<span class="font-mono">{call.endpoint}</span> — <span>{call.status}</span>
+								{#if call.endpoint === '/api/fetch-translation-notes' && call.response?.translationNotes}
+									<div class="ml-4">
+										<div>Notes returned: <b>{call.response.translationNotes.length}</b></div>
+										<details>
+											<summary>Show raw notes</summary>
+											<pre>{JSON.stringify(call.response.translationNotes, null, 2)}</pre>
+										</details>
+									</div>
+								{/if}
+								{#if call.endpoint === '/api/fetch-scripture' && call.response?.scripture}
+									<div class="ml-4">
+										<div>Scripture text length: <b>{call.response.scripture.text?.length}</b></div>
+										<details>
+											<summary>Show raw scripture</summary>
+											<pre>{JSON.stringify(call.response.scripture, null, 2)}</pre>
+										</details>
+									</div>
+								{/if}
+								{#if call.endpoint === '/api/fetch-translation-words' && call.response?.translationWords}
+									<div class="ml-4">
+										<div>Words returned: <b>{call.response.translationWords.length}</b></div>
+										<details>
+											<summary>Show raw words</summary>
+											<pre>{JSON.stringify(call.response.translationWords, null, 2)}</pre>
+										</details>
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/if}
+			{/each}
+		</div>
+	{/if}
 </div>
