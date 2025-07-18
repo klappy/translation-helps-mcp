@@ -1,6 +1,6 @@
 {
   "name": "translation-helps-api",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Serverless API for aggregating Bible translation resources from Door43",
   "type": "module",
   "scripts": {

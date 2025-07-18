@@ -6,8 +6,8 @@
  * batch sizes, and stress testing
  */
 
-const https = require("https");
-const http = require("http");
+import https from "https";
+import http from "http";
 
 // Configuration
 const BASE_URL = "https://translation-helps-mcp.netlify.app";
@@ -432,8 +432,8 @@ async function main() {
 }
 
 // Run if called directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error);
 }
 
-module.exports = { LoadTester, PerformanceMetrics };
+export { LoadTester, PerformanceMetrics };

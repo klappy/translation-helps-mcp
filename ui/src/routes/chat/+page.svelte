@@ -74,79 +74,82 @@
 		responseStyle: 'detailed' // 'detailed' | 'concise' | 'technical'
 	};
 
-	// Example conversations with enhanced prompts
+	// Example conversations with realistic prompts for the demo
 	const exampleConversations = [
 		{
-			title: 'Scripture Analysis',
-			description: 'Ask about specific Bible verses and their meaning',
+			title: 'Scripture Lookup',
+			description: 'Fetch and display Bible verses',
 			icon: BookOpen,
 			color: 'from-blue-500 to-cyan-500',
 			examples: [
-				"What does Titus 1:1 say about Paul's apostleship?",
-				'Explain the context of John 3:16',
-				'What are the key themes in Genesis 1:1-3?',
-				"How does Psalm 23:1 relate to God's care?"
+				'Show me Titus 1:1',
+				'Display John 3:16',
+				'Get Genesis 1:1-3',
+				'Fetch Psalm 23:1'
 			]
 		},
 		{
-			title: 'Translation Questions',
-			description: 'Get help with translation challenges',
+			title: 'Translation Notes',
+			description: 'Get translation helps and notes',
 			icon: MessageSquare,
 			color: 'from-green-500 to-emerald-500',
 			examples: [
-				'How should I translate "grace" in different contexts?',
-				'What are the translation notes for "love" in 1 Corinthians 13?',
-				'Help me understand the translation of "righteousness" in Romans',
-				'What\'s the best way to translate "kingdom" in Matthew?'
+				'What are the translation notes for "grace"?',
+				'Show me translation notes for "love" in 1 Corinthians 13',
+				'Get translation helps for "righteousness"',
+				'What are the translation notes for "kingdom"?'
 			]
 		},
 		{
-			title: 'Word Studies',
-			description: 'Deep dive into specific words and their meanings',
+			title: 'Word Definitions',
+			description: 'Look up word meanings and definitions',
 			icon: Search,
 			color: 'from-purple-500 to-pink-500',
 			examples: [
-				'What does the word "apostle" mean in the New Testament?',
-				'Give me the translation word definition for "faith"',
+				'What does "apostle" mean?',
+				'Define the word "faith"',
 				'What are the semantic domains for "kingdom"?',
-				'How is "salvation" used throughout the Bible?'
+				'Look up the definition of "salvation"'
 			]
 		},
 		{
-			title: 'Cross-References',
-			description: 'Find related passages and connections',
+			title: 'Resource Search',
+			description: 'Find Bible resources and helps',
 			icon: Code,
 			color: 'from-orange-500 to-red-500',
 			examples: [
-				"What other passages talk about God's love like John 3:16?",
-				'Find verses that mention "grace" similar to Ephesians 2:8',
-				'What are the key passages about "faith" in the New Testament?',
-				'Show me how "kingdom" is used in the Gospels'
+				'Search for resources about "grace"',
+				'Find translation helps for "love"',
+				'Look up resources about "faith"',
+				'Search for "kingdom" in the Gospels'
 			]
 		}
 	];
 
-	// Initialize with welcome message and LLM
+			// Initialize with welcome message and LLM
 	onMount(async () => {
 		messages = [
 			{
 				id: 'welcome',
 				role: 'assistant',
-				content: `Hello! I'm your AI Bible assistant, powered by a real AI model running right in your browser! I can help you with:
+				content: `Hello! I'm a **reference implementation** of a Bible resource assistant, powered by a small AI model running **entirely on your device**!
 
-• **Scripture Analysis**: Ask about specific Bible verses and their meaning
-• **Translation Questions**: Get help with translation challenges and notes
-• **Word Studies**: Deep dive into specific words and their semantic domains
-• **Cross-references**: Find related passages and connections
+**What I can do:**
+• Search and display relevant Bible verses, translation notes, and word definitions
+• Fetch translation helps and linguistic resources based on your queries
+• Show you how the Translation Helps MCP Server integration works
 
-I have access to comprehensive Bible resources including:
-- Scripture text with context
-- Translation notes and insights
-- Translation questions and answers
-- Word definitions and usage
-- Cross-references and links
+**What I cannot do:**
+• Provide deep theological analysis or complex reasoning
+• Answer questions that require extensive biblical knowledge
+• Generate original insights beyond the resources I can fetch
 
-I'm currently loading my AI model... this will take a moment the first time.`,
+**Privacy & Performance:**
+• Your AI processing happens locally on your device - no servers involved!
+• Only Bible resource requests go to our MCP server
+• Your questions and AI responses stay completely private
+
+This is a demo of the MCP integration capabilities, not a replacement for serious Bible study tools. I'm currently loading my model...`,
 				timestamp: new Date()
 			}
 		];
@@ -162,21 +165,24 @@ I'm currently loading my AI model... this will take a moment the first time.`,
 				msg.id === 'welcome'
 					? {
 							...msg,
-							content: `Hello! I'm your AI Bible assistant, powered by a real AI model running right in your browser! I can help you with:
+							content: `Hello! I'm a **reference implementation** of a Bible resource assistant, powered by a small AI model running **entirely on your device**!
 
-• **Scripture Analysis**: Ask about specific Bible verses and their meaning
-• **Translation Questions**: Get help with translation challenges and notes
-• **Word Studies**: Deep dive into specific words and their semantic domains
-• **Cross-references**: Find related passages and connections
+**What I can do:**
+• Search and display relevant Bible verses, translation notes, and word definitions
+• Fetch translation helps and linguistic resources based on your queries
+• Show you how the Translation Helps MCP Server integration works
 
-I have access to comprehensive Bible resources including:
-- Scripture text with context
-- Translation notes and insights
-- Translation questions and answers
-- Word definitions and usage
-- Cross-references and links
+**What I cannot do:**
+• Provide deep theological analysis or complex reasoning
+• Answer questions that require extensive biblical knowledge
+• Generate original insights beyond the resources I can fetch
 
-✅ **AI Model Ready!** Try asking me something like "What does Titus 1:1 say about Paul's apostleship?" or "How should I translate 'grace' in different contexts?"`
+**Privacy & Performance:**
+• Your AI processing happens locally on your device - no servers involved!
+• Only Bible resource requests go to our MCP server
+• Your questions and AI responses stay completely private
+
+✅ **Model Ready!** Try asking me something like "Show me Titus 1:1" or "What are the translation notes for 'grace'?" to see the MCP integration in action.`
 						}
 					: msg
 			);
@@ -556,21 +562,41 @@ I have access to comprehensive Bible resources including:
 	<!-- Header -->
 	<div class="mb-12 text-center">
 		<div
-			class="mb-6 inline-flex items-center rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-2 text-sm font-medium text-purple-300"
+			class="mb-6 inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300"
 		>
-			<Sparkles class="mr-2 h-4 w-4" />
-			AI-Powered Bible Assistant
+			<Code class="mr-2 h-4 w-4" />
+			Reference Implementation
 		</div>
 		<h1 class="mb-6 text-4xl font-bold text-white md:text-5xl">
-			Chat with
-			<span class="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent"
-				>Bible AI</span
+			API Demo:
+			<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"
+				>Bible Resource Assistant</span
 			>
 		</h1>
 		<p class="mx-auto max-w-3xl text-xl text-gray-300">
-			Ask natural language questions about the Bible and get comprehensive answers powered by
-			translation helps, notes, and linguistic resources.
+			This is a <strong>reference implementation</strong> showing how to integrate our Translation Helps MCP Server with a browser-based AI model. 
+			The AI runs entirely on your device - no servers needed! It can fetch and display Bible resources based on your queries, but has limited reasoning capabilities.
 		</p>
+		<div class="mt-4 mx-auto max-w-2xl rounded-lg bg-green-500/10 border border-green-500/20 p-4">
+			<div class="flex items-center space-x-2 mb-2">
+				<Zap class="h-4 w-4 text-green-400" />
+				<span class="text-sm font-medium text-green-300">Runs on Your Device!</span>
+			</div>
+			<p class="text-sm text-green-200">
+				The AI model runs completely on your phone, laptop, or tablet - no servers involved! Your Bible questions stay private and local. 
+				Only the Bible resource requests go to our MCP server.
+			</p>
+		</div>
+		<div class="mt-4 mx-auto max-w-2xl rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-4">
+			<div class="flex items-center space-x-2 mb-2">
+				<AlertCircle class="h-4 w-4 text-yellow-400" />
+				<span class="text-sm font-medium text-yellow-300">Demo Limitations</span>
+			</div>
+			<p class="text-sm text-yellow-200">
+				This uses a small, limited AI model for demonstration purposes. It can search and display relevant Bible resources, 
+				but cannot provide deep theological analysis or complex reasoning. It's designed to show the MCP integration capabilities.
+			</p>
+		</div>
 	</div>
 
 	<div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
@@ -588,9 +614,9 @@ I have access to comprehensive Bible resources including:
 							<Bot class="h-5 w-5 text-white" />
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold text-white">Bible AI Assistant</h2>
+							<h2 class="text-lg font-semibold text-white">Bible Resource Assistant</h2>
 							<div class="flex items-center space-x-2">
-								<p class="text-sm text-gray-400">Powered by Translation Helps MCP Server</p>
+								<p class="text-sm text-gray-400">Reference Implementation • Translation Helps MCP Server</p>
 								{#if llmStatus === 'initializing'}
 									<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
 										<Loader2 class="h-3 w-3 animate-spin text-yellow-400" />
@@ -772,17 +798,9 @@ I have access to comprehensive Bible resources including:
 											</style>
 											{@html marked(message.content)}
 										</div>
-										<!-- Debug: Raw content -->
-										<details class="mt-4">
-											<summary class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
-												>Debug: Show raw response content</summary
-											>
-											<pre
-												class="mt-2 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs text-gray-300">{message.content}</pre>
-										</details>
 									{/if}
 
-									<!-- Rich Data Display -->
+																		<!-- Rich Data Display -->
 									{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
 										{#each message.apiCalls as call}
 											{#if call.status === 'success' && call.response}
@@ -804,195 +822,116 @@ I have access to comprehensive Bible resources including:
 										{/each}
 									{/if}
 
-									<!-- Enhanced API Calls with Debug Info -->
+									<!-- Clean Debug Panel -->
 									{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
-										<div class="mt-4 rounded-lg bg-gray-900/50 p-3 text-xs">
-											<div class="mb-3 flex items-center justify-between">
-												<div class="flex items-center space-x-2">
-													<Code class="h-3 w-3 text-gray-400" />
-													<span class="font-semibold text-gray-200">API Calls & Debug Info</span>
-													<span class="rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-300"
-														>{message.apiCalls.length}</span
-													>
+										<!-- Debug Toggle Bar -->
+										<div class="mt-4 flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2">
+											<div class="flex items-center space-x-2">
+												<Code class="h-3 w-3 text-gray-400" />
+												<span class="text-xs text-gray-300">Debug Info</span>
+												<span class="rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-300">
+													{message.apiCalls.length} API calls
+												</span>
+												{#if message.responseTime}
+													<span class="text-xs text-gray-400">
+														• {message.responseTime.toFixed(0)}ms total
+													</span>
+												{/if}
+											</div>
+											<button
+												on:click={() => toggleMessageExpansion(message.id)}
+												class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-gray-700"
+											>
+												{#if expandedMessages.has(message.id)}
+													<ChevronUp class="h-3 w-3 text-gray-400" />
+													<span class="text-gray-400">Hide</span>
+												{:else}
+													<ChevronDown class="h-3 w-3 text-gray-400" />
+													<span class="text-gray-400">Show</span>
+												{/if}
+											</button>
+										</div>
+
+										<!-- Expanded Debug Panel -->
+										{#if expandedMessages.has(message.id)}
+											<div class="mt-2 rounded-lg bg-gray-900/50 p-4 space-y-4">
+												<!-- Raw Response Content -->
+												<div>
+													<h4 class="text-xs font-semibold text-gray-200 mb-2">Raw AI Response</h4>
+													<pre class="max-h-32 overflow-auto rounded bg-black/50 p-3 text-xs text-gray-300">{message.content}</pre>
 												</div>
-												<button
-													on:click={() => toggleMessageExpansion(message.id)}
-													class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-gray-700"
-												>
-													{#if expandedMessages.has(message.id)}
-														<ChevronUp class="h-3 w-3 text-gray-400" />
-														<span class="text-gray-400">Hide Details</span>
-													{:else}
-														<ChevronDown class="h-3 w-3 text-gray-400" />
-														<span class="text-gray-400">Show Details</span>
-													{/if}
-												</button>
-											</div>
 
-											<!-- Summary View (Always Visible) -->
-											<div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-												{#each message.apiCalls as call}
-													<div class="flex items-center space-x-2 rounded bg-gray-800/50 p-2">
-														<svelte:component
-															this={call.status === 'success' ? CheckCircle2 : AlertCircle}
-															class="h-3 w-3 {call.status === 'success'
-																? 'text-green-400'
-																: 'text-red-400'}"
-														/>
-														<div class="min-w-0 flex-1">
-															<div class="truncate font-mono text-xs text-purple-300">
-																{call.endpoint.split('/').pop()}
-															</div>
-															<div class="flex items-center space-x-2 text-xs text-gray-400">
-																<Timer class="h-2 w-2" />
-																<span>{call.responseTime.toFixed(0)}ms</span>
-																{#if call.endpoint === '/api/fetch-translation-notes' && call.response?.translationNotes}
-																	<span class="text-yellow-300"
-																		>• {call.response.translationNotes.length} notes</span
-																	>
-																{/if}
-																{#if call.endpoint === '/api/fetch-scripture'}
-																	{#if call.response?.scriptures}
-																		<span class="text-yellow-300"
-																			>• {call.response.scriptures.length} translations</span
-																		>
-																	{:else if call.response?.scripture}
-																		<span class="text-yellow-300"
-																			>• {call.response.scripture.text?.length} chars</span
-																		>
-																	{/if}
-																{/if}
-																{#if call.endpoint === '/api/fetch-translation-words' && call.response?.translationWords}
-																	<span class="text-yellow-300"
-																		>• {call.response.translationWords.length} words</span
-																	>
-																{/if}
-															</div>
-														</div>
-													</div>
-												{/each}
-											</div>
-
-											<!-- Detailed View (Toggleable) -->
-											{#if expandedMessages.has(message.id)}
-												<div class="mt-4 space-y-3 border-t border-gray-700 pt-3">
-													{#each message.apiCalls as call}
-														<div class="rounded bg-gray-800/30 p-3">
-															<div class="mb-2 flex items-center justify-between">
-																<div class="flex items-center space-x-2">
-																	<span class="font-mono text-sm text-purple-300"
-																		>{call.endpoint}</span
-																	>
-																	<span class="text-gray-400">—</span>
-																	<span
-																		class={call.status === 'success'
-																			? 'text-green-400'
-																			: 'text-red-400'}>{call.status}</span
-																	>
-																	<span class="text-gray-400"
-																		>({call.responseTime.toFixed(0)}ms)</span
-																	>
+												<!-- API Calls Summary -->
+												<div>
+													<h4 class="text-xs font-semibold text-gray-200 mb-2">API Calls Summary</h4>
+													<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+														{#each message.apiCalls as call}
+															<div class="flex items-center space-x-2 rounded bg-gray-800/50 p-2">
+																<svelte:component
+																	this={call.status === 'success' ? CheckCircle2 : AlertCircle}
+																	class="h-3 w-3 {call.status === 'success' ? 'text-green-400' : 'text-red-400'}"
+																/>
+																<div class="min-w-0 flex-1">
+																	<div class="truncate font-mono text-xs text-purple-300">
+																		{call.endpoint.split('/').pop()}
+																	</div>
+																	<div class="flex items-center space-x-2 text-xs text-gray-400">
+																		<Timer class="h-2 w-2" />
+																		<span>{call.responseTime.toFixed(0)}ms</span>
+																		{#if call.endpoint === '/api/fetch-translation-notes' && call.response?.translationNotes}
+																			<span class="text-yellow-300">• {call.response.translationNotes.length} notes</span>
+																		{/if}
+																		{#if call.endpoint === '/api/fetch-scripture'}
+																			{#if call.response?.scriptures}
+																				<span class="text-yellow-300">• {call.response.scriptures.length} translations</span>
+																			{:else if call.response?.scripture}
+																				<span class="text-yellow-300">• {call.response.scripture.text?.length} chars</span>
+																			{/if}
+																		{/if}
+																		{#if call.endpoint === '/api/fetch-translation-words' && call.response?.translationWords}
+																			<span class="text-yellow-300">• {call.response.translationWords.length} words</span>
+																		{/if}
+																	</div>
 																</div>
 															</div>
-
-															<!-- Parameters -->
-															<div class="mb-2">
-																<div class="text-xs text-gray-400">Parameters:</div>
-																<pre
-																	class="mt-1 max-h-20 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
-																		call.params,
-																		null,
-																		2
-																	)}</pre>
-															</div>
-
-															<!-- Response Data -->
-															{#if call.response}
-																{#if call.endpoint === '/api/fetch-translation-notes' && call.response.translationNotes}
-																	<div class="mb-2">
-																		<div class="text-xs text-yellow-300">
-																			📝 Translation Notes ({call.response.translationNotes.length} items):
-																		</div>
-																		<details class="mt-1">
-																			<summary
-																				class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
-																				>Show raw notes data</summary
-																			>
-																			<pre
-																				class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
-																					call.response.translationNotes,
-																					null,
-																					2
-																				)}</pre>
-																		</details>
-																	</div>
-																{/if}
-
-																{#if call.endpoint === '/api/fetch-scripture'}
-																	{#if call.response.scriptures}
-																		<div class="mb-2">
-																			<div class="text-xs text-yellow-300">
-																				📖 Scripture ({call.response.scriptures.length} translations):
-																			</div>
-																			<details class="mt-1">
-																				<summary
-																					class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
-																					>Show raw scripture data</summary
-																				>
-																				<pre
-																					class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
-																						call.response.scriptures,
-																						null,
-																						2
-																					)}</pre>
-																			</details>
-																		</div>
-																	{:else if call.response.scripture}
-																		<div class="mb-2">
-																			<div class="text-xs text-yellow-300">
-																				📖 Scripture ({call.response.scripture.text?.length} characters):
-																			</div>
-																			<details class="mt-1">
-																				<summary
-																					class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
-																					>Show raw scripture data</summary
-																				>
-																				<pre
-																					class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
-																						call.response.scripture,
-																						null,
-																						2
-																					)}</pre>
-																			</details>
-																		</div>
-																	{/if}
-																{/if}
-
-																{#if call.endpoint === '/api/fetch-translation-words' && call.response.translationWords}
-																	<div class="mb-2">
-																		<div class="text-xs text-yellow-300">
-																			🔤 Translation Words ({call.response.translationWords.length} items):
-																		</div>
-																		<details class="mt-1">
-																			<summary
-																				class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
-																				>Show raw words data</summary
-																			>
-																			<pre
-																				class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
-																					call.response.translationWords,
-																					null,
-																					2
-																				)}</pre>
-																		</details>
-																	</div>
-																{/if}
-															{/if}
-														</div>
-													{/each}
+														{/each}
+													</div>
 												</div>
-											{/if}
-										</div>
+
+												<!-- Detailed API Call Data -->
+												<div>
+													<h4 class="text-xs font-semibold text-gray-200 mb-2">Detailed API Data</h4>
+													<div class="space-y-3">
+														{#each message.apiCalls as call, index}
+															<div class="rounded bg-gray-800/30 p-3">
+																<div class="mb-2 flex items-center justify-between">
+																	<div class="flex items-center space-x-2">
+																		<span class="font-mono text-sm text-purple-300">{call.endpoint}</span>
+																		<span class="text-gray-400">—</span>
+																		<span class="{call.status === 'success' ? 'text-green-400' : 'text-red-400'}">{call.status}</span>
+																		<span class="text-gray-400">({call.responseTime.toFixed(0)}ms)</span>
+																	</div>
+																</div>
+
+																<!-- Parameters -->
+																<div class="mb-2">
+																	<div class="text-xs text-gray-400">Parameters:</div>
+																	<pre class="mt-1 max-h-20 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(call.params, null, 2)}</pre>
+																</div>
+
+																<!-- Response Data -->
+																{#if call.response}
+																	<div class="mb-2">
+																		<div class="text-xs text-yellow-300">Response Data:</div>
+																		<pre class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(call.response, null, 2)}</pre>
+																	</div>
+																{/if}
+															</div>
+														{/each}
+													</div>
+												</div>
+											</div>
+										{/if}
 									{/if}
 								</div>
 							</div>
