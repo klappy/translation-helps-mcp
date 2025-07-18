@@ -3,162 +3,105 @@
  * Fetches Bible translation resources for a specific reference
  * IMPLEMENTS: Enhanced caching, ingredients array pattern, request deduplication
  */
-import { parseReference } from "./_shared/reference-parser";
 import { ResourceAggregator } from "./_shared/resource-aggregator";
-import { cache } from "./_shared/cache";
-import { corsHeaders, errorResponse } from "./_shared/utils";
+import { parseReference } from "./_shared/reference-parser";
+import { timedResponse } from "./_shared/utils";
+import { z } from "zod";
+// Configuration schema with defaults
+const configSchema = z.object({
+    language: z.string().default("en"),
+    organization: z.string().default("unfoldingWord"),
+    resources: z.array(z.string()).default(["scripture", "notes", "questions", "words", "links"]),
+});
 export const handler = async (event) => {
-    // Handle CORS preflight
-    if (event.httpMethod === "OPTIONS") {
-        return { statusCode: 204, headers: corsHeaders };
-    }
-    // Only allow GET requests
-    if (event.httpMethod !== "GET") {
-        return errorResponse(405, "Method not allowed", "METHOD_NOT_ALLOWED");
-    }
     const startTime = Date.now();
+    // Set CORS headers
+    const headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Content-Type": "application/json",
+    };
+    if (event.httpMethod === "OPTIONS") {
+        return { statusCode: 200, headers, body: "" };
+    }
     try {
-        // Parse query parameters
-        const params = event.queryStringParameters || {};
-        const { reference, lang = "en", org = "unfoldingWord", resources } = params;
-        // Validate required parameters
+        // Parse and validate input
+        const body = event.body ? JSON.parse(event.body) : {};
+        // Parse configuration with defaults
+        const config = configSchema.parse({
+            language: body.language || event.queryStringParameters?.language,
+            organization: body.organization || event.queryStringParameters?.organization,
+            resources: body.resources || event.queryStringParameters?.resources?.split(","),
+        });
+        const reference = body.reference || event.queryStringParameters?.reference;
         if (!reference) {
-            return errorResponse(400, "Reference parameter is required", "MISSING_REFERENCE");
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({
+                    error: "Reference parameter is required",
+                    example: "?reference=John 3:16&language=en&organization=unfoldingWord&resources=all",
+                }),
+            };
         }
+        console.log(`📖 Fetch Resources Request:`, {
+            reference,
+            config,
+            method: event.httpMethod,
+        });
         // Parse the reference
         const parsedRef = parseReference(reference);
         if (!parsedRef) {
-            return errorResponse(400, "Invalid scripture reference format");
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ error: "Invalid reference format", reference }),
+            };
         }
-        // Build the reference object for the new ResourceAggregator
-        const parsedReference = {
-            book: parsedRef.book,
-            bookName: parsedRef.bookName,
-            chapter: parsedRef.chapter,
-            verse: parsedRef.verse,
-            verseEnd: parsedRef.verseEnd,
-            citation: parsedRef.citation,
-            original: parsedRef.original,
-        };
-        // Prepare options for our enhanced ResourceAggregator
-        // Map resource type aliases to expected values
-        const resourceList = resources
-            ? resources.split(",").map((r) => {
-                // Handle resource type aliases
-                if (r === "wordLinks")
-                    return "links";
-                return r;
-            })
-            : ["scripture", "notes", "questions", "words", "links"];
-        const options = {
-            language: lang,
-            organization: org,
-            resources: resourceList,
-        };
-        // ENHANCED CACHING WITH REQUEST DEDUPLICATION
-        const cacheKey = `resources:${reference}:${lang}:${org}:${resources || "all"}`;
-        console.log("Fetching resources using enhanced ingredients array pattern", {
-            reference: parsedReference.original,
-            options,
-            cacheKey,
+        // Handle "all" resources shorthand
+        const resourceTypes = config.resources.includes("all")
+            ? ["scripture", "notes", "questions", "words", "links"]
+            : config.resources;
+        // Fetch resources
+        const aggregator = new ResourceAggregator();
+        const resourceData = await aggregator.fetchResources(parsedRef, {
+            language: config.language,
+            organization: config.organization,
+            resources: resourceTypes,
         });
-        // Use request deduplication pattern from documentation
-        const resourceData = await cache.getWithDeduplication(cacheKey, async () => {
-            // Use our enhanced ResourceAggregator with DCS API client and ingredients array
-            const aggregator = new ResourceAggregator();
-            return await aggregator.fetchResources(parsedReference, options);
-        }, "fileContent" // Use file content TTL (10 minutes)
-        );
-        // Build response using the aggregated data
+        // Add metadata
         const response = {
-            reference: {
-                book: parsedRef.book,
-                bookName: parsedRef.bookName,
-                chapter: parsedRef.chapter,
-                verse: parsedRef.verse,
-                verseEnd: parsedRef.verseEnd,
-                citation: parsedRef.citation,
-                original: parsedRef.original,
+            ...resourceData,
+            reference: parsedRef,
+            config: {
+                language: config.language,
+                organization: config.organization,
+                resources: resourceTypes,
             },
-            language: resourceData.language,
-            organization: resourceData.organization,
-            scripture: resourceData.scripture || null,
-            scriptures: resourceData.scriptures || [], // All available translations
-            translationNotes: resourceData.translationNotes || [],
-            translationQuestions: resourceData.translationQuestions || [],
-            translationWords: resourceData.translationWords || [],
-            translationWordLinks: resourceData.translationWordLinks || [],
             metadata: {
-                timestamp: resourceData.timestamp,
-                resourcesRequested: options.resources,
-                resourcesFound: {
-                    scripture: !!resourceData.scripture,
-                    scriptures: (resourceData.scriptures || []).length,
-                    notes: (resourceData.translationNotes || []).length,
-                    questions: (resourceData.translationQuestions || []).length,
-                    words: (resourceData.translationWords || []).length,
-                    links: (resourceData.translationWordLinks || []).length,
-                },
-                responseTime: Date.now() - startTime,
-                cached: false, // This will be updated by deduplication if cached
-                source: "Door43 Content Service via Enhanced DCS API with Ingredients Array",
-                implementsPatterns: [
-                    "ingredients-array-resolution",
-                    "3-tier-fallback",
-                    "enhanced-usfm-extraction",
-                    "multi-level-caching",
-                    "request-deduplication",
-                ],
+                cached: false,
+            },
+            summary: {
+                scripture: resourceData.scriptures?.length || 0,
+                notes: resourceData.translationNotes?.length || 0,
+                questions: resourceData.translationQuestions?.length || 0,
+                words: resourceData.translationWords?.length || 0,
+                links: resourceData.translationWordLinks?.length || 0,
             },
         };
-        // Log enhanced metrics
-        console.log("METRIC", {
-            function: "fetch-resources",
-            duration: response.metadata.responseTime,
-            reference: reference,
-            language: lang,
-            organization: org,
-            resourcesFound: Object.values(response.metadata.resourcesFound).reduce((sum, val) => {
-                return sum + (typeof val === "number" ? val : val ? 1 : 0);
-            }, 0),
-            cacheStats: cache.getStats(),
-            implementsDocumentedPatterns: true,
-        });
-        return {
-            statusCode: 200,
-            headers: {
-                ...corsHeaders,
-                "X-Cache": "ENHANCED",
-                "X-Implements-Patterns": "ingredients-array,3-tier-fallback,request-dedup",
-                "Cache-Control": "public, max-age=300",
-            },
-            body: JSON.stringify(response),
-        };
+        return timedResponse(response, startTime, headers);
     }
     catch (error) {
-        console.error("Error in enhanced fetch-resources:", error);
-        // Log error metrics
-        const errorName = error instanceof Error ? error.name : "UnknownError";
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log("METRIC", {
-            function: "fetch-resources",
-            duration: Date.now() - startTime,
-            error: true,
-            errorType: errorName,
-            reference: event.queryStringParameters?.reference,
-            cacheStats: cache.getStats(),
-        });
-        // Handle specific error types with better context
-        if (errorName === "ResourceNotFoundError") {
-            return errorResponse(404, errorMessage, "RESOURCE_NOT_FOUND");
-        }
-        if (errorName === "NetworkError" || errorName === "FetchError") {
-            return errorResponse(503, "Unable to fetch resources from upstream service", "UPSTREAM_ERROR");
-        }
-        if (errorMessage.includes("ingredients")) {
-            return errorResponse(500, "Resource metadata unavailable - ingredients array not accessible", "METADATA_ERROR");
-        }
-        // Generic error response
-        return errorResponse(500, "An unexpected error occurred", "INTERNAL_ERROR");
+        console.error("❌ Fetch Resources Error:", error);
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({
+                error: "Internal server error",
+                details: error instanceof Error ? error.message : String(error),
+                hint: "Check that organization and language are correct. Example: organization=unfoldingWord, language=en",
+            }),
+        };
     }
 };

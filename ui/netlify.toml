@@ -1,0 +1,2 @@
+# This file is being deleted to avoid conflicts with the root netlify.toml
+# The root netlify.toml now handles both the API functions and the UI build
