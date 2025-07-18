@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2025-01-XX
+
+### ⚠️ BREAKING CHANGES
+
+This release introduces significant changes to the Translation Words API that are not backwards compatible.
+
+#### Breaking API Changes
+
+- **Translation Words Response Structure**: The `fetch-translation-words` endpoint now returns additional fields by default:
+  - `title`: Article title (defaults to `true`)
+  - `subtitle`: Article subtitle (defaults to `true`)
+  - `content`: Full article content (defaults to `true`)
+  - Previous API consumers expecting only `term` and `definition` fields will need to update their code
+
+#### Migration Guide
+
+If you need the previous behavior, explicitly set the new parameters to `false`:
+
+```
+GET /.netlify/functions/fetch-translation-words?word=grace&includeTitle=false&includeSubtitle=false&includeContent=false
+```
+
+### ✨ Added
+
+- **Word Lookup by Term**: New capability to search for specific biblical terms directly (e.g., "grace", "faith", "love")
+- **Enhanced MCP Tools**:
+  - `browseTranslationWords`: Browse available translation word articles
+  - `getTranslationWord`: Get specific word definitions with enhanced content
+  - `getWordsForReference`: Find all translation words in a Bible reference
+- **MCP Tools UI Page**: New `/mcp-tools` page demonstrating all available MCP tools
+- **Section Control Parameters**: Control which parts of translation word articles are returned
+- **E2E Tests**: Added comprehensive tests for word lookup functionality
+
+### 🔧 Changed
+
+- **Translation Words API Enhancement**: Extended to support both reference-based and term-based lookups
+- **Response Structure**: Translation word responses now include richer content with title, subtitle, and full content
+- **API Documentation**: Updated to reflect new capabilities and parameters
+
+### 📚 Documentation
+
+- Added `docs/WORD_LOOKUP_FEATURE.md` with comprehensive API documentation
+- Updated README with new features and breaking change warnings
+- Enhanced MCP tools documentation with new word lookup capabilities
+
+### 🔧 Technical
+
+- Improved resource aggregator to handle word-specific queries
+- Enhanced TypeScript types for translation word responses
+- Added comprehensive error handling for word lookups
+
 ## [2.1.0] - 2025-01-XX
 
 ### 🎯 Enhanced Reference Implementation & Performance

@@ -22,6 +22,9 @@ import { handleSearchResources } from "./tools/searchResources.js";
 import { handleGetContext } from "./tools/getContext.js";
 import { handleGetLanguages } from "./tools/getLanguages.js";
 import { handleExtractReferences } from "./tools/extractReferences.js";
+import { handleBrowseTranslationWords } from "./tools/browseTranslationWords.js";
+import { handleGetTranslationWord } from "./tools/getTranslationWord.js";
+import { handleGetWordsForReference } from "./tools/getWordsForReference.js";
 
 // Tool parameter schemas
 const FetchResourcesSchema = z.object({
@@ -61,6 +64,25 @@ const GetLanguagesSchema = z.object({
 const ExtractReferencesSchema = z.object({
   text: z.string().describe("Text to extract references from"),
   context: z.string().optional().describe("Previous conversation context"),
+});
+
+const BrowseTranslationWordsSchema = z.object({
+  language: z.string().optional().default("en").describe("Language code"),
+  category: z.string().optional().describe("Filter by category (kt, other, names)"),
+  organization: z.string().optional().default("unfoldingWord").describe("Organization"),
+});
+
+const GetTranslationWordSchema = z.object({
+  term: z.string().optional().describe("Word/term to look up (e.g., 'grace')"),
+  path: z.string().optional().describe("Direct path to the article"),
+  language: z.string().optional().default("en").describe("Language code"),
+  organization: z.string().optional().default("unfoldingWord").describe("Organization"),
+});
+
+const GetWordsForReferenceSchema = z.object({
+  reference: z.string().describe("Bible reference (e.g., 'John 3:16')"),
+  language: z.string().optional().default("en").describe("Language code"),
+  organization: z.string().optional().default("unfoldingWord").describe("Organization"),
 });
 
 /**
@@ -110,6 +132,21 @@ async function main() {
           description: "Extract Bible references from natural language text",
           inputSchema: ExtractReferencesSchema,
         },
+        {
+          name: "translation_helps_browse_words",
+          description: "Browse available translation word articles by category",
+          inputSchema: BrowseTranslationWordsSchema,
+        },
+        {
+          name: "translation_helps_get_word",
+          description: "Get a specific translation word article by term or path",
+          inputSchema: GetTranslationWordSchema,
+        },
+        {
+          name: "translation_helps_words_for_reference",
+          description: "Get translation words linked to a specific Bible reference",
+          inputSchema: GetWordsForReferenceSchema,
+        },
       ],
     };
   });
@@ -145,6 +182,21 @@ async function main() {
         case "translation_helps_extract_references": {
           const validatedArgs = ExtractReferencesSchema.parse(args);
           return await handleExtractReferences(validatedArgs);
+        }
+
+        case "translation_helps_browse_words": {
+          const validatedArgs = BrowseTranslationWordsSchema.parse(args);
+          return await handleBrowseTranslationWords(validatedArgs);
+        }
+
+        case "translation_helps_get_word": {
+          const validatedArgs = GetTranslationWordSchema.parse(args);
+          return await handleGetTranslationWord(validatedArgs);
+        }
+
+        case "translation_helps_words_for_reference": {
+          const validatedArgs = GetWordsForReferenceSchema.parse(args);
+          return await handleGetWordsForReference(validatedArgs);
         }
 
         default:

@@ -49,6 +49,7 @@ export const handler: Handler = async (
       (event.queryStringParameters as Record<string, string>) || {}
     );
     const referenceParam = params.get("reference");
+    const wordParam = params.get("word");
     const language = params.get("language") || "en";
     const organization = params.get("organization") || "unfoldingWord";
 
@@ -59,6 +60,7 @@ export const handler: Handler = async (
 
     console.log(`📖 fetch-translation-words called with:`, {
       reference: referenceParam,
+      word: wordParam,
       language,
       organization,
       includeTitle,
@@ -66,39 +68,61 @@ export const handler: Handler = async (
       includeContent,
     });
 
-    if (!referenceParam) {
+    // Validate that we have either a reference or a word
+    if (!referenceParam && !wordParam) {
       return {
         statusCode: 400,
         headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ error: "Missing reference parameter" }),
+        body: JSON.stringify({ error: "Missing reference or word parameter" }),
       };
     }
 
-    // Parse the reference
-    const reference = parseReference(referenceParam);
-    if (!reference) {
-      return {
-        statusCode: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ error: "Invalid reference format" }),
-      };
-    }
-
-    // Use the ResourceAggregator to fetch TW data
     const aggregator = new ResourceAggregator();
-    const translationWords = await aggregator.fetchTranslationWords(
-      reference,
-      {
-        language,
-        organization,
-        resources: ["words"],
-      },
-      {
-        title: includeTitle,
-        subtitle: includeSubtitle,
-        content: includeContent,
+    let translationWords: TranslationWord[] = [];
+
+    if (referenceParam) {
+      // Mode 1: Get words for a specific Bible reference
+      const reference = parseReference(referenceParam);
+      if (!reference) {
+        return {
+          statusCode: 400,
+          headers: { "Access-Control-Allow-Origin": "*" },
+          body: JSON.stringify({ error: "Invalid reference format" }),
+        };
       }
-    );
+
+      translationWords = await aggregator.fetchTranslationWords(
+        reference,
+        {
+          language,
+          organization,
+          resources: ["words"],
+        },
+        {
+          title: includeTitle,
+          subtitle: includeSubtitle,
+          content: includeContent,
+        }
+      );
+    } else if (wordParam) {
+      // Mode 2: Get a specific word article
+      const wordResult = await aggregator.fetchTranslationWordByTerm(
+        wordParam,
+        {
+          language,
+          organization,
+        },
+        {
+          title: includeTitle,
+          subtitle: includeSubtitle,
+          content: includeContent,
+        }
+      );
+
+      if (wordResult) {
+        translationWords = [wordResult];
+      }
+    }
 
     const result: WordsResponse = {
       translationWords,

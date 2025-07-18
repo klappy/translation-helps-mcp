@@ -9,13 +9,12 @@ const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 	kit: {
 		adapter: adapter({
-			// Ensure all routes are pre-rendered as static HTML
-			precompress: false,
-			fallback: 'index.html'
+			// Enable server-side rendering for development
+			precompress: false
 		}),
-		// Pre-render all routes to static HTML
+		// Enable prerendering for Netlify dev compatibility
 		prerender: {
-			entries: ['*', '/chat', '/test', '/about', '/api']
+			entries: ['*']
 		}
 	},
 	extensions: ['.svelte', '.svx']

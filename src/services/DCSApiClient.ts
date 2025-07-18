@@ -522,6 +522,20 @@ export class DCSApiClient {
   }
 
   /**
+   * Get repository contents (file or directory listing)
+   */
+  public async getRepositoryContents(
+    owner: string,
+    repo: string,
+    path: string = "",
+    ref?: string
+  ): Promise<DCSResponse<FileContent[]>> {
+    const refParam = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+    const endpoint = `/repos/${owner}/${repo}/contents/${path ? encodeURIComponent(path) : ""}${refParam}`;
+    return this.makeRequest<FileContent[]>(endpoint);
+  }
+
+  /**
    * List repositories for an owner
    */
   public async getOwnerRepositories(
