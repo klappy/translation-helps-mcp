@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-01-XX
+
+### 🎯 Enhanced Reference Implementation & Performance
+
+This release focuses on improving the user experience and clarifying the demo's capabilities as a reference implementation.
+
+#### ✨ Added
+
+- **Performance Analysis Page**: Live demo capabilities with real-time metrics
+- **Cost Efficiency Analysis**: Comprehensive cost comparisons and savings calculations
+- **Reference Implementation Messaging**: Clear communication about demo limitations
+- **Local AI Model Emphasis**: Highlighting that AI runs on user's device
+- **MCP Branding**: Updated branding to emphasize Model Context Protocol technology
+- **Enhanced Debugging UI**: Consolidated debug information under single toggle
+- **Filtering Capabilities**: Advanced filtering for performance data display
+
+#### 🔧 Changed
+
+- **Chat Interface Messaging**: Updated to reflect reference implementation nature
+- **Welcome Messages**: More realistic expectations about AI capabilities
+- **Branding**: Emphasized "Translation Helps MCP Server" over generic "API"
+- **UI Styling**: Improved performance page styling and responsiveness
+- **Navigation**: Added performance page to main navigation
+
+#### 🐛 Fixed
+
+- **White Text Issues**: Resolved illegible text on white backgrounds in performance page
+- **Math Error**: Corrected "$0.0001 is 1/100th of a penny" (was incorrectly stated as 1/10th)
+- **Welcome Message Formatting**: Fixed bullet point rendering issues in chat interface
+- **Debug Panel**: Consolidated scattered debug information into organized toggle
+- **Chat Styling**: Improved overall chat interface user experience
+
+#### 📚 Documentation
+
+- **Updated README**: Reflects new reference implementation focus
+- **Performance Documentation**: Comprehensive performance analysis and cost breakdown
+- **Demo Limitations**: Clear documentation of what the demo can and cannot do
+
 ## [2.0.0] - 2025-07-18
 
 ### 🚀 Major Release - Complete Rewrite

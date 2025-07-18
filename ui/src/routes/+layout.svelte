@@ -11,7 +11,8 @@
 		Github,
 		BookOpen,
 		Settings,
-		HelpCircle
+		HelpCircle,
+		TrendingUp
 	} from 'lucide-svelte';
 	import '../app.css';
 
@@ -40,6 +41,12 @@
 			label: 'API',
 			icon: Code,
 			description: 'API documentation'
+		},
+		{
+			href: '/performance',
+			label: 'Performance',
+			icon: TrendingUp,
+			description: 'Performance & cost analysis'
 		}
 	];
 

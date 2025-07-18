@@ -16,15 +16,19 @@ if (!fs.existsSync(indexHtmlPath)) {
 
 const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
 
-// Create chat.html with node_ids for chat page (node 8)
-const chatHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,8]');
+// Create chat.html with node_ids for chat page (node 5)
+const chatHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,5]');
 
-// Create test.html with node_ids for test page (node 5)
-const testHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,5]');
+// Create test.html with node_ids for test page (node 9)
+const testHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,9]');
+
+// Create performance.html with node_ids for performance page (node 6)
+const performanceHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,6]');
 
 // Write the files
 fs.writeFileSync(path.join(buildDir, 'chat.html'), chatHtml);
 fs.writeFileSync(path.join(buildDir, 'test.html'), testHtml);
+fs.writeFileSync(path.join(buildDir, 'performance.html'), performanceHtml);
 
-console.log('✅ Created chat.html and test.html');
-console.log('✅ Direct access to /chat and /test should now work!');
+console.log('✅ Created chat.html, test.html, and performance.html');
+console.log('✅ Direct access to /chat, /test, and /performance should now work!');
