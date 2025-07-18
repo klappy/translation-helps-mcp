@@ -154,7 +154,7 @@ I'm currently loading my AI model... this will take a moment the first time.`,
 		// Initialize the browser LLM
 		try {
 			llmStatus = 'initializing';
-			await browserLLM.initialize();
+			// AI service initializes automatically in constructor
 			llmStatus = 'ready';
 
 			// Update welcome message once LLM is ready
@@ -273,7 +273,7 @@ I have access to comprehensive Bible resources including:
 			try {
 				const scriptureStart = performance.now();
 				const scriptureResponse = await fetch(
-					`/.netlify/functions/fetch-scripture?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}`
+					`/.netlify/functions/fetch-scripture?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}&translation=all`
 				);
 				const scriptureData = await scriptureResponse.json();
 				const scriptureTime = performance.now() - scriptureStart;
@@ -382,34 +382,76 @@ I have access to comprehensive Bible resources including:
 		console.log(successfulCalls);
 
 		if (successfulCalls.length > 0) {
-			contextPrompt += '\n\nBible Context:\n';
+			contextPrompt += '\n\n## 📖 Bible Context\n\n';
+
 			successfulCalls.forEach((call) => {
 				console.log(`=== DEBUG: Processing ${call.endpoint} ===`);
 				console.log('Response:', call.response);
 
 				if (call.response) {
-					if (call.endpoint === '/api/fetch-scripture' && call.response.scripture) {
-						console.log('Scripture found:', call.response.scripture);
-						contextPrompt += `Scripture: ${call.response.scripture.text}\n`;
-						if (call.response.scripture.citation) {
-							citations.scripture = call.response.scripture.citation;
+					if (call.endpoint === '/api/fetch-scripture') {
+						if (call.response.scriptures) {
+							// Multiple translations returned
+							console.log('Multiple scriptures found:', call.response.scriptures);
+							contextPrompt += '### Scripture Translations\n\n';
+							call.response.scriptures.forEach((scripture: any, index: number) => {
+								contextPrompt += `**${scripture.translation.toUpperCase()}**: ${scripture.text}\n\n`;
+							});
+							if (call.response.scriptures[0]?.citation) {
+								citations.scripture = call.response.scriptures[0].citation;
+							}
+						} else if (call.response.scripture) {
+							// Single translation returned (legacy format)
+							console.log('Scripture found:', call.response.scripture);
+							contextPrompt += '### Scripture\n\n';
+							contextPrompt += `${call.response.scripture.text}\n\n`;
+							if (call.response.scripture.citation) {
+								citations.scripture = call.response.scripture.citation;
+							}
 						}
 					}
 					if (call.endpoint === '/api/fetch-translation-notes' && call.response.translationNotes) {
 						console.log('Translation notes found:', call.response.translationNotes);
-						// Pass notes as individual items separated by double newlines
-						const notesText = call.response.translationNotes.map((n: any) => n.note).join('\n\n');
-						console.log('DEBUG: notesText string:', notesText);
-						const notesArray = notesText.split('\n\n');
-						console.log('DEBUG: notesArray after split:', notesArray);
-						contextPrompt += `Translation Notes: ${notesText}\n`;
+						contextPrompt += '### 📝 Translation Notes\n\n';
+
+						call.response.translationNotes.forEach((note: any, index: number) => {
+							contextPrompt += `#### Note ${index + 1}\n`;
+							contextPrompt += `**Reference**: ${note.reference || 'Unknown'}\n`;
+							if (note.quote) {
+								contextPrompt += `**Greek Quote**: ${note.quote}\n`;
+							}
+							if (note.occurrence) {
+								contextPrompt += `**Occurrence**: ${note.occurrence}\n`;
+							}
+							if (note.tags) {
+								contextPrompt += `**Tags**: ${note.tags}\n`;
+							}
+							if (note.supportReference) {
+								contextPrompt += `**Support Reference**: ${note.supportReference}\n`;
+							}
+							contextPrompt += `**Note**: ${note.note}\n\n`;
+						});
+
 						if (call.response.citation) {
 							citations.translationNotes = call.response.citation;
 						}
 					}
 					if (call.endpoint === '/api/fetch-translation-words' && call.response.translationWords) {
 						console.log('Translation words found:', call.response.translationWords);
-						contextPrompt += `Word Definitions: ${call.response.translationWords.map((w: any) => `${w.term}: ${w.definition}`).join(' ')}\n`;
+						contextPrompt += '### 📚 Translation Words\n\n';
+
+						call.response.translationWords.forEach((word: any, index: number) => {
+							contextPrompt += `#### Word ${index + 1}\n`;
+							contextPrompt += `**Term**: ${word.term}\n`;
+							if (word.definition) {
+								contextPrompt += `**Definition**: ${word.definition}\n`;
+							}
+							if (word.content) {
+								contextPrompt += `**Content**: ${word.content}\n`;
+							}
+							contextPrompt += '\n';
+						});
+
 						if (call.response.citation) {
 							citations.translationWords = call.response.citation;
 						}
@@ -424,14 +466,14 @@ I have access to comprehensive Bible resources including:
 		console.log(citations);
 
 		// Generate AI response with citations
-		const llmResponse = await browserLLM.generateResponse(contextPrompt);
+		const llmResponse = await browserLLM.generateResponse(userMessage, contextPrompt);
 
 		const responseTime = performance.now() - startTime;
 
 		return {
-			content: llmResponse.text,
+			content: llmResponse,
 			apiCalls,
-			responseTime: responseTime + llmResponse.time
+			responseTime: responseTime
 		};
 	}
 
@@ -668,44 +710,76 @@ I have access to comprehensive Bible resources including:
 											<span class="text-sm text-gray-400">AI is thinking...</span>
 										</div>
 									{:else}
-										<div
-											class="prose prose-invert prose-headings:text-white prose-headings:font-semibold prose-h2:text-xl prose-h2:mb-4 prose-h3:text-lg prose-h3:mb-3 prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-4 prose-blockquote:border-l-4 prose-blockquote:border-purple-500 prose-blockquote:bg-purple-500/10 prose-blockquote:pl-4 prose-blockquote:py-2 prose-blockquote:my-4 prose-strong:text-white prose-strong:font-semibold prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6 prose-li:text-gray-300 prose-li:mb-1 prose-hr:border-white/20 prose-hr:my-6 max-w-none"
-										>
+										<div class="ai-response-content max-w-none leading-relaxed text-gray-300">
+											<style>
+												/* Override Tailwind's base layer resets */
+												@layer base {
+													:global(.ai-response-content ol) {
+														list-style: decimal !important;
+														padding-left: 1.5rem !important;
+														margin: 0 !important;
+													}
+													:global(.ai-response-content ul) {
+														list-style: disc !important;
+														padding-left: 1.5rem !important;
+														margin: 0 !important;
+													}
+													:global(.ai-response-content li) {
+														margin: 0 !important;
+														padding: 0 !important;
+														list-style: inherit !important;
+													}
+												}
+
+												/* Component styles */
+												:global(.ai-response-content h2) {
+													color: white !important;
+													font-weight: 600 !important;
+													font-size: 1.25rem !important;
+													margin-bottom: 1rem !important;
+												}
+												:global(.ai-response-content h3) {
+													color: white !important;
+													font-weight: 600 !important;
+													font-size: 1.125rem !important;
+													margin-bottom: 0.75rem !important;
+												}
+												:global(.ai-response-content p) {
+													color: rgb(209 213 219) !important;
+													line-height: 1.625 !important;
+													margin-bottom: 1rem !important;
+												}
+												:global(.ai-response-content strong) {
+													color: white !important;
+													font-weight: 600 !important;
+												}
+												:global(.ai-response-content blockquote) {
+													border-left: 4px solid rgb(168 85 247) !important;
+													background-color: rgba(168, 85, 247, 0.1) !important;
+													padding-left: 1rem !important;
+													padding-top: 0.5rem !important;
+													padding-bottom: 0.5rem !important;
+													margin: 1rem 0 !important;
+												}
+												:global(.ai-response-content li) {
+													color: rgb(209 213 219) !important;
+													margin-bottom: 0.25rem !important;
+												}
+												:global(.ai-response-content hr) {
+													border-color: rgba(255, 255, 255, 0.2) !important;
+													margin: 1.5rem 0 !important;
+												}
+											</style>
 											{@html marked(message.content)}
 										</div>
-									{/if}
-
-									<!-- API Calls Details -->
-									{#if message.apiCalls && message.apiCalls.length > 0 && expandedMessages.has(message.id)}
-										<div class="mt-4 border-t border-white/10 pt-4">
-											<h4 class="mb-3 text-sm font-medium text-gray-400">API Calls Made</h4>
-											<div class="space-y-3">
-												{#each message.apiCalls as call}
-													<div class="rounded-lg border border-white/5 bg-black/20 p-3">
-														<div class="mb-2 flex items-center justify-between">
-															<div class="flex items-center space-x-2">
-																<svelte:component
-																	this={call.status === 'success' ? CheckCircle2 : AlertCircle}
-																	class="h-4 w-4 {call.status === 'success'
-																		? 'text-green-400'
-																		: 'text-red-400'}"
-																/>
-																<span class="text-sm font-medium text-white"
-																	>{call.endpoint.split('/').pop()}</span
-																>
-															</div>
-															<div class="flex items-center space-x-2 text-xs text-gray-400">
-																<Timer class="h-3 w-3" />
-																<span>{call.responseTime.toFixed(0)}ms</span>
-															</div>
-														</div>
-														<div class="text-xs text-gray-400">
-															Params: {JSON.stringify(call.params)}
-														</div>
-													</div>
-												{/each}
-											</div>
-										</div>
+										<!-- Debug: Raw content -->
+										<details class="mt-4">
+											<summary class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
+												>Debug: Show raw response content</summary
+											>
+											<pre
+												class="mt-2 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs text-gray-300">{message.content}</pre>
+										</details>
 									{/if}
 
 									<!-- Rich Data Display -->
@@ -728,6 +802,197 @@ I have access to comprehensive Bible resources including:
 												{/if}
 											{/if}
 										{/each}
+									{/if}
+
+									<!-- Enhanced API Calls with Debug Info -->
+									{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
+										<div class="mt-4 rounded-lg bg-gray-900/50 p-3 text-xs">
+											<div class="mb-3 flex items-center justify-between">
+												<div class="flex items-center space-x-2">
+													<Code class="h-3 w-3 text-gray-400" />
+													<span class="font-semibold text-gray-200">API Calls & Debug Info</span>
+													<span class="rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-300"
+														>{message.apiCalls.length}</span
+													>
+												</div>
+												<button
+													on:click={() => toggleMessageExpansion(message.id)}
+													class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-gray-700"
+												>
+													{#if expandedMessages.has(message.id)}
+														<ChevronUp class="h-3 w-3 text-gray-400" />
+														<span class="text-gray-400">Hide Details</span>
+													{:else}
+														<ChevronDown class="h-3 w-3 text-gray-400" />
+														<span class="text-gray-400">Show Details</span>
+													{/if}
+												</button>
+											</div>
+
+											<!-- Summary View (Always Visible) -->
+											<div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+												{#each message.apiCalls as call}
+													<div class="flex items-center space-x-2 rounded bg-gray-800/50 p-2">
+														<svelte:component
+															this={call.status === 'success' ? CheckCircle2 : AlertCircle}
+															class="h-3 w-3 {call.status === 'success'
+																? 'text-green-400'
+																: 'text-red-400'}"
+														/>
+														<div class="min-w-0 flex-1">
+															<div class="truncate font-mono text-xs text-purple-300">
+																{call.endpoint.split('/').pop()}
+															</div>
+															<div class="flex items-center space-x-2 text-xs text-gray-400">
+																<Timer class="h-2 w-2" />
+																<span>{call.responseTime.toFixed(0)}ms</span>
+																{#if call.endpoint === '/api/fetch-translation-notes' && call.response?.translationNotes}
+																	<span class="text-yellow-300"
+																		>• {call.response.translationNotes.length} notes</span
+																	>
+																{/if}
+																{#if call.endpoint === '/api/fetch-scripture'}
+																	{#if call.response?.scriptures}
+																		<span class="text-yellow-300"
+																			>• {call.response.scriptures.length} translations</span
+																		>
+																	{:else if call.response?.scripture}
+																		<span class="text-yellow-300"
+																			>• {call.response.scripture.text?.length} chars</span
+																		>
+																	{/if}
+																{/if}
+																{#if call.endpoint === '/api/fetch-translation-words' && call.response?.translationWords}
+																	<span class="text-yellow-300"
+																		>• {call.response.translationWords.length} words</span
+																	>
+																{/if}
+															</div>
+														</div>
+													</div>
+												{/each}
+											</div>
+
+											<!-- Detailed View (Toggleable) -->
+											{#if expandedMessages.has(message.id)}
+												<div class="mt-4 space-y-3 border-t border-gray-700 pt-3">
+													{#each message.apiCalls as call}
+														<div class="rounded bg-gray-800/30 p-3">
+															<div class="mb-2 flex items-center justify-between">
+																<div class="flex items-center space-x-2">
+																	<span class="font-mono text-sm text-purple-300"
+																		>{call.endpoint}</span
+																	>
+																	<span class="text-gray-400">—</span>
+																	<span
+																		class={call.status === 'success'
+																			? 'text-green-400'
+																			: 'text-red-400'}>{call.status}</span
+																	>
+																	<span class="text-gray-400"
+																		>({call.responseTime.toFixed(0)}ms)</span
+																	>
+																</div>
+															</div>
+
+															<!-- Parameters -->
+															<div class="mb-2">
+																<div class="text-xs text-gray-400">Parameters:</div>
+																<pre
+																	class="mt-1 max-h-20 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																		call.params,
+																		null,
+																		2
+																	)}</pre>
+															</div>
+
+															<!-- Response Data -->
+															{#if call.response}
+																{#if call.endpoint === '/api/fetch-translation-notes' && call.response.translationNotes}
+																	<div class="mb-2">
+																		<div class="text-xs text-yellow-300">
+																			📝 Translation Notes ({call.response.translationNotes.length} items):
+																		</div>
+																		<details class="mt-1">
+																			<summary
+																				class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
+																				>Show raw notes data</summary
+																			>
+																			<pre
+																				class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																					call.response.translationNotes,
+																					null,
+																					2
+																				)}</pre>
+																		</details>
+																	</div>
+																{/if}
+
+																{#if call.endpoint === '/api/fetch-scripture'}
+																	{#if call.response.scriptures}
+																		<div class="mb-2">
+																			<div class="text-xs text-yellow-300">
+																				📖 Scripture ({call.response.scriptures.length} translations):
+																			</div>
+																			<details class="mt-1">
+																				<summary
+																					class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
+																					>Show raw scripture data</summary
+																				>
+																				<pre
+																					class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																						call.response.scriptures,
+																						null,
+																						2
+																					)}</pre>
+																			</details>
+																		</div>
+																	{:else if call.response.scripture}
+																		<div class="mb-2">
+																			<div class="text-xs text-yellow-300">
+																				📖 Scripture ({call.response.scripture.text?.length} characters):
+																			</div>
+																			<details class="mt-1">
+																				<summary
+																					class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
+																					>Show raw scripture data</summary
+																				>
+																				<pre
+																					class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																						call.response.scripture,
+																						null,
+																						2
+																					)}</pre>
+																			</details>
+																		</div>
+																	{/if}
+																{/if}
+
+																{#if call.endpoint === '/api/fetch-translation-words' && call.response.translationWords}
+																	<div class="mb-2">
+																		<div class="text-xs text-yellow-300">
+																			🔤 Translation Words ({call.response.translationWords.length} items):
+																		</div>
+																		<details class="mt-1">
+																			<summary
+																				class="cursor-pointer text-xs text-blue-300 hover:text-blue-200"
+																				>Show raw words data</summary
+																			>
+																			<pre
+																				class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																					call.response.translationWords,
+																					null,
+																					2
+																				)}</pre>
+																		</details>
+																	</div>
+																{/if}
+															{/if}
+														</div>
+													{/each}
+												</div>
+											{/if}
+										</div>
 									{/if}
 								</div>
 							</div>
@@ -835,50 +1100,4 @@ I have access to comprehensive Bible resources including:
 			{/if}
 		</div>
 	</div>
-
-	<!-- Debug Panel -->
-	{#if messages.length > 1}
-		<div class="mt-8 rounded-lg bg-gray-900/80 p-4 text-xs text-gray-200">
-			<h3 class="mb-2 font-bold">Debug Panel</h3>
-			{#each messages as message, i}
-				{#if message.apiCalls}
-					<div class="mb-2">
-						<div class="font-semibold">Message {i + 1} API Calls:</div>
-						{#each message.apiCalls as call}
-							<div class="mb-1 ml-2">
-								<span class="font-mono">{call.endpoint}</span> — <span>{call.status}</span>
-								{#if call.endpoint === '/api/fetch-translation-notes' && call.response?.translationNotes}
-									<div class="ml-4">
-										<div>Notes returned: <b>{call.response.translationNotes.length}</b></div>
-										<details>
-											<summary>Show raw notes</summary>
-											<pre>{JSON.stringify(call.response.translationNotes, null, 2)}</pre>
-										</details>
-									</div>
-								{/if}
-								{#if call.endpoint === '/api/fetch-scripture' && call.response?.scripture}
-									<div class="ml-4">
-										<div>Scripture text length: <b>{call.response.scripture.text?.length}</b></div>
-										<details>
-											<summary>Show raw scripture</summary>
-											<pre>{JSON.stringify(call.response.scripture, null, 2)}</pre>
-										</details>
-									</div>
-								{/if}
-								{#if call.endpoint === '/api/fetch-translation-words' && call.response?.translationWords}
-									<div class="ml-4">
-										<div>Words returned: <b>{call.response.translationWords.length}</b></div>
-										<details>
-											<summary>Show raw words</summary>
-											<pre>{JSON.stringify(call.response.translationWords, null, 2)}</pre>
-										</details>
-									</div>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				{/if}
-			{/each}
-		</div>
-	{/if}
 </div>

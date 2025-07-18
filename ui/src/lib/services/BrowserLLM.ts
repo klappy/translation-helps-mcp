@@ -1,156 +1,347 @@
-export interface LLMResponse {
+/**
+ * BrowserLLM.ts
+ * Enhanced AI service for Bible translation assistance
+ * Follows the same pattern as the original translation-helps AI Assistant
+ */
+
+interface TranslationNote {
+	id: number;
 	text: string;
-	tokens: number;
-	time: number;
+	quote?: string;
+	occurrence?: string;
+	tags?: string;
+	supportReference?: string;
+	reference?: string;
+}
+
+interface ScriptureData {
+	ult?: string;
+	ust?: string;
+	t4t?: string;
+	ueb?: string;
+}
+
+interface TranslationQuestion {
+	id: number;
+	question: string;
+}
+
+interface TranslationWord {
+	id: number;
+	term: string;
+	definition?: string;
+	content?: string;
+}
+
+interface TranslationWordLink {
+	id: number;
+	word: string;
+	term?: string;
+}
+
+interface ResourceContext {
+	scripture?: ScriptureData;
+	translationNotes?: TranslationNote[];
+	translationQuestions?: TranslationQuestion[];
+	translationWords?: TranslationWord[];
+	translationWordLinks?: TranslationWordLink[];
 }
 
 export class BrowserLLM {
 	private isInitialized = false;
-	private isInitializing = false;
 
-	async initialize() {
-		if (this.isInitialized || this.isInitializing) {
-			return;
-		}
-
-		this.isInitializing = true;
-		console.log('🚀 Initializing AI system with improved prompts...');
-
-		try {
-			// Simulate initialization time
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-
-			this.isInitialized = true;
-			this.isInitializing = false;
-			console.log('✅ AI system initialized successfully!');
-		} catch (error) {
-			console.error('❌ Failed to initialize AI system:', error);
-			this.isInitializing = false;
-			throw error;
-		}
+	constructor() {
+		this.initialize();
 	}
 
-	async generateResponse(prompt: string): Promise<LLMResponse> {
-		if (!this.isInitialized) {
-			throw new Error('AI system not initialized');
-		}
+	private initialize() {
+		if (this.isInitialized) return;
 
-		const startTime = Date.now();
+		console.log('🚀 Initializing AI system with improved prompts...');
+		this.isInitialized = true;
+		console.log('✅ AI system initialized successfully!');
+	}
 
-		// Extract the user's question from the prompt
-		const lines = prompt.split('\n');
-		const userQuestion = lines[0]; // First line is the user's question
+	/**
+	 * Generate an intelligent response using the same pattern as the original translation-helps AI Assistant
+	 */
+	public async generateResponse(userQuestion: string, contextPrompt: string): Promise<string> {
+		console.log('=== AI SERVICE DEBUG: generateResponse ===');
+		console.log('User question:', userQuestion);
+		console.log('Context prompt length:', contextPrompt.length);
+
+		// Extract and structure the context data
+		const context = this.extractContextFromPrompt(contextPrompt);
+		console.log('=== AI SERVICE DEBUG: Extracted context ===');
+		console.log('Scripture translations:', Object.keys(context.scripture || {}));
+		console.log('Translation notes count:', context.translationNotes?.length || 0);
+		console.log('Translation questions count:', context.translationQuestions?.length || 0);
+		console.log('Translation words count:', context.translationWords?.length || 0);
+
+		// Generate response based on question type and available resources
+		return this.generateIntelligentResponse(userQuestion, context);
+	}
+
+	private extractContextFromPrompt(prompt: string): ResourceContext {
+		const context: ResourceContext = {};
+
+		console.log('=== AI SERVICE DEBUG: Extracting context from prompt ===');
+		console.log('Prompt length:', prompt.length);
 
 		// Extract Bible context from the prompt
-		let scripture = '';
-		let translationNotes = '';
-		let wordDefinitions = '';
-
-		const contextStart = prompt.indexOf('Bible Context:');
+		const contextStart = prompt.indexOf('## 📖 Bible Context');
 		if (contextStart !== -1) {
 			const contextSection = prompt.substring(contextStart);
-			const contextLines = contextSection.split('\n');
+			const lines = contextSection.split('\n');
 
-			for (const line of contextLines) {
-				if (line.startsWith('Scripture:')) {
-					scripture = line.replace('Scripture:', '').trim();
-				} else if (line.startsWith('Translation Notes:')) {
-					translationNotes = line.replace('Translation Notes:', '').trim();
-				} else if (line.startsWith('Word Definitions:')) {
-					wordDefinitions = line.replace('Word Definitions:', '').trim();
+			let currentSection = '';
+			const scriptureLines: string[] = [];
+			const translationNotesLines: string[] = [];
+			const translationQuestionsLines: string[] = [];
+			const translationWordsLines: string[] = [];
+
+			for (const line of lines) {
+				if (line.startsWith('### Scripture Translations') || line.startsWith('### Scripture')) {
+					currentSection = 'scripture';
+				} else if (line.startsWith('### 📝 Translation Notes')) {
+					currentSection = 'translationNotes';
+				} else if (line.startsWith('### ❓ Translation Questions')) {
+					currentSection = 'translationQuestions';
+				} else if (line.startsWith('### 📚 Translation Words')) {
+					currentSection = 'translationWords';
+				} else if (line.trim() && !line.startsWith('#')) {
+					switch (currentSection) {
+						case 'scripture':
+							scriptureLines.push(line);
+							break;
+						case 'translationNotes':
+							translationNotesLines.push(line);
+							break;
+						case 'translationQuestions':
+							translationQuestionsLines.push(line);
+							break;
+						case 'translationWords':
+							translationWordsLines.push(line);
+							break;
+					}
 				}
+			}
+
+			// Parse scripture data
+			if (scriptureLines.length > 0) {
+				context.scripture = {};
+				scriptureLines.forEach((line) => {
+					const match = line.match(/\*\*([^*]+)\*\*: (.+)/);
+					if (match) {
+						const translation = match[1].toLowerCase();
+						const text = match[2];
+						(context.scripture as ScriptureData)[translation as keyof ScriptureData] = text;
+					}
+				});
+			}
+
+			// Parse translation notes
+			if (translationNotesLines.length > 0) {
+				console.log('=== AI SERVICE DEBUG: Parsing translation notes ===');
+				console.log('Translation notes lines:', translationNotesLines);
+				context.translationNotes = this.parseTranslationNotes(translationNotesLines);
+				console.log('Parsed translation notes:', context.translationNotes);
+			}
+
+			// Parse translation questions
+			if (translationQuestionsLines.length > 0) {
+				context.translationQuestions = this.parseTranslationQuestions(translationQuestionsLines);
+			}
+
+			// Parse translation words
+			if (translationWordsLines.length > 0) {
+				context.translationWords = this.parseTranslationWords(translationWordsLines);
 			}
 		}
 
-		// Generate a response using the improved system prompt approach
-		const response = this.generateIntelligentResponse(
-			userQuestion,
-			scripture,
-			translationNotes,
-			wordDefinitions
-		);
+		console.log('=== AI SERVICE DEBUG: Extracted context ===');
+		console.log('Scripture translations:', Object.keys(context.scripture || {}));
+		console.log('Translation notes count:', context.translationNotes?.length || 0);
+		console.log('Translation questions count:', context.translationQuestions?.length || 0);
+		console.log('Translation words count:', context.translationWords?.length || 0);
 
-		const endTime = Date.now();
-		const time = endTime - startTime;
-
-		return {
-			text: response,
-			tokens: Math.ceil(response.length / 4), // Rough token estimation
-			time
-		};
+		return context;
 	}
 
-	private generateIntelligentResponse(
-		userQuestion: string,
-		scripture: string,
-		translationNotes: string,
-		wordDefinitions: string
-	): string {
+	/**
+	 * Parse translation notes from lines, following the original pattern
+	 */
+	private parseTranslationNotes(lines: string[]): TranslationNote[] {
+		const notes: TranslationNote[] = [];
+		let currentNote: Partial<TranslationNote> = {};
+		let noteIndex = 0;
+
+		console.log('=== AI SERVICE DEBUG: parseTranslationNotes ===');
+		console.log('Input lines:', lines);
+
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			const trimmedLine = line.trim();
+
+			console.log(`Processing line ${i}:`, trimmedLine);
+
+			// Check if this is a new note (starts with Reference or Note header)
+			if (trimmedLine.startsWith('#### Note ') || trimmedLine.startsWith('**Reference**: ')) {
+				// Save previous note if exists and has content
+				if (Object.keys(currentNote).length > 0 && currentNote.text) {
+					console.log('Saving note:', currentNote);
+					notes.push(currentNote as TranslationNote);
+				}
+
+				// Start new note
+				noteIndex++;
+				currentNote = { id: noteIndex };
+				console.log('Starting new note:', noteIndex);
+			}
+
+			// Parse the current line
+			if (trimmedLine.startsWith('**Reference**: ')) {
+				currentNote.reference = trimmedLine.replace('**Reference**: ', '');
+				console.log('Set reference:', currentNote.reference);
+			} else if (trimmedLine.startsWith('**Greek Quote**: ')) {
+				currentNote.quote = trimmedLine.replace('**Greek Quote**: ', '');
+				console.log('Set quote:', currentNote.quote);
+			} else if (trimmedLine.startsWith('**Occurrence**: ')) {
+				currentNote.occurrence = trimmedLine.replace('**Occurrence**: ', '');
+				console.log('Set occurrence:', currentNote.occurrence);
+			} else if (trimmedLine.startsWith('**Tags**: ')) {
+				currentNote.tags = trimmedLine.replace('**Tags**: ', '');
+				console.log('Set tags:', currentNote.tags);
+			} else if (trimmedLine.startsWith('**Support Reference**: ')) {
+				currentNote.supportReference = trimmedLine.replace('**Support Reference**: ', '');
+				console.log('Set support reference:', currentNote.supportReference);
+			} else if (trimmedLine.startsWith('**Note**: ')) {
+				currentNote.text = trimmedLine.replace('**Note**: ', '');
+				console.log('Set text:', currentNote.text);
+			}
+		}
+
+		// Add the last note
+		if (Object.keys(currentNote).length > 0 && currentNote.text) {
+			console.log('Saving final note:', currentNote);
+			notes.push(currentNote as TranslationNote);
+		}
+
+		console.log('Final parsed notes:', notes);
+		return notes;
+	}
+
+	/**
+	 * Parse translation questions from lines
+	 */
+	private parseTranslationQuestions(lines: string[]): TranslationQuestion[] {
+		const questions: TranslationQuestion[] = [];
+		let currentQuestion: Partial<TranslationQuestion> = {};
+		let questionText = '';
+
+		for (const line of lines) {
+			const questionMatch = line.match(/^(\d+)\.\s*(.+)/);
+			if (questionMatch && currentQuestion.id !== undefined) {
+				// Save previous question
+				if (questionText.trim()) {
+					currentQuestion.question = questionText.trim();
+					questions.push(currentQuestion as TranslationQuestion);
+				}
+
+				// Start new question
+				currentQuestion = { id: parseInt(questionMatch[1]) - 1 };
+				questionText = questionMatch[2];
+			} else if (currentQuestion.id !== undefined) {
+				// Continue current question
+				questionText += ' ' + line;
+			}
+		}
+
+		// Save last question
+		if (currentQuestion.id !== undefined && questionText.trim()) {
+			currentQuestion.question = questionText.trim();
+			questions.push(currentQuestion as TranslationQuestion);
+		}
+
+		return questions;
+	}
+
+	/**
+	 * Parse translation words from lines
+	 */
+	private parseTranslationWords(lines: string[]): TranslationWord[] {
+		const words: TranslationWord[] = [];
+		let currentWord: Partial<TranslationWord> = {};
+		let wordText = '';
+
+		for (const line of lines) {
+			const wordMatch = line.match(/^(\d+)\.\s*(.+)/);
+			if (wordMatch && currentWord.id !== undefined) {
+				// Save previous word
+				if (wordText.trim()) {
+					currentWord.term = wordText.trim();
+					words.push(currentWord as TranslationWord);
+				}
+
+				// Start new word
+				currentWord = { id: parseInt(wordMatch[1]) - 1 };
+				wordText = wordMatch[2];
+			} else if (currentWord.id !== undefined) {
+				// Continue current word
+				wordText += ' ' + line;
+			}
+		}
+
+		// Save last word
+		if (currentWord.id !== undefined && wordText.trim()) {
+			currentWord.term = wordText.trim();
+			words.push(currentWord as TranslationWord);
+		}
+
+		return words;
+	}
+
+	/**
+	 * Generate intelligent response following the original translation-helps pattern
+	 */
+	private generateIntelligentResponse(userQuestion: string, context: ResourceContext): string {
 		const lowerQuestion = userQuestion.toLowerCase();
+
+		console.log('=== AI SERVICE DEBUG: generateIntelligentResponse ===');
+		console.log('User question:', userQuestion);
+		console.log('Lower question:', lowerQuestion);
+		console.log('Has scripture:', !!context.scripture);
+		console.log('Has translation notes:', !!context.translationNotes?.length);
+		console.log('Has translation questions:', !!context.translationQuestions?.length);
+		console.log('Has translation words:', !!context.translationWords?.length);
 
 		// If asking what a verse says, provide the direct quote
 		if (lowerQuestion.includes('what does') && lowerQuestion.includes('say')) {
-			if (scripture) {
-				// Provide a helpful explanation along with the quote
-				let explanation = '';
+			console.log('Taking "what does it say" branch');
+			if (context.scripture) {
+				let response = `## 📖 Scripture Text\n\n**${userQuestion}**\n\n---\n\n`;
 
-				// Add contextual explanation based on the question
-				if (lowerQuestion.includes('love')) {
-					explanation = `This verse reveals several key aspects of God's love:\n\n• **Scope**: God's love extends to "the world" - all people\n• **Sacrifice**: God demonstrated His love by giving His "One and Only Son"\n• **Purpose**: The goal is that people would "not perish but have eternal life"\n• **Condition**: This love is received through "believing in him"\n\n`;
-				} else if (lowerQuestion.includes('grace') || lowerQuestion.includes('mercy')) {
-					explanation = `This passage shows God's gracious nature:\n\n• **Initiative**: God takes the first step in reaching out to humanity\n• **Gift**: Salvation is offered as a free gift through Christ\n• **Universal**: The offer is available to "everyone"\n• **Life-giving**: The result is "eternal life" instead of perishing\n\n`;
-				} else if (lowerQuestion.includes('salvation') || lowerQuestion.includes('save')) {
-					explanation = `This verse explains God's plan of salvation:\n\n• **Problem**: People are in danger of "perishing"\n• **Solution**: God provides His Son as the way to salvation\n• **Response**: People must "believe in him"\n• **Result**: Believers receive "eternal life"\n\n`;
-				} else {
-					explanation = `This passage teaches us that:\n\n• God demonstrates His love through action\n• Salvation is available to all who believe\n• The result is eternal life instead of perishing\n• Faith in Christ is the key requirement\n\n`;
-				}
+				Object.entries(context.scripture).forEach(([translation, text]) => {
+					response += `**${translation.toUpperCase()}**: ${text}\n\n`;
+				});
 
-				return `## 📖 Scripture Reference
-
-**${userQuestion}**
-
----
-
-> **"${scripture}"**
-
----
-
-### 💡 What This Means
-
-${explanation}
-
-### 📚 Source
-*Bible text from unfoldingWord® Literal Text (ULT)*`;
+				response += `📚 **Source**: unfoldingWord® Bible Translations`;
+				return response;
 			}
 		}
 
 		// If asking about translation notes, provide the insights
 		if (lowerQuestion.includes('translation') || lowerQuestion.includes('notes')) {
-			if (translationNotes) {
-				// Split by double newlines to get individual notes
-				const notes = translationNotes
-					.split('\n\n')
-					.filter((note) => note.trim().length > 0)
-					.map((note) => note.trim());
+			console.log('Taking "translation notes" branch');
+			console.log('Translation notes available:', context.translationNotes?.length || 0);
+			if (context.translationNotes && context.translationNotes.length > 0) {
+				let response = `## 📝 Translation Notes\n\n**${userQuestion}**\n\n---\n\n`;
 
-				let response = `## 📝 Translation Notes
-
-**${userQuestion}**
-
----
-
-`;
-
-				notes.forEach((note, index) => {
-					if (note.trim()) {
-						response += `**${index + 1}.** ${note.trim()}\n\n`;
-					}
+				context.translationNotes.forEach((note, index) => {
+					response += `${index + 1}. ${note.text}\n\n`;
 				});
 
-				response += `---
-
-### 📚 Source
-*unfoldingWord® Translation Notes*`;
+				response += `📚 **Source**: unfoldingWord® Translation Notes`;
 				return response;
 			}
 		}
@@ -161,109 +352,56 @@ ${explanation}
 			lowerQuestion.includes('definition') ||
 			lowerQuestion.includes('meaning')
 		) {
-			if (wordDefinitions) {
-				const sentences = wordDefinitions.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-				let response = `## 🔤 Word Definition
+			console.log('Taking "word definitions" branch');
+			if (context.translationWords && context.translationWords.length > 0) {
+				let response = `## 📚 Translation Words\n\n**${userQuestion}**\n\n---\n\n`;
 
-**${userQuestion}**
-
----
-
-`;
-				sentences.forEach((sentence, index) => {
-					const cleanSentence = sentence.trim();
-					if (cleanSentence) {
-						response += `**${index + 1}.** ${cleanSentence}.\n\n`;
-					}
+				context.translationWords.forEach((word, index) => {
+					response += `${index + 1}. **${word.term}**: ${word.definition || word.content || 'Definition not available'}\n\n`;
 				});
-				response += `---
 
-### 📚 Source
-*Translation Words*`;
+				response += `📚 **Source**: unfoldingWord® Translation Words`;
 				return response;
 			}
 		}
 
 		// For general questions, provide a comprehensive response with all available context
-		let response = `## 🤖 AI Response
+		console.log('Taking "general response" branch');
+		let response = `## 🤖 AI Response\n\n**${userQuestion}**\n\n---\n\n`;
 
-**${userQuestion}**
-
----
-
-`;
-
-		if (scripture) {
-			response += `### 📖 Scripture Context
-
-> **"${scripture}"**
-
-### 💡 Key Points
-
-This passage teaches us that:
-
-• God's love is demonstrated through His actions, not just words
-• Salvation is offered as a gift to all who believe
-• The result is eternal life instead of perishing
-• Faith in Christ is the pathway to receiving God's love and salvation
-
-`;
-		}
-
-		if (translationNotes) {
-			// Split by double newlines to get individual notes
-			const notes = translationNotes
-				.split('\n\n')
-				.filter((note) => note.trim().length > 0)
-				.map((note) => note.trim());
-
-			response += `### 📝 Translation Notes
-
-`;
-			notes.forEach((note, index) => {
-				if (note.trim()) {
-					response += `**${index + 1}.** ${note.trim()}\n\n`;
-				}
+		// Include scripture if available
+		if (context.scripture) {
+			response += `### 📖 Scripture Context\n\n`;
+			Object.entries(context.scripture).forEach(([translation, text]) => {
+				response += `**${translation.toUpperCase()}**: ${text}\n\n`;
 			});
 		}
 
-		if (wordDefinitions) {
-			const sentences = wordDefinitions.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-			response += `### 🔤 Word Definitions
-
-`;
-			sentences.forEach((sentence, index) => {
-				const cleanSentence = sentence.trim();
-				if (cleanSentence) {
-					response += `**${index + 1}.** ${cleanSentence}.\n\n`;
-				}
+		// Include translation notes if available
+		if (context.translationNotes && context.translationNotes.length > 0) {
+			response += `### 📝 Translation Notes\n\n`;
+			context.translationNotes.forEach((note, index) => {
+				response += `${index + 1}. ${note.text}\n\n`;
 			});
 		}
 
-		// Add source citations with better formatting
-		response += `---
-
-### 📚 Sources Used
-
-`;
-		if (scripture) {
-			response += `• **Scripture**: unfoldingWord® Literal Text (ULT)\n\n`;
-		}
-		if (translationNotes) {
-			response += `• **Translation Notes**: unfoldingWord® Translation Notes\n\n`;
-		}
-		if (wordDefinitions) {
-			response += `• **Translation Words**: Translation Words\n\n`;
+		// Include translation questions if available
+		if (context.translationQuestions && context.translationQuestions.length > 0) {
+			response += `### ❓ Translation Questions\n\n`;
+			context.translationQuestions.forEach((question, index) => {
+				response += `${index + 1}. ${question.question}\n\n`;
+			});
 		}
 
+		// Include translation words if available
+		if (context.translationWords && context.translationWords.length > 0) {
+			response += `### 📚 Translation Words\n\n`;
+			context.translationWords.forEach((word, index) => {
+				response += `${index + 1}. **${word.term}**: ${word.definition || word.content || 'Definition not available'}\n\n`;
+			});
+		}
+
+		response += `📚 **Sources**: unfoldingWord® Translation Resources`;
 		return response;
-	}
-
-	getStatus() {
-		return {
-			isInitialized: this.isInitialized,
-			isInitializing: this.isInitializing,
-			model: 'Enhanced Pattern-Matching AI'
-		};
 	}
 }

@@ -15,6 +15,17 @@ interface ScriptureResponse {
       version: string;
     };
   };
+  scriptures?: Array<{
+    text: string;
+    translation: string;
+    citation: {
+      resource: string;
+      organization: string;
+      language: string;
+      url: string;
+      version: string;
+    };
+  }>;
   error?: string;
   language?: string;
   organization?: string;
@@ -104,15 +115,37 @@ export const handler: Handler = async (
     };
     console.log(`📊 Catalog returned ${catalogData.data?.length || 0} resources`);
 
-    // Find the specific translation we want
-    let resource = catalogData.data?.find((r) => r.name.includes(`_${translation}`));
+    // Check if we want all translations or a specific one
+    const wantAllTranslations = !translation || translation === "all";
 
-    // If not found, try to find any Bible resource
-    if (!resource) {
-      resource = catalogData.data?.[0];
+    let resources: Array<{
+      name: string;
+      title?: string;
+      ingredients?: Array<{
+        identifier: string;
+        path: string;
+      }>;
+    }> = [];
+
+    if (wantAllTranslations) {
+      // Get all Bible resources
+      resources = catalogData.data || [];
+      console.log(`📚 Fetching all ${resources.length} available translations`);
+    } else {
+      // Find the specific translation we want
+      const resource = catalogData.data?.find((r) => r.name.includes(`_${translation}`));
+      if (resource) {
+        resources = [resource];
+      } else {
+        // If not found, try to find any Bible resource
+        const fallbackResource = catalogData.data?.[0];
+        if (fallbackResource) {
+          resources = [fallbackResource];
+        }
+      }
     }
 
-    if (!resource || !resource.ingredients) {
+    if (resources.length === 0) {
       return {
         statusCode: 404,
         headers: { "Access-Control-Allow-Origin": "*" },
@@ -125,85 +158,110 @@ export const handler: Handler = async (
       };
     }
 
-    // Find the correct file from ingredients array
-    const ingredient = resource.ingredients.find(
-      (ing: any) => ing.identifier === reference.book.toLowerCase()
-    );
-
-    if (!ingredient) {
-      return {
-        statusCode: 404,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({
-          error: `Book ${reference.book} not found in resource`,
-          language,
-          organization,
-          translation,
-        }),
+    // Process all resources
+    const scriptures: Array<{
+      text: string;
+      translation: string;
+      citation: {
+        resource: string;
+        organization: string;
+        language: string;
+        url: string;
+        version: string;
       };
-    }
+    }> = [];
 
-    // Build the URL using the ingredient path
-    const fileName = ingredient.path.replace("./", "");
-    const url = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${fileName}`;
-    console.log(`📥 Fetching scripture from: ${url}`);
-
-    const response = await fetch(url);
-    console.log(`📊 Response status: ${response.status}`);
-
-    if (!response.ok) {
-      console.error(`❌ Failed to fetch scripture: ${response.status}`);
-      console.error(`❌ Response text: ${await response.text()}`);
-      return {
-        statusCode: 500,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({
-          error: "Failed to fetch scripture content",
-          details: `HTTP ${response.status}`,
-          url: url,
-          language,
-          organization,
-          translation,
-        }),
-      };
-    }
-
-    const usfm = await response.text();
-    console.log(`📜 Got USFM text (${usfm.length} chars)`);
-
-    // Extract the requested text
-    let text: string | null = null;
-
-    if (!reference.verse && reference.verseEnd) {
-      // Chapter range
-      const startChapter = reference.chapter;
-      const endChapter = reference.verseEnd;
-      let combinedText = "";
-
-      for (let chapter = startChapter; chapter <= endChapter; chapter++) {
-        const chapterText = extractChapterText(usfm, chapter);
-        if (chapterText) {
-          combinedText += chapterText + "\n\n";
-        }
+    for (const resource of resources) {
+      if (!resource.ingredients) {
+        console.warn(`⚠️ Resource ${resource.name} has no ingredients`);
+        continue;
       }
-      text = combinedText.trim() || null;
-    } else if (reference.verse && reference.verseEnd) {
-      // Verse range within same chapter
-      text = extractVerseRange(usfm, reference.chapter, reference.verse, reference.verseEnd);
-    } else if (reference.verse) {
-      // Single verse
-      text = extractVerseText(usfm, reference.chapter, reference.verse);
-    } else {
-      // Full chapter
-      text = extractChapterText(usfm, reference.chapter);
+
+      // Find the correct file from ingredients array
+      const ingredient = resource.ingredients.find(
+        (ing: any) => ing.identifier === reference.book.toLowerCase()
+      );
+
+      if (!ingredient) {
+        console.warn(`⚠️ Book ${reference.book} not found in resource ${resource.name}`);
+        continue;
+      }
+
+      // Build the URL using the ingredient path
+      const fileName = ingredient.path.replace("./", "");
+      const url = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${fileName}`;
+      console.log(`📥 Fetching scripture from: ${url}`);
+
+      try {
+        const response = await fetch(url);
+        console.log(`📊 Response status: ${response.status}`);
+
+        if (!response.ok) {
+          console.error(`❌ Failed to fetch scripture from ${resource.name}: ${response.status}`);
+          continue;
+        }
+
+        const usfm = await response.text();
+        console.log(`📜 Got USFM text from ${resource.name} (${usfm.length} chars)`);
+
+        // Extract the requested text
+        let text: string | null = null;
+
+        if (!reference.verse && reference.verseEnd) {
+          // Chapter range
+          const startChapter = reference.chapter;
+          const endChapter = reference.verseEnd;
+          let combinedText = "";
+
+          for (let chapter = startChapter; chapter <= endChapter; chapter++) {
+            const chapterText = extractChapterText(usfm, chapter);
+            if (chapterText) {
+              combinedText += chapterText + "\n\n";
+            }
+          }
+          text = combinedText.trim() || null;
+        } else if (reference.verse && reference.verseEnd) {
+          // Verse range within same chapter
+          text = extractVerseRange(usfm, reference.chapter, reference.verse, reference.verseEnd);
+        } else if (reference.verse) {
+          // Single verse
+          text = extractVerseText(usfm, reference.chapter, reference.verse);
+        } else {
+          // Full chapter
+          text = extractChapterText(usfm, reference.chapter);
+        }
+
+        if (text) {
+          // Extract translation abbreviation from resource name
+          const translationMatch = resource.name.match(/_([^_]+)$/);
+          const actualTranslation = translationMatch
+            ? translationMatch[1].toUpperCase()
+            : resource.name;
+
+          scriptures.push({
+            text,
+            translation: actualTranslation,
+            citation: {
+              resource: resource.title || resource.name,
+              organization,
+              language,
+              url,
+              version: "master",
+            },
+          });
+        }
+      } catch (error) {
+        console.error(`❌ Error fetching from ${resource.name}:`, error);
+        continue;
+      }
     }
 
-    if (!text) {
+    if (scriptures.length === 0) {
       return {
         statusCode: 404,
         headers: { "Access-Control-Allow-Origin": "*" },
         body: JSON.stringify({
-          error: "Scripture text not found for reference",
+          error: "No scripture text found for reference in any translation",
           language,
           organization,
           translation,
@@ -211,25 +269,24 @@ export const handler: Handler = async (
       };
     }
 
-    // Extract translation abbreviation from resource name
-    const translationMatch = resource.name.match(/_([^_]+)$/);
-    const actualTranslation = translationMatch ? translationMatch[1].toUpperCase() : resource.name;
+    // Return appropriate response format
+    let result: ScriptureResponse;
 
-    const result: ScriptureResponse = {
-      scripture: {
-        text,
-        translation: actualTranslation,
-        citation: {
-          resource: resource.title || resource.name,
-          organization,
-          language,
-          url,
-          version: "master", // Assuming a default version for now
-        },
-      },
-      language,
-      organization,
-    };
+    if (scriptures.length === 1 && !wantAllTranslations) {
+      // Single translation requested - return legacy format
+      result = {
+        scripture: scriptures[0],
+        language,
+        organization,
+      };
+    } else {
+      // Multiple translations or all requested - return new format
+      result = {
+        scriptures,
+        language,
+        organization,
+      };
+    }
 
     return timedResponse(result, startTime);
   } catch (error) {
