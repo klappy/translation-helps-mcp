@@ -14,7 +14,7 @@ A high-performance, serverless API for aggregating Bible translation resources f
 
 - **📖 Scripture API**: Fetch Bible verses in multiple translations (ULT, UST, T4T, UEB)
 - **📝 Translation Notes**: Get detailed translation notes and explanations
-- **🔤 Translation Words**: Access word-by-word translation helps
+- **🔤 Translation Words**: Access word-by-word translation helps (by term or reference)
 - **❓ Translation Questions**: Retrieve translation questions and answers
 - **🌍 Multi-language Support**: Works with any language available on Door43
 - **⚡ High Performance**: Smart caching with 59-89% performance improvements
@@ -33,14 +33,14 @@ A high-performance, serverless API for aggregating Bible translation resources f
 
 ### Core Endpoints
 
-| Endpoint                           | Description                               | Example                                                         |
-| ---------------------------------- | ----------------------------------------- | --------------------------------------------------------------- |
-| `/api/fetch-scripture`             | Get Bible verses in multiple translations | `?reference=John+3:16&language=en&organization=unfoldingWord`   |
-| `/api/fetch-translation-notes`     | Get translation notes for verses          | `?reference=Titus+1:1&language=en&organization=unfoldingWord`   |
-| `/api/fetch-translation-words`     | Get word-by-word translation helps        | `?reference=Genesis+1:1&language=en&organization=unfoldingWord` |
-| `/api/fetch-translation-questions` | Get translation questions and answers     | `?reference=Matthew+5:1&language=en&organization=unfoldingWord` |
-| `/api/get-languages`               | List available languages                  | `?organization=unfoldingWord`                                   |
-| `/api/fetch-resources`             | Get available resources for a language    | `?language=en&organization=unfoldingWord`                       |
+| Endpoint                           | Description                               | Example                                                           |
+| ---------------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
+| `/api/fetch-scripture`             | Get Bible verses in multiple translations | `?reference=John+3:16&language=en&organization=unfoldingWord`     |
+| `/api/fetch-translation-notes`     | Get translation notes for verses          | `?reference=Titus+1:1&language=en&organization=unfoldingWord`     |
+| `/api/fetch-translation-words`     | Get word-by-word translation helps        | `?word=grace&language=en` or `?reference=Genesis+1:1&language=en` |
+| `/api/fetch-translation-questions` | Get translation questions and answers     | `?reference=Matthew+5:1&language=en&organization=unfoldingWord`   |
+| `/api/get-languages`               | List available languages                  | `?organization=unfoldingWord`                                     |
+| `/api/fetch-resources`             | Get available resources for a language    | `?language=en&organization=unfoldingWord`                         |
 
 ### Utility Endpoints
 
@@ -59,6 +59,12 @@ curl "https://translation-helps-mcp.netlify.app/.netlify/functions/fetch-scriptu
 
 # Get translation notes for Titus 1:1
 curl "https://translation-helps-mcp.netlify.app/.netlify/functions/fetch-translation-notes?reference=Titus+1:1&language=en&organization=unfoldingWord"
+
+# Look up a specific word (e.g., "grace")
+curl "https://translation-helps-mcp.netlify.app/.netlify/functions/fetch-translation-words?word=grace&language=en&organization=unfoldingWord"
+
+# Get all translation words for a verse
+curl "https://translation-helps-mcp.netlify.app/.netlify/functions/fetch-translation-words?reference=John+3:16&language=en&organization=unfoldingWord"
 ```
 
 ### Local Development
@@ -188,6 +194,9 @@ Currently supports resources from:
 
 ### v2.1.0 (2025-01-XX)
 
+- **Word Lookup Feature**: Added support for looking up translation words by term (e.g., "grace") in addition to reference-based lookups
+- **MCP Tools**: Added new MCP tools for browsing and getting translation words
+- **API Enhancement**: Translation words endpoint now supports both `word` and `reference` parameters
 - **Reference Implementation**: Enhanced chat demo with clear messaging about capabilities
 - **Local AI Emphasis**: Highlighted that AI model runs on user's device
 - **MCP Branding**: Updated branding to emphasize Model Context Protocol technology

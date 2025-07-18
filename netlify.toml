@@ -15,12 +15,6 @@
   status = 200
   force = true
 
-# Handle SvelteKit routing - serve index.html for all routes
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
 # CORS headers for API endpoints
 [[headers]]
   for = "/api/*"

@@ -12,7 +12,8 @@
 		BookOpen,
 		Settings,
 		HelpCircle,
-		TrendingUp
+		TrendingUp,
+		Wrench
 	} from 'lucide-svelte';
 	import '../app.css';
 
@@ -41,6 +42,12 @@
 			label: 'API',
 			icon: Code,
 			description: 'API documentation'
+		},
+		{
+			href: '/mcp-tools',
+			label: 'MCP Tools',
+			icon: Wrench,
+			description: 'MCP server tools documentation'
 		},
 		{
 			href: '/performance',
@@ -76,7 +83,7 @@
 	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900">
+<div class="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900" role="main">
 	<!-- Navigation -->
 	<nav class="relative z-50">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -141,7 +148,12 @@
 					<!-- Mobile menu button -->
 					<button
 						on:click={toggleMobileMenu}
-						class="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition-all duration-200 hover:bg-white/10 hover:text-white md:hidden"
+						type="button"
+						aria-label="Toggle mobile menu"
+						aria-expanded={mobileMenuOpen}
+						class="rounded-lg border border-white/10 p-3 text-gray-300 transition-all duration-200 md:hidden {mobileMenuOpen
+							? 'bg-white/10 text-white'
+							: 'bg-white/5 hover:bg-white/10 hover:text-white'}"
 					>
 						{#if mobileMenuOpen}
 							<X class="h-5 w-5" />
@@ -156,7 +168,7 @@
 		<!-- Mobile Navigation -->
 		{#if mobileMenuOpen}
 			<div
-				class="absolute top-full right-0 left-0 border-b border-white/10 bg-black/95 backdrop-blur-xl md:hidden"
+				class="absolute top-full right-0 left-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-xl md:hidden"
 			>
 				<div class="space-y-4 px-4 py-6">
 					{#each navItems as item}

@@ -681,6 +681,116 @@ export class ResourceAggregator {
     };
   }
 
+  /**
+   * Fetch a translation word article by term/word
+   */
+  public async fetchTranslationWordByTerm(
+    term: string,
+    options: { language: string; organization: string },
+    includeSections: { title?: boolean; subtitle?: boolean; content?: boolean } = {}
+  ): Promise<TranslationWord | null> {
+    try {
+      console.log(`📖 Fetching translation word article for term: ${term}`);
+
+      const repoName = `${options.language}_tw`;
+      const baseUrl = `https://git.door43.org/${options.organization}/${repoName}/raw/branch/master`;
+
+      // Common paths where translation words are stored
+      const possibleCategories = ["kt", "other", "names"];
+      const firstLetter = term.toLowerCase()[0];
+
+      for (const category of possibleCategories) {
+        // Try both direct path and first-letter subdirectory
+        const paths = [
+          `bible/${category}/${term.toLowerCase()}.md`,
+          `bible/${category}/${firstLetter}/${term.toLowerCase()}.md`,
+        ];
+
+        for (const path of paths) {
+          const url = `${baseUrl}/${path}`;
+          console.log(`🔍 Trying: ${url}`);
+
+          try {
+            const response = await fetch(url);
+            if (response.ok) {
+              const content = await response.text();
+
+              // Parse the article content
+              const lines = content.split("\n");
+              let title = "";
+              let definition = "";
+              let inDefinition = false;
+              let titleContent = "";
+              let subtitleContent = "";
+              let mainContent = "";
+              let currentSection = "";
+
+              for (const line of lines) {
+                const trimmedLine = line.trim();
+
+                // Skip front matter
+                if (trimmedLine === "---") continue;
+
+                // Extract title
+                if (!title && trimmedLine.startsWith("# ")) {
+                  title = trimmedLine.substring(2).trim();
+                  continue;
+                }
+
+                // Look for definition section
+                if (
+                  trimmedLine.startsWith("## Definition:") ||
+                  trimmedLine.startsWith("## Facts:")
+                ) {
+                  inDefinition = true;
+                  currentSection = "definition";
+                  continue;
+                } else if (trimmedLine.startsWith("## ")) {
+                  inDefinition = false;
+                  currentSection = trimmedLine.substring(3).toLowerCase().replace(":", "");
+                }
+
+                // Collect definition
+                if (inDefinition && trimmedLine) {
+                  definition += (definition ? " " : "") + trimmedLine;
+                }
+
+                // Collect sections
+                if (currentSection === "definition" && includeSections.title) {
+                  titleContent += line + "\n";
+                } else if (currentSection === "examples" && includeSections.subtitle) {
+                  subtitleContent += line + "\n";
+                } else if (includeSections.content) {
+                  mainContent += line + "\n";
+                }
+              }
+
+              return {
+                term: term,
+                definition: definition || `Biblical term: ${term}`,
+                title: includeSections.title ? title : undefined,
+                subtitle: includeSections.subtitle ? "Biblical Examples" : undefined,
+                content: includeSections.content ? mainContent.trim() : undefined,
+                titleContent: includeSections.title ? titleContent.trim() : undefined,
+                subtitleContent: includeSections.subtitle ? subtitleContent.trim() : undefined,
+                mainContent: includeSections.content ? mainContent.trim() : undefined,
+              };
+            }
+          } catch (error) {
+            // Try next path
+            continue;
+          }
+        }
+      }
+
+      console.warn(`❌ Translation word not found: ${term}`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Error fetching translation word by term:`, error);
+      return null;
+    }
+  }
+
   public async fetchTranslationWordLinks(
     reference: Reference,
     options: ResourceOptions

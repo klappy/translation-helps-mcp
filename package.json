@@ -1,6 +1,6 @@
 {
   "name": "translation-helps-mcp",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "MCP Server for aggregating Bible translation resources from Door43",
   "type": "module",
   "scripts": {
