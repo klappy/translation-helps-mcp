@@ -21,7 +21,7 @@ This guide will help you get the Translation Helps MCP Server running locally an
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/translation-helps-mcp.git
+git clone https://github.com/klappy/translation-helps-mcp.git
 cd translation-helps-mcp
 ```
 
@@ -439,8 +439,8 @@ kubectl get pods -n translation-helps
 
 ### Community
 
-- [GitHub Issues](https://github.com/yourusername/translation-helps-mcp/issues)
-- [Discussions](https://github.com/yourusername/translation-helps-mcp/discussions)
+- [GitHub Issues](https://github.com/klappy/translation-helps-mcp/issues)
+- [Discussions](https://github.com/klappy/translation-helps-mcp/discussions)
 - [Discord Server](https://discord.gg/translation-helps)
 
 ---
@@ -449,9 +449,9 @@ kubectl get pods -n translation-helps
 
 ### Quick Links
 
-- 🐛 [Report a Bug](https://github.com/yourusername/translation-helps-mcp/issues/new?template=bug_report.md)
-- 💡 [Request a Feature](https://github.com/yourusername/translation-helps-mcp/issues/new?template=feature_request.md)
-- 💬 [Ask a Question](https://github.com/yourusername/translation-helps-mcp/discussions/new)
+- 🐛 [Report a Bug](https://github.com/klappy/translation-helps-mcp/issues/new?template=bug_report.md)
+- 💡 [Request a Feature](https://github.com/klappy/translation-helps-mcp/issues/new?template=feature_request.md)
+- 💬 [Ask a Question](https://github.com/klappy/translation-helps-mcp/discussions/new)
 
 ### Support Channels
 
