@@ -25,10 +25,14 @@ const testHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,9]');
 // Create performance.html with node_ids for performance page (node 6)
 const performanceHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,6]');
 
+// Create mcp-tools.html with node_ids for mcp-tools page (node 10)
+const mcpToolsHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,10]');
+
 // Write the files
 fs.writeFileSync(path.join(buildDir, 'chat.html'), chatHtml);
 fs.writeFileSync(path.join(buildDir, 'test.html'), testHtml);
 fs.writeFileSync(path.join(buildDir, 'performance.html'), performanceHtml);
+fs.writeFileSync(path.join(buildDir, 'mcp-tools.html'), mcpToolsHtml);
 
-console.log('✅ Created chat.html, test.html, and performance.html');
-console.log('✅ Direct access to /chat, /test, and /performance should now work!');
+console.log('✅ Created chat.html, test.html, performance.html, and mcp-tools.html');
+console.log('✅ Direct access to /chat, /test, /performance, and /mcp-tools should now work!');
