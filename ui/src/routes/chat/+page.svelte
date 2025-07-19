@@ -45,6 +45,7 @@
 		responseTime?: number;
 		isTyping?: boolean;
 		status?: 'sending' | 'sent' | 'error';
+		thinkingTrace?: string[];
 	}
 
 	interface ApiCall {
@@ -229,6 +230,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 				timestamp: new Date(),
 				apiCalls: response.apiCalls,
 				responseTime: response.responseTime,
+				thinkingTrace: response.thinkingTrace,
 				status: 'sent'
 			};
 
@@ -258,7 +260,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 	// Real AI response using browser LLM with Bible context
 	async function generateAIResponse(
 		userMessage: string
-	): Promise<{ content: string; apiCalls: ApiCall[]; responseTime: number }> {
+	): Promise<{ content: string; apiCalls: ApiCall[]; responseTime: number; thinkingTrace: string[] }> {
 		const startTime = performance.now();
 		const apiCalls: ApiCall[] = [];
 
@@ -473,6 +475,9 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		console.log('Word match:', wordMatchDebug);
 		console.log('Extracted word:', wordMatchDebug ? wordMatchDebug[1] : 'No word found');
 
+		// Generate thinking trace
+		const thinkingTrace = chatService.generateThinkingTrace(userMessage, apiCalls);
+
 		// Generate AI response with citations
 		const llmResponse = await chatService.generateResponse(userMessage, contextPrompt);
 
@@ -481,7 +486,8 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		return {
 			content: llmResponse.success ? llmResponse.response : `Error: ${llmResponse.error}`,
 			apiCalls,
-			responseTime: responseTime
+			responseTime: responseTime,
+			thinkingTrace
 		};
 	}
 
@@ -743,6 +749,28 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 											<span class="text-sm text-gray-400">AI is thinking...</span>
 										</div>
 									{:else}
+										<!-- Thinking Trace -->
+										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
+											<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+												<div class="mb-3 flex items-center space-x-2">
+													<Lightbulb class="h-4 w-4 text-blue-400" />
+													<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
+												</div>
+												<div class="space-y-2">
+													{#each message.thinkingTrace as step, index}
+														<div class="flex items-start space-x-3">
+															<div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
+																{index + 1}
+															</div>
+															<div class="flex-1 text-sm text-blue-200">
+																{@html marked(step)}
+															</div>
+														</div>
+													{/each}
+												</div>
+											</div>
+										{/if}
+
 										<div class="ai-response-content max-w-none leading-relaxed text-gray-300">
 											<style>
 												/* Override Tailwind's base layer resets */
