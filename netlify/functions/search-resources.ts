@@ -39,17 +39,29 @@ export const handler: Handler = async (event, context) => {
   try {
     const { language, organization, resource, subject } = event.queryStringParameters || {};
 
-    const result = await handleSearchResources({
+    const mcpResult = await handleSearchResources({
       language,
       organization,
       resource,
       subject,
     });
 
+    // Unwrap the MCP response format to get the actual data
+    let actualData;
+    try {
+      // MCP returns { content: [{ type: "text", text: "JSON string" }] }
+      // We want to extract and parse the actual JSON data
+      const textContent = mcpResult.content?.[0]?.text;
+      actualData = textContent ? JSON.parse(textContent) : mcpResult;
+    } catch (parseError) {
+      // If parsing fails, return the original result
+      actualData = mcpResult;
+    }
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(result, null, 2),
+      body: JSON.stringify(actualData, null, 2),
     };
   } catch (error) {
     console.error("Search resources error:", error);
