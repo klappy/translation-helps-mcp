@@ -491,7 +491,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		const thinkingTrace = chatService.generateThinkingTrace(userMessage, apiCalls);
 
 		// Generate AI response with citations
-		const llmResponse = await chatService.generateResponse(userMessage, contextPrompt);
+		const llmResponse = await chatService.generateResponse(userMessage);
 
 		const responseTime = performance.now() - startTime;
 
