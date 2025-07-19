@@ -88,7 +88,8 @@
 		type: 'quick',
 		count: 5,
 		parallel: false, // Default to sequential to avoid rate limits
-		delay: 500 // Increased delay to be more gentle on the server
+		delay: 500, // Increased delay to be more gentle on the server
+		batchSize: 10 // Run tests in batches to avoid overwhelming the server
 	};
 
 	// API endpoints with enhanced metadata
@@ -278,34 +279,58 @@
 		debugLogs.push(`🚀 Starting bulk test suite with ${testCases.length} test cases`);
 		debugLogs.push(`⚡ Parallel execution: ${bulkConfig.parallel ? 'enabled' : 'disabled'}`);
 		debugLogs.push(`⏱️ Delay between requests: ${bulkConfig.delay}ms`);
+		debugLogs.push(`📦 Batch size: ${bulkConfig.batchSize} tests per batch`);
 
-		if (bulkConfig.parallel) {
-			// Parallel execution
-			const promises = testCases.map(async (testCase, index) => {
-				debugLogs.push(`📡 Starting test ${index + 1}/${testCases.length}: ${testCase.endpoint}`);
-				const result = await executeTestCase(testCase);
-				debugLogs.push(
-					`✅ Completed test ${index + 1}: ${result.status} (${result.responseTime.toFixed(0)}ms)`
-				);
-				return result;
-			});
+		// Process tests in batches
+		const batchSize = bulkConfig.batchSize || 10;
+		for (let batchStart = 0; batchStart < testCases.length; batchStart += batchSize) {
+			const batch = testCases.slice(batchStart, batchStart + batchSize);
+			const batchNumber = Math.floor(batchStart / batchSize) + 1;
+			const totalBatches = Math.ceil(testCases.length / batchSize);
 
-			const testResults = await Promise.all(promises);
-			results.push(...testResults);
-		} else {
-			// Sequential execution
-			for (let i = 0; i < testCases.length; i++) {
-				const testCase = testCases[i];
-				debugLogs.push(`📡 Starting test ${i + 1}/${testCases.length}: ${testCase.endpoint}`);
-				const result = await executeTestCase(testCase);
-				debugLogs.push(
-					`✅ Completed test ${i + 1}: ${result.status} (${result.responseTime.toFixed(0)}ms)`
-				);
-				results.push(result);
+			debugLogs.push(`📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} tests)`);
 
-				if (bulkConfig.delay > 0 && i < testCases.length - 1) {
-					await new Promise((resolve) => setTimeout(resolve, bulkConfig.delay));
+			if (bulkConfig.parallel) {
+				// Parallel execution within batch
+				const promises = batch.map(async (testCase, index) => {
+					const overallIndex = batchStart + index;
+					debugLogs.push(
+						`📡 Starting test ${overallIndex + 1}/${testCases.length}: ${testCase.endpoint}`
+					);
+					const result = await executeTestCase(testCase);
+					debugLogs.push(
+						`✅ Completed test ${overallIndex + 1}: ${result.status} (${result.responseTime.toFixed(0)}ms)`
+					);
+					return result;
+				});
+
+				const batchResults = await Promise.all(promises);
+				results.push(...batchResults);
+			} else {
+				// Sequential execution within batch
+				for (let i = 0; i < batch.length; i++) {
+					const testCase = batch[i];
+					const overallIndex = batchStart + i;
+					debugLogs.push(
+						`📡 Starting test ${overallIndex + 1}/${testCases.length}: ${testCase.endpoint}`
+					);
+					const result = await executeTestCase(testCase);
+					debugLogs.push(
+						`✅ Completed test ${overallIndex + 1}: ${result.status} (${result.responseTime.toFixed(0)}ms)`
+					);
+					results.push(result);
+
+					if (bulkConfig.delay > 0 && i < batch.length - 1) {
+						await new Promise((resolve) => setTimeout(resolve, bulkConfig.delay));
+					}
 				}
+			}
+
+			// Delay between batches
+			if (batchNumber < totalBatches) {
+				const batchDelay = Math.max(bulkConfig.delay * 2, 1000); // Longer delay between batches
+				debugLogs.push(`⏸️ Waiting ${batchDelay}ms before next batch...`);
+				await new Promise((resolve) => setTimeout(resolve, batchDelay));
 			}
 		}
 
@@ -403,7 +428,7 @@
 	// Generate test cases for bulk testing
 	function generateTestCases(config: any) {
 		const testCases = [];
-		const references = ['Titus 1:1', 'John 3:16', 'Genesis 1:1', 'Psalm 23:1', 'Matthew 5:1'];
+		const references = ['Titus 1:1', 'John 3:16', 'Genesis 1:1', 'Matthew 5:1', 'Mark 1:1'];
 
 		for (let i = 0; i < config.count; i++) {
 			const reference = references[i % references.length];
@@ -863,17 +888,29 @@
 							/>
 						</div>
 
-						<div>
-							<label class="mb-2 block text-sm font-medium text-gray-300"
-								>Delay Between Requests (ms)</label
-							>
-							<input
-								type="number"
-								bind:value={bulkConfig.delay}
-								min="0"
-								max="1000"
-								class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-							/>
+						<div class="grid grid-cols-2 gap-4">
+							<div>
+								<label class="mb-2 block text-sm font-medium text-gray-300"
+									>Delay Between Requests (ms)</label
+								>
+								<input
+									type="number"
+									bind:value={bulkConfig.delay}
+									min="0"
+									max="5000"
+									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+								/>
+							</div>
+							<div>
+								<label class="mb-2 block text-sm font-medium text-gray-300">Batch Size</label>
+								<input
+									type="number"
+									bind:value={bulkConfig.batchSize}
+									min="1"
+									max="50"
+									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+								/>
+							</div>
 						</div>
 
 						<div class="space-y-3">
