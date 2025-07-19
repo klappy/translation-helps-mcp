@@ -30,39 +30,6 @@
 		return JSON.stringify(obj, null, 2);
 	}
 
-	function formatJsonWithSyntaxHighlighting(obj) {
-		const json = JSON.stringify(obj, null, 2);
-
-		// Apply syntax highlighting with more careful regex patterns
-		let highlighted = json
-			// Escape HTML first
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			// Apply highlighting
-			.replace(
-				/"([^"]+)"(\s*:)/g,
-				'<span class="text-blue-400 font-semibold">"$1"</span><span class="text-gray-400">$2</span>'
-			) // Keys with colons
-			.replace(/"([^"]+)"(?!\s*:)/g, '<span class="text-green-400">"$1"</span>') // String values (not keys)
-			.replace(/\b(true|false)\b/g, '<span class="text-purple-400 font-semibold">$1</span>') // Booleans
-			.replace(/\b(\d+\.?\d*)\b/g, '<span class="text-yellow-400">$1</span>') // Numbers
-			.replace(/\b(null)\b/g, '<span class="text-red-400 font-semibold">$1</span>') // null
-			.replace(/([{}])/g, '<span class="text-gray-500 text-lg font-bold">$1</span>') // Braces
-			.replace(/([[\\]])/g, '<span class="text-gray-500 text-lg font-bold">$1</span>') // Brackets
-			.replace(/(,)$/gm, '<span class="text-gray-500">$1</span>'); // Commas at end of lines
-
-		// Split into lines and add formatting
-		return highlighted
-			.split('\n')
-			.map((line, index) => {
-				const indent = (line.match(/^(\s*)/) || ['', ''])[1].length;
-				const paddingClass = indent > 0 ? `style="padding-left: ${indent * 0.75}rem"` : '';
-				return `<div class="font-mono text-sm leading-relaxed hover:bg-gray-800/20 transition-colors py-0.5" ${paddingClass}>${line}</div>`;
-			})
-			.join('');
-	}
-
 	function toggleViewMode() {
 		viewMode = viewMode === 'visual' ? 'raw' : 'visual';
 	}
@@ -137,13 +104,10 @@
 		</div>
 
 		{#if viewMode === 'raw'}
-			<div
-				class="scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 max-h-96 overflow-auto rounded bg-gray-900/50"
-			>
-				<div class="p-3">
-					{@html formatJsonWithSyntaxHighlighting(response)}
-				</div>
-			</div>
+			<pre
+				class="scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 max-h-96 overflow-auto rounded bg-gray-900/50 p-4 font-mono text-sm leading-relaxed whitespace-pre-wrap text-gray-300">{formatJson(
+					response
+				)}</pre>
 		{:else}
 			<!-- Visual View -->
 			<div
