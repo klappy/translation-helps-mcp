@@ -29,11 +29,11 @@
 	} from 'lucide-svelte';
 	import BibleVerse from '$lib/components/BibleVerse.svelte';
 	import TranslationWord from '$lib/components/TranslationWord.svelte';
-	import { BrowserLLM } from '$lib/services/BrowserLLM';
+	import { LLMChatService } from '$lib/services/llmChatService';
 	import { marked } from 'marked';
 
 	// Create an instance of the AI system
-	const browserLLM = new BrowserLLM();
+	const chatService = new LLMChatService();
 
 	// Types
 	interface ChatMessage {
@@ -474,12 +474,12 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		console.log('Extracted word:', wordMatchDebug ? wordMatchDebug[1] : 'No word found');
 
 		// Generate AI response with citations
-		const llmResponse = await browserLLM.generateResponse(userMessage, contextPrompt);
+		const llmResponse = await chatService.generateResponse(userMessage, contextPrompt);
 
 		const responseTime = performance.now() - startTime;
 
 		return {
-			content: llmResponse,
+			content: llmResponse.success ? llmResponse.response : `Error: ${llmResponse.error}`,
 			apiCalls,
 			responseTime: responseTime
 		};
