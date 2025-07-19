@@ -1,6 +1,6 @@
 /**
- * Search Resources Tool
- * Search for available Bible translation resources
+ * List Available Resources Tool
+ * List available Bible translation resources from the DCS catalog
  */
 
 import { z } from "zod";
@@ -8,23 +8,23 @@ import { logger } from "../utils/logger.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 
 // Input schema
-export const SearchResourcesArgs = z.object({
+export const ListAvailableResourcesArgs = z.object({
   language: z.string().optional(),
   organization: z.string().optional(),
   resource: z.string().optional(),
   subject: z.string().optional(),
 });
 
-export type SearchResourcesArgs = z.infer<typeof SearchResourcesArgs>;
+export type ListAvailableResourcesArgs = z.infer<typeof ListAvailableResourcesArgs>;
 
 /**
- * Handle the search resources tool call
+ * Handle the list available resources tool call
  */
-export async function handleSearchResources(args: SearchResourcesArgs) {
+export async function handleSearchResources(args: ListAvailableResourcesArgs) {
   const startTime = Date.now();
 
   try {
-    logger.info("Searching resources", args);
+    logger.info("Listing available resources", args);
 
     // Create DCS API client
     const client = new DCSApiClient();
@@ -87,7 +87,7 @@ export async function handleSearchResources(args: SearchResourcesArgs) {
       ],
     };
   } catch (error) {
-    logger.error("Failed to search resources", {
+    logger.error("Failed to list available resources", {
       args,
       error: (error as Error).message,
       responseTime: Date.now() - startTime,
