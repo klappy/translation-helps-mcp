@@ -47,6 +47,7 @@
 		status?: 'sending' | 'sent' | 'error';
 		thinkingTrace?: string[];
 		isFallback?: boolean;
+		overallStatus?: 'success' | 'warning' | 'error';
 	}
 
 	interface ApiCall {
@@ -245,7 +246,8 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 				responseTime: response.responseTime,
 				thinkingTrace: response.thinkingTrace,
 				status: 'sent',
-				isFallback: response.isFallback
+				isFallback: response.isFallback,
+				overallStatus: calculateOverallStatus(response.apiCalls, response.isFallback)
 			};
 
 			messages = [...messages, assistantMessage];
@@ -531,6 +533,32 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		collapsedThinkingTraces = collapsedThinkingTraces; // Trigger reactivity
 	}
 
+	/**
+	 * Calculate overall status based on API calls and fallback status
+	 */
+	function calculateOverallStatus(apiCalls: ApiCall[] = [], isFallback: boolean = false): 'success' | 'warning' | 'error' {
+		// If there are no API calls and it's not a fallback, it's an error
+		if (apiCalls.length === 0 && !isFallback) {
+			return 'error';
+		}
+
+		// Check if any API calls failed
+		const hasFailedCalls = apiCalls.some(call => call.status === 'error');
+		
+		// If any API calls failed, it's an error
+		if (hasFailedCalls) {
+			return 'error';
+		}
+
+		// If all API calls succeeded but it's a fallback, it's a warning
+		if (isFallback) {
+			return 'warning';
+		}
+
+		// If all API calls succeeded and it's not a fallback, it's success
+		return 'success';
+	}
+
 	function copyMessage(id: string) {
 		const message = messages.find((m) => m.id === id);
 		if (message) {
@@ -741,6 +769,17 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 													<span>{message.responseTime.toFixed(0)}ms</span>
 												</div>
 											{/if}
+											{#if message.overallStatus}
+												<div class="flex items-center space-x-1">
+													{#if message.overallStatus === 'success'}
+														<div class="h-3 w-3 rounded-full bg-green-500" title="All systems working perfectly"></div>
+													{:else if message.overallStatus === 'warning'}
+														<div class="h-3 w-3 rounded-full bg-yellow-500" title="Tool calls worked but AI response was mocked"></div>
+													{:else if message.overallStatus === 'error'}
+														<div class="h-3 w-3 rounded-full bg-red-500" title="Some tool calls failed"></div>
+													{/if}
+												</div>
+											{/if}
 											{#if message.status}
 												<svelte:component
 													this={getStatusIcon(message.status)}
@@ -779,6 +818,24 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 													<div class="flex items-center space-x-2">
 														<Lightbulb class="h-4 w-4 text-blue-400" />
 														<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
+														{#if message.overallStatus && !message.isTyping}
+															{#if message.overallStatus === 'success'}
+																<div class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1">
+																	<div class="h-2 w-2 rounded-full bg-green-500"></div>
+																	<span class="text-xs font-medium text-green-300">All Systems OK</span>
+																</div>
+															{:else if message.overallStatus === 'warning'}
+																<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
+																	<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
+																	<span class="text-xs font-medium text-yellow-300">Mock Response</span>
+																</div>
+															{:else if message.overallStatus === 'error'}
+																<div class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1">
+																	<div class="h-2 w-2 rounded-full bg-red-500"></div>
+																	<span class="text-xs font-medium text-red-300">API Errors</span>
+																</div>
+															{/if}
+														{/if}
 														{#if message.isTyping}
 															<div class="flex space-x-1">
 																<div class="h-2 w-2 animate-bounce rounded-full bg-blue-400"></div>
