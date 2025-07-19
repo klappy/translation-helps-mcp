@@ -35,7 +35,7 @@ The user's question will be followed by the relevant Bible resources fetched fro
 /**
  * Main handler - just relay to OpenAI
  */
-exports.handler = async (event, context) => {
+export async function handler(event, context) {
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
@@ -138,4 +138,4 @@ exports.handler = async (event, context) => {
       }),
     };
   }
-};
+}
