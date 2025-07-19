@@ -332,6 +332,202 @@
 				}
 			},
 			useCase: 'Parse Bible references from user input'
+		},
+		{
+			name: 'Fetch Scripture',
+			tool: 'translation_helps_fetch_scripture',
+			icon: BookOpen,
+			description: 'Fetch Bible scripture text for a specific reference',
+			category: 'scripture',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "John 3:16")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (e.g., "en", "es", "fr")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (e.g., "unfoldingWord")'
+				},
+				{
+					name: 'translation',
+					type: 'string',
+					required: false,
+					description:
+						'Specific translation (e.g., "ult", "ust", "t4t") or "all" for all translations'
+				}
+			],
+			example: {
+				request: {
+					reference: 'John 3:16',
+					language: 'en'
+				},
+				response: {
+					reference: {
+						book: 'JHN',
+						chapter: 3,
+						verse: 16
+					},
+					scripture: {
+						text: 'For God so loved the world...',
+						translation: 'ULT'
+					}
+				}
+			},
+			useCase: 'Get Bible text for a specific verse or passage'
+		},
+		{
+			name: 'Fetch Translation Notes',
+			tool: 'translation_helps_fetch_translation_notes',
+			icon: FileText,
+			description: 'Fetch translation notes for a specific Bible reference',
+			category: 'notes',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "Titus 1:1")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (e.g., "en", "es", "fr")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (e.g., "unfoldingWord")'
+				},
+				{
+					name: 'includeIntro',
+					type: 'boolean',
+					required: false,
+					default: false,
+					description: 'Include introduction notes (default: false)'
+				}
+			],
+			example: {
+				request: {
+					reference: 'Titus 1:1',
+					language: 'en'
+				},
+				response: {
+					translationNotes: [
+						{
+							reference: '1:1',
+							quote: 'Paul',
+							note: 'This verse introduces Paul and his role as an apostle.'
+						}
+					]
+				}
+			},
+			useCase: 'Get detailed translation notes for Bible study'
+		},
+		{
+			name: 'Fetch Translation Questions',
+			tool: 'translation_helps_fetch_translation_questions',
+			icon: Users,
+			description: 'Fetch translation questions for a specific Bible reference',
+			category: 'questions',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "Matthew 5:1")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (e.g., "en", "es", "fr")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (e.g., "unfoldingWord")'
+				}
+			],
+			example: {
+				request: {
+					reference: 'Matthew 5:1',
+					language: 'en'
+				},
+				response: {
+					translationQuestions: [
+						{
+							reference: '5:1',
+							question: 'What did Jesus do when he saw the crowds?',
+							answer: 'He went up on a mountain and sat down.'
+						}
+					]
+				}
+			},
+			useCase: 'Get comprehension questions for Bible passages'
+		},
+		{
+			name: 'Fetch Translation Word Links',
+			tool: 'translation_helps_fetch_translation_word_links',
+			icon: MessageSquare,
+			description: 'Fetch translation word links for a specific Bible reference',
+			category: 'links',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "Titus 1:1")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (e.g., "en", "es", "fr")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (e.g., "unfoldingWord")'
+				}
+			],
+			example: {
+				request: {
+					reference: 'Titus 1:1',
+					language: 'en'
+				},
+				response: {
+					translationWordLinks: [
+						{
+							word: 'apostle',
+							link: 'rc://en/tn/help/tit/01/01',
+							occurrences: 1
+						}
+					]
+				}
+			},
+			useCase: 'Get links to translation word articles for a verse'
 		}
 	];
 
@@ -339,6 +535,10 @@
 	const toolsByCategory = {
 		'translation-words': mcpTools.filter((t) => t.category === 'translation-words'),
 		comprehensive: mcpTools.filter((t) => t.category === 'comprehensive'),
+		scripture: mcpTools.filter((t) => t.category === 'scripture'),
+		notes: mcpTools.filter((t) => t.category === 'notes'),
+		questions: mcpTools.filter((t) => t.category === 'questions'),
+		links: mcpTools.filter((t) => t.category === 'links'),
 		search: mcpTools.filter((t) => t.category === 'search'),
 		metadata: mcpTools.filter((t) => t.category === 'metadata'),
 		utility: mcpTools.filter((t) => t.category === 'utility')
@@ -347,6 +547,10 @@
 	const categoryNames: Record<string, string> = {
 		'translation-words': 'Translation Words',
 		comprehensive: 'Comprehensive',
+		scripture: 'Scripture',
+		notes: 'Translation Notes',
+		questions: 'Translation Questions',
+		links: 'Translation Word Links',
 		search: 'Search',
 		metadata: 'Metadata',
 		utility: 'Utility'
@@ -369,6 +573,14 @@
 				return BookOpen;
 			case 'comprehensive':
 				return Zap;
+			case 'scripture':
+				return BookOpen;
+			case 'notes':
+				return FileText;
+			case 'questions':
+				return Users;
+			case 'links':
+				return MessageSquare;
 			case 'search':
 				return Search;
 			case 'metadata':

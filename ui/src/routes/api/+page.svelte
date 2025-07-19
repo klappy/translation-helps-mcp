@@ -13,13 +13,19 @@
 		AlertCircle
 	} from 'lucide-svelte';
 
+	// DEPRECATED: This page shows the old REST API endpoints
+	// All functionality has been moved to MCP tools
+	// Please use the MCP Tools page instead: /mcp-tools
+
 	const endpoints = [
 		{
-			name: 'Fetch Scripture',
+			name: 'Fetch Scripture (DEPRECATED)',
 			icon: BookOpen,
 			path: '/api/fetch-scripture',
-			description: 'Retrieve Bible verses with context and metadata',
+			description: 'DEPRECATED: Use MCP tool "translation_helps_fetch_scripture" instead',
 			method: 'GET',
+			deprecated: true,
+			mcpAlternative: 'translation_helps_fetch_scripture',
 			parameters: [
 				{
 					name: 'reference',
@@ -55,11 +61,13 @@
 			}
 		},
 		{
-			name: 'Fetch Translation Notes',
+			name: 'Fetch Translation Notes (DEPRECATED)',
 			icon: FileText,
 			path: '/api/fetch-translation-notes',
-			description: 'Get translation notes and insights for Bible passages',
+			description: 'DEPRECATED: Use MCP tool "translation_helps_fetch_translation_notes" instead',
 			method: 'GET',
+			deprecated: true,
+			mcpAlternative: 'translation_helps_fetch_translation_notes',
 			parameters: [
 				{
 					name: 'reference',
@@ -94,11 +102,14 @@
 			}
 		},
 		{
-			name: 'Fetch Translation Questions',
+			name: 'Fetch Translation Questions (DEPRECATED)',
 			icon: Users,
 			path: '/api/fetch-translation-questions',
-			description: 'Retrieve translation questions and answers',
+			description:
+				'DEPRECATED: Use MCP tool "translation_helps_fetch_translation_questions" instead',
 			method: 'GET',
+			deprecated: true,
+			mcpAlternative: 'translation_helps_fetch_translation_questions',
 			parameters: [
 				{
 					name: 'reference',
@@ -134,11 +145,13 @@
 			}
 		},
 		{
-			name: 'Fetch Translation Words',
+			name: 'Fetch Translation Words (DEPRECATED)',
 			icon: Code,
 			path: '/api/fetch-translation-words',
-			description: 'Get word definitions and semantic information by term or Bible reference',
+			description: 'DEPRECATED: Use MCP tool "translation_helps_get_word" instead',
 			method: 'GET',
+			deprecated: true,
+			mcpAlternative: 'translation_helps_get_word',
 			parameters: [
 				{
 					name: 'word',
@@ -199,11 +212,14 @@
 			}
 		},
 		{
-			name: 'Fetch Translation Word Links',
+			name: 'Fetch Translation Word Links (DEPRECATED)',
 			icon: MessageSquare,
 			path: '/api/fetch-translation-word-links',
-			description: 'Get links to translation word articles',
+			description:
+				'DEPRECATED: Use MCP tool "translation_helps_fetch_translation_word_links" instead',
 			method: 'GET',
+			deprecated: true,
+			mcpAlternative: 'translation_helps_fetch_translation_word_links',
 			parameters: [
 				{
 					name: 'reference',
@@ -239,11 +255,13 @@
 			}
 		},
 		{
-			name: 'Fetch All Resources',
+			name: 'Fetch All Resources (DEPRECATED)',
 			icon: Zap,
 			path: '/api/fetch-resources',
-			description: 'Get all resources for a Bible reference in one call',
+			description: 'DEPRECATED: Use MCP tool "translation_helps_fetch_resources" instead',
 			method: 'GET',
+			deprecated: true,
+			mcpAlternative: 'translation_helps_fetch_resources',
 			parameters: [
 				{
 					name: 'reference',
@@ -332,13 +350,38 @@
 		<h1 class="mb-6 text-4xl font-bold text-white md:text-5xl">
 			Translation Helps
 			<span class="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent"
-				>API Reference</span
+				>API Reference (Deprecated)</span
 			>
 		</h1>
 		<p class="mx-auto max-w-3xl text-xl text-gray-300">
-			Complete documentation for all Translation Helps MCP Server endpoints. Learn how to integrate
-			Bible translation resources into your applications.
+			<strong>DEPRECATED:</strong> These REST API endpoints are no longer recommended for use. Please
+			use the MCP tools instead for better performance and functionality.
 		</p>
+	</div>
+
+	<!-- DEPRECATION NOTICE -->
+	<div class="mb-12 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-8 backdrop-blur-xl">
+		<div class="mb-4 flex items-center">
+			<AlertCircle class="mr-3 h-6 w-6 text-yellow-400" />
+			<h2 class="text-xl font-semibold text-yellow-200">⚠️ API Endpoints Deprecated</h2>
+		</div>
+		<p class="mb-4 text-yellow-100">
+			<strong>All REST API endpoints have been deprecated and replaced with MCP tools.</strong>
+		</p>
+		<p class="mb-4 text-yellow-100">
+			The Translation Helps system now uses the MCP (Model Context Protocol) architecture for better
+			performance, consistency, and enhanced functionality.
+		</p>
+		<div class="flex items-center space-x-4">
+			<a
+				href="/mcp-tools"
+				class="flex items-center rounded-lg bg-blue-600 px-6 py-2 font-medium text-white transition-colors hover:bg-blue-700"
+			>
+				<ExternalLink class="mr-2 h-4 w-4" />
+				View MCP Tools
+			</a>
+			<span class="text-sm text-yellow-200"> All functionality is now available as MCP tools </span>
+		</div>
 	</div>
 
 	<!-- API Overview -->

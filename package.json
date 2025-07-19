@@ -1,6 +1,6 @@
 {
   "name": "translation-helps-mcp",
-  "version": "3.3.1",
+  "version": "3.4.0",
   "description": "MCP Server for aggregating Bible translation resources from Door43",
   "type": "module",
   "scripts": {
@@ -15,7 +15,12 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "deploy": "netlify deploy --prod",
-    "logs": "netlify functions:log"
+    "logs": "netlify functions:log",
+    "test:smoke": "vitest run tests/smoke.test.ts",
+    "test:parity": "vitest run tests/endpoint-parity.test.ts",
+    "test:regression": "vitest run tests/regression.test.ts",
+    "test:unit": "vitest run tests/DCSApiClient.test.ts",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@netlify/blobs": "^10.0.6",

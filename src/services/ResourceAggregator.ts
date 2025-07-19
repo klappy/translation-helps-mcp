@@ -201,16 +201,16 @@ export class ResourceAggregator {
         logger.debug(`Trying Bible resource: ${resourceName}`);
 
         // STEP 3: USE THE INGREDIENTS ARRAY!!! (The #1 Discovery)
-        const bookId = reference.book.toLowerCase();
+        const bookCode = this.getBookCode(reference.book);
         const ingredient = resource.ingredients?.find(
           (ing: any) =>
-            ing.identifier === bookId ||
+            ing.identifier === bookCode ||
             ing.identifier === reference.book.toUpperCase() ||
             ing.identifier === reference.book
         );
 
         if (!ingredient || !ingredient.path) {
-          logger.debug(`No ingredient found for ${bookId} in ${resourceName}`);
+          logger.debug(`No ingredient found for ${bookCode} in ${resourceName}`);
           continue;
         }
 
@@ -319,13 +319,18 @@ export class ResourceAggregator {
           continue;
         }
 
-        // STEP 4: Find the TSV file for the specific book
-        const tnFileName = `tn_${reference.book}.tsv`;
+        // STEP 4: Find the TSV file for the specific book by looking through ingredients
+        const bookCode = this.getBookCode(reference.book);
 
         let targetFile = null;
         for (const ingredient of resourceMetadata.ingredients) {
-          if (ingredient.path === tnFileName || ingredient.path.endsWith(`/${tnFileName}`)) {
+          // Look for any file that contains the book code (flexible matching)
+          const path = ingredient.path.toLowerCase();
+          if (path.includes(bookCode.toLowerCase()) && path.includes(".tsv")) {
             targetFile = ingredient;
+            logger.debug(
+              `Found translation notes file: ${ingredient.path} for book ${reference.book}`
+            );
             break;
           }
         }
@@ -382,7 +387,8 @@ export class ResourceAggregator {
   ): Promise<TranslationQuestion[]> {
     try {
       const repoName = `${options.language}_tq`;
-      const filePath = `tq_${reference.book}.tsv`;
+      const bookCode = this.getBookCode(reference.book);
+      const filePath = `tq_${bookCode}.tsv`;
 
       logger.debug("Fetching translation questions", {
         organization: options.organization,
@@ -460,14 +466,18 @@ export class ResourceAggregator {
           continue;
         }
 
-        // STEP 4: Find the TSV file for the specific book
-        const bookFileName = this.getBookFileName(reference.book, "tsv");
-        const twFileName = `tw_${reference.book}.tsv`;
+        // STEP 4: Find the TSV file for the specific book by looking through ingredients
+        const bookCode = this.getBookCode(reference.book);
 
         let targetFile = null;
         for (const ingredient of resourceMetadata.ingredients) {
-          if (ingredient.path === twFileName || ingredient.path.endsWith(`/${twFileName}`)) {
+          // Look for any file that contains the book code (flexible matching)
+          const path = ingredient.path.toLowerCase();
+          if (path.includes(bookCode.toLowerCase()) && path.includes(".tsv")) {
             targetFile = ingredient;
+            logger.debug(
+              `Found translation words file: ${ingredient.path} for book ${reference.book}`
+            );
             break;
           }
         }
@@ -565,13 +575,18 @@ export class ResourceAggregator {
           continue;
         }
 
-        // STEP 4: Find the TSV file for the specific book
-        const twlFileName = `twl_${reference.book}.tsv`;
+        // STEP 4: Find the TSV file for the specific book by looking through ingredients
+        const bookCode = this.getBookCode(reference.book);
 
         let targetFile = null;
         for (const ingredient of resourceMetadata.ingredients) {
-          if (ingredient.path === twlFileName || ingredient.path.endsWith(`/${twlFileName}`)) {
+          // Look for any file that contains the book code (flexible matching)
+          const path = ingredient.path.toLowerCase();
+          if (path.includes(bookCode.toLowerCase()) && path.includes(".tsv")) {
             targetFile = ingredient;
+            logger.debug(
+              `Found translation word links file: ${ingredient.path} for book ${reference.book}`
+            );
             break;
           }
         }
@@ -720,6 +735,81 @@ export class ResourceAggregator {
       REV: "67", // Fixed - was 66
     };
     return bookNumbers[book.toUpperCase()] || "01";
+  }
+
+  /**
+   * Convert book name to 3-letter code for ingredient lookup
+   */
+  private getBookCode(book: string): string {
+    const bookCodes: Record<string, string> = {
+      Genesis: "gen",
+      Exodus: "exo",
+      Leviticus: "lev",
+      Numbers: "num",
+      Deuteronomy: "deu",
+      Joshua: "jos",
+      Judges: "jdg",
+      Ruth: "rut",
+      "1 Samuel": "1sa",
+      "2 Samuel": "2sa",
+      "1 Kings": "1ki",
+      "2 Kings": "2ki",
+      "1 Chronicles": "1ch",
+      "2 Chronicles": "2ch",
+      Ezra: "ezr",
+      Nehemiah: "neh",
+      Esther: "est",
+      Job: "job",
+      Psalms: "psa",
+      Proverbs: "pro",
+      Ecclesiastes: "ecc",
+      "Song of Solomon": "sng",
+      Isaiah: "isa",
+      Jeremiah: "jer",
+      Lamentations: "lam",
+      Ezekiel: "ezk",
+      Daniel: "dan",
+      Hosea: "hos",
+      Joel: "jol",
+      Amos: "amo",
+      Obadiah: "oba",
+      Jonah: "jon",
+      Micah: "mic",
+      Nahum: "nam",
+      Habakkuk: "hab",
+      Zephaniah: "zep",
+      Haggai: "hag",
+      Zechariah: "zec",
+      Malachi: "mal",
+      Matthew: "mat",
+      Mark: "mrk",
+      Luke: "luk",
+      John: "jhn",
+      Acts: "act",
+      Romans: "rom",
+      "1 Corinthians": "1co",
+      "2 Corinthians": "2co",
+      Galatians: "gal",
+      Ephesians: "eph",
+      Philippians: "php",
+      Colossians: "col",
+      "1 Thessalonians": "1th",
+      "2 Thessalonians": "2th",
+      "1 Timothy": "1ti",
+      "2 Timothy": "2ti",
+      Titus: "tit",
+      Philemon: "phm",
+      Hebrews: "heb",
+      James: "jas",
+      "1 Peter": "1pe",
+      "2 Peter": "2pe",
+      "1 John": "1jn",
+      "2 John": "2jn",
+      "3 John": "3jn",
+      Jude: "jud",
+      Revelation: "rev",
+    };
+    return bookCodes[book] || book.toLowerCase();
   }
 
   /**

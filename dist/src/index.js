@@ -17,6 +17,10 @@ import { handleExtractReferences } from "./tools/extractReferences.js";
 import { handleBrowseTranslationWords } from "./tools/browseTranslationWords.js";
 import { handleGetTranslationWord } from "./tools/getTranslationWord.js";
 import { handleGetWordsForReference } from "./tools/getWordsForReference.js";
+import { handleFetchScripture } from "./tools/fetchScripture.js";
+import { handleFetchTranslationNotes } from "./tools/fetchTranslationNotes.js";
+import { handleFetchTranslationQuestions } from "./tools/fetchTranslationQuestions.js";
+import { handleFetchTranslationWordLinks } from "./tools/fetchTranslationWordLinks.js";
 // Tool parameter schemas
 const FetchResourcesSchema = z.object({
     reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
@@ -67,6 +71,52 @@ const GetWordsForReferenceSchema = z.object({
     reference: z.string().describe("Bible reference (e.g., 'John 3:16')"),
     language: z.string().optional().default("en").describe("Language code"),
     organization: z.string().optional().default("unfoldingWord").describe("Organization"),
+});
+// Individual resource schemas
+const FetchScriptureSchema = z.object({
+    reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
+    language: z.string().optional().default("en").describe('Language code (default: "en")'),
+    organization: z
+        .string()
+        .optional()
+        .default("unfoldingWord")
+        .describe('Organization (default: "unfoldingWord")'),
+    translation: z
+        .string()
+        .optional()
+        .describe('Specific translation (e.g., "ult", "ust", "t4t") or "all" for all translations'),
+});
+const FetchTranslationNotesSchema = z.object({
+    reference: z.string().describe('Bible reference (e.g., "Titus 1:1")'),
+    language: z.string().optional().default("en").describe('Language code (default: "en")'),
+    organization: z
+        .string()
+        .optional()
+        .default("unfoldingWord")
+        .describe('Organization (default: "unfoldingWord")'),
+    includeIntro: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Include introduction notes (default: false)"),
+});
+const FetchTranslationQuestionsSchema = z.object({
+    reference: z.string().describe('Bible reference (e.g., "Matthew 5:1")'),
+    language: z.string().optional().default("en").describe('Language code (default: "en")'),
+    organization: z
+        .string()
+        .optional()
+        .default("unfoldingWord")
+        .describe('Organization (default: "unfoldingWord")'),
+});
+const FetchTranslationWordLinksSchema = z.object({
+    reference: z.string().describe('Bible reference (e.g., "Titus 1:1")'),
+    language: z.string().optional().default("en").describe('Language code (default: "en")'),
+    organization: z
+        .string()
+        .optional()
+        .default("unfoldingWord")
+        .describe('Organization (default: "unfoldingWord")'),
 });
 /**
  * Initialize and start the MCP server
@@ -125,6 +175,26 @@ async function main() {
                     description: "Get translation words linked to a specific Bible reference",
                     inputSchema: GetWordsForReferenceSchema,
                 },
+                {
+                    name: "translation_helps_fetch_scripture",
+                    description: "Fetch Bible scripture text for a specific reference",
+                    inputSchema: FetchScriptureSchema,
+                },
+                {
+                    name: "translation_helps_fetch_translation_notes",
+                    description: "Fetch translation notes for a specific Bible reference",
+                    inputSchema: FetchTranslationNotesSchema,
+                },
+                {
+                    name: "translation_helps_fetch_translation_questions",
+                    description: "Fetch translation questions for a specific Bible reference",
+                    inputSchema: FetchTranslationQuestionsSchema,
+                },
+                {
+                    name: "translation_helps_fetch_translation_word_links",
+                    description: "Fetch translation word links for a specific Bible reference",
+                    inputSchema: FetchTranslationWordLinksSchema,
+                },
             ],
         };
     });
@@ -165,6 +235,22 @@ async function main() {
                 case "translation_helps_words_for_reference": {
                     const validatedArgs = GetWordsForReferenceSchema.parse(args);
                     return await handleGetWordsForReference(validatedArgs);
+                }
+                case "translation_helps_fetch_scripture": {
+                    const validatedArgs = FetchScriptureSchema.parse(args);
+                    return await handleFetchScripture(validatedArgs);
+                }
+                case "translation_helps_fetch_translation_notes": {
+                    const validatedArgs = FetchTranslationNotesSchema.parse(args);
+                    return await handleFetchTranslationNotes(validatedArgs);
+                }
+                case "translation_helps_fetch_translation_questions": {
+                    const validatedArgs = FetchTranslationQuestionsSchema.parse(args);
+                    return await handleFetchTranslationQuestions(validatedArgs);
+                }
+                case "translation_helps_fetch_translation_word_links": {
+                    const validatedArgs = FetchTranslationWordLinksSchema.parse(args);
+                    return await handleFetchTranslationWordLinks(validatedArgs);
                 }
                 default:
                     throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
