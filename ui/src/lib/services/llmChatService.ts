@@ -29,7 +29,7 @@ export class LLMChatService {
 	}
 
 	/**
-	 * Generate a response using OpenAI
+	 * Generate a response using OpenAI with thinking trace
 	 */
 	async generateResponse(userQuestion: string, contextPrompt?: string) {
 		await this.initialize();
@@ -87,6 +87,74 @@ export class LLMChatService {
 			console.log('🎭 Falling back to mock response due to API error:', (error as Error).message);
 			return this.generateMockResponse(userQuestion);
 		}
+	}
+
+	/**
+	 * Generate thinking trace for a user question
+	 */
+	generateThinkingTrace(
+		userQuestion: string,
+		apiCalls: Array<{ endpoint: string; status: string; responseTime: number }> = []
+	): string[] {
+		const thinkingSteps: string[] = [];
+		const lowerQuestion = userQuestion.toLowerCase();
+
+		// Analyze the question and generate thinking steps
+		thinkingSteps.push(`🔍 **Analyzing your question**: "${userQuestion}"`);
+
+		// Check for scripture references
+		const scriptureMatch = userQuestion.match(/(\w+\s+\d+:\d+(?:-\d+)?)/);
+		if (scriptureMatch) {
+			const reference = scriptureMatch[1];
+			thinkingSteps.push(`📖 **Found scripture reference**: "${reference}"`);
+			thinkingSteps.push(`🔗 **Fetching scripture text** from multiple translations...`);
+			thinkingSteps.push(`📝 **Gathering translation notes** for context and interpretation...`);
+		}
+
+		// Check for word queries
+		const wordMatch = userQuestion.match(/["']([^"']+)["']/);
+		if (wordMatch) {
+			const word = wordMatch[1];
+			thinkingSteps.push(`📚 **Found word query**: "${word}"`);
+			thinkingSteps.push(`🔍 **Looking up translation word definition** and usage...`);
+		}
+
+		// Check for general Bible topics
+		const bibleTopics = [
+			'love',
+			'grace',
+			'faith',
+			'salvation',
+			'kingdom',
+			'righteousness',
+			'sin',
+			'forgiveness'
+		];
+		const foundTopics = bibleTopics.filter((topic) => lowerQuestion.includes(topic));
+		if (foundTopics.length > 0) {
+			thinkingSteps.push(`💡 **Detected Bible topics**: ${foundTopics.join(', ')}`);
+			thinkingSteps.push(`📖 **Gathering relevant scripture passages** and definitions...`);
+		}
+
+		// Add API call results to thinking trace
+		if (apiCalls.length > 0) {
+			thinkingSteps.push(`✅ **Retrieved ${apiCalls.length} resource(s)** from the MCP server`);
+
+			apiCalls.forEach((call, index) => {
+				if (call.status === 'success') {
+					thinkingSteps.push(
+						`📊 **Resource ${index + 1}**: ${call.endpoint} (${Math.round(call.responseTime)}ms)`
+					);
+				} else {
+					thinkingSteps.push(`❌ **Resource ${index + 1}**: ${call.endpoint} failed`);
+				}
+			});
+		}
+
+		// Final thinking step
+		thinkingSteps.push(`🧠 **Synthesizing information** to provide a comprehensive answer...`);
+
+		return thinkingSteps;
 	}
 
 	/**
