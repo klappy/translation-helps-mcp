@@ -5,35 +5,23 @@
 
 import { Handler } from "@netlify/functions";
 import { handleSearchResources } from "../../src/tools/searchResources.js";
+import { timedResponse, errorResponse } from "./_shared/utils.js";
 
 export const handler: Handler = async (event, context) => {
+  const startTime = Date.now();
   console.log("List available resources requested");
-
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Content-Type": "application/json",
-  };
 
   // Handle CORS preflight
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
-      headers,
+      headers: { "Access-Control-Allow-Origin": "*" },
       body: "",
     };
   }
 
   if (event.httpMethod !== "GET") {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({
-        error: "Method not allowed",
-        message: "This endpoint only accepts GET requests",
-      }),
-    };
+    return errorResponse(405, "This endpoint only accepts GET requests", "METHOD_NOT_ALLOWED");
   }
 
   try {
@@ -58,22 +46,9 @@ export const handler: Handler = async (event, context) => {
       actualData = mcpResult;
     }
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(actualData, null, 2),
-    };
+    return timedResponse(actualData, startTime);
   } catch (error) {
     console.error("List available resources error:", error);
-
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: "Internal Server Error",
-        message: "Failed to list available resources",
-        timestamp: new Date().toISOString(),
-      }),
-    };
+    return errorResponse(500, "Failed to list available resources", "INTERNAL_SERVER_ERROR");
   }
 };

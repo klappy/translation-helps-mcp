@@ -5,35 +5,23 @@
 
 import { Handler } from "@netlify/functions";
 import { handleGetContext } from "../../src/tools/getContext.js";
+import { timedResponse, errorResponse } from "./_shared/utils.js";
 
 export const handler: Handler = async (event, context) => {
+  const startTime = Date.now();
   console.log("Get context requested");
-
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Content-Type": "application/json",
-  };
 
   // Handle CORS preflight
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
-      headers,
+      headers: { "Access-Control-Allow-Origin": "*" },
       body: "",
     };
   }
 
   if (event.httpMethod !== "GET") {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({
-        error: "Method not allowed",
-        message: "This endpoint only accepts GET requests",
-      }),
-    };
+    return errorResponse(405, "This endpoint only accepts GET requests", "METHOD_NOT_ALLOWED");
   }
 
   try {
@@ -46,15 +34,9 @@ export const handler: Handler = async (event, context) => {
     } = event.queryStringParameters || {};
 
     if (!reference) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({
-          error: "Bad Request",
-          message: "reference parameter is required",
-          example: "/api/get-context?reference=John%203:16&language=en&organization=unfoldingWord",
-        }),
-      };
+      return errorResponse(400, "reference parameter is required", "MISSING_PARAMETER", {
+        example: "/api/get-context?reference=John%203:16&language=en&organization=unfoldingWord",
+      });
     }
 
     const mcpResult = await handleGetContext({
@@ -77,22 +59,9 @@ export const handler: Handler = async (event, context) => {
       actualData = mcpResult;
     }
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(actualData, null, 2),
-    };
+    return timedResponse(actualData, startTime);
   } catch (error) {
     console.error("Get context error:", error);
-
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: "Internal Server Error",
-        message: "Failed to get context for reference",
-        timestamp: new Date().toISOString(),
-      }),
-    };
+    return errorResponse(500, "Failed to get context for reference", "INTERNAL_SERVER_ERROR");
   }
 };
