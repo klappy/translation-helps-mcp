@@ -61,6 +61,7 @@
 	let currentMessage = '';
 	let isLoading = false;
 	let expandedMessages = new Set<string>();
+	let collapsedThinkingTraces = new Set<string>();
 	let isTyping = false;
 	let showSuggestions = true;
 	let autoScroll = true;
@@ -512,6 +513,15 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		expandedMessages = expandedMessages; // Trigger reactivity
 	}
 
+	function toggleThinkingTrace(id: string) {
+		if (collapsedThinkingTraces.has(id)) {
+			collapsedThinkingTraces.delete(id);
+		} else {
+			collapsedThinkingTraces.add(id);
+		}
+		collapsedThinkingTraces = collapsedThinkingTraces; // Trigger reactivity
+	}
+
 	function copyMessage(id: string) {
 		const message = messages.find((m) => m.id === id);
 		if (message) {
@@ -526,6 +536,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 	function clearChat() {
 		messages = [messages[0]]; // Keep welcome message
 		expandedMessages.clear();
+		collapsedThinkingTraces.clear();
 	}
 
 	function getStatusIcon(status?: string) {
@@ -748,33 +759,53 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 										<!-- Thinking Trace during typing -->
 										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
 											<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-												<div class="mb-3 flex items-center space-x-2">
-													<Lightbulb class="h-4 w-4 text-blue-400" />
-													<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
-													<div class="flex space-x-1">
-														<div class="h-2 w-2 animate-bounce rounded-full bg-blue-400"></div>
-														<div
-															class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
-															style="animation-delay: 0.1s"
-														></div>
-														<div
-															class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
-															style="animation-delay: 0.2s"
-														></div>
+												<div class="mb-3 flex items-center justify-between">
+													<div class="flex items-center space-x-2">
+														<Lightbulb class="h-4 w-4 text-blue-400" />
+														<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
+														{#if message.isTyping}
+															<div class="flex space-x-1">
+																<div class="h-2 w-2 animate-bounce rounded-full bg-blue-400"></div>
+																<div
+																	class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+																	style="animation-delay: 0.1s"
+																></div>
+																<div
+																	class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+																	style="animation-delay: 0.2s"
+																></div>
+															</div>
+														{/if}
 													</div>
+													{#if !message.isTyping}
+														<button
+															on:click={() => toggleThinkingTrace(message.id)}
+															class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-blue-500/20"
+														>
+															{#if collapsedThinkingTraces.has(message.id)}
+																<ChevronDown class="h-3 w-3 text-blue-400" />
+																<span class="text-blue-400">Show</span>
+															{:else}
+																<ChevronUp class="h-3 w-3 text-blue-400" />
+																<span class="text-blue-400">Hide</span>
+															{/if}
+														</button>
+													{/if}
 												</div>
-												<div class="space-y-2">
-													{#each message.thinkingTrace as step, index}
-														<div class="flex items-start space-x-3">
-															<div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
-																{index + 1}
+												{#if !collapsedThinkingTraces.has(message.id) || message.isTyping}
+													<div class="space-y-2">
+														{#each message.thinkingTrace as step, index}
+															<div class="flex items-start space-x-3">
+																<div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
+																	{index + 1}
+																</div>
+																<div class="flex-1 text-sm text-blue-200">
+																	{@html marked(step)}
+																</div>
 															</div>
-															<div class="flex-1 text-sm text-blue-200">
-																{@html marked(step)}
-															</div>
-														</div>
-													{/each}
-												</div>
+														{/each}
+													</div>
+												{/if}
 											</div>
 										{/if}
 									{:else}
