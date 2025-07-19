@@ -172,7 +172,9 @@ export const handler: Handler = async (
       };
     }> = [];
 
-    let overallCacheStatus = { cached: true, cacheType: undefined as string | undefined }; // Assume cached unless we fetch
+    let cacheHits = 0;
+    let totalResources = 0;
+    let cacheType: string | undefined;
 
     for (const resource of resources) {
       if (!resource.ingredients) {
@@ -219,13 +221,15 @@ export const handler: Handler = async (
           await cache.setFileContent(cacheKey, usfm);
           console.log(`💾 Cached ${resource.name} (${usfm.length} chars)`);
 
-          // Mark as not cached since we had to fetch
-          overallCacheStatus.cached = false;
+          // This was a cache miss
+          totalResources++;
         } else {
           console.log(`✅ Cache hit for ${resource.name} (${usfm.length} chars)`);
-          // Update cache type info if we have a cache hit
-          if (cacheResult.cacheType && !overallCacheStatus.cacheType) {
-            overallCacheStatus.cacheType = cacheResult.cacheType;
+          // This was a cache hit
+          cacheHits++;
+          totalResources++;
+          if (cacheResult.cacheType && !cacheType) {
+            cacheType = cacheResult.cacheType;
           }
         }
 
@@ -313,7 +317,11 @@ export const handler: Handler = async (
       };
     }
 
-    return timedResponse(result, startTime, undefined, overallCacheStatus);
+    // Calculate overall cache status
+    const overallCached = totalResources > 0 && cacheHits === totalResources;
+    const cacheInfo = { cached: overallCached, cacheType };
+
+    return timedResponse(result, startTime, undefined, cacheInfo);
   } catch (error) {
     console.error("Error in fetch-scripture:", error);
     return {
