@@ -31,7 +31,7 @@ export class LLMChatService {
 	/**
 	 * Generate a response using OpenAI with thinking trace
 	 */
-	async generateResponse(userQuestion: string, contextPrompt?: string) {
+	async generateResponse(userQuestion: string) {
 		await this.initialize();
 
 		try {
@@ -43,18 +43,8 @@ export class LLMChatService {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					messages: [
-						{
-							role: 'system',
-							content:
-								contextPrompt ||
-								'You are a helpful Bible translation assistant. Provide accurate, helpful responses about Bible translation, scripture interpretation, and translation resources.'
-						},
-						{
-							role: 'user',
-							content: userQuestion
-						}
-					]
+					message: userQuestion,
+					chatHistory: []
 				})
 			});
 
