@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
 	import {
 		Wrench,
 		Code,
@@ -17,13 +17,14 @@
 		Globe,
 		Database
 	} from 'lucide-svelte';
+	import ApiTester from '$lib/components/ApiTester.svelte';
+	import ResponseDisplay from '$lib/components/ResponseDisplay.svelte';
 
 	// MCP Tools documentation
 	const mcpTools = [
 		{
 			name: 'Browse Translation Words',
 			tool: 'translation_helps_browse_words',
-			icon: Search,
 			description: 'Browse available translation word articles by category',
 			category: 'translation-words',
 			parameters: [
@@ -51,7 +52,8 @@
 			example: {
 				request: {
 					language: 'en',
-					category: 'kt'
+					category: 'kt',
+					organization: 'unfoldingWord'
 				},
 				response: {
 					content: [
@@ -68,12 +70,12 @@
 					]
 				}
 			},
-			useCase: 'Discover what translation word articles are available for a language'
+			useCase: 'Discover what translation word articles are available for a language',
+			path: '/api/browse-translation-words' // REST API equivalent for testing
 		},
 		{
 			name: 'Get Translation Word',
 			tool: 'translation_helps_get_word',
-			icon: BookOpen,
 			description: 'Get a specific translation word article by term or path',
 			category: 'translation-words',
 			parameters: [
@@ -126,223 +128,12 @@
 					]
 				}
 			},
-			useCase: 'Get detailed information about a specific biblical term'
-		},
-		{
-			name: 'Get Words for Reference',
-			tool: 'translation_helps_words_for_reference',
-			icon: FileText,
-			description: 'Find all translation word articles linked to a specific Bible reference',
-			category: 'translation-words',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					default: 'en',
-					description: 'Language code (e.g., "en", "es", "fr")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
-				}
-			],
-			example: {
-				request: {
-					reference: 'John 3:16',
-					language: 'en'
-				},
-				response: {
-					content: [
-						{
-							term: 'God',
-							path: 'kt/god.md',
-							excerpt: 'The supreme being who created and rules the universe...'
-						},
-						{
-							term: 'love',
-							path: 'kt/love.md',
-							excerpt: 'A strong feeling of affection and care for someone...'
-						}
-					]
-				}
-			},
-			useCase: 'Find all translation words mentioned in a specific Bible verse'
-		},
-		{
-			name: 'Fetch Resources',
-			tool: 'translation_helps_fetch_resources',
-			icon: Database,
-			description: 'Get all available resources for a Bible reference',
-			category: 'comprehensive',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "Titus 1:1")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: true,
-					description: 'Language code (e.g., "en", "es", "fr")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
-				}
-			],
-			example: {
-				request: {
-					reference: 'Titus 1:1',
-					language: 'en'
-				},
-				response: {
-					reference: 'Titus 1:1',
-					scripture: {
-						/* scripture data */
-					},
-					translationNotes: {
-						/* notes data */
-					},
-					translationQuestions: {
-						/* questions data */
-					},
-					translationWords: {
-						/* words data */
-					}
-				}
-			},
-			useCase: 'Get comprehensive Bible study resources for a verse'
-		},
-		{
-			name: 'Search Resources',
-			tool: 'translation_helps_search_resources',
-			icon: Search,
-			description: 'Search for Bible translation resources',
-			category: 'search',
-			parameters: [
-				{
-					name: 'query',
-					type: 'string',
-					required: true,
-					description: 'Search query (e.g., "grace", "apostle")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					default: 'en',
-					description: 'Language code (e.g., "en", "es", "fr")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
-				}
-			],
-			example: {
-				request: {
-					query: 'grace',
-					language: 'en'
-				},
-				response: {
-					results: [
-						{
-							type: 'translation-word',
-							title: 'grace',
-							content: 'Favor or kindness shown to someone who does not deserve it...'
-						}
-					]
-				}
-			},
-			useCase: 'Search across all translation resources'
-		},
-		{
-			name: 'Get Languages',
-			tool: 'translation_helps_get_languages',
-			icon: Globe,
-			description: 'Get list of available languages and resources',
-			category: 'metadata',
-			parameters: [
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
-				}
-			],
-			example: {
-				request: {
-					organization: 'unfoldingWord'
-				},
-				response: {
-					languages: [
-						{
-							code: 'en',
-							name: 'English',
-							resources: ['en_tw', 'en_tn', 'en_tq']
-						},
-						{
-							code: 'es',
-							name: 'Spanish',
-							resources: ['es_tw', 'es_tn']
-						}
-					]
-				}
-			},
-			useCase: 'Discover what languages and resources are available'
-		},
-		{
-			name: 'Extract References',
-			tool: 'translation_helps_extract_references',
-			icon: FileText,
-			description: 'Extract Bible references from natural language text',
-			category: 'utility',
-			parameters: [
-				{
-					name: 'text',
-					type: 'string',
-					required: true,
-					description: 'Text to extract references from'
-				},
-				{
-					name: 'context',
-					type: 'string',
-					required: false,
-					description: 'Previous conversation context'
-				}
-			],
-			example: {
-				request: {
-					text: "What does John 3:16 say about God's love?"
-				},
-				response: {
-					references: ['John 3:16']
-				}
-			},
-			useCase: 'Parse Bible references from user input'
+			useCase: 'Get complete definition and context for biblical terms',
+			path: '/api/fetch-translation-words' // REST API equivalent for testing
 		},
 		{
 			name: 'Fetch Scripture',
 			tool: 'translation_helps_fetch_scripture',
-			icon: BookOpen,
 			description: 'Fetch Bible scripture text for a specific reference',
 			category: 'scripture',
 			parameters: [
@@ -393,12 +184,12 @@
 					}
 				}
 			},
-			useCase: 'Get Bible text for a specific verse or passage'
+			useCase: 'Get Bible text for a specific verse or passage',
+			path: '/api/fetch-scripture' // REST API equivalent for testing
 		},
 		{
 			name: 'Fetch Translation Notes',
 			tool: 'translation_helps_fetch_translation_notes',
-			icon: FileText,
 			description: 'Fetch translation notes for a specific Bible reference',
 			category: 'notes',
 			parameters: [
@@ -450,423 +241,277 @@
 					]
 				}
 			},
-			useCase: 'Get detailed translation notes for Bible study'
-		},
-		{
-			name: 'Fetch Translation Questions',
-			tool: 'translation_helps_fetch_translation_questions',
-			icon: Users,
-			description: 'Fetch translation questions for a specific Bible reference',
-			category: 'questions',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "Matthew 5:1")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					default: 'en',
-					description: 'Language code (e.g., "en", "es", "fr")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
-				}
-			],
-			example: {
-				request: {
-					reference: 'Matthew 5:1',
-					language: 'en'
-				},
-				response: {
-					translationQuestions: [
-						{
-							reference: '5:1',
-							question: 'What did Jesus do when he saw the crowds?',
-							answer: 'He went up on a mountain and sat down.'
-						}
-					]
-				}
-			},
-			useCase: 'Get comprehension questions for Bible passages'
-		},
-		{
-			name: 'Fetch Translation Word Links',
-			tool: 'translation_helps_fetch_translation_word_links',
-			icon: MessageSquare,
-			description: 'Fetch translation word links for a specific Bible reference',
-			category: 'links',
-			parameters: [
-				{
-					name: 'reference',
-					type: 'string',
-					required: true,
-					description: 'Bible reference (e.g., "Titus 1:1")'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: false,
-					default: 'en',
-					description: 'Language code (e.g., "en", "es", "fr")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: false,
-					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
-				}
-			],
-			example: {
-				request: {
-					reference: 'Titus 1:1',
-					language: 'en'
-				},
-				response: {
-					translationWordLinks: [
-						{
-							word: 'apostle',
-							link: 'rc://en/tn/help/tit/01/01',
-							occurrences: 1
-						}
-					]
-				}
-			},
-			useCase: 'Get links to translation word articles for a verse'
+			useCase: 'Get detailed translation notes for Bible study',
+			path: '/api/fetch-translation-notes' // REST API equivalent for testing
 		}
 	];
 
-	// Group tools by category
-	const toolsByCategory = {
-		'translation-words': mcpTools.filter((t) => t.category === 'translation-words'),
-		comprehensive: mcpTools.filter((t) => t.category === 'comprehensive'),
-		scripture: mcpTools.filter((t) => t.category === 'scripture'),
-		notes: mcpTools.filter((t) => t.category === 'notes'),
-		questions: mcpTools.filter((t) => t.category === 'questions'),
-		links: mcpTools.filter((t) => t.category === 'links'),
-		search: mcpTools.filter((t) => t.category === 'search'),
-		metadata: mcpTools.filter((t) => t.category === 'metadata'),
-		utility: mcpTools.filter((t) => t.category === 'utility')
-	};
+	let copySuccess = {};
+	let testResults = {};
+	let testLoading = {};
 
-	const categoryNames: Record<string, string> = {
-		'translation-words': 'Translation Words',
-		comprehensive: 'Comprehensive',
-		scripture: 'Scripture',
-		notes: 'Translation Notes',
-		questions: 'Translation Questions',
-		links: 'Translation Word Links',
-		search: 'Search',
-		metadata: 'Metadata',
-		utility: 'Utility'
-	};
-
-	function copyToClipboard(text: string) {
+	function copyToClipboard(text, id) {
 		navigator.clipboard.writeText(text);
+		copySuccess[id] = true;
+		setTimeout(() => {
+			copySuccess[id] = false;
+		}, 2000);
 	}
 
-	function scrollToSection(id: string) {
-		const element = document.getElementById(id);
-		if (element) {
-			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-		}
-	}
+	async function handleTest(event) {
+		const { endpoint, formData } = event.detail;
+		const endpointId = endpoint.tool || endpoint.path;
 
-	function getCategoryIcon(category: string) {
-		switch (category) {
-			case 'translation-words':
-				return BookOpen;
-			case 'comprehensive':
-				return Zap;
-			case 'scripture':
-				return BookOpen;
-			case 'notes':
-				return FileText;
-			case 'questions':
-				return Users;
-			case 'links':
-				return MessageSquare;
-			case 'search':
-				return Search;
-			case 'metadata':
-				return Database;
-			case 'utility':
-				return Wrench;
-			default:
-				return Code;
+		testLoading[endpointId] = true;
+		testResults[endpointId] = null;
+
+		try {
+			// Build URL with query parameters using the REST API equivalent
+			const url = new URL(endpoint.path, window.location.origin);
+			Object.entries(formData).forEach(([key, value]) => {
+				if (value) {
+					url.searchParams.set(key, value);
+				}
+			});
+
+			const response = await fetch(url.toString());
+			const data = await response.json();
+
+			testResults[endpointId] = data;
+		} catch (error) {
+			testResults[endpointId] = { error: error.message };
+		} finally {
+			testLoading[endpointId] = false;
 		}
 	}
 </script>
 
-<svelte:head>
-	<title>MCP Tools - Translation Helps MCP Server</title>
-</svelte:head>
-
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<!-- Header -->
-	<div class="mb-12 text-center">
-		<div
-			class="mb-6 inline-flex items-center rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-2 text-sm font-medium text-purple-300"
-		>
-			<Wrench class="mr-2 h-4 w-4" />
-			Model Context Protocol Tools
+<div class="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+	<div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+		<!-- Header -->
+		<div class="mb-12 text-center">
+			<h1 class="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+				Translation Helps MCP Tools
+			</h1>
+			<p class="mx-auto max-w-3xl text-xl text-gray-300">
+				Model Context Protocol tools for seamless AI integration. These tools provide structured
+				access to biblical translation resources for language models and AI assistants.
+			</p>
 		</div>
-		<h1 class="mb-6 text-4xl font-bold text-white md:text-5xl">
-			MCP Tools
-			<span class="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent"
-				>Documentation</span
-			>
-		</h1>
-		<p class="mx-auto max-w-3xl text-xl text-gray-300">
-			Complete documentation for all Translation Helps MCP Server tools. These tools enable AI
-			assistants to access Bible translation resources through natural language interactions.
-		</p>
-	</div>
 
-	<!-- Table of Contents -->
-	<div class="mb-12">
-		<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-			<h2 class="mb-6 text-2xl font-bold text-white">Table of Contents</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-				{#each Object.entries(toolsByCategory) as [category, tools]}
-					<div>
-						<h3 class="mb-3 flex items-center space-x-2 text-lg font-semibold text-white">
-							<svelte:component this={getCategoryIcon(category)} class="h-5 w-5 text-purple-400" />
-							<span>{categoryNames[category]}</span>
-						</h3>
-						<div class="space-y-2">
-							{#each tools as tool}
-								<button
-									on:click={() => scrollToSection(tool.tool)}
-									class="block w-full rounded-lg p-2 text-left text-sm text-gray-300 transition-all duration-200 hover:bg-white/5 hover:text-white"
-								>
-									<div class="flex items-center space-x-2">
-										<svelte:component this={tool.icon} class="h-4 w-4" />
-										<span>{tool.name}</span>
-									</div>
-								</button>
-							{/each}
+		<!-- Quick Start -->
+		<div class="mb-12 rounded-lg border border-white/10 bg-white/5 p-8">
+			<h2 class="mb-6 text-2xl font-bold text-white">Quick Start</h2>
+			<div class="grid gap-6 md:grid-cols-2">
+				<div>
+					<h3 class="mb-4 text-lg font-semibold text-white">1. Run MCP Server</h3>
+					<div class="rounded-lg bg-black/20 p-4">
+						<code class="text-blue-400">npx tsx src/index.ts</code>
+					</div>
+					<p class="mt-2 text-sm text-gray-400">
+						Start the MCP server locally for AI assistant integration
+					</p>
+				</div>
+				<div>
+					<h3 class="mb-4 text-lg font-semibold text-white">2. Configure AI Assistant</h3>
+					<div class="rounded-lg bg-black/20 p-4">
+						<code class="text-green-400">stdio://npx tsx src/index.ts</code>
+					</div>
+					<p class="mt-2 text-sm text-gray-400">
+						Use this connection string in your AI assistant's MCP configuration
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- MCP vs REST API -->
+		<div class="mb-12 rounded-lg border border-white/10 bg-white/5 p-6">
+			<h2 class="mb-4 text-xl font-semibold text-white">MCP Tools vs REST API</h2>
+			<div class="grid gap-6 md:grid-cols-2">
+				<div>
+					<h3 class="mb-2 text-lg font-medium text-white">MCP Tools</h3>
+					<p class="text-gray-400">
+						Structured tools designed for AI assistants. Include built-in parameter validation,
+						context awareness, and optimized data formats for language models.
+					</p>
+				</div>
+				<div>
+					<h3 class="mb-2 text-lg font-medium text-white">REST API</h3>
+					<p class="text-gray-400">
+						Direct HTTP endpoints for traditional web applications. The interactive examples below
+						use the REST API equivalents to demonstrate the data these MCP tools provide.
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- MCP Tools -->
+		<div class="space-y-8">
+			<h2 class="text-2xl font-bold text-white">Available MCP Tools</h2>
+
+			{#each mcpTools as tool}
+				<div class="rounded-lg border border-white/10 bg-white/5 p-6">
+					<!-- Tool Header -->
+					<div class="mb-6 flex items-start justify-between">
+						<div class="flex items-center space-x-4">
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500"
+							>
+								<Wrench class="h-6 w-6 text-white" />
+							</div>
+							<div>
+								<h3 class="text-xl font-semibold text-white">{tool.name}</h3>
+								<p class="text-gray-400">{tool.description}</p>
+								<div class="mt-2 flex items-center space-x-3">
+									<span
+										class="rounded-full bg-indigo-500/20 px-3 py-1 text-sm font-medium text-indigo-300"
+									>
+										MCP Tool
+									</span>
+									<code class="rounded bg-gray-700 px-2 py-1 text-xs text-gray-300">
+										{tool.tool}
+									</code>
+								</div>
+							</div>
 						</div>
 					</div>
-				{/each}
-			</div>
-		</div>
-	</div>
 
-	<!-- MCP Overview -->
-	<div class="mb-12">
-		<div class="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
-			<h2 class="mb-6 text-2xl font-bold text-white">What are MCP Tools?</h2>
-			<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-				<div class="flex items-center space-x-3">
-					<Terminal class="h-6 w-6 text-green-400" />
-					<div>
-						<h3 class="text-lg font-semibold text-white">AI Integration</h3>
-						<p class="text-gray-400">Tools designed for AI assistants and LLMs</p>
-					</div>
-				</div>
-				<div class="flex items-center space-x-3">
-					<MessageSquare class="h-6 w-6 text-blue-400" />
-					<div>
-						<h3 class="text-lg font-semibold text-white">Natural Language</h3>
-						<p class="text-gray-400">Access Bible resources through conversation</p>
-					</div>
-				</div>
-				<div class="flex items-center space-x-3">
-					<Zap class="h-6 w-6 text-purple-400" />
-					<div>
-						<h3 class="text-lg font-semibold text-white">Structured Data</h3>
-						<p class="text-gray-400">Get organized, reliable Bible translation data</p>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- Tools by Category -->
-	<div class="space-y-12">
-		{#each Object.entries(toolsByCategory) as [category, tools]}
-			<div>
-				<div class="mb-8 flex items-center space-x-3">
-					<div
-						class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-blue-500"
-					>
-						<svelte:component this={getCategoryIcon(category)} class="h-5 w-5 text-white" />
-					</div>
-					<h2 class="text-3xl font-bold text-white">{categoryNames[category]}</h2>
-				</div>
-
-				<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-					{#each tools as tool}
-						<div
-							id={tool.tool}
-							class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
-						>
-							<!-- Tool Header -->
-							<div class="mb-6 flex items-start justify-between">
-								<div class="flex items-center space-x-3">
-									<div
-										class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-purple-500 to-blue-500"
-									>
-										<svelte:component this={tool.icon} class="h-5 w-5 text-white" />
-									</div>
-									<div>
-										<h3 class="text-xl font-bold text-white">{tool.name}</h3>
-										<p class="text-sm text-gray-400">{tool.tool}</p>
-									</div>
-								</div>
-							</div>
-
-							<!-- Description -->
-							<p class="mb-6 text-gray-300">{tool.description}</p>
-
-							<!-- Use Case -->
-							<div class="mb-6">
-								<div class="mb-2 flex items-center space-x-2">
-									<Info class="h-4 w-4 text-blue-400" />
-									<span class="text-sm font-medium text-white">Use Case</span>
-								</div>
-								<p class="text-sm text-gray-400">{tool.useCase}</p>
-							</div>
-
-							<!-- Parameters -->
-							<div class="mb-6">
-								<h4 class="mb-3 text-lg font-semibold text-white">Parameters</h4>
-								<div class="space-y-2">
-									{#each tool.parameters as param}
-										<div class="flex items-center justify-between rounded-lg bg-black/30 p-3">
-											<div>
-												<div class="flex items-center space-x-2">
-													<code class="font-mono text-sm text-purple-300">{param.name}</code>
-													{#if param.required}
-														<span class="rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-400"
-															>Required</span
-														>
-													{:else}
-														<span
-															class="rounded-full bg-gray-500/20 px-2 py-1 text-xs text-gray-400"
-															>Optional</span
-														>
-													{/if}
-												</div>
-												<p class="mt-1 text-xs text-gray-400">{param.description}</p>
-												{#if 'default' in param && param.default}
-													<p class="mt-1 text-xs text-blue-400">Default: {param.default}</p>
+					<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+						<!-- Parameters -->
+						<div>
+							<h4 class="mb-4 text-lg font-semibold text-white">Parameters</h4>
+							<div class="space-y-3">
+								{#each tool.parameters as param}
+									<div class="rounded-lg border border-white/10 bg-white/5 p-4">
+										<div class="mb-2 flex items-center justify-between">
+											<code class="text-purple-300">{param.name}</code>
+											<div class="flex items-center space-x-2">
+												<span class="rounded bg-gray-600 px-2 py-1 text-xs text-gray-300">
+													{param.type}
+												</span>
+												{#if param.required}
+													<span class="rounded bg-red-600 px-2 py-1 text-xs text-white">
+														Required
+													</span>
+												{/if}
+												{#if param.default}
+													<span class="rounded bg-blue-600 px-2 py-1 text-xs text-white">
+														Default: {param.default}
+													</span>
 												{/if}
 											</div>
-											<div class="text-xs text-gray-500">{param.type}</div>
 										</div>
-									{/each}
-								</div>
-							</div>
-
-							<!-- Example -->
-							<div class="mb-6">
-								<h4 class="mb-3 text-lg font-semibold text-white">Example</h4>
-								<div class="space-y-4">
-									<div>
-										<div class="mb-2 flex items-center justify-between">
-											<span class="text-sm font-medium text-gray-400">Request:</span>
-											<button
-												on:click={() =>
-													copyToClipboard(JSON.stringify(tool.example.request, null, 2))}
-												class="text-gray-400 transition-colors hover:text-white"
-											>
-												<Copy class="h-4 w-4" />
-											</button>
-										</div>
-										<div class="rounded-lg border border-white/10 bg-black/30 p-3">
-											<pre class="overflow-x-auto text-xs text-gray-300">{JSON.stringify(
-													tool.example.request,
-													null,
-													2
-												)}</pre>
-										</div>
+										<p class="text-sm text-gray-400">{param.description}</p>
 									</div>
-									<div>
-										<div class="mb-2 flex items-center justify-between">
-											<span class="text-sm font-medium text-gray-400">Response:</span>
-											<button
-												on:click={() =>
-													copyToClipboard(JSON.stringify(tool.example.response, null, 2))}
-												class="text-gray-400 transition-colors hover:text-white"
-											>
-												<Copy class="h-4 w-4" />
-											</button>
-										</div>
-										<div class="rounded-lg border border-white/10 bg-black/30 p-3">
-											<pre class="overflow-x-auto text-xs text-gray-300">{JSON.stringify(
-													tool.example.response,
-													null,
-													2
-												)}</pre>
-										</div>
-									</div>
-								</div>
+								{/each}
 							</div>
 						</div>
-					{/each}
-				</div>
-			</div>
-		{/each}
-	</div>
 
-	<!-- Integration Guide -->
-	<div class="mt-16">
-		<div
-			class="rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-8 backdrop-blur-xl"
-		>
-			<h2 class="mb-6 text-3xl font-bold text-white">Integration Guide</h2>
-			<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-				<div>
-					<h3 class="mb-4 text-xl font-semibold text-white">Connecting to MCP Server</h3>
-					<p class="mb-4 text-gray-300">
-						Configure your MCP client to connect to the Translation Helps MCP server and start using
-						these tools in your AI applications.
-					</p>
-					<div class="space-y-2">
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">Natural language processing</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">Automatic tool routing</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">Structured responses</span>
+						<!-- Example -->
+						<div>
+							<h4 class="mb-4 text-lg font-semibold text-white">Example</h4>
+							<div class="space-y-4">
+								<!-- Request -->
+								<div class="rounded-lg border border-white/10 bg-black/20 p-4">
+									<div class="mb-2 flex items-center justify-between">
+										<span class="text-sm font-medium text-gray-400">Request:</span>
+										<button
+											on:click={() =>
+												copyToClipboard(
+													JSON.stringify(tool.example.request, null, 2),
+													`${tool.tool}-request`
+												)}
+											class="flex items-center space-x-1 rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-700"
+										>
+											{#if copySuccess[`${tool.tool}-request`]}
+												<CheckCircle class="h-3 w-3" />
+												<span>Copied!</span>
+											{:else}
+												<Copy class="h-3 w-3" />
+												<span>Copy</span>
+											{/if}
+										</button>
+									</div>
+									<pre class="overflow-auto text-sm text-gray-300">{JSON.stringify(
+											tool.example.request,
+											null,
+											2
+										)}</pre>
+								</div>
+
+								<!-- Response -->
+								<div class="rounded-lg border border-white/10 bg-black/20 p-4">
+									<div class="mb-2 flex items-center justify-between">
+										<span class="text-sm font-medium text-gray-400">Response:</span>
+										<button
+											on:click={() =>
+												copyToClipboard(
+													JSON.stringify(tool.example.response, null, 2),
+													`${tool.tool}-response`
+												)}
+											class="flex items-center space-x-1 rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-700"
+										>
+											{#if copySuccess[`${tool.tool}-response`]}
+												<CheckCircle class="h-3 w-3" />
+												<span>Copied!</span>
+											{:else}
+												<Copy class="h-3 w-3" />
+												<span>Copy</span>
+											{/if}
+										</button>
+									</div>
+									<pre class="overflow-auto text-sm text-gray-300">{JSON.stringify(
+											tool.example.response,
+											null,
+											2
+										)}</pre>
+								</div>
+							</div>
 						</div>
 					</div>
+
+					<!-- Use Case -->
+					<div class="mt-6 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+						<h5 class="mb-2 text-sm font-medium text-blue-300">Use Case</h5>
+						<p class="text-sm text-blue-200">{tool.useCase}</p>
+					</div>
+
+					<!-- Interactive Tester (using REST API equivalent) -->
+					{#if tool.path}
+						<div class="mt-8">
+							<h4 class="mb-4 text-lg font-semibold text-white">
+								Try It Out (REST API Equivalent)
+							</h4>
+							<ApiTester
+								endpoint={tool}
+								loading={testLoading[tool.tool]}
+								result={testResults[tool.tool]}
+								on:test={handleTest}
+							/>
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+
+		<!-- Additional Info -->
+		<div class="mt-12 rounded-lg border border-white/10 bg-white/5 p-6">
+			<h2 class="mb-4 text-xl font-semibold text-white">Additional Information</h2>
+			<div class="grid gap-6 md:grid-cols-2">
+				<div>
+					<h3 class="mb-2 text-lg font-medium text-white">MCP Protocol</h3>
+					<p class="text-gray-400">
+						These tools follow the Model Context Protocol specification for seamless integration
+						with AI assistants like Claude, ChatGPT, and other language models.
+					</p>
 				</div>
 				<div>
-					<h3 class="mb-4 text-xl font-semibold text-white">Example Usage</h3>
-					<p class="mb-4 text-gray-300">
-						These tools are designed to work seamlessly with AI assistants. Users can ask natural
-						questions and get comprehensive Bible translation resources.
+					<h3 class="mb-2 text-lg font-medium text-white">REST API Alternative</h3>
+					<p class="text-gray-400">
+						For traditional web development, use our
+						<a href="/api" class="text-blue-400 hover:text-blue-300">REST API endpoints</a>
+						which provide the same data through standard HTTP requests.
 					</p>
-					<div class="space-y-2">
-						<div class="flex items-center space-x-2">
-							<MessageSquare class="h-4 w-4 text-blue-400" />
-							<span class="text-gray-300">"What does the word 'grace' mean?"</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<MessageSquare class="h-4 w-4 text-blue-400" />
-							<span class="text-gray-300">"Show me translation words for John 3:16"</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<MessageSquare class="h-4 w-4 text-blue-400" />
-							<span class="text-gray-300">"What languages are available?"</span>
-						</div>
-					</div>
 				</div>
 			</div>
 		</div>
