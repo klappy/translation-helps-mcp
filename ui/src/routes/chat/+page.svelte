@@ -206,7 +206,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		currentMessage = '';
 		isLoading = true;
 
-		// Generate initial thinking trace
+		// Generate initial thinking trace (even for mock responses)
 		const initialThinkingTrace = chatService.generateThinkingTrace(messageToSend, []);
 
 		// Create typing message with thinking trace

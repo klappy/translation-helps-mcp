@@ -154,6 +154,11 @@ export class LLMChatService {
 		// Final thinking step
 		thinkingSteps.push(`🧠 **Synthesizing information** to provide a comprehensive answer...`);
 
+		// Add mock response indicator if no API calls were made
+		if (apiCalls.length === 0) {
+			thinkingSteps.push(`🎭 **Using development mode response** (OpenAI API not configured)`);
+		}
+
 		return thinkingSteps;
 	}
 
