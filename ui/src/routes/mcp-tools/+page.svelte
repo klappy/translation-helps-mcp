@@ -106,16 +106,22 @@
 			],
 			example: {
 				request: {
-					term: 'grace',
+					term: 'paul',
 					language: 'en'
 				},
 				response: {
 					content: [
 						{
-							term: 'grace',
-							path: 'kt/grace.md',
-							content: 'The meaning of the Greek word translated as "grace"...',
-							category: 'kt'
+							term: 'paul',
+							definition: 'Paul, Saul',
+							title: 'Paul, Saul',
+							subtitle: 'Facts:',
+							content:
+								'# Paul, Saul\n\n## Facts:\n\nPaul was a leader of the early church who was sent by Jesus to take the good news to many other people groups.\n\n* Paul was a Jew who was born in the Roman city of Tarsus, and was therefore also a Roman citizen.\n* Paul was originally called by his Jewish name, Saul...',
+							titleContent: 'Paul, Saul',
+							subtitleContent: 'Facts:',
+							mainContent:
+								'Paul was a leader of the early church who was sent by Jesus to take the good news to many other people groups...'
 						}
 					]
 				}
@@ -370,18 +376,20 @@
 			],
 			example: {
 				request: {
-					reference: 'John 3:16',
+					reference: 'Titus 1:1',
 					language: 'en'
 				},
 				response: {
-					reference: {
-						book: 'JHN',
-						chapter: 3,
-						verse: 16
-					},
 					scripture: {
-						text: 'For God so loved the world...',
-						translation: 'ULT'
+						text: '1 Paul, a servant of God and an apostle of Jesus Christ, for the faith of the chosen people of God and knowledge of the truth that agrees with godliness,',
+						translation: 'ULT',
+						citation: {
+							resource: 'unfoldingWord® Literal Text',
+							organization: 'unfoldingWord',
+							language: 'en',
+							url: 'https://git.door43.org/unfoldingWord/en_ult/raw/branch/master/57-TIT.usfm',
+							version: 'master'
+						}
 					}
 				}
 			},
@@ -430,9 +438,14 @@
 				response: {
 					translationNotes: [
 						{
-							reference: '1:1',
-							quote: 'Paul',
-							note: 'This verse introduces Paul and his role as an apostle.'
+							reference: 'TIT 1:1',
+							quote: 'κατὰ πίστιν ἐκλεκτῶν Θεοῦ καὶ ἐπίγνωσιν ἀληθείας',
+							note: "The words **faith**, **knowledge**, and **truth** are abstract nouns. If it would be more clear in your language, you could express those ideas in another way. Alternate translation: [to help God's chosen people to continue to trust him and to know every true thing]"
+						},
+						{
+							reference: 'TIT 1:1',
+							quote: 'ἐκλεκτῶν Θεοῦ',
+							note: 'If your language does not use this passive form, you could express the idea in active form or in another way that is natural in your language. Alternate translation: [of the people whom God has chosen]'
 						}
 					]
 				}
