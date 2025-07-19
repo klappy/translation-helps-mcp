@@ -1,5 +1,5 @@
 /**
- * Search Resources Endpoint
+ * List Available Resources Endpoint
  * GET /api/search-resources
  */
 
@@ -7,7 +7,7 @@ import { Handler } from "@netlify/functions";
 import { handleSearchResources } from "../../src/tools/searchResources.js";
 
 export const handler: Handler = async (event, context) => {
-  console.log("Search resources requested");
+  console.log("List available resources requested");
 
   const headers = {
     "Access-Control-Allow-Origin": "*",
@@ -64,14 +64,14 @@ export const handler: Handler = async (event, context) => {
       body: JSON.stringify(actualData, null, 2),
     };
   } catch (error) {
-    console.error("Search resources error:", error);
+    console.error("List available resources error:", error);
 
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         error: "Internal Server Error",
-        message: "Failed to search resources",
+        message: "Failed to list available resources",
         timestamp: new Date().toISOString(),
       }),
     };

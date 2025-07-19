@@ -46,7 +46,7 @@ const FetchResourcesSchema = z.object({
     .describe("Resource types to fetch"),
 });
 
-const SearchResourcesSchema = z.object({
+const ListAvailableResourcesSchema = z.object({
   language: z.string().optional().describe("Filter by language"),
   organization: z.string().optional().describe("Filter by organization"),
   resource: z.string().optional().describe("Filter by resource type"),
@@ -169,7 +169,7 @@ async function main() {
         {
           name: "translation_helps_search_resources",
           description: "Search for available translation resources",
-          inputSchema: SearchResourcesSchema,
+          inputSchema: ListAvailableResourcesSchema,
         },
         {
           name: "translation_helps_get_context",
@@ -239,7 +239,7 @@ async function main() {
         }
 
         case "translation_helps_search_resources": {
-          const validatedArgs = SearchResourcesSchema.parse(args);
+          const validatedArgs = ListAvailableResourcesSchema.parse(args);
           return await handleSearchResources(validatedArgs);
         }
 

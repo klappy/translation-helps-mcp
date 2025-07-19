@@ -44,6 +44,20 @@ const TEST_CASES = {
     { language: "en", organization: "unfoldingWord" },
     { language: "en", organization: "unfoldingWord", category: "kt" },
   ],
+  searchResources: [
+    { language: "en", organization: "unfoldingWord" },
+    { language: "en" },
+    { organization: "unfoldingWord" },
+    {},
+  ],
+  getContext: [
+    { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
+    { reference: "Titus 1:1", language: "en", organization: "unfoldingWord" },
+  ],
+  getWordsForReference: [
+    { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
+    { reference: "Titus 1:1", language: "en", organization: "unfoldingWord" },
+  ],
 };
 
 // Helper functions
@@ -329,6 +343,93 @@ describe("API/MCP Endpoint Parity Tests", () => {
           // Validate browse results structure
           expect(apiResponse.translationWords).toBeDefined();
           expect(mcpResponse.translationWords).toBeDefined();
+        },
+        TIMEOUT
+      );
+    });
+  });
+
+  describe("Search Resources Endpoints", () => {
+    TEST_CASES.searchResources.forEach((testCase, index) => {
+      it(
+        `should return identical responses for search resources test case ${index + 1}`,
+        async () => {
+          const apiResponse = await makeRequest("search-resources", testCase);
+          const mcpResponse = await makeRequest("mcp-search-resources", testCase);
+
+          // Validate response structure
+          validateResponseStructure(apiResponse, ["resources", "query", "totalResults"]);
+          validateResponseStructure(mcpResponse, ["resources", "query", "totalResults"]);
+
+          // Normalize and compare
+          const normalizedApi = normalizeResponse(apiResponse);
+          const normalizedMcp = normalizeResponse(mcpResponse);
+
+          expect(normalizedMcp).toEqual(normalizedApi);
+
+          // Validate resources structure
+          expect(apiResponse.resources).toBeDefined();
+          expect(Array.isArray(apiResponse.resources)).toBe(true);
+          expect(mcpResponse.resources).toBeDefined();
+          expect(Array.isArray(mcpResponse.resources)).toBe(true);
+          expect(apiResponse.totalResults).toBeGreaterThanOrEqual(0);
+          expect(mcpResponse.totalResults).toBeGreaterThanOrEqual(0);
+        },
+        TIMEOUT
+      );
+    });
+  });
+
+  describe("Get Context Endpoints", () => {
+    TEST_CASES.getContext.forEach((testCase, index) => {
+      it(
+        `should return identical responses for get context test case ${index + 1}`,
+        async () => {
+          const apiResponse = await makeRequest("get-context", testCase);
+          const mcpResponse = await makeRequest("mcp-get-context", testCase);
+
+          // Validate response structure
+          validateResponseStructure(apiResponse, ["reference", "language", "organization"]);
+          validateResponseStructure(mcpResponse, ["reference", "language", "organization"]);
+
+          // Normalize and compare
+          const normalizedApi = normalizeResponse(apiResponse);
+          const normalizedMcp = normalizeResponse(mcpResponse);
+
+          expect(normalizedMcp).toEqual(normalizedApi);
+
+          // Validate context structure
+          expect(apiResponse.reference).toBeDefined();
+          expect(mcpResponse.reference).toBeDefined();
+        },
+        TIMEOUT
+      );
+    });
+  });
+
+  describe("Get Words for Reference Endpoints", () => {
+    TEST_CASES.getWordsForReference.forEach((testCase, index) => {
+      it(
+        `should return identical responses for get words for reference test case ${index + 1}`,
+        async () => {
+          const apiResponse = await makeRequest("get-words-for-reference", testCase);
+          const mcpResponse = await makeRequest("mcp-get-words-for-reference", testCase);
+
+          // Validate response structure
+          validateResponseStructure(apiResponse, ["reference", "words"]);
+          validateResponseStructure(mcpResponse, ["reference", "words"]);
+
+          // Normalize and compare
+          const normalizedApi = normalizeResponse(apiResponse);
+          const normalizedMcp = normalizeResponse(mcpResponse);
+
+          expect(normalizedMcp).toEqual(normalizedApi);
+
+          // Validate words structure
+          expect(apiResponse.words).toBeDefined();
+          expect(Array.isArray(apiResponse.words)).toBe(true);
+          expect(mcpResponse.words).toBeDefined();
+          expect(Array.isArray(mcpResponse.words)).toBe(true);
         },
         TIMEOUT
       );
