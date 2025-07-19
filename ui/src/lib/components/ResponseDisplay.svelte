@@ -30,6 +30,32 @@
 		return JSON.stringify(obj, null, 2);
 	}
 
+	function formatJsonWithSyntaxHighlighting(obj) {
+		const json = JSON.stringify(obj, null, 2);
+
+		// Create collapsible JSON with syntax highlighting
+		return json
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/("[\w\-_]+":)/g, '<span class="text-blue-400 font-medium">$1</span>') // Keys
+			.replace(/(".*?")/g, '<span class="text-green-400">$1</span>') // String values
+			.replace(/\b(true|false)\b/g, '<span class="text-purple-400 font-medium">$1</span>') // Booleans
+			.replace(/\b(\d+\.?\d*)\b/g, '<span class="text-yellow-400">$1</span>') // Numbers
+			.replace(/\b(null)\b/g, '<span class="text-red-400 font-medium">$1</span>') // null
+			.replace(/([{}])/g, '<span class="text-gray-500 font-bold">$1</span>') // Braces
+			.replace(/([[\\]])/g, '<span class="text-gray-500 font-bold">$1</span>') // Brackets
+			.replace(/(:)/g, '<span class="text-gray-400">$1</span>') // Colons
+			.replace(/(,)$/gm, '<span class="text-gray-400">$1</span>') // Commas
+			.split('\n')
+			.map((line, index) => {
+				const indent = line.match(/^(\s*)/)[1].length;
+				const indentClass = `pl-${Math.min(indent, 20)}`;
+				return `<div class="font-mono text-sm leading-relaxed ${indentClass} hover:bg-gray-800/30 transition-colors">${line}</div>`;
+			})
+			.join('');
+	}
+
 	function toggleViewMode() {
 		viewMode = viewMode === 'visual' ? 'raw' : 'visual';
 	}
@@ -104,10 +130,13 @@
 		</div>
 
 		{#if viewMode === 'raw'}
-			<pre
-				class="scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 max-h-96 overflow-auto rounded bg-gray-900/50 p-3 text-sm text-gray-300">{formatJson(
-					response
-				)}</pre>
+			<div
+				class="scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 max-h-96 overflow-auto rounded bg-gray-900/50"
+			>
+				<div class="p-3">
+					{@html formatJsonWithSyntaxHighlighting(response)}
+				</div>
+			</div>
 		{:else}
 			<!-- Visual View -->
 			<div
@@ -115,65 +144,142 @@
 			>
 				{#if hasScripture(response)}
 					<!-- Scripture Display -->
-					{#each response.data as item, i}
-						{#if item.verses || item.text || item.usfm}
-							<div
-								class="mb-4 rounded-lg border border-amber-500/20 bg-gradient-to-r from-amber-900/20 to-yellow-900/20 p-4"
-							>
-								<div class="mb-2 flex items-center space-x-2">
-									<BookOpen class="h-4 w-4 text-amber-400" />
-									<span class="text-sm font-medium text-amber-300">Scripture Passage</span>
-									{#if item.reference}
-										<span class="text-xs text-amber-500">• {item.reference}</span>
-									{/if}
-								</div>
-								{#if item.verses}
-									{#each item.verses as verse}
-										<div class="mb-2 border-l-2 border-amber-500/30 pl-3">
-											<span class="text-xs font-bold text-amber-400">{verse.verse}</span>
-											<p class="text-gray-200">{verse.text}</p>
+					<div class="space-y-3">
+						{#each response.data as item, i}
+							{#if item.verses || item.text || item.usfm}
+								<div
+									class="overflow-hidden rounded-lg border border-amber-500/20 bg-gradient-to-r from-amber-900/20 to-yellow-900/20"
+								>
+									<!-- Header -->
+									<div class="border-b border-amber-500/20 bg-amber-900/30 px-4 py-3">
+										<div class="flex items-center justify-between">
+											<div class="flex items-center space-x-2">
+												<BookOpen class="h-5 w-5 text-amber-400" />
+												<span class="text-base font-semibold text-amber-200">Scripture Passage</span
+												>
+											</div>
+											{#if item.reference}
+												<span
+													class="rounded bg-amber-800/50 px-2 py-1 font-mono text-xs text-amber-300"
+													>{item.reference}</span
+												>
+											{/if}
 										</div>
-									{/each}
-								{:else if item.text}
-									<p class="border-l-2 border-amber-500/30 pl-3 text-gray-200 italic">
-										{item.text}
-									</p>
-								{/if}
-							</div>
-						{/if}
-					{/each}
+										{#if item.book || item.chapter}
+											<div class="mt-2 text-xs text-amber-400">
+												{#if item.book}Book: {item.book}{/if}
+												{#if item.chapter}
+													• Chapter: {item.chapter}{/if}
+											</div>
+										{/if}
+									</div>
+
+									<!-- Content -->
+									<div class="p-4">
+										{#if item.verses && Array.isArray(item.verses)}
+											<div class="space-y-3">
+												{#each item.verses as verse, vIndex}
+													<div
+														class="rounded-r border-l-3 border-amber-500/40 bg-amber-900/10 py-2 pl-4"
+													>
+														<div class="flex items-start space-x-3">
+															<span
+																class="min-w-[2rem] rounded bg-amber-700/50 px-2 py-1 text-center text-xs font-bold text-amber-200"
+															>
+																{verse.verse || vIndex + 1}
+															</span>
+															<p class="flex-1 leading-relaxed text-gray-100">{verse.text}</p>
+														</div>
+													</div>
+												{/each}
+											</div>
+										{:else if item.text}
+											<div
+												class="rounded-r border-l-3 border-amber-500/40 bg-amber-900/10 py-3 pl-4"
+											>
+												<p class="leading-relaxed text-gray-100 italic">{item.text}</p>
+											</div>
+										{:else if item.usfm}
+											<div
+												class="rounded-r border-l-3 border-amber-500/40 bg-amber-900/10 py-3 pl-4"
+											>
+												<div class="mb-2 text-xs text-amber-400">USFM Format:</div>
+												<pre
+													class="font-mono text-xs whitespace-pre-wrap text-gray-100">{item.usfm}</pre>
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/if}
+						{/each}
+					</div>
 				{:else if hasTranslationNotes(response)}
 					<!-- Translation Notes Display -->
-					{#each response.data as item, i}
-						{#if item.note || item.occurrence || item.gl}
-							<div
-								class="mb-4 rounded-lg border border-green-500/20 bg-gradient-to-r from-green-900/20 to-emerald-900/20 p-4"
-							>
-								<div class="mb-2 flex items-center space-x-2">
-									<MessageSquare class="h-4 w-4 text-green-400" />
-									<span class="text-sm font-medium text-green-300">Translation Note</span>
-									{#if item.reference}
-										<span class="text-xs text-green-500">• {item.reference}</span>
-									{/if}
+					<div class="space-y-3">
+						{#each response.data as item, i}
+							{#if item.note || item.occurrence || item.gl}
+								<div
+									class="overflow-hidden rounded-lg border border-green-500/20 bg-gradient-to-r from-green-900/20 to-emerald-900/20"
+								>
+									<!-- Header -->
+									<div class="border-b border-green-500/20 bg-green-900/30 px-4 py-3">
+										<div class="flex items-center justify-between">
+											<div class="flex items-center space-x-2">
+												<MessageSquare class="h-5 w-5 text-green-400" />
+												<span class="text-base font-semibold text-green-200">Translation Note</span>
+											</div>
+											{#if item.reference}
+												<span
+													class="rounded bg-green-800/50 px-2 py-1 font-mono text-xs text-green-300"
+													>{item.reference}</span
+												>
+											{/if}
+										</div>
+									</div>
+
+									<!-- Content -->
+									<div class="space-y-3 p-4">
+										{#if item.occurrence}
+											<div class="rounded-lg border border-green-700/30 bg-green-900/20 p-3">
+												<div class="mb-2 flex items-center space-x-2">
+													<div class="h-2 w-2 rounded-full bg-green-400"></div>
+													<span class="text-xs font-semibold tracking-wide text-green-400 uppercase"
+														>Original Text</span
+													>
+												</div>
+												<p class="font-medium text-green-100">{item.occurrence}</p>
+											</div>
+										{/if}
+
+										{#if item.gl}
+											<div class="rounded-lg border border-green-700/30 bg-green-900/20 p-3">
+												<div class="mb-2 flex items-center space-x-2">
+													<div class="h-2 w-2 rounded-full bg-green-400"></div>
+													<span class="text-xs font-semibold tracking-wide text-green-400 uppercase"
+														>Gateway Language</span
+													>
+												</div>
+												<p class="font-medium text-green-100">{item.gl}</p>
+											</div>
+										{/if}
+
+										{#if item.note}
+											<div
+												class="rounded-r border-l-4 border-green-500/50 bg-green-900/10 py-2 pl-4"
+											>
+												<div
+													class="mb-2 text-xs font-semibold tracking-wide text-green-400 uppercase"
+												>
+													Translation Note
+												</div>
+												<p class="leading-relaxed text-gray-100">{item.note}</p>
+											</div>
+										{/if}
+									</div>
 								</div>
-								{#if item.occurrence}
-									<div class="mb-2 rounded bg-green-900/30 p-2">
-										<span class="text-xs font-medium text-green-400">Original Text:</span>
-										<span class="text-green-200">{item.occurrence}</span>
-									</div>
-								{/if}
-								{#if item.gl}
-									<div class="mb-2 rounded bg-green-900/30 p-2">
-										<span class="text-xs font-medium text-green-400">Gateway Language:</span>
-										<span class="text-green-200">{item.gl}</span>
-									</div>
-								{/if}
-								{#if item.note}
-									<p class="border-l-2 border-green-500/30 pl-3 text-gray-200">{item.note}</p>
-								{/if}
-							</div>
-						{/if}
-					{/each}
+							{/if}
+						{/each}
+					</div>
 				{:else if hasTranslationWords(response)}
 					<!-- Translation Words Display -->
 					{#each response.data as item, i}
