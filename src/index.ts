@@ -167,8 +167,8 @@ async function main() {
           inputSchema: FetchResourcesSchema,
         },
         {
-          name: "translation_helps_search_resources",
-          description: "Search for available translation resources",
+          name: "translation_helps_list_available_resources",
+          description: "List available translation resources from the DCS catalog",
           inputSchema: ListAvailableResourcesSchema,
         },
         {
@@ -238,7 +238,7 @@ async function main() {
           return await handleFetchResources(validatedArgs);
         }
 
-        case "translation_helps_search_resources": {
+        case "translation_helps_list_available_resources": {
           const validatedArgs = ListAvailableResourcesSchema.parse(args);
           return await handleSearchResources(validatedArgs);
         }
