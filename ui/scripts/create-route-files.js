@@ -16,6 +16,9 @@ if (!fs.existsSync(indexHtmlPath)) {
 
 const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
 
+// Create api.html with node_ids for api page (node 4)
+const apiHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,4]');
+
 // Create chat.html with node_ids for chat page (node 5)
 const chatHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,5]');
 
@@ -29,10 +32,13 @@ const performanceHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[
 const mcpToolsHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,10]');
 
 // Write the files
+fs.writeFileSync(path.join(buildDir, 'api.html'), apiHtml);
 fs.writeFileSync(path.join(buildDir, 'chat.html'), chatHtml);
 fs.writeFileSync(path.join(buildDir, 'test.html'), testHtml);
 fs.writeFileSync(path.join(buildDir, 'performance.html'), performanceHtml);
 fs.writeFileSync(path.join(buildDir, 'mcp-tools.html'), mcpToolsHtml);
 
-console.log('✅ Created chat.html, test.html, performance.html, and mcp-tools.html');
-console.log('✅ Direct access to /chat, /test, /performance, and /mcp-tools should now work!');
+console.log('✅ Created api.html, chat.html, test.html, performance.html, and mcp-tools.html');
+console.log(
+	'✅ Direct access to /api, /chat, /test, /performance, and /mcp-tools should now work!'
+);
