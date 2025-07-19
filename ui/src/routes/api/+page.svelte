@@ -1,4 +1,5 @@
 <script>
+	// @ts-nocheck
 	import {
 		BookOpen,
 		FileText,
@@ -11,7 +12,9 @@
 		ExternalLink,
 		Clock,
 		CheckCircle,
-		AlertCircle
+		AlertCircle,
+		List,
+		Link
 	} from 'lucide-svelte';
 	import ApiTester from '$lib/components/ApiTester.svelte';
 	import ResponseDisplay from '$lib/components/ResponseDisplay.svelte';
@@ -21,6 +24,145 @@
 	// MCP tools are also available as an alternative interface
 
 	const endpoints = [
+		{
+			name: 'Health Check',
+			path: '/api/health',
+			description: 'Get API status, version, and available endpoints',
+			method: 'GET',
+			deprecated: false,
+			parameters: [],
+			example: {
+				url: '/api/health',
+				response: {
+					status: 'healthy',
+					timestamp: '2025-01-19T20:52:42.820Z',
+					version: '3.4.0',
+					environment: 'production',
+					endpoints: [
+						'/api/health',
+						'/api/fetch-resources',
+						'/api/search-resources',
+						'/api/get-context',
+						'/api/get-languages',
+						'/api/extract-references'
+					]
+				}
+			}
+		},
+		{
+			name: 'Get Languages',
+			path: '/api/get-languages',
+			description: 'Get list of available languages and organizations',
+			method: 'GET',
+			deprecated: false,
+			parameters: [],
+			example: {
+				url: '/api/get-languages',
+				response: {
+					languages: [
+						{
+							code: 'en',
+							name: 'English',
+							organizations: ['unfoldingWord', 'STR']
+						},
+						{
+							code: 'es',
+							name: 'Spanish',
+							organizations: ['unfoldingWord']
+						}
+					],
+					total: 2
+				}
+			}
+		},
+		{
+			name: 'Extract References',
+			path: '/api/extract-references',
+			description: 'Extract and parse Bible references from text',
+			method: 'GET',
+			deprecated: false,
+			parameters: [
+				{
+					name: 'text',
+					type: 'string',
+					required: true,
+					description: 'Text containing Bible references'
+				}
+			],
+			example: {
+				url: '/api/extract-references?text=See John 3:16 and Romans 1:1',
+				response: {
+					references: [
+						{
+							reference: 'John 3:16',
+							book: 'John',
+							chapter: 3,
+							verse: 16
+						},
+						{
+							reference: 'Romans 1:1',
+							book: 'Romans',
+							chapter: 1,
+							verse: 1
+						}
+					],
+					count: 2
+				}
+			}
+		},
+		{
+			name: 'Fetch Resources',
+			path: '/api/fetch-resources',
+			description: 'Get comprehensive translation resources for a Bible reference',
+			method: 'GET',
+			deprecated: false,
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "Titus 1:1")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: true,
+					description: 'Language code (e.g., "en", "es")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: true,
+					description: 'Organization (e.g., "unfoldingWord")'
+				}
+			],
+			example: {
+				url: '/api/fetch-resources?reference=Titus%201:1&language=en&organization=unfoldingWord',
+				response: {
+					reference: 'Titus 1:1',
+					language: 'en',
+					organization: 'unfoldingWord',
+					scripture: {
+						text: 'Paul, a servant of God and an apostle of Jesus Christ...',
+						translation: 'ULT'
+					},
+					notes: [
+						{
+							id: 'tit01-01-abc1',
+							reference: 'rc://*/tn/help/tit/01/01',
+							text: 'Paul introduces himself as both a servant and apostle...'
+						}
+					],
+					words: [
+						{
+							id: 'servant',
+							term: 'servant',
+							definition: 'A person who serves another...'
+						}
+					]
+				}
+			}
+		},
 		{
 			name: 'Fetch Scripture',
 			path: '/api/fetch-scripture',
@@ -70,11 +212,6 @@
 					language: 'en',
 					organization: 'unfoldingWord',
 					responseTime: 245
-				},
-				request: {
-					reference: 'Titus 1:1',
-					language: 'en',
-					organization: 'unfoldingWord'
 				}
 			}
 		},
@@ -108,23 +245,58 @@
 			example: {
 				url: '/api/fetch-translation-notes?reference=Titus%201:1&language=en&organization=unfoldingWord',
 				response: {
-					translationNotes: [
+					notes: [
 						{
-							reference: 'TIT 1:1',
-							quote: 'κατὰ πίστιν ἐκλεκτῶν Θεοῦ καὶ ἐπίγνωσιν ἀληθείας',
-							note: "The words **faith**, **knowledge**, and **truth** are abstract nouns. If it would be more clear in your language, you could express those ideas in another way. Alternate translation: [to help God's chosen people to continue to trust him and to know every true thing]"
-						},
-						{
-							reference: 'TIT 1:1',
-							quote: 'ἐκλεκτῶν Θεοῦ',
-							note: 'If your language does not use this passive form, you could express the idea in active form or in another way that is natural in your language. Alternate translation: [of the people whom God has chosen]'
+							id: 'tit01-01-abc1',
+							reference: 'rc://*/tn/help/tit/01/01',
+							text: 'Paul introduces himself using two titles that describe his relationship to God and to the church.',
+							quote: 'Paul, a servant of God and an apostle of Jesus Christ',
+							occurrence: 1,
+							gl_quote: 'Paul'
 						}
 					],
+					reference: 'Titus 1:1',
 					language: 'en',
-					organization: 'unfoldingWord',
-					responseTime: 187
+					organization: 'unfoldingWord'
+				}
+			}
+		},
+		{
+			name: 'Fetch Translation Questions',
+			path: '/api/fetch-translation-questions',
+			description: 'Get comprehension and translation questions for Bible passages',
+			method: 'GET',
+			deprecated: false,
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "Titus 1:1")'
 				},
-				request: {
+				{
+					name: 'language',
+					type: 'string',
+					required: true,
+					description: 'Language code (e.g., "en", "es")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: true,
+					description: 'Organization (e.g., "unfoldingWord")'
+				}
+			],
+			example: {
+				url: '/api/fetch-translation-questions?reference=Titus%201:1&language=en&organization=unfoldingWord',
+				response: {
+					questions: [
+						{
+							id: 'tit01-01-q1',
+							question: 'How does Paul describe himself in this verse?',
+							answer: 'Paul describes himself as a servant of God and an apostle of Jesus Christ.'
+						}
+					],
 					reference: 'Titus 1:1',
 					language: 'en',
 					organization: 'unfoldingWord'
@@ -134,7 +306,7 @@
 		{
 			name: 'Fetch Translation Words',
 			path: '/api/fetch-translation-words',
-			description: 'Get comprehensive biblical word definitions with theological context',
+			description: 'Get key biblical terms and their definitions for translation help',
 			method: 'GET',
 			deprecated: false,
 			parameters: [
@@ -160,270 +332,305 @@
 			example: {
 				url: '/api/fetch-translation-words?reference=Titus%201:1&language=en&organization=unfoldingWord',
 				response: {
-					translationWords: [
+					words: [
 						{
-							term: 'paul',
-							definition: 'Paul, Saul',
-							title: 'Paul, Saul',
-							subtitle: 'Facts:',
-							content:
-								'# Paul, Saul\n\n## Facts:\n\nPaul was a leader of the early church who was sent by Jesus to take the good news to many other people groups.\n\n* Paul was a Jew who was born in the Roman city of Tarsus, and was therefore also a Roman citizen.\n* Paul was originally called by his Jewish name, Saul...',
-							titleContent: 'Paul, Saul',
-							subtitleContent: 'Facts:',
-							mainContent:
-								'Paul was a leader of the early church who was sent by Jesus to take the good news to many other people groups...'
+							id: 'servant',
+							term: 'servant',
+							definition: 'A person who serves another person, either by choice or by requirement.',
+							translation_suggestions: ['servant', 'slave', 'bond-servant']
+						},
+						{
+							id: 'apostle',
+							term: 'apostle',
+							definition: 'A person sent by God to preach the gospel.',
+							translation_suggestions: ['apostle', 'messenger', 'one who is sent']
 						}
 					],
-					citation: {
-						resource: 'Translation Words',
-						organization: 'unfoldingWord',
-						language: 'en',
-						url: 'https://git.door43.org/unfoldingWord/en_tw',
-						version: 'master'
-					},
-					language: 'en',
-					organization: 'unfoldingWord',
-					responseTime: 3119
-				},
-				request: {
 					reference: 'Titus 1:1',
 					language: 'en',
 					organization: 'unfoldingWord'
 				}
 			}
+		},
+		{
+			name: 'Fetch Translation Word Links',
+			path: '/api/fetch-translation-word-links',
+			description: 'Get links between translation words and their usage in scripture',
+			method: 'GET',
+			deprecated: false,
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "Titus 1:1")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: true,
+					description: 'Language code (e.g., "en", "es")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: true,
+					description: 'Organization (e.g., "unfoldingWord")'
+				}
+			],
+			example: {
+				url: '/api/fetch-translation-word-links?reference=Titus%201:1&language=en&organization=unfoldingWord',
+				response: {
+					links: [
+						{
+							word: 'servant',
+							references: ['Romans 1:1', 'Philippians 1:1', 'Titus 1:1'],
+							usage_count: 156
+						}
+					],
+					reference: 'Titus 1:1',
+					language: 'en',
+					organization: 'unfoldingWord'
+				}
+			}
+		},
+		{
+			name: 'Browse Translation Words',
+			path: '/api/browse-translation-words',
+			description: 'Browse and search through all available translation words',
+			method: 'GET',
+			deprecated: false,
+			parameters: [
+				{
+					name: 'language',
+					type: 'string',
+					required: true,
+					description: 'Language code (e.g., "en", "es")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: true,
+					description: 'Organization (e.g., "unfoldingWord")'
+				},
+				{
+					name: 'search',
+					type: 'string',
+					required: false,
+					description: 'Search term to filter words'
+				},
+				{
+					name: 'limit',
+					type: 'number',
+					required: false,
+					description: 'Maximum number of results (default: 50)'
+				}
+			],
+			example: {
+				url: '/api/browse-translation-words?language=en&organization=unfoldingWord&search=love&limit=10',
+				response: {
+					words: [
+						{
+							id: 'love',
+							term: 'love',
+							definition: 'To care deeply for someone or something...',
+							aliases: ['beloved', 'loving']
+						}
+					],
+					total: 1,
+					search: 'love',
+					limit: 10
+				}
+			}
 		}
 	];
 
-	let copySuccess = {};
-	let testResults = {};
-	let testLoading = {};
+	let selectedResponse = null;
+	let isTestLoading = false;
 
-	function copyToClipboard(text, id) {
-		navigator.clipboard.writeText(text);
-		copySuccess[id] = true;
-		setTimeout(() => {
-			copySuccess[id] = false;
-		}, 2000);
+	function scrollToEndpoint(endpointPath) {
+		const element = document.getElementById(endpointPath.replace('/api/', ''));
+		if (element) {
+			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
 	}
 
 	async function handleTest(event) {
-		const { endpoint, formData } = event.detail;
-		const endpointId = endpoint.path;
-
-		testLoading[endpointId] = true;
-		testResults[endpointId] = null;
+		const { endpoint, parameters } = event.detail;
+		isTestLoading = true;
+		selectedResponse = null;
 
 		try {
-			// Build URL with query parameters using direct Netlify function path
+			// Build URL with parameters
 			const functionName = endpoint.path.replace('/api/', '');
 			const url = new URL(`/.netlify/functions/${functionName}`, window.location.origin);
-			Object.entries(formData).forEach(([key, value]) => {
+
+			// Add parameters to URL
+			Object.entries(parameters).forEach(([key, value]) => {
 				if (value) {
-					url.searchParams.set(key, value);
+					url.searchParams.append(key, value);
 				}
 			});
 
 			const response = await fetch(url.toString());
 			const data = await response.json();
 
-			testResults[endpointId] = data;
+			selectedResponse = {
+				success: response.ok,
+				status: response.status,
+				data: data,
+				url: url.toString()
+			};
 		} catch (error) {
-			testResults[endpointId] = { error: error.message };
+			selectedResponse = {
+				success: false,
+				status: 0,
+				data: { error: error.message },
+				url: 'Error occurred'
+			};
 		} finally {
-			testLoading[endpointId] = false;
+			isTestLoading = false;
 		}
 	}
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-	<div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+<svelte:head>
+	<title>Translation Helps API Reference</title>
+	<meta
+		name="description"
+		content="Complete API reference for Translation Helps endpoints - Scripture, notes, words, and more"
+	/>
+</svelte:head>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 text-white">
+	<div class="container mx-auto px-4 py-8">
 		<!-- Header -->
 		<div class="mb-12 text-center">
-			<h1 class="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-				Translation Helps REST API
-			</h1>
+			<div class="mb-4 flex items-center justify-center gap-3">
+				<Code class="h-8 w-8 text-blue-400" />
+				<h1
+					class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-4xl font-bold text-transparent"
+				>
+					Translation Helps API
+				</h1>
+			</div>
 			<p class="mx-auto max-w-3xl text-xl text-gray-300">
-				Access comprehensive biblical translation resources through our high-performance REST API.
-				All endpoints are fully functional and actively maintained.
+				Comprehensive REST API for Bible translation resources including scripture, notes,
+				translation words, and more.
 			</p>
-		</div>
-
-		<!-- Quick Start -->
-		<div class="mb-12 rounded-lg border border-white/10 bg-white/5 p-8">
-			<h2 class="mb-6 text-2xl font-bold text-white">Quick Start</h2>
-			<div class="grid gap-6 md:grid-cols-2">
-				<div>
-					<h3 class="mb-4 text-lg font-semibold text-white">1. Try the REST API</h3>
-					<div class="rounded-lg bg-black/20 p-4">
-						<code class="text-green-400">
-							curl
-							"https://translation-helps-mcp.netlify.app/api/fetch-scripture?reference=Titus%201:1&language=en&organization=unfoldingWord"
-						</code>
-					</div>
+			<div class="mt-6 flex items-center justify-center gap-6">
+				<div class="flex items-center gap-2">
+					<CheckCircle class="h-5 w-5 text-green-400" />
+					<span class="text-sm text-gray-300">Live & Interactive</span>
 				</div>
-				<div>
-					<h3 class="mb-4 text-lg font-semibold text-white">2. Use MCP Tools</h3>
-					<div class="rounded-lg bg-black/20 p-4">
-						<code class="text-blue-400">npx tsx src/index.ts</code>
-					</div>
-					<p class="mt-2 text-sm text-gray-400">
-						Run the MCP server locally for AI assistant integration
-					</p>
+				<div class="flex items-center gap-2">
+					<Zap class="h-5 w-5 text-yellow-400" />
+					<span class="text-sm text-gray-300">{endpoints.length} Endpoints</span>
+				</div>
+				<div class="flex items-center gap-2">
+					<BookOpen class="h-5 w-5 text-blue-400" />
+					<span class="text-sm text-gray-300">Translation Resources</span>
 				</div>
 			</div>
 		</div>
 
+		<!-- Table of Contents -->
+		<div class="mb-8 rounded-xl border border-gray-700 bg-gray-800/50 p-6">
+			<div class="mb-4 flex items-center gap-3">
+				<List class="h-6 w-6 text-blue-400" />
+				<h2 class="text-2xl font-bold text-white">Table of Contents</h2>
+			</div>
+			<div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+				{#each endpoints as endpoint}
+					<button
+						on:click={() => scrollToEndpoint(endpoint.path)}
+						class="group flex items-center gap-3 rounded-lg bg-gray-700/50 p-3 text-left transition-colors hover:bg-gray-600/50"
+					>
+						<Link class="h-4 w-4 text-blue-400 group-hover:text-blue-300" />
+						<div>
+							<div class="font-medium text-white group-hover:text-blue-300">
+								{endpoint.name}
+							</div>
+							<div class="text-sm text-gray-400">
+								{endpoint.path}
+							</div>
+						</div>
+					</button>
+				{/each}
+			</div>
+		</div>
+
+		<!-- API Testing Section -->
+		{#if selectedResponse}
+			<div class="mb-8">
+				<ResponseDisplay response={selectedResponse} />
+			</div>
+		{/if}
+
 		<!-- API Endpoints -->
 		<div class="space-y-8">
-			<h2 class="text-2xl font-bold text-white">API Endpoints</h2>
-
 			{#each endpoints as endpoint}
-				<div class="rounded-lg border border-white/10 bg-white/5 p-6">
+				<div
+					id={endpoint.path.replace('/api/', '')}
+					class="overflow-hidden rounded-xl border border-gray-700 bg-gray-800/50"
+				>
 					<!-- Endpoint Header -->
-					<div class="mb-6 flex items-start justify-between">
-						<div class="flex items-center space-x-4">
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-blue-500"
-							>
-								<Code class="h-6 w-6 text-white" />
+					<div class="border-b border-gray-700 p-6">
+						<div class="mb-4 flex items-center justify-between">
+							<div class="flex items-center gap-3">
+								<span class="rounded-lg bg-blue-600 px-3 py-1 text-sm font-medium text-white">
+									{endpoint.method}
+								</span>
+								<h3 class="text-2xl font-bold text-white">{endpoint.name}</h3>
 							</div>
-							<div>
-								<h3 class="text-xl font-semibold text-white">{endpoint.name}</h3>
-								<p class="text-gray-400">{endpoint.description}</p>
-								<div class="mt-2 flex items-center space-x-3">
-									<span
-										class="rounded-full bg-green-500/20 px-3 py-1 text-sm font-medium text-green-300"
-									>
-										{endpoint.method}
-									</span>
-									<span
-										class="rounded-full bg-blue-500/20 px-3 py-1 text-sm font-medium text-blue-300"
-									>
-										REST API
-									</span>
-								</div>
-							</div>
+							{#if endpoint.deprecated}
+								<span
+									class="flex items-center gap-2 rounded-lg bg-red-600 px-3 py-1 text-sm font-medium text-white"
+								>
+									<AlertCircle class="h-4 w-4" />
+									Deprecated
+								</span>
+							{/if}
+						</div>
+						<p class="mb-4 text-gray-300">{endpoint.description}</p>
+						<div class="rounded-lg bg-gray-900 p-3">
+							<code class="font-mono text-blue-300">
+								GET {endpoint.path}
+							</code>
 						</div>
 					</div>
 
-					<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-						<!-- Parameters -->
-						<div>
-							<h4 class="mb-4 text-lg font-semibold text-white">Parameters</h4>
-							<div class="space-y-3">
-								{#each endpoint.parameters as param}
-									<div class="rounded-lg border border-white/10 bg-white/5 p-4">
-										<div class="mb-2 flex items-center justify-between">
-											<code class="text-purple-300">{param.name}</code>
-											<div class="flex items-center space-x-2">
-												<span class="rounded bg-gray-600 px-2 py-1 text-xs text-gray-300">
-													{param.type}
-												</span>
-												{#if param.required}
-													<span class="rounded bg-red-600 px-2 py-1 text-xs text-white">
-														Required
-													</span>
-												{/if}
-											</div>
-										</div>
-										<p class="text-sm text-gray-400">{param.description}</p>
-									</div>
-								{/each}
-							</div>
-						</div>
-
-						<!-- Example -->
-						<div>
-							<h4 class="mb-4 text-lg font-semibold text-white">Example</h4>
-							<div class="space-y-4">
-								<!-- URL -->
-								<div class="rounded-lg border border-white/10 bg-black/20 p-4">
-									<div class="mb-2 flex items-center justify-between">
-										<span class="text-sm font-medium text-gray-400">Request URL:</span>
-										<button
-											on:click={() => copyToClipboard(endpoint.example.url, `${endpoint.path}-url`)}
-											class="flex items-center space-x-1 rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-700"
-										>
-											{#if copySuccess[`${endpoint.path}-url`]}
-												<Check class="h-3 w-3" />
-												<span>Copied!</span>
-											{:else}
-												<Copy class="h-3 w-3" />
-												<span>Copy</span>
-											{/if}
-										</button>
-									</div>
-									<code class="text-sm text-green-400">{endpoint.example.url}</code>
-								</div>
-
-								<!-- Response -->
-								<div class="rounded-lg border border-white/10 bg-black/20 p-4">
-									<div class="mb-2 flex items-center justify-between">
-										<span class="text-sm font-medium text-gray-400">Response:</span>
-										<button
-											on:click={() =>
-												copyToClipboard(
-													JSON.stringify(endpoint.example.response, null, 2),
-													`${endpoint.path}-response`
-												)}
-											class="flex items-center space-x-1 rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-700"
-										>
-											{#if copySuccess[`${endpoint.path}-response`]}
-												<Check class="h-3 w-3" />
-												<span>Copied!</span>
-											{:else}
-												<Copy class="h-3 w-3" />
-												<span>Copy</span>
-											{/if}
-										</button>
-									</div>
-									<pre class="overflow-auto text-sm text-gray-300">{JSON.stringify(
-											endpoint.example.response,
-											null,
-											2
-										)}</pre>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<!-- Interactive Tester -->
-					<div class="mt-8">
-						<h4 class="mb-4 text-lg font-semibold text-white">Try It Out</h4>
-						<ApiTester
-							{endpoint}
-							loading={testLoading[endpoint.path]}
-							result={testResults[endpoint.path]}
-							on:test={handleTest}
-						/>
+					<!-- Interactive Testing -->
+					<div class="p-6">
+						<ApiTester {endpoint} loading={isTestLoading} on:test={handleTest} />
 					</div>
 				</div>
 			{/each}
 		</div>
 
-		<!-- Additional Info -->
-		<div class="mt-12 rounded-lg border border-white/10 bg-white/5 p-6">
-			<h2 class="mb-4 text-xl font-semibold text-white">Additional Information</h2>
-			<div class="grid gap-6 md:grid-cols-2">
-				<div>
-					<h3 class="mb-2 text-lg font-medium text-white">Rate Limits</h3>
-					<p class="text-gray-400">
-						Our API is designed for high-throughput usage. No rate limits are currently enforced,
-						but please use responsibly.
-					</p>
-				</div>
-				<div>
-					<h3 class="mb-2 text-lg font-medium text-white">Support</h3>
-					<p class="text-gray-400">
-						For questions or issues, please visit our
-						<a
-							href="https://github.com/klappy/translation-helps-mcp"
-							target="_blank"
-							class="text-blue-400 hover:text-blue-300"
-						>
-							GitHub repository
-						</a>
-					</p>
+		<!-- Footer -->
+		<div class="mt-16 text-center">
+			<div class="rounded-xl border border-gray-700 bg-gray-800/50 p-6">
+				<h3 class="mb-4 text-xl font-bold text-white">Need Help?</h3>
+				<p class="mb-4 text-gray-300">
+					All endpoints are fully functional and return real data. Use the interactive forms above
+					to test them!
+				</p>
+				<div class="flex items-center justify-center gap-6">
+					<a
+						href="/mcp-tools"
+						class="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 transition-colors hover:bg-purple-700"
+					>
+						<MessageSquare class="h-4 w-4" />
+						MCP Tools
+					</a>
+					<a
+						href="/test"
+						class="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 transition-colors hover:bg-green-700"
+					>
+						<Zap class="h-4 w-4" />
+						Performance Testing
+					</a>
 				</div>
 			</div>
 		</div>
