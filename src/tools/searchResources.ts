@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
+import { DCSApiClient } from "../services/DCSApiClient.js";
 
 // Input schema
 export const SearchResourcesArgs = z.object({
@@ -25,26 +26,54 @@ export async function handleSearchResources(args: SearchResourcesArgs) {
   try {
     logger.info("Searching resources", args);
 
-    // Placeholder implementation
+    // Create DCS API client
+    const client = new DCSApiClient();
+
+    // Build search parameters for the DCS catalog API
+    const searchParams: any = {
+      stage: "prod",
+      limit: 100,
+    };
+
+    // Add optional filters
+    if (args.language) {
+      searchParams.lang = args.language;
+    }
+    if (args.organization) {
+      searchParams.owner = args.organization;
+    }
+    if (args.resource) {
+      searchParams.resource = args.resource;
+    }
+    if (args.subject) {
+      searchParams.subject = args.subject;
+    }
+
+    // Fetch resources from DCS catalog
+    const response = await client.getResources(searchParams);
+
+    if (!response.success) {
+      throw new Error(`Failed to fetch resources: ${response.error || "Unknown error"}`);
+    }
+
+    // Transform the response data into a more user-friendly format
+    const resources = (response.data || []).map((resource: any) => ({
+      name: resource.title || resource.name || "Unknown Resource",
+      language: resource.language || args.language || "unknown",
+      organization: resource.owner || args.organization || "unknown",
+      type: resource.subject || "unknown",
+      description: resource.description || "",
+      identifier: resource.identifier || "",
+      format: resource.format || "",
+      stage: resource.stage || "",
+      url: resource.url || "",
+      lastUpdated: resource.released || resource.modified || "",
+    }));
+
     const results = {
-      resources: [
-        {
-          name: "unfoldingWord Literal Text",
-          language: args.language || "en",
-          organization: args.organization || "unfoldingWord",
-          type: "scripture",
-          description: "A literal Bible translation",
-        },
-        {
-          name: "Translation Notes",
-          language: args.language || "en",
-          organization: args.organization || "unfoldingWord",
-          type: "notes",
-          description: "Translation help notes",
-        },
-      ],
+      resources,
       query: args,
-      totalResults: 2,
+      totalResults: resources.length,
       timestamp: new Date().toISOString(),
       responseTime: Date.now() - startTime,
     };
