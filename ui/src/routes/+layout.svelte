@@ -17,6 +17,9 @@
 	} from 'lucide-svelte';
 	import '../app.css';
 
+	// Version info
+	const VERSION = '3.4.0';
+
 	// Navigation items
 	const navItems = [
 		{
@@ -98,7 +101,7 @@
 						</div>
 						<div class="hidden sm:block">
 							<div class="text-lg font-bold text-white">Translation Helps</div>
-							<div class="text-xs text-gray-400">MCP Server</div>
+							<div class="text-xs text-gray-400">MCP Server v{VERSION}</div>
 						</div>
 					</a>
 				</div>
@@ -133,6 +136,15 @@
 
 				<!-- Right side actions -->
 				<div class="flex items-center space-x-4">
+					<!-- Version Badge -->
+					<div class="hidden sm:block">
+						<div
+							class="rounded-full bg-emerald-600/20 px-3 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-600/30"
+						>
+							v{VERSION}
+						</div>
+					</div>
+
 					<!-- GitHub Link -->
 					<a
 						href="https://github.com/klappy/translation-helps-mcp"
@@ -290,6 +302,11 @@
 						© 2024 Translation Helps MCP Server. Built with ❤️ for the Bible translation community.
 					</div>
 					<div class="flex items-center space-x-6 text-sm text-gray-400">
+						<div
+							class="rounded-full bg-purple-600/20 px-3 py-1 text-xs font-medium text-purple-300 ring-1 ring-purple-600/30"
+						>
+							v{VERSION}
+						</div>
 						<a
 							href="https://github.com/klappy/translation-helps-mcp"
 							target="_blank"
