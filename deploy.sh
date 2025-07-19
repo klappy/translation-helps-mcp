@@ -1,70 +1,38 @@
 #!/bin/bash
 
-# Translation Helps API Deployment Script
-# This script helps you deploy the API to Netlify
+# Translation Helps MCP - Manual Deploy Script
+# Use this if auto-deploy isn't working or for testing
 
-echo "🙏 Translation Helps API Deployment"
-echo "=================================="
+set -e
 
-# Check if Netlify CLI is installed
+echo "🚀 Starting manual deployment process..."
+
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+    echo "❌ Error: Run this script from the project root directory"
+    exit 1
+fi
+
+# Check if netlify CLI is installed
 if ! command -v netlify &> /dev/null; then
-    echo "❌ Netlify CLI not found. Installing..."
+    echo "📦 Netlify CLI not found. Installing..."
     npm install -g netlify-cli
 fi
 
-# Check if logged in to Netlify
-if ! netlify status > /dev/null 2>&1; then
-    echo "🔐 Please log in to Netlify..."
-    netlify login
-fi
-
-# Install dependencies
-echo "📦 Installing dependencies..."
-npm install
-
-# Build the project
+# Build everything
 echo "🔨 Building project..."
-npm run build
+npm run build:all
 
 # Deploy to Netlify
-echo "🚀 Deploying to Netlify..."
-echo ""
-echo "Choose an option:"
-echo "1. Deploy to a new site"
-echo "2. Deploy to an existing site"
-echo "3. Deploy as draft (preview)"
-echo ""
+echo "🌐 Deploying to Netlify..."
+netlify deploy --prod
 
-read -p "Enter your choice (1-3): " choice
-
-case $choice in
-    1)
-        echo "Creating new site and deploying..."
-        netlify deploy --prod --dir=.
-        ;;
-    2)
-        echo "Deploying to existing site..."
-        netlify deploy --prod
-        ;;
-    3)
-        echo "Creating draft deployment..."
-        netlify deploy
-        ;;
-    *)
-        echo "Invalid choice. Creating draft deployment..."
-        netlify deploy
-        ;;
-esac
-
-echo ""
 echo "✅ Deployment complete!"
-echo ""
-echo "📋 Next steps:"
-echo "1. Go to your Netlify dashboard"
-echo "2. Set environment variables if needed"
-echo "3. Test your API endpoints"
-echo ""
-echo "🧪 Test commands:"
-echo "curl \"https://your-site.netlify.app/api/health\""
-echo "curl \"https://your-site.netlify.app/api/fetch-resources?reference=John+3:16\""
-echo "" 
+echo "🌍 Check your site: https://translation-helps-mcp.netlify.app"
+
+# Test the health endpoint
+echo "🔍 Testing health endpoint..."
+sleep 5
+curl -s "https://translation-helps-mcp.netlify.app/.netlify/functions/health" | jq -r '.version' || echo "Health check failed"
+
+echo "🎉 All done!" 
