@@ -33,25 +33,32 @@
 	function formatJsonWithSyntaxHighlighting(obj) {
 		const json = JSON.stringify(obj, null, 2);
 
-		// Create collapsible JSON with syntax highlighting
-		return json
+		// Apply syntax highlighting with more careful regex patterns
+		let highlighted = json
+			// Escape HTML first
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')
-			.replace(/("[\w\-_]+":)/g, '<span class="text-blue-400 font-medium">$1</span>') // Keys
-			.replace(/(".*?")/g, '<span class="text-green-400">$1</span>') // String values
-			.replace(/\b(true|false)\b/g, '<span class="text-purple-400 font-medium">$1</span>') // Booleans
+			// Apply highlighting
+			.replace(
+				/"([^"]+)"(\s*:)/g,
+				'<span class="text-blue-400 font-semibold">"$1"</span><span class="text-gray-400">$2</span>'
+			) // Keys with colons
+			.replace(/"([^"]+)"(?!\s*:)/g, '<span class="text-green-400">"$1"</span>') // String values (not keys)
+			.replace(/\b(true|false)\b/g, '<span class="text-purple-400 font-semibold">$1</span>') // Booleans
 			.replace(/\b(\d+\.?\d*)\b/g, '<span class="text-yellow-400">$1</span>') // Numbers
-			.replace(/\b(null)\b/g, '<span class="text-red-400 font-medium">$1</span>') // null
-			.replace(/([{}])/g, '<span class="text-gray-500 font-bold">$1</span>') // Braces
-			.replace(/([[\\]])/g, '<span class="text-gray-500 font-bold">$1</span>') // Brackets
-			.replace(/(:)/g, '<span class="text-gray-400">$1</span>') // Colons
-			.replace(/(,)$/gm, '<span class="text-gray-400">$1</span>') // Commas
+			.replace(/\b(null)\b/g, '<span class="text-red-400 font-semibold">$1</span>') // null
+			.replace(/([{}])/g, '<span class="text-gray-500 text-lg font-bold">$1</span>') // Braces
+			.replace(/([[\\]])/g, '<span class="text-gray-500 text-lg font-bold">$1</span>') // Brackets
+			.replace(/(,)$/gm, '<span class="text-gray-500">$1</span>'); // Commas at end of lines
+
+		// Split into lines and add formatting
+		return highlighted
 			.split('\n')
 			.map((line, index) => {
-				const indent = line.match(/^(\s*)/)[1].length;
-				const indentClass = `pl-${Math.min(indent, 20)}`;
-				return `<div class="font-mono text-sm leading-relaxed ${indentClass} hover:bg-gray-800/30 transition-colors">${line}</div>`;
+				const indent = (line.match(/^(\s*)/) || ['', ''])[1].length;
+				const paddingClass = indent > 0 ? `style="padding-left: ${indent * 0.75}rem"` : '';
+				return `<div class="font-mono text-sm leading-relaxed hover:bg-gray-800/20 transition-colors py-0.5" ${paddingClass}>${line}</div>`;
 			})
 			.join('');
 	}
