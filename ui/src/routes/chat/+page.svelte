@@ -205,13 +205,17 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		currentMessage = '';
 		isLoading = true;
 
-		// Simulate typing indicator
+		// Generate initial thinking trace
+		const initialThinkingTrace = chatService.generateThinkingTrace(messageToSend, []);
+
+		// Create typing message with thinking trace
 		const typingMessage: ChatMessage = {
 			id: (Date.now() + 1).toString(),
 			role: 'assistant',
 			content: '',
 			timestamp: new Date(),
-			isTyping: true
+			isTyping: true,
+			thinkingTrace: initialThinkingTrace
 		};
 
 		messages = [...messages, typingMessage];
@@ -219,6 +223,13 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		try {
 			// Generate real AI response with Bible context
 			const response = await generateAIResponse(messageToSend);
+
+			// Update typing message with final thinking trace
+			messages = messages.map((msg) =>
+				msg.isTyping
+					? { ...msg, thinkingTrace: response.thinkingTrace }
+					: msg
+			);
 
 			// Remove typing indicator and add real response
 			messages = messages.filter((msg) => !msg.isTyping);
@@ -734,27 +745,23 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 
 									<!-- Message Content -->
 									{#if message.isTyping}
-										<div class="flex items-center space-x-2">
-											<div class="flex space-x-1">
-												<div class="h-2 w-2 animate-bounce rounded-full bg-gray-400"></div>
-												<div
-													class="h-2 w-2 animate-bounce rounded-full bg-gray-400"
-													style="animation-delay: 0.1s"
-												></div>
-												<div
-													class="h-2 w-2 animate-bounce rounded-full bg-gray-400"
-													style="animation-delay: 0.2s"
-												></div>
-											</div>
-											<span class="text-sm text-gray-400">AI is thinking...</span>
-										</div>
-									{:else}
-										<!-- Thinking Trace -->
+										<!-- Thinking Trace during typing -->
 										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
 											<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
 												<div class="mb-3 flex items-center space-x-2">
 													<Lightbulb class="h-4 w-4 text-blue-400" />
 													<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
+													<div class="flex space-x-1">
+														<div class="h-2 w-2 animate-bounce rounded-full bg-blue-400"></div>
+														<div
+															class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+															style="animation-delay: 0.1s"
+														></div>
+														<div
+															class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+															style="animation-delay: 0.2s"
+														></div>
+													</div>
 												</div>
 												<div class="space-y-2">
 													{#each message.thinkingTrace as step, index}
@@ -770,6 +777,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 												</div>
 											</div>
 										{/if}
+									{:else}
 
 										<div class="ai-response-content max-w-none leading-relaxed text-gray-300">
 											<style>
