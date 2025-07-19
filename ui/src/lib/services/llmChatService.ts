@@ -29,129 +29,18 @@ export class LLMChatService {
 	}
 
 	/**
-	 * Generate a streaming response using OpenAI with thinking trace
+	 * Generate response using OpenAI API (non-streaming)
 	 */
-	async generateStreamingResponse(
-		userQuestion: string,
-		onThinkingTrace: (steps: string[]) => void,
-		onResponseChunk: (chunk: string) => void,
-		onComplete: (fullResponse: string) => void
-	) {
-		await this.initialize();
-
-		try {
-			console.log('🤖 Sending streaming request to OpenAI...');
-
-			// First, generate and stream the thinking trace
-			const thinkingSteps = this.generateThinkingTrace(userQuestion);
-
-			// Stream thinking trace step by step
-			for (let i = 0; i < thinkingSteps.length; i++) {
-				await new Promise((resolve) => setTimeout(resolve, 300)); // 300ms delay between steps
-				onThinkingTrace(thinkingSteps.slice(0, i + 1));
-			}
-
-			// Wait a moment before starting the response
-			await new Promise((resolve) => setTimeout(resolve, 500));
-
-			const response = await fetch('/.netlify/functions/chat-stream', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					message: userQuestion,
-					chatHistory: []
-				})
-			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const data = await response.json();
-
-			if (data.success) {
-				console.log('✅ OpenAI response received, starting to stream...');
-
-				// Stream the response content word by word
-				const words = data.response.split(' ');
-				let streamedResponse = '';
-
-				for (const word of words) {
-					await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms delay between words
-					streamedResponse += (streamedResponse ? ' ' : '') + word;
-					onResponseChunk(streamedResponse);
-				}
-
-				// Call completion callback
-				onComplete(data.response);
-
-				return {
-					success: true,
-					response: data.response,
-					timestamp: data.timestamp,
-					contextUsed: data.contextUsed,
-					metadata: data.metadata
-				};
-			} else {
-				console.error('❌ OpenAI API error:', data.error);
-				return {
-					success: false,
-					error: data.error || 'Unknown error occurred'
-				};
-			}
-		} catch (error) {
-			console.error('❌ Error sending chat message:', error);
-
-			// Fallback to mock response for development
-			console.log('🎭 Falling back to mock response due to API error:', (error as Error).message);
-			const mockResponse = this.generateMockResponse(userQuestion);
-
-			// Enhanced streaming for mock responses with realistic timing
-			const words = mockResponse.response.split(' ');
-			let streamedResponse = '';
-
-			for (let i = 0; i < words.length; i++) {
-				const word = words[i];
-
-				// Variable timing to make it feel more natural
-				let delay = 25; // Base delay
-
-				// Longer pauses for punctuation and formatting
-				if (word.includes('**') || word.includes('*') || word.includes('---')) {
-					delay = 80; // Pause for emphasis
-				} else if (word.endsWith('.') || word.endsWith('!') || word.endsWith('?')) {
-					delay = 60; // Pause for sentence endings
-				} else if (word.endsWith(',') || word.endsWith(';') || word.endsWith(':')) {
-					delay = 40; // Pause for clause breaks
-				} else if (word.startsWith('-') || word.startsWith('•')) {
-					delay = 50; // Pause for list items
-				}
-
-				// Add some randomness to make it feel more human
-				delay += Math.random() * 20 - 10; // ±10ms variation
-				delay = Math.max(15, delay); // Minimum 15ms
-
-				await new Promise((resolve) => setTimeout(resolve, delay));
-				streamedResponse += (streamedResponse ? ' ' : '') + word;
-				onResponseChunk(streamedResponse);
-			}
-
-			onComplete(mockResponse.response);
-
-			return {
-				...mockResponse,
-				isFallback: true,
-				fallbackReason: (error as Error).message
-			};
-		}
-	}
-
-	/**
-	 * Generate a response using OpenAI with thinking trace (legacy method)
-	 */
-	async generateResponse(userQuestion: string) {
+	async generateResponse(userQuestion: string): Promise<{
+		success: boolean;
+		response?: string;
+		error?: string;
+		timestamp?: string;
+		contextUsed?: { type: string; reason?: string };
+		metadata?: { model: string; tokens?: number; streaming?: boolean };
+		isFallback?: boolean;
+		fallbackReason?: string;
+	}> {
 		await this.initialize();
 
 		try {
@@ -173,6 +62,11 @@ export class LLMChatService {
 			}
 
 			const data = await response.json();
+			console.log('📊 Backend response data:', {
+				success: data.success,
+				responseLength: data.response?.length || 0,
+				hasMetadata: !!data.metadata
+			});
 
 			if (data.success) {
 				console.log('✅ OpenAI response received successfully');
@@ -185,19 +79,13 @@ export class LLMChatService {
 				};
 			} else {
 				console.error('❌ OpenAI API error:', data.error);
-				return {
-					success: false,
-					error: data.error || 'Unknown error occurred'
-				};
+				throw new Error(data.error || 'Unknown error occurred');
 			}
 		} catch (error) {
 			console.error('❌ Error sending chat message:', error);
-
-			// Fallback to mock response for development
 			console.log('🎭 Falling back to mock response due to API error:', (error as Error).message);
-			const mockResponse = this.generateMockResponse(userQuestion);
 
-			// Add fallback indicator to the response
+			const mockResponse = this.generateMockResponse(userQuestion);
 			return {
 				...mockResponse,
 				isFallback: true,
@@ -275,7 +163,6 @@ export class LLMChatService {
 		if (apiCalls.length === 0) {
 			thinkingSteps.push(`🎭 **OpenAI API call failed** - falling back to development mode`);
 			thinkingSteps.push(`⚠️ **Using pre-written mock response** instead of real AI`);
-			thinkingSteps.push(`🎬 **Simulating realistic streaming** for development experience`);
 		}
 
 		return thinkingSteps;
@@ -287,20 +174,20 @@ export class LLMChatService {
 	generateMockResponse(userQuestion: string) {
 		const mockResponses = {
 			'what is love':
-				'🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Love in the Bible**\n\nLove is a central theme throughout Scripture. In John 3:16, we see God\'s love demonstrated through giving His only Son: "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."\n\nThis verse shows that God\'s love is:\n- **Sacrificial**: He gave His most precious gift\n- **Universal**: For the entire world\n- **Purposeful**: To bring eternal life\n- **Conditional**: Available to those who believe\n\nIn the original Greek, the word used is "agape" - a selfless, unconditional love that seeks the best for others.\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key.**',
+				'🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Love in the Bible**\n\nLove is a central theme throughout Scripture. In John 3:16, we see God\'s love demonstrated through giving His only Son: "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."\n\nThis verse shows that God\'s love is:\n- **Sacrificial**: He gave His most precious gift\n- **Universal**: For the entire world\n- **Purposeful**: To bring eternal life\n- **Conditional**: Available to those who believe\n\nIn the original Greek, the word used is "agape" - a selfless, unconditional love that seeks the best for others.\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key in Netlify environment variables.**',
 			'john 3:16':
-				'🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**John 3:16 - The Heart of the Gospel**\n\nThis verse is often called "the gospel in a nutshell" because it summarizes the core message of Christianity:\n\n*"For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."*\n\n**Key Elements:**\n- **God\'s Love**: The motivation behind everything\n- **The World**: God\'s love extends to all humanity\n- **His Only Son**: The ultimate sacrifice\n- **Belief**: The condition for receiving eternal life\n- **Eternal Life**: The promise and hope\n\nThis verse appears in Jesus\' conversation with Nicodemus, a religious leader who came to Jesus at night seeking understanding.\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key.**',
+				'🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**John 3:16 - The Heart of the Gospel**\n\nThis verse is often called "the gospel in a nutshell" because it summarizes the core message of Christianity:\n\n*"For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."*\n\n**Key Elements:**\n- **God\'s Love**: The motivation behind everything\n- **The World**: God\'s love extends to all humanity\n- **His Only Son**: The ultimate sacrifice\n- **Belief**: The condition for receiving eternal life\n- **Eternal Life**: The promise and hope\n\nThis verse appears in Jesus\' conversation with Nicodemus, a religious leader who came to Jesus at night seeking understanding.\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key in Netlify environment variables.**',
 			grace:
-				'🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Grace - God\'s Unmerited Favor**\n\nGrace is one of the most important concepts in the Bible. It refers to God\'s unmerited favor and kindness toward undeserving sinners.\n\n**Key Aspects of Grace:**\n- **Unearned**: We cannot work for it or deserve it\n- **Free**: Given without cost to us\n- **Sufficient**: Meets all our needs\n- **Transforming**: Changes us from the inside out\n\n**Biblical Examples:**\n- Ephesians 2:8-9: "For it is by grace you have been saved, through faith—and this is not from yourselves, it is the gift of God—not by works, so that no one can boast."\n- Romans 5:8: "But God demonstrates his own love for us in this: While we were still sinners, Christ died for us."\n\nGrace is the foundation of our relationship with God and the source of all spiritual blessings.\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key.**',
+				'🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Grace - God\'s Unmerited Favor**\n\nGrace is one of the most important concepts in the Bible. It refers to God\'s unmerited favor and kindness toward undeserving sinners.\n\n**Key Aspects of Grace:**\n- **Unearned**: We cannot work for it or deserve it\n- **Free**: Given without cost to us\n- **Sufficient**: Meets all our needs\n- **Transforming**: Changes us from the inside out\n\n**Biblical Examples:**\n- Ephesians 2:8-9: "For it is by grace you have been saved, through faith—and this is not from yourselves, it is the gift of God—not by works, so that no one can boast."\n- Romans 5:8: "But God demonstrates his own love for us in this: While we were still sinners, Christ died for us."\n\nGrace is the foundation of our relationship with God and the source of all spiritual blessings.\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key in Netlify environment variables.**',
 			faith:
-				'🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Faith - Trusting in What We Cannot See**\n\nFaith is a fundamental concept in the Bible. Hebrews 11:1 defines it as "the assurance of things hoped for, the conviction of things not seen."\n\n**Key Characteristics of Faith:**\n- **Trust**: Believing in God\'s promises\n- **Obedience**: Acting on what we believe\n- **Perseverance**: Enduring through trials\n- **Transformation**: Changing how we live\n\n**Biblical Examples:**\n- Abraham: "By faith Abraham obeyed when he was called to go out to a place that he was to receive as an inheritance."\n- Moses: "By faith Moses left Egypt, not being afraid of the anger of the king."\n- The Centurion: "I have not found such great faith even in Israel."\n\nFaith is not blind belief, but confident trust in a God who has proven Himself faithful.\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key.**',
+				'🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Faith - Trusting in What We Cannot See**\n\nFaith is a fundamental concept in the Bible. Hebrews 11:1 defines it as "the assurance of things hoped for, the conviction of things not seen."\n\n**Key Characteristics of Faith:**\n- **Trust**: Believing in God\'s promises\n- **Obedience**: Acting on what we believe\n- **Perseverance**: Enduring through trials\n- **Transformation**: Changing how we live\n\n**Biblical Examples:**\n- Abraham: "By faith Abraham obeyed when he was called to go out to a place that he was to receive as an inheritance."\n- Moses: "By faith Moses left Egypt, not being afraid of the anger of the king."\n- The Centurion: "I have not found such great faith even in Israel."\n\nFaith is not blind belief, but confident trust in a God who has proven Himself faithful.\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key in Netlify environment variables.**',
 			salvation:
-				"🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Salvation - God's Rescue Plan**\n\nSalvation is God's plan to rescue humanity from sin and death. It's a free gift that we receive through faith in Jesus Christ.\n\n**What Salvation Includes:**\n- **Forgiveness**: All sins are washed away\n- **Reconciliation**: Relationship with God restored\n- **Transformation**: New life in Christ\n- **Eternal Life**: Promise of life with God forever\n\n**The Process:**\n1. **Recognition**: Understanding our need for salvation\n2. **Repentance**: Turning away from sin\n3. **Faith**: Trusting in Jesus as Savior\n4. **Transformation**: Living as a new creation\n\n**Key Verse**: \"For by grace you have been saved through faith. And this is not your own doing; it is the gift of God.\" (Ephesians 2:8)\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key.**"
+				"🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Salvation - God's Rescue Plan**\n\nSalvation is God's plan to rescue humanity from sin and death. It's a free gift that we receive through faith in Jesus Christ.\n\n**What Salvation Includes:**\n- **Forgiveness**: All sins are washed away\n- **Reconciliation**: Relationship with God restored\n- **Transformation**: New life in Christ\n- **Eternal Life**: Promise of life with God forever\n\n**The Process:**\n1. **Recognition**: Understanding our need for salvation\n2. **Repentance**: Turning away from sin\n3. **Faith**: Trusting in Jesus as Savior\n4. **Transformation**: Living as a new creation\n\n**Key Verse**: \"For by grace you have been saved through faith. And this is not your own doing; it is the gift of God.\" (Ephesians 2:8)\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key in Netlify environment variables.**"
 		};
 
 		const lowerQuestion = userQuestion.toLowerCase();
 		let mockResponse =
-			"🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Bible Translation Assistant**\n\nI understand you're asking about Bible translation. This is a development mode response since the OpenAI API isn't configured yet.\n\n**What I can help with:**\n- Scripture interpretation and context\n- Translation word definitions and usage\n- Cross-reference analysis\n- Historical and cultural background\n- Translation principles and methods\n\n**To get full AI-powered responses:**\nPlease configure your OpenAI API key in the Netlify environment variables.\n\n**For now, try asking about:**\n- John 3:16\n- What is love?\n- Grace\n- Faith\n- Salvation\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key.**";
+			"🎭 **MOCK RESPONSE - Development Mode** 🎭\n\n**Bible Translation Assistant**\n\nI understand you're asking about Bible translation. This is a development mode response since the OpenAI API isn't configured yet.\n\n**What I can help with:**\n- Scripture interpretation and context\n- Translation word definitions and usage\n- Cross-reference analysis\n- Historical and cultural background\n- Translation principles and methods\n\n**To get full AI-powered responses:**\nPlease configure your OpenAI API key in the Netlify environment variables.\n\n**For now, try asking about:**\n- John 3:16\n- What is love?\n- Grace\n- Faith\n- Salvation\n\n---\n⚠️ **This is a pre-written mock response for development.**\n🔧 **To get real AI responses, configure your OpenAI API key in Netlify environment variables.**";
 
 		for (const [key, response] of Object.entries(mockResponses)) {
 			if (lowerQuestion.includes(key)) {

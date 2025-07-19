@@ -35,15 +35,6 @@ The user's question will be followed by the relevant Bible resources fetched fro
  * Real streaming handler with Server-Sent Events
  */
 export async function handler(event, context) {
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  };
-
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
@@ -89,6 +80,7 @@ export async function handler(event, context) {
     ];
 
     console.log(`🚀 Sending streaming request to OpenAI with ${messages.length} messages`);
+    console.log(`📝 User message preview: ${message.substring(0, 200)}...`);
 
     // Make streaming request to OpenAI
     const openaiResponse = await fetch(OPENAI_API_URL, {
@@ -107,21 +99,18 @@ export async function handler(event, context) {
     });
 
     if (!openaiResponse.ok) {
-      throw new Error(`OpenAI API error: ${openaiResponse.status}`);
+      const errorData = await openaiResponse.text();
+      throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorData}`);
     }
 
     // Create a readable stream from the response
     const reader = openaiResponse.body.getReader();
     const decoder = new TextDecoder();
 
-    // Function to send SSE data
-    const sendSSE = (data) => {
-      return `data: ${JSON.stringify(data)}\n\n`;
-    };
-
-    // Stream the response
+    // We'll collect all chunks and return them as a special formatted response
+    // that the frontend can parse to simulate streaming
     let fullResponse = "";
-    let isFirstChunk = true;
+    const chunks = [];
 
     while (true) {
       const { done, value } = await reader.read();
@@ -136,17 +125,7 @@ export async function handler(event, context) {
           const data = line.slice(6);
 
           if (data === "[DONE]") {
-            // Send completion signal
-            return {
-              statusCode: 200,
-              headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                Connection: "keep-alive",
-              },
-              body: sendSSE({ type: "done", content: fullResponse }),
-            };
+            continue;
           }
 
           try {
@@ -159,18 +138,7 @@ export async function handler(event, context) {
             ) {
               const content = parsed.choices[0].delta.content;
               fullResponse += content;
-
-              // Send streaming chunk
-              return {
-                statusCode: 200,
-                headers: {
-                  "Access-Control-Allow-Origin": "*",
-                  "Content-Type": "text/event-stream",
-                  "Cache-Control": "no-cache",
-                  Connection: "keep-alive",
-                },
-                body: sendSSE({ type: "chunk", content }),
-              };
+              chunks.push(content);
             }
           } catch (e) {
             // Skip malformed JSON
@@ -180,7 +148,7 @@ export async function handler(event, context) {
       }
     }
 
-    // Fallback: return complete response
+    // Return the complete response with chunk information
     return {
       statusCode: 200,
       headers: {
@@ -190,6 +158,7 @@ export async function handler(event, context) {
       body: JSON.stringify({
         success: true,
         response: fullResponse,
+        chunks: chunks, // Send the chunks for the frontend to simulate streaming
         timestamp: new Date().toISOString(),
         metadata: {
           model: "gpt-4o-mini",
