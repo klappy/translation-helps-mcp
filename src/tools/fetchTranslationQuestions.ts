@@ -1,6 +1,6 @@
 /**
- * Fetch Resources Tool
- * Main tool for fetching Bible translation resources for a specific reference
+ * Fetch Translation Questions Tool
+ * Tool for fetching translation questions for a specific Bible reference
  */
 
 import { z } from "zod";
@@ -11,30 +11,29 @@ import { estimateTokens } from "../utils/tokenCounter.js";
 import { formatCitation } from "../utils/referenceFormatter.js";
 
 // Input schema
-export const FetchResourcesArgs = z.object({
-  reference: z.string(),
-  language: z.string().optional().default("en"),
-  organization: z.string().optional().default("unfoldingWord"),
-  resources: z
-    .array(z.string())
+export const FetchTranslationQuestionsArgs = z.object({
+  reference: z.string().describe('Bible reference (e.g., "Matthew 5:1")'),
+  language: z.string().optional().default("en").describe('Language code (default: "en")'),
+  organization: z
+    .string()
     .optional()
-    .default(["scripture", "notes", "questions", "words", "links"]),
+    .default("unfoldingWord")
+    .describe('Organization (default: "unfoldingWord")'),
 });
 
-export type FetchResourcesArgs = z.infer<typeof FetchResourcesArgs>;
+export type FetchTranslationQuestionsArgs = z.infer<typeof FetchTranslationQuestionsArgs>;
 
 /**
- * Handle the fetch resources tool call
+ * Handle the fetch translation questions tool call
  */
-export async function handleFetchResources(args: FetchResourcesArgs) {
+export async function handleFetchTranslationQuestions(args: FetchTranslationQuestionsArgs) {
   const startTime = Date.now();
 
   try {
-    logger.info("Fetching resources", {
+    logger.info("Fetching translation questions", {
       reference: args.reference,
       language: args.language,
       organization: args.organization,
-      resources: args.resources,
     });
 
     // Parse the Bible reference
@@ -43,14 +42,14 @@ export async function handleFetchResources(args: FetchResourcesArgs) {
       throw new Error(`Invalid Bible reference: ${args.reference}`);
     }
 
-    // Set up options
+    // Set up options for translation questions only
     const options = {
       language: args.language,
       organization: args.organization,
-      resources: args.resources,
+      resources: ["questions"],
     };
 
-    // Fetch resources using aggregator
+    // Fetch translation questions using aggregator
     const aggregator = new ResourceAggregator();
     const resources = await aggregator.aggregateResources(reference, options);
 
@@ -62,41 +61,27 @@ export async function handleFetchResources(args: FetchResourcesArgs) {
         verse: reference.verse,
         verseEnd: reference.endVerse,
       },
-      scripture: resources.scripture
-        ? {
-            text: resources.scripture.text,
-            rawUsfm: resources.scripture.rawUsfm,
-            translation: resources.scripture.translation,
-          }
-        : null,
-      translationNotes: resources.translationNotes || [],
       translationQuestions: resources.translationQuestions || [],
-      translationWords: resources.translationWords || [],
-      translationWordLinks: resources.translationWordLinks || [],
       metadata: {
         language: args.language,
         organization: args.organization,
         timestamp: new Date().toISOString(),
-        resourcesFound: Object.keys(resources).filter(
-          (key) =>
-            (resources as any)[key] &&
-            (Array.isArray((resources as any)[key]) ? (resources as any)[key].length > 0 : true)
-        ),
+        questionsCount: resources.translationQuestions?.length || 0,
         tokenEstimate: estimateTokens(JSON.stringify(resources)),
         responseTime: Date.now() - startTime,
       },
     };
 
-    logger.info("Resources fetched successfully", {
+    logger.info("Translation questions fetched successfully", {
       reference: args.reference,
-      resourcesFound: response.metadata.resourcesFound,
+      questionsCount: response.metadata.questionsCount,
       responseTime: response.metadata.responseTime,
     });
 
     return response;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("Failed to fetch resources", {
+    logger.error("Failed to fetch translation questions", {
       reference: args.reference,
       error: errorMessage,
       responseTime: Date.now() - startTime,

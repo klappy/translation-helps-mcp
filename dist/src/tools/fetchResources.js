@@ -7,7 +7,6 @@ import { logger } from "../utils/logger.js";
 import { parseReference } from "../parsers/referenceParser.js";
 import { ResourceAggregator } from "../services/ResourceAggregator.js";
 import { estimateTokens } from "../utils/tokenCounter.js";
-import { formatCitation } from "../utils/referenceFormatter.js";
 // Input schema
 export const FetchResourcesArgs = z.object({
     reference: z.string(),
@@ -51,12 +50,6 @@ export async function handleFetchResources(args) {
                 chapter: reference.chapter,
                 verse: reference.verse,
                 verseEnd: reference.endVerse,
-                citation: formatCitation({
-                    book: reference.book,
-                    chapter: reference.chapter,
-                    verse: reference.verse,
-                    endVerse: reference.endVerse,
-                }, `${args.organization} ${args.language} Translation`, args.organization, args.language),
             },
             scripture: resources.scripture
                 ? {
@@ -84,14 +77,7 @@ export async function handleFetchResources(args) {
             resourcesFound: response.metadata.resourcesFound,
             responseTime: response.metadata.responseTime,
         });
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(response, null, 2),
-                },
-            ],
-        };
+        return response;
     }
     catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -101,17 +87,9 @@ export async function handleFetchResources(args) {
             responseTime: Date.now() - startTime,
         });
         return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify({
-                        error: errorMessage,
-                        reference: args.reference,
-                        timestamp: new Date().toISOString(),
-                    }, null, 2),
-                },
-            ],
-            isError: true,
+            error: errorMessage,
+            reference: args.reference,
+            timestamp: new Date().toISOString(),
         };
     }
 }

@@ -5,7 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.1] - 2025-01-XX
+## [3.4.0] - 2025-01-17
+
+### 🧪 Major Testing Infrastructure Release
+
+This release introduces a comprehensive testing suite to prevent regressions and ensure API endpoint parity.
+
+#### ✨ Added
+
+- **Exhaustive Testing Suite**: Complete test coverage for all API and MCP endpoints
+  - **Smoke Tests**: Quick health checks for core functionality
+  - **Parity Tests**: Comprehensive endpoint comparison between API and MCP wrappers
+  - **Regression Tests**: Targeted tests for previously fixed bugs
+  - **Performance Tests**: Response time validation
+  - **Error Handling Tests**: Robust error scenario coverage
+- **Automated Test Runner**: Node.js ES module script for sequential test execution
+- **Test Documentation**: Comprehensive README for test suite usage
+- **Package.json Integration**: New test scripts for easy execution
+- **Response Normalization**: JSON comparison utilities for accurate test validation
+
+#### 🔧 Technical Improvements
+
+- **MCP Wrapper Refactoring**: Eliminated code duplication by calling existing API functions directly
+- **Enhanced Error Handling**: Improved error responses and validation
+- **Test Infrastructure**: Vitest-based testing framework with environment configuration
+- **CI/CD Ready**: Test suite designed for automated deployment pipelines
+
+#### 📚 Testing Coverage
+
+- Scripture fetching (single and multiple translations)
+- Translation notes and questions
+- Translation words and word links
+- Resource browsing and aggregation
+- Language discovery
+- Reference extraction
+- Error scenarios and edge cases
+
+#### 🛡️ Regression Prevention
+
+Tests now catch and prevent:
+
+- Double JSON wrapping
+- Missing scripture data
+- Hardcoded file paths
+- Fake citations
+- Empty resource responses
+- Book code mapping errors
+- Response format mismatches
+
+## [3.3.1] - 2025-01-16
 
 ### 🤖 AI Model Migration: Browser LLM → OpenAI GPT-4o-mini
 
