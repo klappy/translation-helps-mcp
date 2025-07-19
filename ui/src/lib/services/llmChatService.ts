@@ -29,7 +29,107 @@ export class LLMChatService {
 	}
 
 	/**
-	 * Generate a response using OpenAI with thinking trace
+	 * Generate a streaming response using OpenAI with thinking trace
+	 */
+	async generateStreamingResponse(
+		userQuestion: string,
+		onThinkingTrace: (steps: string[]) => void,
+		onResponseChunk: (chunk: string) => void,
+		onComplete: (fullResponse: string) => void
+	) {
+		await this.initialize();
+
+		try {
+			console.log('🤖 Sending streaming request to OpenAI...');
+
+			// First, generate and stream the thinking trace
+			const thinkingSteps = this.generateThinkingTrace(userQuestion);
+
+			// Stream thinking trace step by step
+			for (let i = 0; i < thinkingSteps.length; i++) {
+				await new Promise((resolve) => setTimeout(resolve, 300)); // 300ms delay between steps
+				onThinkingTrace(thinkingSteps.slice(0, i + 1));
+			}
+
+			// Wait a moment before starting the response
+			await new Promise((resolve) => setTimeout(resolve, 500));
+
+			const response = await fetch('/.netlify/functions/chat-stream', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					message: userQuestion,
+					chatHistory: []
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const data = await response.json();
+
+			if (data.success) {
+				console.log('✅ OpenAI response received, starting to stream...');
+
+				// Stream the response content word by word
+				const words = data.response.split(' ');
+				let streamedResponse = '';
+
+				for (const word of words) {
+					await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms delay between words
+					streamedResponse += (streamedResponse ? ' ' : '') + word;
+					onResponseChunk(streamedResponse);
+				}
+
+				// Call completion callback
+				onComplete(data.response);
+
+				return {
+					success: true,
+					response: data.response,
+					timestamp: data.timestamp,
+					contextUsed: data.contextUsed,
+					metadata: data.metadata
+				};
+			} else {
+				console.error('❌ OpenAI API error:', data.error);
+				return {
+					success: false,
+					error: data.error || 'Unknown error occurred'
+				};
+			}
+		} catch (error) {
+			console.error('❌ Error sending chat message:', error);
+
+			// Fallback to mock response for development
+			console.log('🎭 Falling back to mock response due to API error:', (error as Error).message);
+			const mockResponse = this.generateMockResponse(userQuestion);
+
+			// Stream the mock response
+			const words = mockResponse.response.split(' ');
+			let streamedResponse = '';
+
+			for (const word of words) {
+				await new Promise((resolve) => setTimeout(resolve, 30)); // Faster for mock responses
+				streamedResponse += (streamedResponse ? ' ' : '') + word;
+				onResponseChunk(streamedResponse);
+			}
+
+			onComplete(mockResponse.response);
+
+			return {
+				...mockResponse,
+				isFallback: true,
+				fallbackReason: (error as Error).message
+			};
+		}
+	}
+
+	/**
+	 * Generate a response using OpenAI with thinking trace (legacy method)
 	 */
 	async generateResponse(userQuestion: string) {
 		await this.initialize();
