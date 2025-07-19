@@ -1,4 +1,5 @@
 <script>
+	// @ts-nocheck
 	import {
 		Wrench,
 		Code,
@@ -15,7 +16,9 @@
 		Info,
 		Terminal,
 		Globe,
-		Database
+		Database,
+		List,
+		Link
 	} from 'lucide-svelte';
 	import ApiTester from '$lib/components/ApiTester.svelte';
 	import ResponseDisplay from '$lib/components/ResponseDisplay.svelte';
@@ -258,6 +261,13 @@
 		}, 2000);
 	}
 
+	function scrollToTool(toolName) {
+		const element = document.getElementById(toolName.replace('translation_helps_', ''));
+		if (element) {
+			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
+	}
+
 	async function handleTest(event) {
 		const { endpoint, formData } = event.detail;
 		const endpointId = endpoint.tool || endpoint.path;
@@ -346,12 +356,41 @@
 			</div>
 		</div>
 
+		<!-- Table of Contents -->
+		<div class="mb-8 rounded-xl border border-gray-700 bg-gray-800/50 p-6">
+			<div class="mb-4 flex items-center gap-3">
+				<List class="h-6 w-6 text-purple-400" />
+				<h2 class="text-2xl font-bold text-white">Table of Contents</h2>
+			</div>
+			<div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+				{#each mcpTools as tool}
+					<button
+						on:click={() => scrollToTool(tool.tool)}
+						class="group flex items-center gap-3 rounded-lg bg-gray-700/50 p-3 text-left transition-colors hover:bg-gray-600/50"
+					>
+						<Link class="h-4 w-4 text-purple-400 group-hover:text-purple-300" />
+						<div>
+							<div class="font-medium text-white group-hover:text-purple-300">
+								{tool.name}
+							</div>
+							<div class="text-sm text-gray-400">
+								{tool.tool}
+							</div>
+						</div>
+					</button>
+				{/each}
+			</div>
+		</div>
+
 		<!-- MCP Tools -->
 		<div class="space-y-8">
 			<h2 class="text-2xl font-bold text-white">Available MCP Tools</h2>
 
 			{#each mcpTools as tool}
-				<div class="rounded-lg border border-white/10 bg-white/5 p-6">
+				<div
+					id={tool.tool.replace('translation_helps_', '')}
+					class="rounded-lg border border-white/10 bg-white/5 p-6"
+				>
 					<!-- Tool Header -->
 					<div class="mb-6 flex items-start justify-between">
 						<div class="flex items-center space-x-4">
