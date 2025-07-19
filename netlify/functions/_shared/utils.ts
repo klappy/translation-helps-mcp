@@ -169,6 +169,26 @@ export function deepMerge<T extends Record<string, any>>(target: T, source: Part
 }
 
 /**
+ * Add consistent metadata to any response object
+ */
+export function addMetadata<T extends Record<string, any>>(
+  data: T,
+  startTime: number,
+  additionalMetadata?: Record<string, any>
+): T & { metadata: { timestamp: string; responseTime: number; version: string } } {
+  const responseTime = Date.now() - startTime;
+  return {
+    ...data,
+    metadata: {
+      timestamp: new Date().toISOString(),
+      responseTime,
+      version: process.env.API_VERSION || "3.4.0",
+      ...additionalMetadata,
+    },
+  };
+}
+
+/**
  * Add response time to any response object
  */
 export function addResponseTime<T extends Record<string, any>>(
@@ -190,6 +210,6 @@ export function timedResponse<T extends Record<string, any>>(
   startTime: number,
   headers?: Record<string, string>
 ): HandlerResponse {
-  const responseData = addResponseTime(data, startTime);
+  const responseData = addMetadata(data, startTime);
   return successResponse(responseData, headers);
 }
