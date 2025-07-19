@@ -611,7 +611,7 @@
 	}
 
 	async function handleTest(event) {
-		const { endpoint, parameters } = event.detail;
+		const { endpoint, formData } = event.detail;
 		isTestLoading = true;
 		selectedResponse = null;
 
@@ -621,7 +621,7 @@
 			const url = new URL(`/.netlify/functions/${functionName}`, window.location.origin);
 
 			// Add parameters to URL
-			Object.entries(parameters).forEach(([key, value]) => {
+			Object.entries(formData || {}).forEach(([key, value]) => {
 				if (value) {
 					url.searchParams.append(key, value);
 				}
