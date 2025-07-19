@@ -87,8 +87,8 @@
 	let bulkConfig = {
 		type: 'quick',
 		count: 5,
-		parallel: true,
-		delay: 100
+		parallel: false, // Default to sequential to avoid rate limits
+		delay: 500 // Increased delay to be more gentle on the server
 	};
 
 	// API endpoints with enhanced metadata
@@ -388,7 +388,7 @@
 				responseTime: performance.now() - startTime,
 				serverTime: 0,
 				data: null,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: `${error instanceof Error ? error.message : 'Unknown error'} (URL: ${testCase.endpoint})`,
 				timestamp: new Date(),
 				debugInfo: {
 					requestSize: JSON.stringify(testCase.params).length,
