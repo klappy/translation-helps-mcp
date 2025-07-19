@@ -25,7 +25,7 @@ Functions directory: netlify/functions
 
 ### Advanced Settings:
 
-- **Node.js Version**: 18
+- **Node.js Version**: 20
 - **Environment Variables**: (Add any API keys if needed)
 
 ## Step 2: Auto-Deploy Configuration
@@ -65,7 +65,7 @@ If you need API keys or environment variables:
 2. Add any required variables:
    ```
    NODE_ENV=production
-   NODE_VERSION=18
+   NODE_VERSION=20
    ```
 
 ## Step 5: Build Notifications (Optional)
@@ -110,7 +110,7 @@ Our `netlify.toml` is configured with:
 ### Common Issues:
 
 - **Build timeouts**: Increase in site settings (max 30 min)
-- **Node version conflicts**: Set NODE_VERSION=18 in environment
+- **Node version conflicts**: Set NODE_VERSION=20 in environment
 - **Missing dependencies**: Check package-lock.json is committed
 - **Function build errors**: Check TypeScript compilation
 
