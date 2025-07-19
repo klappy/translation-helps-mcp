@@ -53,7 +53,9 @@ export const handler: Handler = async (
       { subject: "Translation Notes", resource: "tn" },
       { subject: "Translation Questions", resource: "tq" },
       { subject: "Translation Words", resource: "tw" },
+      { subject: "Translation Words Links", resource: "twl" },
       { subject: "Bible", resource: "bible" },
+      { subject: "Open Bible Stories", resource: "obs" },
     ];
 
     const resources: BookAvailability[] = [];

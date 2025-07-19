@@ -454,10 +454,18 @@
 			const bibleBooks = resources.find((r) => r.resource === 'bible')?.availableBooks || [];
 			const notesBooks = resources.find((r) => r.resource === 'tn')?.availableBooks || [];
 			const questionsBooks = resources.find((r) => r.resource === 'tq')?.availableBooks || [];
+			const wordsBooks = resources.find((r) => r.resource === 'tw')?.availableBooks || [];
+			const wordLinksBooks = resources.find((r) => r.resource === 'twl')?.availableBooks || [];
 
-			// Use books that exist in Bible for sure, and prefer ones that also have notes/questions
+			// Use books that exist in Bible for sure, and prefer ones that also have multiple resource types
 			const priorityBooks = bibleBooks
-				.filter((book) => notesBooks.includes(book) || questionsBooks.includes(book))
+				.filter(
+					(book) =>
+						notesBooks.includes(book) ||
+						questionsBooks.includes(book) ||
+						wordsBooks.includes(book) ||
+						wordLinksBooks.includes(book)
+				)
 				.slice(0, 10); // Take top 10
 
 			const fallbackBooks = bibleBooks.slice(0, 15); // Use any Bible books as fallback
