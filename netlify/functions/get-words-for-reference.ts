@@ -56,16 +56,33 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    const result = await handleGetWordsForReference({
+    const mcpResult = await handleGetWordsForReference({
       reference,
       language,
       organization,
     });
 
+    // Unwrap the MCP response format to get the actual data
+    let actualData;
+    try {
+      // MCP returns { content: [{ type: "text", text: "JSON string" }] } sometimes
+      // But this one might return the data directly, so handle both cases
+      if ((mcpResult as any).content && Array.isArray((mcpResult as any).content)) {
+        const textContent = (mcpResult as any).content[0]?.text;
+        actualData = textContent ? JSON.parse(textContent) : mcpResult;
+      } else {
+        // This handler might return data directly
+        actualData = mcpResult;
+      }
+    } catch (parseError) {
+      // If parsing fails, return the original result
+      actualData = mcpResult;
+    }
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(result, null, 2),
+      body: JSON.stringify(actualData, null, 2),
     };
   } catch (error) {
     console.error("Get words for reference error:", error);

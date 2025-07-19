@@ -57,7 +57,7 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    const result = await handleGetContext({
+    const mcpResult = await handleGetContext({
       reference,
       language,
       organization,
@@ -65,10 +65,22 @@ export const handler: Handler = async (event, context) => {
       maxTokens: maxTokens ? parseInt(maxTokens) : undefined,
     });
 
+    // Unwrap the MCP response format to get the actual data
+    let actualData;
+    try {
+      // MCP returns { content: [{ type: "text", text: "JSON string" }] }
+      // We want to extract and parse the actual JSON data
+      const textContent = mcpResult.content?.[0]?.text;
+      actualData = textContent ? JSON.parse(textContent) : mcpResult;
+    } catch (parseError) {
+      // If parsing fails, return the original result
+      actualData = mcpResult;
+    }
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(result, null, 2),
+      body: JSON.stringify(actualData, null, 2),
     };
   } catch (error) {
     console.error("Get context error:", error);
