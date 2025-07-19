@@ -600,8 +600,8 @@
 		}
 	];
 
-	let selectedResponse = null;
-	let isTestLoading = false;
+	let responses = {}; // Track responses per endpoint
+	let loadingStates = {}; // Track loading per endpoint
 
 	function scrollToEndpoint(endpointPath) {
 		const element = document.getElementById(endpointPath.replace('/api/', ''));
@@ -612,8 +612,10 @@
 
 	async function handleTest(event) {
 		const { endpoint, formData } = event.detail;
-		isTestLoading = true;
-		selectedResponse = null;
+		const endpointKey = endpoint.path;
+
+		loadingStates[endpointKey] = true;
+		responses[endpointKey] = null;
 
 		try {
 			// Build URL with parameters
@@ -630,21 +632,21 @@
 			const response = await fetch(url.toString());
 			const data = await response.json();
 
-			selectedResponse = {
+			responses[endpointKey] = {
 				success: response.ok,
 				status: response.status,
 				data: data,
 				url: url.toString()
 			};
 		} catch (error) {
-			selectedResponse = {
+			responses[endpointKey] = {
 				success: false,
 				status: 0,
 				data: { error: error.message },
 				url: 'Error occurred'
 			};
 		} finally {
-			isTestLoading = false;
+			loadingStates[endpointKey] = false;
 		}
 	}
 </script>
@@ -715,13 +717,6 @@
 			</div>
 		</div>
 
-		<!-- API Testing Section -->
-		{#if selectedResponse}
-			<div class="mb-8">
-				<ResponseDisplay response={selectedResponse} />
-			</div>
-		{/if}
-
 		<!-- API Endpoints -->
 		<div class="space-y-8">
 			{#each endpoints as endpoint}
@@ -757,7 +752,15 @@
 
 					<!-- Interactive Testing -->
 					<div class="p-6">
-						<ApiTester {endpoint} loading={isTestLoading} on:test={handleTest} />
+						<ApiTester {endpoint} loading={loadingStates[endpoint.path]} on:test={handleTest} />
+
+						<!-- Response Display - Right where you'd expect it! -->
+						{#if responses[endpoint.path]}
+							<div class="mt-6 border-t border-gray-600 pt-6">
+								<h4 class="mb-4 text-lg font-semibold text-white">Response</h4>
+								<ResponseDisplay response={responses[endpoint.path]} />
+							</div>
+						{/if}
 					</div>
 				</div>
 			{/each}
