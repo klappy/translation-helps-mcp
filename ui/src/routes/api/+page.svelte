@@ -7,25 +7,26 @@
 		MessageSquare,
 		Zap,
 		Copy,
+		Check,
 		ExternalLink,
 		Clock,
 		CheckCircle,
 		AlertCircle
 	} from 'lucide-svelte';
 
-	// DEPRECATED: This page shows the old REST API endpoints
-	// All functionality has been moved to MCP tools
-	// Please use the MCP Tools page instead: /mcp-tools
+	// This page documents the Translation Helps REST API endpoints
+	// All endpoints are fully functional and actively maintained
+	// MCP tools are also available as an alternative interface
 
 	const endpoints = [
 		{
-			name: 'Fetch Scripture (DEPRECATED)',
+			name: 'Fetch Scripture',
 			icon: BookOpen,
 			path: '/api/fetch-scripture',
-			description: 'DEPRECATED: Use MCP tool "translation_helps_fetch_scripture" instead',
+			description: 'Get Bible verses with context, cross-references, and multiple translations',
 			method: 'GET',
-			deprecated: true,
-			mcpAlternative: 'translation_helps_fetch_scripture',
+			deprecated: false,
+			mcpAlternative: 'fetchScripture',
 			parameters: [
 				{
 					name: 'reference',
@@ -44,30 +45,42 @@
 					type: 'string',
 					required: true,
 					description: 'Organization (e.g., "unfoldingWord")'
+				},
+				{
+					name: 'translation',
+					type: 'string',
+					required: false,
+					description: 'Specific translation (e.g., "ult", "ust") or "all" for multiple'
 				}
 			],
 			example: {
 				url: '/api/fetch-scripture?reference=Titus%201:1&language=en&organization=unfoldingWord',
 				response: {
-					reference: 'Titus 1:1',
-					verses: [
-						{
-							reference: 'Titus 1:1',
-							text: "Paul, a servant of God and an apostle of Jesus Christ for the faith of God's chosen ones and the knowledge of the truth that is according to godliness,"
+					scripture: {
+						text: "Paul, a servant of God and an apostle of Jesus Christ for the faith of God's chosen ones and the knowledge of the truth that is according to godliness,",
+						translation: 'ULT',
+						citation: {
+							resource: 'unfoldingWord® Literal Text',
+							organization: 'unfoldingWord',
+							language: 'en',
+							url: 'https://git.door43.org/unfoldingWord/en_ult/raw/branch/master/57-TIT.usfm',
+							version: 'master'
 						}
-					],
+					},
+					language: 'en',
+					organization: 'unfoldingWord',
 					responseTime: 245
 				}
 			}
 		},
 		{
-			name: 'Fetch Translation Notes (DEPRECATED)',
+			name: 'Fetch Translation Notes',
 			icon: FileText,
 			path: '/api/fetch-translation-notes',
-			description: 'DEPRECATED: Use MCP tool "translation_helps_fetch_translation_notes" instead',
+			description: 'Access detailed translation notes, cultural context, and linguistic insights',
 			method: 'GET',
-			deprecated: true,
-			mcpAlternative: 'translation_helps_fetch_translation_notes',
+			deprecated: false,
+			mcpAlternative: 'fetchTranslationNotes',
 			parameters: [
 				{
 					name: 'reference',
@@ -91,25 +104,32 @@
 			example: {
 				url: '/api/fetch-translation-notes?reference=Titus%201:1&language=en&organization=unfoldingWord',
 				response: {
-					reference: 'Titus 1:1',
 					notes: [
 						{
-							note: 'This verse introduces Paul and his role as an apostle.'
+							reference: 'Titus 1:1',
+							verse: 1,
+							id: 'abc123',
+							supportReference: '',
+							originalQuote: 'Paul',
+							occurrence: 1,
+							glQuote: 'Paul',
+							occurenceNote: 'This is the same Paul who wrote many letters...'
 						}
 					],
-					responseTime: 189
+					language: 'en',
+					organization: 'unfoldingWord',
+					responseTime: 187
 				}
 			}
 		},
 		{
-			name: 'Fetch Translation Questions (DEPRECATED)',
+			name: 'Fetch Translation Questions',
 			icon: Users,
 			path: '/api/fetch-translation-questions',
-			description:
-				'DEPRECATED: Use MCP tool "translation_helps_fetch_translation_questions" instead',
+			description: 'Find answers to common translation challenges and theological questions',
 			method: 'GET',
-			deprecated: true,
-			mcpAlternative: 'translation_helps_fetch_translation_questions',
+			deprecated: false,
+			mcpAlternative: 'fetchTranslationQuestions',
 			parameters: [
 				{
 					name: 'reference',
@@ -133,93 +153,30 @@
 			example: {
 				url: '/api/fetch-translation-questions?reference=Titus%201:1&language=en&organization=unfoldingWord',
 				response: {
-					reference: 'Titus 1:1',
 					questions: [
 						{
-							question: 'How should "apostle" be translated?',
-							answer: 'The term "apostle" refers to someone sent with authority.'
+							reference: 'Titus 1:1',
+							verse: 1,
+							id: 'def456',
+							question: 'How does Paul describe himself in this verse?',
+							response:
+								'Paul describes himself as both a servant of God and an apostle of Jesus Christ.'
 						}
 					],
+					language: 'en',
+					organization: 'unfoldingWord',
 					responseTime: 156
 				}
 			}
 		},
 		{
-			name: 'Fetch Translation Words (DEPRECATED)',
+			name: 'Fetch Translation Words',
 			icon: Code,
 			path: '/api/fetch-translation-words',
-			description: 'DEPRECATED: Use MCP tool "translation_helps_get_word" instead',
+			description: 'Get definitions, usage examples, and semantic domains for key terms',
 			method: 'GET',
-			deprecated: true,
-			mcpAlternative: 'translation_helps_get_word',
-			parameters: [
-				{
-					name: 'word',
-					type: 'string',
-					required: false,
-					description: 'Word to look up (e.g., "grace", "apostle") - use either word OR reference'
-				},
-				{
-					name: 'reference',
-					type: 'string',
-					required: false,
-					description: 'Bible reference (e.g., "John 3:16") - use either word OR reference'
-				},
-				{
-					name: 'language',
-					type: 'string',
-					required: true,
-					description: 'Language code (e.g., "en", "es")'
-				},
-				{
-					name: 'organization',
-					type: 'string',
-					required: true,
-					description: 'Organization (e.g., "unfoldingWord")'
-				},
-				{
-					name: 'includeTitle',
-					type: 'boolean',
-					required: false,
-					description: 'Include word title (default: true)'
-				},
-				{
-					name: 'includeSubtitle',
-					type: 'boolean',
-					required: false,
-					description: 'Include word subtitle (default: true)'
-				},
-				{
-					name: 'includeContent',
-					type: 'boolean',
-					required: false,
-					description: 'Include word content (default: true)'
-				}
-			],
-			example: {
-				url: '/api/fetch-translation-words?word=grace&language=en&organization=unfoldingWord&includeTitle=true&includeSubtitle=true&includeContent=true',
-				response: {
-					translationWords: [
-						{
-							term: 'grace',
-							title: 'grace, gracious',
-							definition: 'Favor or kindness shown to someone who does not deserve it...',
-							content: 'The meaning of the Greek word translated as "grace"...'
-						}
-					],
-					responseTime: 234
-				}
-			}
-		},
-		{
-			name: 'Fetch Translation Word Links (DEPRECATED)',
-			icon: MessageSquare,
-			path: '/api/fetch-translation-word-links',
-			description:
-				'DEPRECATED: Use MCP tool "translation_helps_fetch_translation_word_links" instead',
-			method: 'GET',
-			deprecated: true,
-			mcpAlternative: 'translation_helps_fetch_translation_word_links',
+			deprecated: false,
+			mcpAlternative: 'fetchTranslationWords',
 			parameters: [
 				{
 					name: 'reference',
@@ -241,27 +198,69 @@
 				}
 			],
 			example: {
-				url: '/api/fetch-translation-word-links?reference=Titus%201:1&language=en&organization=unfoldingWord',
+				url: '/api/fetch-translation-words?reference=Titus%201:1&language=en&organization=unfoldingWord',
 				response: {
-					reference: 'Titus 1:1',
-					links: [
+					words: [
 						{
-							word: 'apostle',
-							uri: 'rc://en/tn/help/tit/01/01'
+							term: 'apostle',
+							definition: 'A person sent by God to deliver a message...',
+							examples: ['Paul was an apostle', 'The twelve apostles'],
+							aliases: ['sent one', 'messenger']
 						}
 					],
-					responseTime: 167
+					language: 'en',
+					organization: 'unfoldingWord',
+					responseTime: 203
 				}
 			}
 		},
 		{
-			name: 'Fetch All Resources (DEPRECATED)',
+			name: 'Get Languages',
+			icon: MessageSquare,
+			path: '/api/get-languages',
+			description: 'List all available languages with their metadata',
+			method: 'GET',
+			deprecated: false,
+			mcpAlternative: 'getLanguages',
+			parameters: [
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					description: 'Filter by organization (e.g., "unfoldingWord")'
+				}
+			],
+			example: {
+				url: '/api/get-languages?organization=unfoldingWord',
+				response: {
+					data: [
+						{
+							code: 'en',
+							name: 'English',
+							direction: 'ltr',
+							resources: 24
+						},
+						{
+							code: 'es',
+							name: 'Español',
+							direction: 'ltr',
+							resources: 12
+						}
+					],
+					count: 87,
+					organization: 'unfoldingWord',
+					responseTime: 45
+				}
+			}
+		},
+		{
+			name: 'Fetch Resources',
 			icon: Zap,
 			path: '/api/fetch-resources',
-			description: 'DEPRECATED: Use MCP tool "translation_helps_fetch_resources" instead',
+			description: 'Get comprehensive resource data for a Bible reference',
 			method: 'GET',
-			deprecated: true,
-			mcpAlternative: 'translation_helps_fetch_resources',
+			deprecated: false,
+			mcpAlternative: 'fetchResources',
 			parameters: [
 				{
 					name: 'reference',
@@ -280,313 +279,253 @@
 					type: 'string',
 					required: true,
 					description: 'Organization (e.g., "unfoldingWord")'
-				},
-				{
-					name: 'includeTitle',
-					type: 'boolean',
-					required: false,
-					description: 'Include word titles (default: true)'
-				},
-				{
-					name: 'includeSubtitle',
-					type: 'boolean',
-					required: false,
-					description: 'Include word subtitles (default: true)'
-				},
-				{
-					name: 'includeContent',
-					type: 'boolean',
-					required: false,
-					description: 'Include word content (default: true)'
 				}
 			],
 			example: {
-				url: '/api/fetch-resources?reference=Titus%201:1&language=en&organization=unfoldingWord&includeTitle=true&includeSubtitle=true&includeContent=true',
+				url: '/api/fetch-resources?reference=Titus%201:1&language=en&organization=unfoldingWord',
 				response: {
 					reference: 'Titus 1:1',
-					scripture: {
-						/* scripture data */
-					},
-					translationNotes: {
-						/* notes data */
-					},
-					translationQuestions: {
-						/* questions data */
-					},
-					translationWords: {
-						/* words data */
-					},
-					translationWordLinks: {
-						/* links data */
-					},
-					responseTime: 456
+					scripture: { text: '...', translation: 'ULT' },
+					notes: [{ reference: 'Titus 1:1', note: '...' }],
+					questions: [{ question: '...', response: '...' }],
+					words: [{ term: 'apostle', definition: '...' }],
+					responseTime: 512
 				}
 			}
 		}
 	];
 
-	function copyToClipboard(text: string) {
-		navigator.clipboard.writeText(text);
+	let copiedExample = '';
+
+	function copyToClipboard(text: string, id: string) {
+		navigator.clipboard.writeText(text).then(() => {
+			copiedExample = id;
+			setTimeout(() => {
+				copiedExample = '';
+			}, 2000);
+		});
 	}
 
-	function testEndpoint(url: string) {
-		window.open(url, '_blank');
+	function formatJson(obj: any) {
+		return JSON.stringify(obj, null, 2);
 	}
 </script>
 
 <svelte:head>
-	<title>API Reference - Translation Helps MCP Server</title>
+	<title>API Documentation - Translation Helps MCP</title>
 </svelte:head>
 
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<!-- Header -->
-	<div class="mb-12 text-center">
-		<div
-			class="mb-6 inline-flex items-center rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-2 text-sm font-medium text-purple-300"
-		>
-			<Code class="mr-2 h-4 w-4" />
-			API Documentation
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+	<div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+		<!-- Header -->
+		<div class="mb-16 text-center">
+			<h1 class="mb-6 text-5xl font-bold text-white md:text-6xl">
+				REST API
+				<span class="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+					Documentation
+				</span>
+			</h1>
+			<p class="mx-auto max-w-3xl text-xl text-gray-300">
+				Complete reference for the Translation Helps REST API endpoints. All endpoints are fully
+				functional and actively maintained. MCP tools are also available as an alternative
+				interface.
+			</p>
 		</div>
-		<h1 class="mb-6 text-4xl font-bold text-white md:text-5xl">
-			Translation Helps
-			<span class="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent"
-				>API Reference (Deprecated)</span
-			>
-		</h1>
-		<p class="mx-auto max-w-3xl text-xl text-gray-300">
-			<strong>DEPRECATED:</strong> These REST API endpoints are no longer recommended for use. Please
-			use the MCP tools instead for better performance and functionality.
-		</p>
-	</div>
 
-	<!-- DEPRECATION NOTICE -->
-	<div class="mb-12 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-8 backdrop-blur-xl">
-		<div class="mb-4 flex items-center">
-			<AlertCircle class="mr-3 h-6 w-6 text-yellow-400" />
-			<h2 class="text-xl font-semibold text-yellow-200">⚠️ API Endpoints Deprecated</h2>
-		</div>
-		<p class="mb-4 text-yellow-100">
-			<strong>All REST API endpoints have been deprecated and replaced with MCP tools.</strong>
-		</p>
-		<p class="mb-4 text-yellow-100">
-			The Translation Helps system now uses the MCP (Model Context Protocol) architecture for better
-			performance, consistency, and enhanced functionality.
-		</p>
-		<div class="flex items-center space-x-4">
-			<a
-				href="/mcp-tools"
-				class="flex items-center rounded-lg bg-blue-600 px-6 py-2 font-medium text-white transition-colors hover:bg-blue-700"
-			>
-				<ExternalLink class="mr-2 h-4 w-4" />
-				View MCP Tools
-			</a>
-			<span class="text-sm text-yellow-200"> All functionality is now available as MCP tools </span>
-		</div>
-	</div>
-
-	<!-- API Overview -->
-	<div class="mb-12">
-		<div class="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
-			<h2 class="mb-6 text-2xl font-bold text-white">API Overview</h2>
-			<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-				<div class="flex items-center space-x-3">
-					<CheckCircle class="h-6 w-6 text-green-400" />
-					<div>
-						<h3 class="text-lg font-semibold text-white">RESTful Design</h3>
-						<p class="text-gray-400">Standard HTTP methods and status codes</p>
-					</div>
+		<!-- API Interface Options -->
+		<div class="mb-12 grid grid-cols-1 gap-6 md:grid-cols-2">
+			<div class="rounded-2xl border border-green-500/20 bg-green-500/10 p-6 backdrop-blur-xl">
+				<div class="mb-4 flex items-center">
+					<CheckCircle class="mr-3 h-6 w-6 text-green-400" />
+					<h3 class="text-xl font-semibold text-white">REST API Endpoints</h3>
 				</div>
-				<div class="flex items-center space-x-3">
-					<Clock class="h-6 w-6 text-blue-400" />
-					<div>
-						<h3 class="text-lg font-semibold text-white">Response Timing</h3>
-						<p class="text-gray-400">All responses include timing information</p>
-					</div>
+				<p class="text-gray-300">
+					Direct HTTP endpoints for web applications, mobile apps, and any system that can make HTTP
+					requests. Perfect for traditional web development and API integrations.
+				</p>
+			</div>
+			<div class="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-6 backdrop-blur-xl">
+				<div class="mb-4 flex items-center">
+					<MessageSquare class="mr-3 h-6 w-6 text-blue-400" />
+					<h3 class="text-xl font-semibold text-white">MCP Tools</h3>
 				</div>
-				<div class="flex items-center space-x-3">
-					<AlertCircle class="h-6 w-6 text-yellow-400" />
-					<div>
-						<h3 class="text-lg font-semibold text-white">Error Handling</h3>
-						<p class="text-gray-400">Comprehensive error responses with details</p>
-					</div>
-				</div>
+				<p class="text-gray-300">
+					Model Context Protocol tools for LLM integration. These are lightweight wrappers around
+					the REST API designed for AI applications. <a
+						href="/mcp-tools"
+						class="text-blue-400 hover:text-blue-300">View MCP documentation →</a
+					>
+				</p>
 			</div>
 		</div>
-	</div>
 
-	<!-- Endpoints -->
-	<div class="space-y-8">
-		{#each endpoints as endpoint}
-			<div class="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
-				<!-- Endpoint Header -->
-				<div class="mb-6 flex items-start justify-between">
-					<div class="flex items-center space-x-4">
-						<div
-							class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-blue-500"
-						>
-							<svelte:component this={endpoint.icon} class="h-6 w-6 text-white" />
-						</div>
-						<div>
-							<h3 class="text-2xl font-bold text-white">{endpoint.name}</h3>
-							<p class="text-gray-400">{endpoint.description}</p>
-						</div>
-					</div>
-					<div class="flex items-center space-x-2">
-						<span class="rounded-full bg-green-500/20 px-3 py-1 text-sm font-medium text-green-400">
-							{endpoint.method}
-						</span>
-					</div>
-				</div>
-
-				<!-- Endpoint Path -->
-				<div class="mb-6">
-					<div class="flex items-center space-x-3">
-						<span class="text-sm font-medium text-gray-400">Endpoint:</span>
-						<code
-							class="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-purple-300"
-						>
-							{endpoint.path}
-						</code>
-						<button
-							on:click={() => copyToClipboard(endpoint.path)}
-							class="text-gray-400 transition-colors hover:text-white"
-						>
-							<Copy class="h-4 w-4" />
-						</button>
-					</div>
-				</div>
-
-				<!-- Parameters -->
-				<div class="mb-6">
-					<h4 class="mb-4 text-lg font-semibold text-white">Parameters</h4>
-					<div class="overflow-x-auto">
-						<table class="w-full">
-							<thead>
-								<tr class="border-b border-white/10">
-									<th class="px-4 py-3 text-left text-sm font-medium text-gray-400">Parameter</th>
-									<th class="px-4 py-3 text-left text-sm font-medium text-gray-400">Type</th>
-									<th class="px-4 py-3 text-left text-sm font-medium text-gray-400">Required</th>
-									<th class="px-4 py-3 text-left text-sm font-medium text-gray-400">Description</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each endpoint.parameters as param}
-									<tr class="border-b border-white/5">
-										<td class="px-4 py-3">
-											<code class="font-mono text-purple-300">{param.name}</code>
-										</td>
-										<td class="px-4 py-3 text-gray-300">{param.type}</td>
-										<td class="px-4 py-3">
-											{#if param.required}
-												<span class="rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-400"
-													>Required</span
-												>
-											{:else}
-												<span class="rounded-full bg-gray-500/20 px-2 py-1 text-xs text-gray-400"
-													>Optional</span
-												>
-											{/if}
-										</td>
-										<td class="px-4 py-3 text-gray-300">{param.description}</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				</div>
-
-				<!-- Example -->
-				<div class="mb-6">
-					<h4 class="mb-4 text-lg font-semibold text-white">Example</h4>
-					<div class="space-y-4">
-						<div>
-							<div class="mb-2 flex items-center justify-between">
-								<span class="text-sm font-medium text-gray-400">Request URL:</span>
-								<div class="flex items-center space-x-2">
-									<button
-										on:click={() => copyToClipboard(endpoint.example.url)}
-										class="text-gray-400 transition-colors hover:text-white"
-									>
-										<Copy class="h-4 w-4" />
-									</button>
-									<button
-										on:click={() => testEndpoint(endpoint.example.url)}
-										class="text-gray-400 transition-colors hover:text-white"
-									>
-										<ExternalLink class="h-4 w-4" />
-									</button>
+		<!-- Endpoints -->
+		<div class="space-y-8">
+			{#each endpoints as endpoint}
+				<div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+					<div class="border-b border-white/10 p-6">
+						<div class="flex items-center justify-between">
+							<div class="flex items-center">
+								<div
+									class="mr-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-blue-500"
+								>
+									<svelte:component this={endpoint.icon} class="h-6 w-6 text-white" />
+								</div>
+								<div>
+									<h3 class="text-2xl font-semibold text-white">{endpoint.name}</h3>
+									<p class="text-gray-300">{endpoint.description}</p>
 								</div>
 							</div>
-							<div class="rounded-lg border border-white/10 bg-black/30 p-4">
-								<code class="font-mono break-all text-purple-300">{endpoint.example.url}</code>
-							</div>
-						</div>
-						<div>
-							<span class="mb-2 block text-sm font-medium text-gray-400">Response:</span>
-							<div class="rounded-lg border border-white/10 bg-black/30 p-4">
-								<pre class="overflow-x-auto text-sm text-gray-300">{JSON.stringify(
-										endpoint.example.response,
-										null,
-										2
-									)}</pre>
+							<div class="flex items-center space-x-3">
+								<span
+									class="rounded-full bg-green-500/20 px-3 py-1 text-sm font-medium text-green-300"
+								>
+									{endpoint.method}
+								</span>
+								{#if endpoint.mcpAlternative}
+									<span
+										class="rounded-full bg-blue-500/20 px-3 py-1 text-sm font-medium text-blue-300"
+									>
+										MCP Available
+									</span>
+								{/if}
 							</div>
 						</div>
 					</div>
-				</div>
-			</div>
-		{/each}
-	</div>
 
-	<!-- Integration Guide -->
-	<div class="mt-16">
-		<div
-			class="rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-8 backdrop-blur-xl"
-		>
-			<h2 class="mb-6 text-3xl font-bold text-white">Integration Guide</h2>
-			<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-				<div>
-					<h3 class="mb-4 text-xl font-semibold text-white">MCP Server Integration</h3>
-					<p class="mb-4 text-gray-300">
-						The Translation Helps MCP Server is designed to work seamlessly with LLMs and AI
-						assistants. Configure your MCP client to connect to the server and start making natural
-						language queries.
-					</p>
-					<div class="space-y-2">
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">Natural language processing</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">Automatic API routing</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">Structured responses</span>
+					<div class="p-6">
+						<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+							<!-- Parameters -->
+							<div>
+								<h4 class="mb-4 text-lg font-semibold text-white">Parameters</h4>
+								<div class="space-y-3">
+									{#each endpoint.parameters as param}
+										<div class="rounded-lg border border-white/10 bg-white/5 p-4">
+											<div class="mb-2 flex items-center justify-between">
+												<code class="text-purple-300">{param.name}</code>
+												<div class="flex items-center space-x-2">
+													<span class="rounded bg-gray-600 px-2 py-1 text-xs text-gray-300">
+														{param.type}
+													</span>
+													{#if param.required}
+														<span class="rounded bg-red-600 px-2 py-1 text-xs text-white"
+															>required</span
+														>
+													{:else}
+														<span class="rounded bg-green-600 px-2 py-1 text-xs text-white"
+															>optional</span
+														>
+													{/if}
+												</div>
+											</div>
+											<p class="text-sm text-gray-300">{param.description}</p>
+										</div>
+									{/each}
+								</div>
+							</div>
+
+							<!-- Example -->
+							<div>
+								<h4 class="mb-4 text-lg font-semibold text-white">Example</h4>
+								<div class="space-y-4">
+									<!-- Request -->
+									<div>
+										<div class="mb-2 flex items-center justify-between">
+											<h5 class="text-sm font-medium text-gray-300">Request</h5>
+											<button
+												type="button"
+												on:click={() =>
+													copyToClipboard(endpoint.example.url, `${endpoint.path}-request`)}
+												class="flex items-center rounded bg-white/10 px-2 py-1 text-xs text-gray-300 hover:bg-white/20"
+											>
+												{#if copiedExample === `${endpoint.path}-request`}
+													<Check class="mr-1 h-3 w-3" />
+													Copied
+												{:else}
+													<Copy class="mr-1 h-3 w-3" />
+													Copy
+												{/if}
+											</button>
+										</div>
+										<div class="rounded-lg border border-white/10 bg-black/30 p-4">
+											<code class="text-sm break-all text-green-300">
+												GET {endpoint.example.url}
+											</code>
+										</div>
+									</div>
+
+									<!-- Response -->
+									<div>
+										<div class="mb-2 flex items-center justify-between">
+											<h5 class="text-sm font-medium text-gray-300">Response</h5>
+											<button
+												type="button"
+												on:click={() =>
+													copyToClipboard(
+														formatJson(endpoint.example.response),
+														`${endpoint.path}-response`
+													)}
+												class="flex items-center rounded bg-white/10 px-2 py-1 text-xs text-gray-300 hover:bg-white/20"
+											>
+												{#if copiedExample === `${endpoint.path}-response`}
+													<Check class="mr-1 h-3 w-3" />
+													Copied
+												{:else}
+													<Copy class="mr-1 h-3 w-3" />
+													Copy
+												{/if}
+											</button>
+										</div>
+										<div class="rounded-lg border border-white/10 bg-black/30 p-4">
+											<pre class="overflow-x-auto text-sm text-blue-300">{formatJson(
+													endpoint.example.response
+												)}</pre>
+										</div>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
-				<div>
-					<h3 class="mb-4 text-xl font-semibold text-white">Direct API Usage</h3>
-					<p class="mb-4 text-gray-300">
-						For direct integration, use the REST API endpoints with standard HTTP requests. All
-						endpoints return JSON responses with timing information.
-					</p>
-					<div class="space-y-2">
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">RESTful design</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">JSON responses</span>
-						</div>
-						<div class="flex items-center space-x-2">
-							<CheckCircle class="h-4 w-4 text-green-400" />
-							<span class="text-gray-300">CORS enabled</span>
-						</div>
-					</div>
-				</div>
+			{/each}
+		</div>
+
+		<!-- Base URL -->
+		<div class="mt-12 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+			<h3 class="mb-4 text-xl font-semibold text-white">Base URL</h3>
+			<div class="rounded-lg border border-white/10 bg-black/30 p-4">
+				<code class="text-green-300">
+					Production: https://translation-helps-mcp.netlify.app<br />
+					Development: http://localhost:8888
+				</code>
+			</div>
+		</div>
+
+		<!-- Additional Resources -->
+		<div class="mt-12 text-center">
+			<h3 class="mb-6 text-2xl font-semibold text-white">Additional Resources</h3>
+			<div class="flex flex-wrap justify-center gap-4">
+				<a
+					href="/test"
+					class="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur-xl transition-all duration-200 hover:bg-white/20"
+				>
+					<ExternalLink class="mr-2 h-5 w-5" />
+					Interactive API Tester
+				</a>
+				<a
+					href="/mcp-tools"
+					class="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur-xl transition-all duration-200 hover:bg-white/20"
+				>
+					<MessageSquare class="mr-2 h-5 w-5" />
+					MCP Tools Documentation
+				</a>
+				<a
+					href="/chat"
+					class="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur-xl transition-all duration-200 hover:bg-white/20"
+				>
+					<MessageSquare class="mr-2 h-5 w-5" />
+					Try AI Chat
+				</a>
 			</div>
 		</div>
 	</div>

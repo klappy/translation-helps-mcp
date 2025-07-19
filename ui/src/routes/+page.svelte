@@ -47,15 +47,15 @@
 	const quickStartSteps = [
 		{
 			step: 1,
-			title: 'Connect to MCP Server',
-			description: 'Configure your LLM to use the Translation Helps MCP server',
-			code: 'mcp://localhost:8888/.netlify/functions/'
+			title: 'Use REST API',
+			description: 'Make direct HTTP requests to get Bible translation resources',
+			code: 'curl "https://translation-helps-mcp.netlify.app/api/fetch-scripture?reference=John%203:16&language=en&organization=unfoldingWord"'
 		},
 		{
 			step: 2,
-			title: 'Ask Natural Questions',
-			description: 'Use natural language to query Bible data',
-			code: '"What does Titus 1:1 say about Paul\'s apostleship?"'
+			title: 'Or Use MCP Server',
+			description: 'Run the MCP server locally for AI integration',
+			code: 'git clone repo && npm install && npx tsx src/index.ts'
 		},
 		{
 			step: 3,
