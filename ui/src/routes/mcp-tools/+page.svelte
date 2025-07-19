@@ -92,7 +92,7 @@
 					description: 'Search query string'
 				}
 			],
-			path: '/api/search-resources',
+			path: '/api/list-available-resources',
 			example: {
 				query: 'faith',
 				language: 'en'

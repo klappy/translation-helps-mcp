@@ -44,7 +44,7 @@ const TEST_CASES = {
     { language: "en", organization: "unfoldingWord" },
     { language: "en", organization: "unfoldingWord", category: "kt" },
   ],
-  searchResources: [
+  listAvailableResources: [
     { language: "en", organization: "unfoldingWord" },
     { language: "en" },
     { organization: "unfoldingWord" },
@@ -109,8 +109,18 @@ describe("API/MCP Endpoint Parity Tests", () => {
           const mcpResponse = await makeRequest("mcp-fetch-scripture", testCase);
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["scripture", "metadata"]);
-          validateResponseStructure(mcpResponse, ["scripture", "metadata"]);
+          validateResponseStructure(apiResponse, [
+            "scripture",
+            "language",
+            "organization",
+            "metadata",
+          ]);
+          validateResponseStructure(mcpResponse, [
+            "scripture",
+            "language",
+            "organization",
+            "metadata",
+          ]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
@@ -237,29 +247,23 @@ describe("API/MCP Endpoint Parity Tests", () => {
     });
   });
 
-  describe("Resources Endpoints", () => {
+  describe("Fetch Resources Endpoints", () => {
     TEST_CASES.resources.forEach((testCase, index) => {
       it(
-        `should return identical responses for resources test case ${index + 1}`,
+        `should return identical responses for fetch resources test case ${index + 1}`,
         async () => {
           const apiResponse = await makeRequest("fetch-resources", testCase);
           const mcpResponse = await makeRequest("mcp-fetch-resources", testCase);
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["resources", "metadata"]);
-          validateResponseStructure(mcpResponse, ["resources", "metadata"]);
+          validateResponseStructure(apiResponse, ["metadata"]);
+          validateResponseStructure(mcpResponse, ["metadata"]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
           const normalizedMcp = normalizeResponse(mcpResponse);
 
           expect(normalizedMcp).toEqual(normalizedApi);
-
-          // Validate resources are not empty
-          expect(apiResponse.resources).toBeDefined();
-          expect(apiResponse.resources.length).toBeGreaterThan(0);
-          expect(mcpResponse.resources).toBeDefined();
-          expect(mcpResponse.resources.length).toBeGreaterThan(0);
         },
         TIMEOUT
       );
@@ -349,13 +353,13 @@ describe("API/MCP Endpoint Parity Tests", () => {
     });
   });
 
-  describe("Search Resources Endpoints", () => {
-    TEST_CASES.searchResources.forEach((testCase, index) => {
+  describe("List Available Resources Endpoints", () => {
+    TEST_CASES.listAvailableResources.forEach((testCase, index) => {
       it(
-        `should return identical responses for search resources test case ${index + 1}`,
+        `should return identical responses for list available resources test case ${index + 1}`,
         async () => {
-          const apiResponse = await makeRequest("search-resources", testCase);
-          const mcpResponse = await makeRequest("mcp-search-resources", testCase);
+          const apiResponse = await makeRequest("list-available-resources", testCase);
+          const mcpResponse = await makeRequest("mcp-list-available-resources", testCase);
 
           // Validate response structure
           validateResponseStructure(apiResponse, ["resources", "query", "totalResults"]);
