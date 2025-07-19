@@ -111,6 +111,105 @@
 			}
 		},
 		{
+			name: 'Search Resources',
+			path: '/api/search-resources',
+			description: 'Search across all translation resources using flexible criteria',
+			method: 'GET',
+			deprecated: false,
+			parameters: [
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					description: 'Filter by language code'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					description: 'Filter by organization'
+				},
+				{
+					name: 'resource',
+					type: 'string',
+					required: false,
+					description: 'Filter by resource type'
+				},
+				{
+					name: 'subject',
+					type: 'string',
+					required: false,
+					description: 'Filter by subject matter'
+				}
+			],
+			example: {
+				url: '/api/search-resources?language=en&organization=unfoldingWord&resource=scripture',
+				response: {
+					resources: [
+						{
+							type: 'scripture',
+							language: 'en',
+							organization: 'unfoldingWord',
+							available: true
+						}
+					],
+					total: 1
+				}
+			}
+		},
+		{
+			name: 'Get Context',
+			path: '/api/get-context',
+			description: 'Get contextual information and cross-references for Bible passages',
+			method: 'GET',
+			deprecated: false,
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "John 3:16")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					description: 'Language code (default: "en")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					description: 'Organization (default: "unfoldingWord")'
+				},
+				{
+					name: 'includeRawData',
+					type: 'boolean',
+					required: false,
+					description: 'Include raw data in response (default: false)'
+				},
+				{
+					name: 'maxTokens',
+					type: 'number',
+					required: false,
+					description: 'Maximum tokens for response'
+				}
+			],
+			example: {
+				url: '/api/get-context?reference=John%203:16&language=en&organization=unfoldingWord',
+				response: {
+					reference: 'John 3:16',
+					context: {
+						passage: 'For God so loved the world...',
+						cross_references: ['Romans 5:8', '1 John 4:9'],
+						themes: ['love', 'salvation', 'eternal life']
+					},
+					language: 'en',
+					organization: 'unfoldingWord'
+				}
+			}
+		},
+		{
 			name: 'Fetch Resources',
 			path: '/api/fetch-resources',
 			description: 'Get comprehensive translation resources for a Bible reference',
@@ -347,6 +446,53 @@
 						}
 					],
 					reference: 'Titus 1:1',
+					language: 'en',
+					organization: 'unfoldingWord'
+				}
+			}
+		},
+		{
+			name: 'Get Words for Reference',
+			path: '/api/get-words-for-reference',
+			description: 'Get translation words that apply to a specific Bible reference',
+			method: 'GET',
+			deprecated: false,
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "John 3:16")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					description: 'Language code (default: "en")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					description: 'Organization (default: "unfoldingWord")'
+				}
+			],
+			example: {
+				url: '/api/get-words-for-reference?reference=John%203:16&language=en&organization=unfoldingWord',
+				response: {
+					content: [
+						{
+							term: 'love',
+							path: 'kt/love.md',
+							excerpt: 'Love is a deep care and affection...'
+						},
+						{
+							term: 'world',
+							path: 'other/world.md',
+							excerpt: 'The world refers to the earth and all people...'
+						}
+					],
+					reference: 'John 3:16',
 					language: 'en',
 					organization: 'unfoldingWord'
 				}
