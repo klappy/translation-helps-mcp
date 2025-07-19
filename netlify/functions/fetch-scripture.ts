@@ -175,6 +175,8 @@ export const handler: Handler = async (
     let cacheHits = 0;
     let totalResources = 0;
     let cacheType: string | undefined;
+    let earliestExpiry: string | undefined;
+    let shortestTtl: number | undefined;
 
     for (const resource of resources) {
       if (!resource.ingredients) {
@@ -230,6 +232,19 @@ export const handler: Handler = async (
           totalResources++;
           if (cacheResult.cacheType && !cacheType) {
             cacheType = cacheResult.cacheType;
+          }
+          // Track earliest expiry and shortest TTL
+          if (
+            cacheResult.expiresAt &&
+            (!earliestExpiry || cacheResult.expiresAt < earliestExpiry)
+          ) {
+            earliestExpiry = cacheResult.expiresAt;
+          }
+          if (
+            cacheResult.ttlSeconds !== undefined &&
+            (shortestTtl === undefined || cacheResult.ttlSeconds < shortestTtl)
+          ) {
+            shortestTtl = cacheResult.ttlSeconds;
           }
         }
 
@@ -319,7 +334,12 @@ export const handler: Handler = async (
 
     // Calculate overall cache status
     const overallCached = totalResources > 0 && cacheHits === totalResources;
-    const cacheInfo = { cached: overallCached, cacheType };
+    const cacheInfo = {
+      cached: overallCached,
+      cacheType,
+      expiresAt: overallCached ? earliestExpiry : undefined,
+      ttlSeconds: overallCached ? shortestTtl : undefined,
+    };
 
     return timedResponse(result, startTime, undefined, cacheInfo);
   } catch (error) {
