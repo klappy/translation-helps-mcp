@@ -32,7 +32,8 @@
 {:else if error}
 	<div class="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
 		<h5 class="mb-2 text-sm font-medium text-red-400">Error:</h5>
-		<pre class="overflow-auto text-sm text-red-300">{error}</pre>
+		<pre
+			class="scrollbar-thin scrollbar-track-red-800 scrollbar-thumb-red-600 max-h-96 overflow-auto rounded bg-red-900/20 p-3 text-sm text-red-300">{error}</pre>
 	</div>
 {:else if response}
 	<div class="rounded-lg border border-white/10 bg-black/20 p-4">
@@ -51,6 +52,9 @@
 				{/if}
 			</button>
 		</div>
-		<pre class="overflow-auto text-sm text-gray-300">{formatJson(response)}</pre>
+		<pre
+			class="scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 max-h-96 overflow-auto rounded bg-gray-900/50 p-3 text-sm text-gray-300">{formatJson(
+				response
+			)}</pre>
 	</div>
 {/if}
