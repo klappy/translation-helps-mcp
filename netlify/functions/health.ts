@@ -6,8 +6,15 @@
 import { Handler } from "@netlify/functions";
 import { cache } from "./_shared/cache";
 
-// Version from environment variable (set by Netlify) or package.json version for local dev
-const VERSION = process.env.API_VERSION || "1.3.0";
+// Import version from the generated version.json file
+let VERSION = "3.4.0"; // Default fallback
+try {
+  const versionData = require("./_shared/version.json");
+  VERSION = versionData.version || VERSION;
+} catch (error) {
+  // If version.json doesn't exist, try environment variable
+  VERSION = process.env.API_VERSION || VERSION;
+}
 
 export const handler: Handler = async (event, context) => {
   console.log("Health check requested");
