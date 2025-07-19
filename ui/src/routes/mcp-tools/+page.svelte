@@ -266,8 +266,9 @@
 		testResults[endpointId] = null;
 
 		try {
-			// Build URL with query parameters using the REST API equivalent
-			const url = new URL(endpoint.path, window.location.origin);
+			// Build URL with query parameters using direct Netlify function path
+			const functionName = endpoint.path.replace('/api/', '');
+			const url = new URL(`/.netlify/functions/${functionName}`, window.location.origin);
 			Object.entries(formData).forEach(([key, value]) => {
 				if (value) {
 					url.searchParams.set(key, value);
