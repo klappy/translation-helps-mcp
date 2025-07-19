@@ -32,6 +32,98 @@
 	import { LLMChatService } from '$lib/services/llmChatService';
 	import { marked } from 'marked';
 
+	// Configure marked with custom renderer for Tailwind classes
+	const renderer = new marked.Renderer();
+
+	// Configure list rendering with proper Tailwind classes
+	renderer.list = function (token) {
+		const ordered = token.ordered;
+		const body = token.items.map((item) => this.listitem(item)).join('');
+		const type = ordered ? 'ol' : 'ul';
+		const listClass = ordered
+			? 'list-decimal list-inside pl-4 space-y-1'
+			: 'list-disc list-inside pl-4 space-y-1';
+		return `<${type} class="${listClass}">\n${body}</${type}>\n`;
+	};
+
+	renderer.listitem = function (token) {
+		const text = this.parser.parse(token.tokens || []);
+		return `<li class="text-gray-300 leading-relaxed">${text}</li>\n`;
+	};
+
+	// Configure heading rendering
+	renderer.heading = function (token) {
+		const text = this.parser.parseInline(token.tokens || []);
+		const level = token.depth;
+		const classes = {
+			1: 'text-2xl font-bold text-white mb-4 mt-6',
+			2: 'text-xl font-semibold text-white mb-3 mt-5',
+			3: 'text-lg font-medium text-white mb-2 mt-4',
+			4: 'text-base font-medium text-white mb-2 mt-3',
+			5: 'text-sm font-medium text-white mb-1 mt-2',
+			6: 'text-sm font-medium text-white mb-1 mt-2'
+		} as const;
+		const className = classes[level as keyof typeof classes] || classes[6];
+		return `<h${level} class="${className}">${text}</h${level}>`;
+	};
+
+	// Configure paragraph rendering
+	renderer.paragraph = function (token) {
+		const text = this.parser.parseInline(token.tokens || []);
+		return `<p class="text-gray-300 leading-relaxed mb-4">${text}</p>`;
+	};
+
+	// Configure strong/bold rendering
+	renderer.strong = function (token) {
+		const text = this.parser.parseInline(token.tokens || []);
+		return `<strong class="font-semibold text-white">${text}</strong>`;
+	};
+
+	// Configure emphasis/italic rendering
+	renderer.em = function (token) {
+		const text = this.parser.parseInline(token.tokens || []);
+		return `<em class="italic text-gray-200">${text}</em>`;
+	};
+
+	// Configure code rendering
+	renderer.code = function (token) {
+		const code = token.text;
+		const language = token.lang || '';
+		return `<pre class="bg-gray-900 rounded-lg p-4 my-4 overflow-x-auto"><code class="text-green-400 text-sm font-mono">${code}</code></pre>`;
+	};
+
+	renderer.codespan = function (token) {
+		const code = token.text;
+		return `<code class="bg-gray-800 text-green-400 px-2 py-1 rounded text-sm font-mono">${code}</code>`;
+	};
+
+	// Configure blockquote rendering
+	renderer.blockquote = function (token) {
+		const quote = this.parser.parse(token.tokens || []);
+		return `<blockquote class="border-l-4 border-purple-500 bg-purple-500/10 pl-4 py-2 my-4 italic text-purple-200">${quote}</blockquote>`;
+	};
+
+	// Configure horizontal rule rendering
+	renderer.hr = function () {
+		return `<hr class="border-gray-600 my-6">`;
+	};
+
+	// Configure link rendering
+	renderer.link = function (token) {
+		const href = token.href;
+		const title = token.title || '';
+		const text = this.parser.parseInline(token.tokens || []);
+		const titleAttr = title ? ` title="${title}"` : '';
+		return `<a href="${href}" class="text-blue-400 hover:text-blue-300 underline"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+	};
+
+	// Set the custom renderer
+	marked.setOptions({
+		renderer: renderer,
+		breaks: true,
+		gfm: true
+	});
+
 	// Create an instance of the AI system
 	const chatService = new LLMChatService();
 
@@ -131,62 +223,66 @@
 			{
 				id: 'welcome',
 				role: 'assistant',
-				content: `Hello! I'm a **reference implementation** of a Bible resource assistant, powered by a small AI model running **entirely on your device**!
+				content: `Hello! I'm a **reference implementation** of a Bible resource assistant, powered by **OpenAI's GPT-4o-mini** model!
 
 **What I can do:**
 • Search and display relevant Bible verses, translation notes, and word definitions
 • Fetch translation helps and linguistic resources based on your queries
 • Show you how the Translation Helps MCP Server integration works
+• Provide intelligent analysis and context for Bible study
 
 **What I cannot do:**
 • Provide deep theological analysis or complex reasoning
 • Answer questions that require extensive biblical knowledge
 • Generate original insights beyond the resources I can fetch
 
-**Privacy & Performance:**
-• Your AI processing happens locally on your device - no servers involved!
+**AI Model & Performance:**
+• Powered by OpenAI's GPT-4o-mini for optimal balance of performance and cost
+• Your questions are processed securely through our backend
 • Only Bible resource requests go to our MCP server
-• Your questions and AI responses stay completely private
+• Fast, reliable responses for Bible study and translation work
 
-This is a demo of the MCP integration capabilities, not a replacement for serious Bible study tools. I'm currently loading my model...`,
+✅ **Ready to help!** Try asking me something like "Show me Titus 1:1" or "What are the translation notes for 'grace'?" to see the MCP integration in action.`,
 				timestamp: new Date()
 			}
 		];
 
-		// Initialize the browser LLM
+		// Initialize the chat service
 		try {
 			llmStatus = 'initializing';
-			// AI service initializes automatically in constructor
+			// Chat service initializes automatically in constructor
 			llmStatus = 'ready';
 
-			// Update welcome message once LLM is ready
+			// Update welcome message once service is ready
 			messages = messages.map((msg) =>
 				msg.id === 'welcome'
 					? {
 							...msg,
-							content: `Hello! I'm a **reference implementation** of a Bible resource assistant, powered by a small AI model running **entirely on your device**!
+							content: `Hello! I'm a **reference implementation** of a Bible resource assistant, powered by **OpenAI's GPT-4o-mini** model!
 
 **What I can do:**
 • Search and display relevant Bible verses, translation notes, and word definitions
 • Fetch translation helps and linguistic resources based on your queries
 • Show you how the Translation Helps MCP Server integration works
+• Provide intelligent analysis and context for Bible study
 
 **What I cannot do:**
 • Provide deep theological analysis or complex reasoning
 • Answer questions that require extensive biblical knowledge
 • Generate original insights beyond the resources I can fetch
 
-**Privacy & Performance:**
-• Your AI processing happens locally on your device - no servers involved!
+**AI Model & Performance:**
+• Powered by OpenAI's GPT-4o-mini for optimal balance of performance and cost
+• Your questions are processed securely through our backend
 • Only Bible resource requests go to our MCP server
-• Your questions and AI responses stay completely private
+• Fast, reliable responses for Bible study and translation work
 
-✅ **Model Ready!** Try asking me something like "Show me Titus 1:1" or "What are the translation notes for 'grace'?" to see the MCP integration in action.`
+✅ **Ready to help!** Try asking me something like "Show me Titus 1:1" or "What are the translation notes for 'grace'?" to see the MCP integration in action.`
 						}
 					: msg
 			);
 		} catch (error) {
-			console.error('Failed to initialize LLM:', error);
+			console.error('Failed to initialize chat service:', error);
 			llmStatus = 'error';
 		}
 	});
@@ -215,70 +311,179 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 			content: '',
 			timestamp: new Date(),
 			isTyping: true,
-			thinkingTrace: []
+			thinkingTrace: [],
+			apiCalls: []
 		};
 
 		messages = [...messages, typingMessage];
 
+		// Track actual API calls that happen
+		const apiCallsTracked: ApiCall[] = [];
+		const messageStartTime = performance.now();
+
 		try {
-			// Use streaming response
-			const response = await chatService.generateStreamingResponse(
-				messageToSend,
-				// onThinkingTrace callback
-				(steps: string[]) => {
-					// Update the typing message with thinking trace
-					const updatedMessages = [...messages];
-					const typingIndex = updatedMessages.length - 1;
-					updatedMessages[typingIndex] = {
-						...updatedMessages[typingIndex],
-						thinkingTrace: steps
-					};
-					messages = updatedMessages;
-				},
-				// onResponseChunk callback
-				(chunk: string) => {
-					// Update the typing message with streaming content
-					const updatedMessages = [...messages];
-					const typingIndex = updatedMessages.length - 1;
-					updatedMessages[typingIndex] = {
-						...updatedMessages[typingIndex],
-						content: chunk
-					};
-					messages = updatedMessages;
-				},
-				// onComplete callback
-				(fullResponse: string) => {
-					// Replace typing message with final message
-					const assistantMessage: ChatMessage = {
-						id: (Date.now() + 2).toString(),
-						role: 'assistant',
-						content: fullResponse,
-						timestamp: new Date(),
-						apiCalls: [], // Will be populated if needed
-						responseTime: 0, // Will be calculated
-						thinkingTrace: messages[messages.length - 1]?.thinkingTrace || [],
-						status: 'sent',
-						isFallback: false, // Will be determined by the response
-						overallStatus: 'success'
-					};
+			// First, gather Bible context if needed
+			const lowerMessage = messageToSend.toLowerCase();
 
-					// Add the message to collapsed thinking traces by default
-					if (assistantMessage.thinkingTrace && assistantMessage.thinkingTrace.length > 0) {
-						collapsedThinkingTraces.add(assistantMessage.id);
-					}
+			// Check for scripture references
+			const scriptureMatch = messageToSend.match(/(\w+\s+\d+:\d+(?:-\d+)?)/);
+			if (scriptureMatch) {
+				const reference = scriptureMatch[1];
 
-					messages = [...messages.slice(0, -1), assistantMessage];
+				// Fetch scripture with timing
+				try {
+					const scriptureStart = performance.now();
+					const scriptureResponse = await fetch(
+						`/.netlify/functions/fetch-scripture?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}&translation=all`
+					);
+					const scriptureData = await scriptureResponse.json();
+					const scriptureTime = performance.now() - scriptureStart;
+
+					apiCallsTracked.push({
+						endpoint: '/api/fetch-scripture',
+						params: {
+							reference,
+							language: chatConfig.language,
+							organization: chatConfig.organization
+						},
+						response: scriptureData,
+						responseTime: scriptureTime,
+						status: scriptureResponse.ok ? 'success' : 'error'
+					});
+				} catch (error) {
+					apiCallsTracked.push({
+						endpoint: '/api/fetch-scripture',
+						params: {
+							reference,
+							language: chatConfig.language,
+							organization: chatConfig.organization
+						},
+						response: null,
+						responseTime: 0,
+						status: 'error'
+					});
 				}
-			);
 
-			// Handle any errors from the streaming response
-			if (!response.success) {
+				// Fetch translation notes with timing
+				try {
+					const notesStart = performance.now();
+					const notesResponse = await fetch(
+						`/.netlify/functions/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}`
+					);
+					const notesData = await notesResponse.json();
+					const notesTime = performance.now() - notesStart;
+
+					apiCallsTracked.push({
+						endpoint: '/api/fetch-translation-notes',
+						params: {
+							reference,
+							language: chatConfig.language,
+							organization: chatConfig.organization
+						},
+						response: notesData,
+						responseTime: notesTime,
+						status: notesResponse.ok ? 'success' : 'error'
+					});
+				} catch (error) {
+					apiCallsTracked.push({
+						endpoint: '/api/fetch-translation-notes',
+						params: {
+							reference,
+							language: chatConfig.language,
+							organization: chatConfig.organization
+						},
+						response: null,
+						responseTime: 0,
+						status: 'error'
+					});
+				}
+			}
+
+			// Check for word queries
+			const wordMatch = messageToSend.match(/["']([^"']+)["']/);
+			if (wordMatch) {
+				const word = wordMatch[1];
+				try {
+					const wordStart = performance.now();
+					const wordResponse = await fetch(
+						`/.netlify/functions/fetch-translation-words?word=${encodeURIComponent(word)}&language=${chatConfig.language}&organization=${chatConfig.organization}&includeTitle=true&includeSubtitle=true&includeContent=true`
+					);
+					const wordData = await wordResponse.json();
+					const wordTime = performance.now() - wordStart;
+
+					apiCallsTracked.push({
+						endpoint: '/api/fetch-translation-words',
+						params: { word, language: chatConfig.language, organization: chatConfig.organization },
+						response: wordData,
+						responseTime: wordTime,
+						status: wordResponse.ok ? 'success' : 'error'
+					});
+				} catch (error) {
+					apiCallsTracked.push({
+						endpoint: '/api/fetch-translation-words',
+						params: {
+							word: wordMatch[1],
+							language: chatConfig.language,
+							organization: chatConfig.organization
+						},
+						response: null,
+						responseTime: 0,
+						status: 'error'
+					});
+				}
+			}
+
+			// Build context for the AI
+			let contextMessage = messageToSend + '\n\n---\n\n## MCP Response Data\n\n';
+
+			// Add fetched data to context
+			for (const call of apiCallsTracked) {
+				if (call.status === 'success' && call.response) {
+					contextMessage += `### ${call.endpoint}\n\`\`\`json\n${JSON.stringify(call.response, null, 2)}\n\`\`\`\n\n`;
+				}
+			}
+
+			// Use simple non-streaming response
+			const response = await chatService.generateResponse(contextMessage);
+
+			// Handle the response
+			if (response.success) {
+				const totalResponseTime = performance.now() - messageStartTime;
+
+				// Calculate overall status based on API calls
+				const hasFailedCalls = apiCallsTracked.some((call) => call.status === 'error');
+
+				let overallStatus: 'success' | 'warning' | 'error' = 'success';
+				if (hasFailedCalls) {
+					overallStatus = 'error';
+				} else if (response.isFallback) {
+					overallStatus = 'warning';
+				}
+
+				// Replace typing message with final message
+				const assistantMessage: ChatMessage = {
+					id: (Date.now() + 2).toString(),
+					role: 'assistant',
+					content: response.response || '',
+					timestamp: new Date(),
+					apiCalls: apiCallsTracked,
+					responseTime: totalResponseTime,
+					thinkingTrace: [],
+					status: 'sent',
+					isFallback: response.isFallback || false,
+					overallStatus: overallStatus
+				};
+
+				messages = [...messages.slice(0, -1), assistantMessage];
+			} else {
+				// Handle error response
 				const errorMessage: ChatMessage = {
 					id: (Date.now() + 2).toString(),
 					role: 'assistant',
 					content: `Error: ${response.error}`,
 					timestamp: new Date(),
-					status: 'error'
+					status: 'error',
+					overallStatus: 'error'
 				};
 
 				messages = [...messages.slice(0, -1), errorMessage];
@@ -292,7 +497,8 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 				role: 'assistant',
 				content: 'Sorry, I encountered an error while processing your request. Please try again.',
 				timestamp: new Date(),
-				status: 'error'
+				status: 'error',
+				overallStatus: 'error'
 			};
 			messages = [...messages, errorMessage];
 		}
@@ -305,10 +511,18 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		isLoading = false;
 	}
 
-	// Real AI response using browser LLM with Bible context
+	// DEPRECATED - This function is no longer used
+	// We now use streaming response directly in sendMessage()
+	/*
 	async function generateAIResponse(
 		userMessage: string
-	): Promise<{ content: string; apiCalls: ApiCall[]; responseTime: number; thinkingTrace: string[]; isFallback?: boolean }> {
+	): Promise<{
+		content: string;
+		apiCalls: ApiCall[];
+		responseTime: number;
+		thinkingTrace: string[];
+		isFallback?: boolean;
+	}> {
 		const startTime = performance.now();
 		const apiCalls: ApiCall[] = [];
 
@@ -545,6 +759,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 			isFallback: (llmResponse as any).isFallback || false
 		};
 	}
+	*/
 
 	// Utility functions
 	function toggleMessageExpansion(id: string) {
@@ -568,15 +783,18 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 	/**
 	 * Calculate overall status based on API calls and fallback status
 	 */
-	function calculateOverallStatus(apiCalls: ApiCall[] = [], isFallback: boolean = false): 'success' | 'warning' | 'error' {
+	function calculateOverallStatus(
+		apiCalls: ApiCall[] = [],
+		isFallback: boolean = false
+	): 'success' | 'warning' | 'error' {
 		// If there are no API calls and it's not a fallback, it's an error
 		if (apiCalls.length === 0 && !isFallback) {
 			return 'error';
 		}
 
 		// Check if any API calls failed
-		const hasFailedCalls = apiCalls.some(call => call.status === 'error');
-		
+		const hasFailedCalls = apiCalls.some((call) => call.status === 'error');
+
 		// If any API calls failed, it's an error
 		if (hasFailedCalls) {
 			return 'error';
@@ -674,29 +892,29 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		</h1>
 		<p class="mx-auto max-w-3xl text-xl text-gray-300">
 			This is a <strong>reference implementation</strong> showing how to integrate our Translation Helps
-			MCP Server with a browser-based AI model. The AI runs entirely on your device - no servers needed!
-			It can fetch and display Bible resources based on your queries, but has limited reasoning capabilities.
+			MCP Server with OpenAI's GPT-4o-mini model. It can fetch and display Bible resources based on your
+			queries, providing intelligent analysis and context for Bible study and translation work.
 		</p>
 		<div class="mx-auto mt-4 max-w-2xl rounded-lg border border-green-500/20 bg-green-500/10 p-4">
 			<div class="mb-2 flex items-center space-x-2">
 				<Zap class="h-4 w-4 text-green-400" />
-				<span class="text-sm font-medium text-green-300">Runs on Your Device!</span>
+				<span class="text-sm font-medium text-green-300">Powered by OpenAI GPT-4o-mini</span>
 			</div>
 			<p class="text-sm text-green-200">
-				The AI model runs completely on your phone, laptop, or tablet - no servers involved! Your
-				Bible questions stay private and local. Only the Bible resource requests go to our MCP
-				server.
+				We use OpenAI's GPT-4o-mini model for optimal balance of performance and cost. Your
+				questions are processed securely through our backend, with fast and reliable responses for
+				Bible study and translation work.
 			</p>
 		</div>
-		<div class="mx-auto mt-4 max-w-2xl rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
+		<div class="mx-auto mt-4 max-w-2xl rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
 			<div class="mb-2 flex items-center space-x-2">
-				<AlertCircle class="h-4 w-4 text-yellow-400" />
-				<span class="text-sm font-medium text-yellow-300">Demo Limitations</span>
+				<Bot class="h-4 w-4 text-blue-400" />
+				<span class="text-sm font-medium text-blue-300">Intelligent Bible Assistant</span>
 			</div>
-			<p class="text-sm text-yellow-200">
-				This uses a small, limited AI model for demonstration purposes. It can search and display
-				relevant Bible resources, but cannot provide deep theological analysis or complex reasoning.
-				It's designed to show the MCP integration capabilities.
+			<p class="text-sm text-blue-200">
+				This AI assistant can search and display relevant Bible resources, provide intelligent
+				analysis, and help with translation work. It's designed to enhance Bible study through MCP
+				integration.
 			</p>
 		</div>
 	</div>
@@ -724,17 +942,17 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 								{#if llmStatus === 'initializing'}
 									<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
 										<Loader2 class="h-3 w-3 animate-spin text-yellow-400" />
-										<span class="text-xs text-yellow-400">Loading AI...</span>
+										<span class="text-xs text-yellow-400">Initializing...</span>
 									</div>
 								{:else if llmStatus === 'ready'}
 									<div class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1">
 										<CheckCircle2 class="h-3 w-3 text-green-400" />
-										<span class="text-xs text-green-400">AI Ready</span>
+										<span class="text-xs text-green-400">Ready</span>
 									</div>
 								{:else if llmStatus === 'error'}
 									<div class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1">
 										<AlertCircle class="h-3 w-3 text-red-400" />
-										<span class="text-xs text-red-400">AI Error</span>
+										<span class="text-xs text-red-400">Error</span>
 									</div>
 								{/if}
 							</div>
@@ -787,7 +1005,9 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 												<div class="flex items-center space-x-2">
 													<span class="text-sm font-medium">Bible AI</span>
 													{#if message.isFallback}
-														<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+														<span
+															class="inline-flex items-center rounded-full border border-yellow-500/30 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300"
+														>
 															🎭 Mock
 														</span>
 													{/if}
@@ -804,11 +1024,20 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 											{#if message.overallStatus}
 												<div class="flex items-center space-x-1">
 													{#if message.overallStatus === 'success'}
-														<div class="h-3 w-3 rounded-full bg-green-500" title="All systems working perfectly"></div>
+														<div
+															class="h-3 w-3 rounded-full bg-green-500"
+															title="All systems working perfectly"
+														></div>
 													{:else if message.overallStatus === 'warning'}
-														<div class="h-3 w-3 rounded-full bg-yellow-500" title="Tool calls worked but AI response was mocked"></div>
+														<div
+															class="h-3 w-3 rounded-full bg-yellow-500"
+															title="Tool calls worked but AI response was mocked"
+														></div>
 													{:else if message.overallStatus === 'error'}
-														<div class="h-3 w-3 rounded-full bg-red-500" title="Some tool calls failed"></div>
+														<div
+															class="h-3 w-3 rounded-full bg-red-500"
+															title="Some tool calls failed"
+														></div>
 													{/if}
 												</div>
 											{/if}
@@ -843,26 +1072,54 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 
 									<!-- Message Content -->
 									{#if message.isTyping}
+										<!-- Simple typing indicator -->
+										<div class="flex items-center space-x-3 p-4">
+											<span class="text-sm text-blue-300">AI is thinking</span>
+											<div class="flex space-x-1">
+												<div class="h-2 w-2 animate-bounce rounded-full bg-blue-400"></div>
+												<div
+													class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+													style="animation-delay: 0.1s"
+												></div>
+												<div
+													class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+													style="animation-delay: 0.2s"
+												></div>
+											</div>
+										</div>
+
 										<!-- Thinking Trace during typing -->
 										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
 											<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
 												<div class="mb-3 flex items-center justify-between">
 													<div class="flex items-center space-x-2">
 														<Lightbulb class="h-4 w-4 text-blue-400" />
-														<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
+														<span class="text-sm font-medium text-blue-300"
+															>AI Thinking Process</span
+														>
 														{#if message.overallStatus && !message.isTyping}
 															{#if message.overallStatus === 'success'}
-																<div class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1">
+																<div
+																	class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1"
+																>
 																	<div class="h-2 w-2 rounded-full bg-green-500"></div>
-																	<span class="text-xs font-medium text-green-300">All Systems OK</span>
+																	<span class="text-xs font-medium text-green-300"
+																		>All Systems OK</span
+																	>
 																</div>
 															{:else if message.overallStatus === 'warning'}
-																<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
+																<div
+																	class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1"
+																>
 																	<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
-																	<span class="text-xs font-medium text-yellow-300">Mock Response</span>
+																	<span class="text-xs font-medium text-yellow-300"
+																		>Mock Response</span
+																	>
 																</div>
 															{:else if message.overallStatus === 'error'}
-																<div class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1">
+																<div
+																	class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1"
+																>
 																	<div class="h-2 w-2 rounded-full bg-red-500"></div>
 																	<span class="text-xs font-medium text-red-300">API Errors</span>
 																</div>
@@ -901,7 +1158,9 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 													<div class="space-y-2">
 														{#each message.thinkingTrace as step, index}
 															<div class="flex items-start space-x-3">
-																<div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
+																<div
+																	class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300"
+																>
 																	{index + 1}
 																</div>
 																<div class="flex-1 text-sm text-blue-200">
@@ -914,27 +1173,38 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 											</div>
 										{/if}
 									{:else}
-
 										<!-- Thinking Trace for Completed Messages (at the beginning) -->
 										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
 											<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
 												<div class="mb-3 flex items-center justify-between">
 													<div class="flex items-center space-x-2">
 														<Lightbulb class="h-4 w-4 text-blue-400" />
-														<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
+														<span class="text-sm font-medium text-blue-300"
+															>AI Thinking Process</span
+														>
 														{#if message.overallStatus}
 															{#if message.overallStatus === 'success'}
-																<div class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1">
+																<div
+																	class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1"
+																>
 																	<div class="h-2 w-2 rounded-full bg-green-500"></div>
-																	<span class="text-xs font-medium text-green-300">All Systems OK</span>
+																	<span class="text-xs font-medium text-green-300"
+																		>All Systems OK</span
+																	>
 																</div>
 															{:else if message.overallStatus === 'warning'}
-																<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
+																<div
+																	class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1"
+																>
 																	<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
-																	<span class="text-xs font-medium text-yellow-300">Mock Response</span>
+																	<span class="text-xs font-medium text-yellow-300"
+																		>Mock Response</span
+																	>
 																</div>
 															{:else if message.overallStatus === 'error'}
-																<div class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1">
+																<div
+																	class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1"
+																>
 																	<div class="h-2 w-2 rounded-full bg-red-500"></div>
 																	<span class="text-xs font-medium text-red-300">API Errors</span>
 																</div>
@@ -958,7 +1228,9 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 													<div class="space-y-2">
 														{#each message.thinkingTrace as step, index}
 															<div class="flex items-start space-x-3">
-																<div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
+																<div
+																	class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300"
+																>
 																	{index + 1}
 																</div>
 																<div class="flex-1 text-sm text-blue-200">
@@ -972,66 +1244,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 										{/if}
 
 										<!-- AI Response Content -->
-										<div class="ai-response-content max-w-none leading-relaxed text-gray-300">
-											<style>
-												/* Override Tailwind's base layer resets */
-												@layer base {
-													:global(.ai-response-content ol) {
-														list-style: decimal !important;
-														padding-left: 1.5rem !important;
-														margin: 0 !important;
-													}
-													:global(.ai-response-content ul) {
-														list-style: disc !important;
-														padding-left: 1.5rem !important;
-														margin: 0 !important;
-													}
-													:global(.ai-response-content li) {
-														margin: 0 !important;
-														padding: 0 !important;
-														list-style: inherit !important;
-													}
-												}
-
-												/* Component styles */
-												:global(.ai-response-content h2) {
-													color: white !important;
-													font-weight: 600 !important;
-													font-size: 1.25rem !important;
-													margin-bottom: 1rem !important;
-												}
-												:global(.ai-response-content h3) {
-													color: white !important;
-													font-weight: 600 !important;
-													font-size: 1.125rem !important;
-													margin-bottom: 0.75rem !important;
-												}
-												:global(.ai-response-content p) {
-													color: rgb(209 213 219) !important;
-													line-height: 1.625 !important;
-													margin-bottom: 1rem !important;
-												}
-												:global(.ai-response-content strong) {
-													color: white !important;
-													font-weight: 600 !important;
-												}
-												:global(.ai-response-content blockquote) {
-													border-left: 4px solid rgb(168 85 247) !important;
-													background-color: rgba(168, 85, 247, 0.1) !important;
-													padding-left: 1rem !important;
-													padding-top: 0.5rem !important;
-													padding-bottom: 0.5rem !important;
-													margin: 1rem 0 !important;
-												}
-												:global(.ai-response-content li) {
-													color: rgb(209 213 219) !important;
-													margin-bottom: 0.25rem !important;
-												}
-												:global(.ai-response-content hr) {
-													border-color: rgba(255, 255, 255, 0.2) !important;
-													margin: 1.5rem 0 !important;
-												}
-											</style>
+										<div class="ai-response-content max-w-none">
 											{@html marked(message.content)}
 										</div>
 									{/if}
