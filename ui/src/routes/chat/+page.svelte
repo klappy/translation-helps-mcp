@@ -191,7 +191,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		}
 	});
 
-	// Send message with enhanced typing simulation
+	// Send message with streaming response
 	async function sendMessage() {
 		if (!currentMessage.trim() || isLoading) return;
 
@@ -208,54 +208,81 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 		currentMessage = '';
 		isLoading = true;
 
-		// Generate initial thinking trace (even for mock responses)
-		const initialThinkingTrace = chatService.generateThinkingTrace(messageToSend, []);
-
-		// Create typing message with thinking trace
+		// Create typing message for streaming
 		const typingMessage: ChatMessage = {
 			id: (Date.now() + 1).toString(),
 			role: 'assistant',
 			content: '',
 			timestamp: new Date(),
 			isTyping: true,
-			thinkingTrace: initialThinkingTrace
+			thinkingTrace: []
 		};
 
 		messages = [...messages, typingMessage];
 
 		try {
-			// Generate real AI response with Bible context
-			const response = await generateAIResponse(messageToSend);
+			// Use streaming response
+			const response = await chatService.generateStreamingResponse(
+				messageToSend,
+				// onThinkingTrace callback
+				(steps: string[]) => {
+					// Update the typing message with thinking trace
+					const updatedMessages = [...messages];
+					const typingIndex = updatedMessages.length - 1;
+					updatedMessages[typingIndex] = {
+						...updatedMessages[typingIndex],
+						thinkingTrace: steps
+					};
+					messages = updatedMessages;
+				},
+				// onResponseChunk callback
+				(chunk: string) => {
+					// Update the typing message with streaming content
+					const updatedMessages = [...messages];
+					const typingIndex = updatedMessages.length - 1;
+					updatedMessages[typingIndex] = {
+						...updatedMessages[typingIndex],
+						content: chunk
+					};
+					messages = updatedMessages;
+				},
+				// onComplete callback
+				(fullResponse: string) => {
+					// Replace typing message with final message
+					const assistantMessage: ChatMessage = {
+						id: (Date.now() + 2).toString(),
+						role: 'assistant',
+						content: fullResponse,
+						timestamp: new Date(),
+						apiCalls: [], // Will be populated if needed
+						responseTime: 0, // Will be calculated
+						thinkingTrace: messages[messages.length - 1]?.thinkingTrace || [],
+						status: 'sent',
+						isFallback: false, // Will be determined by the response
+						overallStatus: 'success'
+					};
 
-			// Update typing message with final thinking trace
-			messages = messages.map((msg) =>
-				msg.isTyping
-					? { ...msg, thinkingTrace: response.thinkingTrace }
-					: msg
+					// Add the message to collapsed thinking traces by default
+					if (assistantMessage.thinkingTrace && assistantMessage.thinkingTrace.length > 0) {
+						collapsedThinkingTraces.add(assistantMessage.id);
+					}
+
+					messages = [...messages.slice(0, -1), assistantMessage];
+				}
 			);
 
-			// Remove typing indicator and add real response
-			messages = messages.filter((msg) => !msg.isTyping);
+			// Handle any errors from the streaming response
+			if (!response.success) {
+				const errorMessage: ChatMessage = {
+					id: (Date.now() + 2).toString(),
+					role: 'assistant',
+					content: `Error: ${response.error}`,
+					timestamp: new Date(),
+					status: 'error'
+				};
 
-			const assistantMessage: ChatMessage = {
-				id: (Date.now() + 2).toString(),
-				role: 'assistant',
-				content: response.content,
-				timestamp: new Date(),
-				apiCalls: response.apiCalls,
-				responseTime: response.responseTime,
-				thinkingTrace: response.thinkingTrace,
-				status: 'sent',
-				isFallback: response.isFallback,
-				overallStatus: calculateOverallStatus(response.apiCalls, response.isFallback)
-			};
-
-			// Add the message to collapsed thinking traces by default
-			if (response.thinkingTrace && response.thinkingTrace.length > 0) {
-				collapsedThinkingTraces.add(assistantMessage.id);
+				messages = [...messages.slice(0, -1), errorMessage];
 			}
-
-			messages = [...messages, assistantMessage];
 		} catch (error) {
 			// Remove typing indicator
 			messages = messages.filter((msg) => !msg.isTyping);

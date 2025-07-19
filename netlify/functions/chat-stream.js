@@ -1,11 +1,11 @@
 /**
- * SIMPLIFIED Streaming chat function using Server-Sent Events
+ * REAL Streaming chat function using Server-Sent Events
  */
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 /**
- * SIMPLIFIED: Returns the static system prompt
+ * Returns the static system prompt
  */
 function formatSystemPrompt() {
   return `You are a Bible study assistant. 
@@ -32,7 +32,7 @@ The user's question will be followed by the relevant Bible resources fetched fro
 }
 
 /**
- * Streaming handler with SSE
+ * Real streaming handler with Server-Sent Events
  */
 export async function handler(event, context) {
   const headers = {
@@ -90,8 +90,7 @@ export async function handler(event, context) {
 
     console.log(`🚀 Sending streaming request to OpenAI with ${messages.length} messages`);
 
-    // For now, just do a regular request and simulate streaming
-    // (Real SSE streaming with Netlify functions is complex)
+    // Make streaming request to OpenAI
     const openaiResponse = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
@@ -103,7 +102,7 @@ export async function handler(event, context) {
         messages: messages,
         temperature: 0.7,
         max_tokens: 2000,
-        stream: false, // Netlify doesn't support true streaming yet
+        stream: true, // Enable real streaming
       }),
     });
 
@@ -111,10 +110,77 @@ export async function handler(event, context) {
       throw new Error(`OpenAI API error: ${openaiResponse.status}`);
     }
 
-    const openaiData = await openaiResponse.json();
-    const aiResponse = openaiData.choices[0].message.content;
+    // Create a readable stream from the response
+    const reader = openaiResponse.body.getReader();
+    const decoder = new TextDecoder();
 
-    // Return as regular JSON (streaming simulation happens on client)
+    // Function to send SSE data
+    const sendSSE = (data) => {
+      return `data: ${JSON.stringify(data)}\n\n`;
+    };
+
+    // Stream the response
+    let fullResponse = "";
+    let isFirstChunk = true;
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+
+          if (data === "[DONE]") {
+            // Send completion signal
+            return {
+              statusCode: 200,
+              headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                Connection: "keep-alive",
+              },
+              body: sendSSE({ type: "done", content: fullResponse }),
+            };
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            if (
+              parsed.choices &&
+              parsed.choices[0] &&
+              parsed.choices[0].delta &&
+              parsed.choices[0].delta.content
+            ) {
+              const content = parsed.choices[0].delta.content;
+              fullResponse += content;
+
+              // Send streaming chunk
+              return {
+                statusCode: 200,
+                headers: {
+                  "Access-Control-Allow-Origin": "*",
+                  "Content-Type": "text/event-stream",
+                  "Cache-Control": "no-cache",
+                  Connection: "keep-alive",
+                },
+                body: sendSSE({ type: "chunk", content }),
+              };
+            }
+          } catch (e) {
+            // Skip malformed JSON
+            continue;
+          }
+        }
+      }
+    }
+
+    // Fallback: return complete response
     return {
       statusCode: 200,
       headers: {
@@ -123,13 +189,11 @@ export async function handler(event, context) {
       },
       body: JSON.stringify({
         success: true,
-        response: aiResponse,
+        response: fullResponse,
         timestamp: new Date().toISOString(),
         metadata: {
           model: "gpt-4o-mini",
-          totalTokens: openaiData.usage?.total_tokens || 0,
-          actualInputTokens: openaiData.usage?.prompt_tokens || 0,
-          actualOutputTokens: openaiData.usage?.completion_tokens || 0,
+          streaming: true,
         },
       }),
     };
