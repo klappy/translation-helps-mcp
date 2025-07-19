@@ -176,7 +176,15 @@ export function addMetadata<T extends Record<string, any>>(
   startTime: number,
   additionalMetadata?: Record<string, any>
 ): T & {
-  metadata: { timestamp: string; responseTime: number; version: string; cached?: boolean };
+  metadata: {
+    timestamp: string;
+    responseTime: number;
+    version: string;
+    cached?: boolean;
+    cacheType?: string;
+    cacheExpiresAt?: string;
+    cacheTtlSeconds?: number;
+  };
 } {
   const responseTime = Date.now() - startTime;
   return {
@@ -211,10 +219,15 @@ export function timedResponse<T extends Record<string, any>>(
   data: T,
   startTime: number,
   headers?: Record<string, string>,
-  cacheInfo?: { cached: boolean; cacheType?: string }
+  cacheInfo?: { cached: boolean; cacheType?: string; expiresAt?: string; ttlSeconds?: number }
 ): HandlerResponse {
   const additionalMetadata = cacheInfo
-    ? { cached: cacheInfo.cached, cacheType: cacheInfo.cacheType }
+    ? {
+        cached: cacheInfo.cached,
+        cacheType: cacheInfo.cacheType,
+        cacheExpiresAt: cacheInfo.expiresAt,
+        cacheTtlSeconds: cacheInfo.ttlSeconds,
+      }
     : {};
   const responseData = addMetadata(data, startTime, additionalMetadata);
   return successResponse(responseData, headers);

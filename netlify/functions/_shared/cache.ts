@@ -93,7 +93,13 @@ export class CacheManager {
   async getWithCacheInfo(
     key: string,
     cacheType?: CacheType
-  ): Promise<{ value: any; cached: boolean; cacheType?: string }> {
+  ): Promise<{
+    value: any;
+    cached: boolean;
+    cacheType?: string;
+    expiresAt?: string;
+    ttlSeconds?: number;
+  }> {
     const fullKey = this.getKey(key, cacheType);
 
     if (this.useNetlifyBlobs) {
@@ -112,7 +118,15 @@ export class CacheManager {
         }
 
         console.log(`✅ Cache hit: ${fullKey}`);
-        return { value: cacheItem.value, cached: true, cacheType: "netlify-blobs" };
+        const expiresAt = new Date(cacheItem.expiry).toISOString();
+        const ttlSeconds = Math.round((cacheItem.expiry - Date.now()) / 1000);
+        return {
+          value: cacheItem.value,
+          cached: true,
+          cacheType: "netlify-blobs",
+          expiresAt,
+          ttlSeconds,
+        };
       } catch (error) {
         console.error(`❌ Netlify Blobs get error: ${fullKey}`, (error as Error).message);
         // Fall back to memory cache
@@ -134,7 +148,15 @@ export class CacheManager {
     }
 
     console.log(`✅ Memory cache hit: ${fullKey}`);
-    return { value: item.value, cached: true, cacheType: "memory" };
+    const expiresAt = new Date(item.expiry).toISOString();
+    const ttlSeconds = Math.round((item.expiry - Date.now()) / 1000);
+    return {
+      value: item.value,
+      cached: true,
+      cacheType: "memory",
+      expiresAt,
+      ttlSeconds,
+    };
   }
 
   async set(key: string, value: any, cacheType?: CacheType, ttl?: number): Promise<void> {
@@ -283,7 +305,13 @@ export class CacheManager {
 
   async getFileContentWithCacheInfo(
     key: string
-  ): Promise<{ value: any; cached: boolean; cacheType?: string }> {
+  ): Promise<{
+    value: any;
+    cached: boolean;
+    cacheType?: string;
+    expiresAt?: string;
+    ttlSeconds?: number;
+  }> {
     return this.getWithCacheInfo(key, "fileContent");
   }
 
