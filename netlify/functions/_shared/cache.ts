@@ -90,6 +90,53 @@ export class CacheManager {
     return item.value;
   }
 
+  async getWithCacheInfo(
+    key: string,
+    cacheType?: CacheType
+  ): Promise<{ value: any; cached: boolean; cacheType?: string }> {
+    const fullKey = this.getKey(key, cacheType);
+
+    if (this.useNetlifyBlobs) {
+      try {
+        const item = await this.store.get(fullKey);
+        if (!item) {
+          console.log(`❌ Cache miss: ${fullKey}`);
+          return { value: null, cached: false };
+        }
+
+        const cacheItem: CacheItem = JSON.parse(item);
+        if (Date.now() > cacheItem.expiry) {
+          console.log(`⏰ Cache expired: ${fullKey}`);
+          await this.delete(key, cacheType);
+          return { value: null, cached: false };
+        }
+
+        console.log(`✅ Cache hit: ${fullKey}`);
+        return { value: cacheItem.value, cached: true, cacheType: "netlify-blobs" };
+      } catch (error) {
+        console.error(`❌ Netlify Blobs get error: ${fullKey}`, (error as Error).message);
+        // Fall back to memory cache
+        this.useNetlifyBlobs = false;
+      }
+    }
+
+    // Memory cache fallback
+    const item = this.memoryCache.get(fullKey);
+    if (!item) {
+      console.log(`❌ Memory cache miss: ${fullKey}`);
+      return { value: null, cached: false };
+    }
+
+    if (Date.now() > item.expiry) {
+      console.log(`⏰ Memory cache expired: ${fullKey}`);
+      this.memoryCache.delete(fullKey);
+      return { value: null, cached: false };
+    }
+
+    console.log(`✅ Memory cache hit: ${fullKey}`);
+    return { value: item.value, cached: true, cacheType: "memory" };
+  }
+
   async set(key: string, value: any, cacheType?: CacheType, ttl?: number): Promise<void> {
     const fullKey = this.getKey(key, cacheType);
     const expiry = Date.now() + (ttl || CACHE_TTLS[cacheType || "fileContent"]) * 1000;
@@ -232,6 +279,12 @@ export class CacheManager {
 
   async getFileContent(key: string): Promise<any> {
     return this.get(key, "fileContent");
+  }
+
+  async getFileContentWithCacheInfo(
+    key: string
+  ): Promise<{ value: any; cached: boolean; cacheType?: string }> {
+    return this.getWithCacheInfo(key, "fileContent");
   }
 
   async setFileContent(key: string, value: any): Promise<void> {

@@ -172,6 +172,8 @@ export const handler: Handler = async (
       };
     }> = [];
 
+    let overallCacheStatus = { cached: true, cacheType: undefined as string | undefined }; // Assume cached unless we fetch
+
     for (const resource of resources) {
       if (!resource.ingredients) {
         console.warn(`⚠️ Resource ${resource.name} has no ingredients`);
@@ -196,7 +198,9 @@ export const handler: Handler = async (
       try {
         // Try to get from cache first
         const cacheKey = `usfm:${url}`;
-        let usfm = await cache.getFileContent(cacheKey);
+        const cacheResult = await cache.getFileContentWithCacheInfo(cacheKey);
+        let usfm = cacheResult.value;
+        const wasCache = cacheResult.cached;
 
         if (!usfm) {
           console.log(`🔄 Cache miss for ${resource.name}, downloading...`);
@@ -214,8 +218,15 @@ export const handler: Handler = async (
           // Cache the file content
           await cache.setFileContent(cacheKey, usfm);
           console.log(`💾 Cached ${resource.name} (${usfm.length} chars)`);
+
+          // Mark as not cached since we had to fetch
+          overallCacheStatus.cached = false;
         } else {
           console.log(`✅ Cache hit for ${resource.name} (${usfm.length} chars)`);
+          // Update cache type info if we have a cache hit
+          if (cacheResult.cacheType && !overallCacheStatus.cacheType) {
+            overallCacheStatus.cacheType = cacheResult.cacheType;
+          }
         }
 
         // Extract the requested text
@@ -302,7 +313,7 @@ export const handler: Handler = async (
       };
     }
 
-    return timedResponse(result, startTime);
+    return timedResponse(result, startTime, undefined, overallCacheStatus);
   } catch (error) {
     console.error("Error in fetch-scripture:", error);
     return {
