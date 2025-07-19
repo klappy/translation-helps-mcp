@@ -46,6 +46,7 @@
 		isTyping?: boolean;
 		status?: 'sending' | 'sent' | 'error';
 		thinkingTrace?: string[];
+		isFallback?: boolean;
 	}
 
 	interface ApiCall {
@@ -243,7 +244,8 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 				apiCalls: response.apiCalls,
 				responseTime: response.responseTime,
 				thinkingTrace: response.thinkingTrace,
-				status: 'sent'
+				status: 'sent',
+				isFallback: response.isFallback
 			};
 
 			messages = [...messages, assistantMessage];
@@ -272,7 +274,7 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 	// Real AI response using browser LLM with Bible context
 	async function generateAIResponse(
 		userMessage: string
-	): Promise<{ content: string; apiCalls: ApiCall[]; responseTime: number; thinkingTrace: string[] }> {
+	): Promise<{ content: string; apiCalls: ApiCall[]; responseTime: number; thinkingTrace: string[]; isFallback?: boolean }> {
 		const startTime = performance.now();
 		const apiCalls: ApiCall[] = [];
 
@@ -495,11 +497,18 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 
 		const responseTime = performance.now() - startTime;
 
+		// Update thinking trace if it's a fallback response
+		if ((llmResponse as any).isFallback) {
+			thinkingTrace.push(`🎭 **OpenAI API call failed** - falling back to development mode`);
+			thinkingTrace.push(`⚠️ **Using pre-written mock response** instead of real AI`);
+		}
+
 		return {
 			content: llmResponse.success ? llmResponse.response : `Error: ${llmResponse.error}`,
 			apiCalls,
 			responseTime: responseTime,
-			thinkingTrace
+			thinkingTrace,
+			isFallback: (llmResponse as any).isFallback || false
 		};
 	}
 
@@ -715,7 +724,14 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 												<span class="text-sm font-medium">You</span>
 											{:else}
 												<Bot class="h-4 w-4" />
-												<span class="text-sm font-medium">Bible AI</span>
+												<div class="flex items-center space-x-2">
+													<span class="text-sm font-medium">Bible AI</span>
+													{#if message.isFallback}
+														<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+															🎭 Mock
+														</span>
+													{/if}
+												</div>
 											{/if}
 										</div>
 										<div class="flex items-center space-x-2">
