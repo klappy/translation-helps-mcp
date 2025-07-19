@@ -67,10 +67,11 @@
 			}
 		},
 		{
-			name: 'Search Resources',
+			name: 'List Available Resources',
 			tool: 'translation_helps_search_resources',
-			description: 'Search across all translation resources using flexible criteria',
-			category: 'search',
+			description:
+				'Get a list of available translation resources filtered by criteria (metadata only)',
+			category: 'metadata',
 			parameters: [
 				{
 					name: 'language',

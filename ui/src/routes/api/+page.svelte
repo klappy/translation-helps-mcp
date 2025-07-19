@@ -111,9 +111,10 @@
 			}
 		},
 		{
-			name: 'Search Resources',
+			name: 'List Available Resources',
 			path: '/api/search-resources',
-			description: 'Search across all translation resources using flexible criteria',
+			description:
+				'Get a list of available translation resources filtered by criteria (metadata only)',
 			method: 'GET',
 			deprecated: false,
 			parameters: [
@@ -147,13 +148,21 @@
 				response: {
 					resources: [
 						{
-							type: 'scripture',
+							name: 'unfoldingWord Literal Text',
 							language: 'en',
 							organization: 'unfoldingWord',
-							available: true
+							type: 'scripture',
+							description: 'A literal Bible translation'
+						},
+						{
+							name: 'Translation Notes',
+							language: 'en',
+							organization: 'unfoldingWord',
+							type: 'notes',
+							description: 'Translation help notes'
 						}
 					],
-					total: 1
+					totalResults: 2
 				}
 			}
 		},
