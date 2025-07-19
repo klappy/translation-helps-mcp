@@ -26,6 +26,138 @@
 	// MCP Tools documentation
 	const mcpTools = [
 		{
+			name: 'Fetch Resources',
+			tool: 'translation_helps_fetch_resources',
+			description: 'Get comprehensive translation resources for a Bible reference',
+			category: 'comprehensive',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "John 3:16")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (default: "en")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (default: "unfoldingWord")'
+				},
+				{
+					name: 'resources',
+					type: 'array',
+					required: false,
+					default: '["scripture", "notes", "questions", "words", "links"]',
+					description: 'Resource types to fetch'
+				}
+			],
+			path: '/api/fetch-resources',
+			example: {
+				reference: 'Titus 1:1',
+				language: 'en',
+				organization: 'unfoldingWord'
+			}
+		},
+		{
+			name: 'Search Resources',
+			tool: 'translation_helps_search_resources',
+			description: 'Search across all translation resources using flexible criteria',
+			category: 'search',
+			parameters: [
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					description: 'Filter by language'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					description: 'Filter by organization'
+				},
+				{
+					name: 'query',
+					type: 'string',
+					required: false,
+					description: 'Search query string'
+				}
+			],
+			path: '/api/search-resources',
+			example: {
+				query: 'faith',
+				language: 'en'
+			}
+		},
+		{
+			name: 'Get Context',
+			tool: 'translation_helps_get_context',
+			description: 'Get contextual information and cross-references for Bible passages',
+			category: 'context',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "John 3:16")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (default: "en")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (default: "unfoldingWord")'
+				}
+			],
+			path: '/api/get-context',
+			example: {
+				reference: 'John 3:16',
+				language: 'en'
+			}
+		},
+		{
+			name: 'Get Languages',
+			tool: 'translation_helps_get_languages',
+			description: 'Get list of available languages and organizations',
+			category: 'metadata',
+			parameters: [],
+			path: '/api/get-languages',
+			example: {}
+		},
+		{
+			name: 'Extract References',
+			tool: 'translation_helps_extract_references',
+			description: 'Extract and parse Bible references from text',
+			category: 'parsing',
+			parameters: [
+				{
+					name: 'text',
+					type: 'string',
+					required: true,
+					description: 'Text containing Bible references'
+				}
+			],
+			path: '/api/extract-references',
+			example: {
+				text: 'See John 3:16 and Romans 1:1 for more details'
+			}
+		},
+		{
 			name: 'Browse Translation Words',
 			tool: 'translation_helps_browse_words',
 			description: 'Browse available translation word articles by category',
@@ -52,92 +184,107 @@
 					description: 'Organization (e.g., "unfoldingWord")'
 				}
 			],
+			path: '/api/browse-translation-words',
 			example: {
-				request: {
-					language: 'en',
-					category: 'kt',
-					organization: 'unfoldingWord'
-				},
-				response: {
-					content: [
-						{
-							path: 'kt/grace.md',
-							name: 'grace',
-							category: 'kt'
-						},
-						{
-							path: 'kt/love.md',
-							name: 'love',
-							category: 'kt'
-						}
-					]
-				}
+				language: 'en',
+				category: 'kt',
+				organization: 'unfoldingWord'
 			},
-			useCase: 'Discover what translation word articles are available for a language',
-			path: '/api/browse-translation-words' // REST API equivalent for testing
+			sampleResponse: {
+				words: [
+					{
+						name: 'grace',
+						aliases: ['favor', 'kindness']
+					},
+					{
+						name: 'love',
+						aliases: ['beloved', 'loving']
+					}
+				]
+			}
 		},
 		{
 			name: 'Get Translation Word',
 			tool: 'translation_helps_get_word',
-			description: 'Get a specific translation word article by term or path',
+			description: 'Get detailed information about a specific translation word',
 			category: 'translation-words',
 			parameters: [
 				{
 					name: 'term',
 					type: 'string',
-					required: false,
-					description: 'Word/term to look up (e.g., "grace", "apostle")'
+					required: true,
+					description: 'The translation word term to lookup'
 				},
 				{
 					name: 'path',
 					type: 'string',
 					required: false,
-					description: 'Direct path to the article (e.g., "kt/grace.md")'
+					description: 'Optional path for nested terms'
 				},
 				{
 					name: 'language',
 					type: 'string',
 					required: false,
 					default: 'en',
-					description: 'Language code (e.g., "en", "es", "fr")'
+					description: 'Language code (default: "en")'
 				},
 				{
 					name: 'organization',
 					type: 'string',
 					required: false,
 					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
+					description: 'Organization (default: "unfoldingWord")'
 				}
 			],
+			path: '/api/get-translation-word',
 			example: {
-				request: {
-					term: 'paul',
-					language: 'en'
-				},
-				response: {
-					content: [
-						{
-							term: 'paul',
-							definition: 'Paul, Saul',
-							title: 'Paul, Saul',
-							subtitle: 'Facts:',
-							content:
-								'# Paul, Saul\n\n## Facts:\n\nPaul was a leader of the early church who was sent by Jesus to take the good news to many other people groups.\n\n* Paul was a Jew who was born in the Roman city of Tarsus, and was therefore also a Roman citizen.\n* Paul was originally called by his Jewish name, Saul...',
-							titleContent: 'Paul, Saul',
-							subtitleContent: 'Facts:',
-							mainContent:
-								'Paul was a leader of the early church who was sent by Jesus to take the good news to many other people groups...'
-						}
-					]
-				}
+				term: 'grace',
+				language: 'en',
+				organization: 'unfoldingWord'
 			},
-			useCase: 'Get complete definition and context for biblical terms',
-			path: '/api/fetch-translation-words' // REST API equivalent for testing
+			sampleResponse: {
+				term: 'grace',
+				definition: 'Grace is when God gives us good things that we do not deserve.',
+				related: ['mercy', 'favor', 'kindness']
+			}
+		},
+		{
+			name: 'Get Words for Reference',
+			tool: 'translation_helps_words_for_reference',
+			description: 'Get translation words that apply to a specific Bible reference',
+			category: 'translation-words',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "John 3:16")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (default: "en")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (default: "unfoldingWord")'
+				}
+			],
+			path: '/api/get-words-for-reference',
+			example: {
+				reference: 'John 3:16',
+				language: 'en'
+			}
 		},
 		{
 			name: 'Fetch Scripture',
 			tool: 'translation_helps_fetch_scripture',
-			description: 'Fetch Bible scripture text for a specific reference',
+			description: 'Get Bible verses with multiple translations and context',
 			category: 'scripture',
 			parameters: [
 				{
@@ -151,101 +298,136 @@
 					type: 'string',
 					required: false,
 					default: 'en',
-					description: 'Language code (e.g., "en", "es", "fr")'
+					description: 'Language code (default: "en")'
 				},
 				{
 					name: 'organization',
 					type: 'string',
 					required: false,
 					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
+					description: 'Organization (default: "unfoldingWord")'
 				},
 				{
 					name: 'translation',
 					type: 'string',
 					required: false,
-					description:
-						'Specific translation (e.g., "ult", "ust", "t4t") or "all" for all translations'
+					description: 'Specific translation (e.g., "ULT", "UST") or "all"'
 				}
 			],
+			path: '/api/fetch-scripture',
 			example: {
-				request: {
-					reference: 'Titus 1:1',
-					language: 'en'
-				},
-				response: {
-					scripture: {
-						text: '1 Paul, a servant of God and an apostle of Jesus Christ, for the faith of the chosen people of God and knowledge of the truth that agrees with godliness,',
-						translation: 'ULT',
-						citation: {
-							resource: 'unfoldingWord® Literal Text',
-							organization: 'unfoldingWord',
-							language: 'en',
-							url: 'https://git.door43.org/unfoldingWord/en_ult/raw/branch/master/57-TIT.usfm',
-							version: 'master'
-						}
-					}
-				}
-			},
-			useCase: 'Get Bible text for a specific verse or passage',
-			path: '/api/fetch-scripture' // REST API equivalent for testing
+				reference: 'John 3:16',
+				language: 'en',
+				organization: 'unfoldingWord',
+				translation: 'ULT'
+			}
 		},
 		{
 			name: 'Fetch Translation Notes',
 			tool: 'translation_helps_fetch_translation_notes',
-			description: 'Fetch translation notes for a specific Bible reference',
+			description: 'Get detailed translation notes with cultural and linguistic context',
 			category: 'notes',
 			parameters: [
 				{
 					name: 'reference',
 					type: 'string',
 					required: true,
-					description: 'Bible reference (e.g., "Titus 1:1")'
+					description: 'Bible reference (e.g., "John 3:16")'
 				},
 				{
 					name: 'language',
 					type: 'string',
 					required: false,
 					default: 'en',
-					description: 'Language code (e.g., "en", "es", "fr")'
+					description: 'Language code (default: "en")'
 				},
 				{
 					name: 'organization',
 					type: 'string',
 					required: false,
 					default: 'unfoldingWord',
-					description: 'Organization (e.g., "unfoldingWord")'
+					description: 'Organization (default: "unfoldingWord")'
 				},
 				{
 					name: 'includeIntro',
 					type: 'boolean',
 					required: false,
 					default: false,
-					description: 'Include introduction notes (default: false)'
+					description: 'Include introductory notes for books/chapters'
 				}
 			],
+			path: '/api/fetch-translation-notes',
 			example: {
-				request: {
-					reference: 'Titus 1:1',
-					language: 'en'
+				reference: 'John 3:16',
+				language: 'en',
+				organization: 'unfoldingWord'
+			}
+		},
+		{
+			name: 'Fetch Translation Questions',
+			tool: 'translation_helps_fetch_translation_questions',
+			description: 'Get comprehension and translation questions for Bible passages',
+			category: 'questions',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "John 3:16")'
 				},
-				response: {
-					translationNotes: [
-						{
-							reference: 'TIT 1:1',
-							quote: 'κατὰ πίστιν ἐκλεκτῶν Θεοῦ καὶ ἐπίγνωσιν ἀληθείας',
-							note: "The words **faith**, **knowledge**, and **truth** are abstract nouns. If it would be more clear in your language, you could express those ideas in another way. Alternate translation: [to help God's chosen people to continue to trust him and to know every true thing]"
-						},
-						{
-							reference: 'TIT 1:1',
-							quote: 'ἐκλεκτῶν Θεοῦ',
-							note: 'If your language does not use this passive form, you could express the idea in active form or in another way that is natural in your language. Alternate translation: [of the people whom God has chosen]'
-						}
-					]
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (default: "en")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (default: "unfoldingWord")'
 				}
-			},
-			useCase: 'Get detailed translation notes for Bible study',
-			path: '/api/fetch-translation-notes' // REST API equivalent for testing
+			],
+			path: '/api/fetch-translation-questions',
+			example: {
+				reference: 'John 3:16',
+				language: 'en'
+			}
+		},
+		{
+			name: 'Fetch Translation Word Links',
+			tool: 'translation_helps_fetch_translation_word_links',
+			description: 'Get links between translation words and scripture references',
+			category: 'links',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'string',
+					required: true,
+					description: 'Bible reference (e.g., "John 3:16")'
+				},
+				{
+					name: 'language',
+					type: 'string',
+					required: false,
+					default: 'en',
+					description: 'Language code (default: "en")'
+				},
+				{
+					name: 'organization',
+					type: 'string',
+					required: false,
+					default: 'unfoldingWord',
+					description: 'Organization (default: "unfoldingWord")'
+				}
+			],
+			path: '/api/fetch-translation-word-links',
+			example: {
+				reference: 'John 3:16',
+				language: 'en'
+			}
 		}
 	];
 
