@@ -141,6 +141,14 @@
 			description: 'Fetch all resources for a reference',
 			color: 'from-yellow-500 to-orange-500',
 			category: 'comprehensive'
+		},
+		{
+			name: 'Available Books',
+			icon: BookOpen,
+			path: '/.netlify/functions/get-available-books',
+			description: 'Get list of available books for each resource type',
+			color: 'from-teal-500 to-cyan-500',
+			category: 'metadata'
 		}
 	];
 
@@ -275,7 +283,7 @@
 		const results: TestResult[] = [];
 
 		// Generate test cases based on config
-		const testCases = generateTestCases(bulkConfig);
+		const testCases = await generateTestCases(bulkConfig);
 		debugLogs.push(`🚀 Starting bulk test suite with ${testCases.length} test cases`);
 		debugLogs.push(`⚡ Parallel execution: ${bulkConfig.parallel ? 'enabled' : 'disabled'}`);
 		debugLogs.push(`⏱️ Delay between requests: ${bulkConfig.delay}ms`);
@@ -425,8 +433,104 @@
 		}
 	}
 
-	// Generate test cases for bulk testing
-	function generateTestCases(config: any) {
+	// Smart test case generation using available books
+	async function generateTestCases(config: any) {
+		const testCases = [];
+
+		try {
+			// First, get available books for each resource
+			const availabilityResponse = await fetch(
+				'/.netlify/functions/get-available-books?language=en&organization=unfoldingWord'
+			);
+			if (!availabilityResponse.ok) {
+				console.warn('Could not fetch available books, using fallback references');
+				return generateFallbackTestCases(config);
+			}
+
+			const availability = await availabilityResponse.json();
+			const resources = availability.resources || [];
+
+			// Find common books across different resources
+			const bibleBooks = resources.find((r) => r.resource === 'bible')?.availableBooks || [];
+			const notesBooks = resources.find((r) => r.resource === 'tn')?.availableBooks || [];
+			const questionsBooks = resources.find((r) => r.resource === 'tq')?.availableBooks || [];
+
+			// Use books that exist in Bible for sure, and prefer ones that also have notes/questions
+			const priorityBooks = bibleBooks
+				.filter((book) => notesBooks.includes(book) || questionsBooks.includes(book))
+				.slice(0, 10); // Take top 10
+
+			const fallbackBooks = bibleBooks.slice(0, 15); // Use any Bible books as fallback
+			const smartBooks = priorityBooks.length > 5 ? priorityBooks : fallbackBooks;
+
+			// Convert book codes to readable references
+			const bookToReference = {
+				TIT: 'Titus 1:1',
+				JHN: 'John 3:16',
+				GEN: 'Genesis 1:1',
+				MAT: 'Matthew 5:1',
+				MRK: 'Mark 1:1',
+				ROM: 'Romans 1:1',
+				'1CO': '1 Corinthians 1:1',
+				EPH: 'Ephesians 1:1',
+				PHP: 'Philippians 1:1',
+				COL: 'Colossians 1:1',
+				GAL: 'Galatians 1:1',
+				ACT: 'Acts 1:1',
+				LUK: 'Luke 1:1',
+				HEB: 'Hebrews 1:1',
+				JAS: 'James 1:1'
+			};
+
+			const smartReferences = smartBooks
+				.map((book) => bookToReference[book])
+				.filter((ref) => ref) // Remove undefined
+				.slice(0, 8); // Limit to reasonable number
+
+			if (smartReferences.length === 0) {
+				console.warn('No smart references found, using fallback');
+				return generateFallbackTestCases(config);
+			}
+
+			console.log(`📚 Using ${smartReferences.length} smart references based on available books`);
+
+			for (let i = 0; i < config.count; i++) {
+				const reference = smartReferences[i % smartReferences.length];
+				const endpoint = endpoints[i % endpoints.length];
+
+				// Skip get-available-books endpoint for bulk testing (it doesn't need a reference)
+				if (endpoint.path.includes('get-available-books')) {
+					testCases.push({
+						endpoint: endpoint.path,
+						params: {
+							language: 'en',
+							organization: 'unfoldingWord'
+						}
+					});
+				} else {
+					testCases.push({
+						endpoint: endpoint.path,
+						params: {
+							reference,
+							language: 'en',
+							organization: 'unfoldingWord',
+							includeTitle: 'true',
+							includeSubtitle: 'true',
+							includeContent: 'true'
+						}
+					});
+				}
+			}
+		} catch (error) {
+			console.error('Error generating smart test cases:', error);
+			return generateFallbackTestCases(config);
+		}
+
+		return testCases;
+	}
+
+	// Fallback test case generation
+	function generateFallbackTestCases(config: any) {
 		const testCases = [];
 		const references = ['Titus 1:1', 'John 3:16', 'Genesis 1:1', 'Matthew 5:1', 'Mark 1:1'];
 
