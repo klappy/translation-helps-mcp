@@ -250,6 +250,11 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 				overallStatus: calculateOverallStatus(response.apiCalls, response.isFallback)
 			};
 
+			// Add the message to collapsed thinking traces by default
+			if (response.thinkingTrace && response.thinkingTrace.length > 0) {
+				collapsedThinkingTraces.add(assistantMessage.id);
+			}
+
 			messages = [...messages, assistantMessage];
 		} catch (error) {
 			// Remove typing indicator
@@ -883,6 +888,63 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 										{/if}
 									{:else}
 
+										<!-- Thinking Trace for Completed Messages (at the beginning) -->
+										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
+											<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+												<div class="mb-3 flex items-center justify-between">
+													<div class="flex items-center space-x-2">
+														<Lightbulb class="h-4 w-4 text-blue-400" />
+														<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
+														{#if message.overallStatus}
+															{#if message.overallStatus === 'success'}
+																<div class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1">
+																	<div class="h-2 w-2 rounded-full bg-green-500"></div>
+																	<span class="text-xs font-medium text-green-300">All Systems OK</span>
+																</div>
+															{:else if message.overallStatus === 'warning'}
+																<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
+																	<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
+																	<span class="text-xs font-medium text-yellow-300">Mock Response</span>
+																</div>
+															{:else if message.overallStatus === 'error'}
+																<div class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1">
+																	<div class="h-2 w-2 rounded-full bg-red-500"></div>
+																	<span class="text-xs font-medium text-red-300">API Errors</span>
+																</div>
+															{/if}
+														{/if}
+													</div>
+													<button
+														on:click={() => toggleThinkingTrace(message.id)}
+														class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-blue-500/20"
+													>
+														{#if collapsedThinkingTraces.has(message.id)}
+															<ChevronDown class="h-3 w-3 text-blue-400" />
+															<span class="text-blue-400">Show</span>
+														{:else}
+															<ChevronUp class="h-3 w-3 text-blue-400" />
+															<span class="text-blue-400">Hide</span>
+														{/if}
+													</button>
+												</div>
+												{#if !collapsedThinkingTraces.has(message.id)}
+													<div class="space-y-2">
+														{#each message.thinkingTrace as step, index}
+															<div class="flex items-start space-x-3">
+																<div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
+																	{index + 1}
+																</div>
+																<div class="flex-1 text-sm text-blue-200">
+																	{@html marked(step)}
+																</div>
+															</div>
+														{/each}
+													</div>
+												{/if}
+											</div>
+										{/if}
+
+										<!-- AI Response Content -->
 										<div class="ai-response-content max-w-none leading-relaxed text-gray-300">
 											<style>
 												/* Override Tailwind's base layer resets */
@@ -945,62 +1007,6 @@ This is a demo of the MCP integration capabilities, not a replacement for seriou
 											</style>
 											{@html marked(message.content)}
 										</div>
-
-										<!-- Thinking Trace for Completed Messages -->
-										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
-											<div class="mt-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-												<div class="mb-3 flex items-center justify-between">
-													<div class="flex items-center space-x-2">
-														<Lightbulb class="h-4 w-4 text-blue-400" />
-														<span class="text-sm font-medium text-blue-300">AI Thinking Process</span>
-														{#if message.overallStatus}
-															{#if message.overallStatus === 'success'}
-																<div class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1">
-																	<div class="h-2 w-2 rounded-full bg-green-500"></div>
-																	<span class="text-xs font-medium text-green-300">All Systems OK</span>
-																</div>
-															{:else if message.overallStatus === 'warning'}
-																<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
-																	<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
-																	<span class="text-xs font-medium text-yellow-300">Mock Response</span>
-																</div>
-															{:else if message.overallStatus === 'error'}
-																<div class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1">
-																	<div class="h-2 w-2 rounded-full bg-red-500"></div>
-																	<span class="text-xs font-medium text-red-300">API Errors</span>
-																</div>
-															{/if}
-														{/if}
-													</div>
-													<button
-														on:click={() => toggleThinkingTrace(message.id)}
-														class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-blue-500/20"
-													>
-														{#if collapsedThinkingTraces.has(message.id)}
-															<ChevronDown class="h-3 w-3 text-blue-400" />
-															<span class="text-blue-400">Show</span>
-														{:else}
-															<ChevronUp class="h-3 w-3 text-blue-400" />
-															<span class="text-blue-400">Hide</span>
-														{/if}
-													</button>
-												</div>
-												{#if !collapsedThinkingTraces.has(message.id)}
-													<div class="space-y-2">
-														{#each message.thinkingTrace as step, index}
-															<div class="flex items-start space-x-3">
-																<div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300">
-																	{index + 1}
-																</div>
-																<div class="flex-1 text-sm text-blue-200">
-																	{@html marked(step)}
-																</div>
-															</div>
-														{/each}
-													</div>
-												{/if}
-											</div>
-										{/if}
 									{/if}
 
 									<!-- Rich Data Display -->
