@@ -1,0 +1,47 @@
+# Netlify Configuration for Translation Helps API + UI
+
+[build]
+  functions = "netlify/functions"
+  publish = "ui/build"
+  command = "npm run build:all"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Development environment variables for Netlify Blobs
+[context.dev.environment]
+  NETLIFY_BLOBS_CONTEXT = ""  # This will be populated automatically by netlify dev
+
+# Redirect /api/* to functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true
+
+# CORS headers for API endpoints
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Cache-Control = "public, max-age=300"
+
+# Test redirect to debug
+[[redirects]]
+  from = "/test-redirect"
+  to = "/"
+  status = 301
+
+# SPA fallback: serve index.html for all non-API routes
+# This must come AFTER the API redirect (lower priority)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Function-specific configuration
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild" 
