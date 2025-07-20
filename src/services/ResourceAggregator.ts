@@ -18,6 +18,8 @@ export interface ResourceOptions {
   language: string;
   organization: string;
   resources: string[];
+  includeIntro?: boolean;
+  includeContext?: boolean;
 }
 
 export interface Scripture {
@@ -353,7 +355,7 @@ export class ResourceAggregator {
         const tsvData = await fileResponse.text();
 
         if (tsvData) {
-          const notes = this.parseTNFromTSV(tsvData, reference);
+          const notes = this.parseTNFromTSV(tsvData, reference, options.includeIntro);
           if (notes.length > 0) {
             logger.info(
               `Successfully fetched ${notes.length} translation notes from ${resourceName}`
@@ -911,29 +913,81 @@ export class ResourceAggregator {
   /**
    * Parse Translation Notes from TSV data
    */
-  private parseTNFromTSV(tsvData: string, reference: ParsedReference): TranslationNote[] {
+  private parseTNFromTSV(
+    tsvData: string,
+    reference: ParsedReference,
+    includeIntro: boolean = true
+  ): TranslationNote[] {
     const notes: TranslationNote[] = [];
 
     try {
-      const lines = tsvData.split("\n").slice(1); // Skip header
+      const lines = tsvData.split("\n");
+
+      // Skip header line if it exists
+      if (lines.length > 0 && lines[0].startsWith("Reference")) {
+        lines.shift();
+      }
 
       for (const line of lines) {
         if (!line.trim()) continue;
 
         const cols = line.split("\t");
-        if (cols.length < 9) continue;
+        if (cols.length < 7) continue;
 
-        const chapter = parseInt(cols[1]);
-        const verse = parseInt(cols[2]);
+        const [ref, id, tags, supportReference, quote, occurrence, noteText] = cols;
 
-        // Filter for the requested reference
-        if (reference.chapter && chapter !== reference.chapter) continue;
-        if (reference.verse && verse !== reference.verse) continue;
+        // Skip intro notes if not requested
+        if (!includeIntro && ref.includes("intro")) {
+          continue;
+        }
+
+        // Parse the reference
+        const refMatch = ref.match(/(\d+):(\d+)/);
+
+        if (refMatch) {
+          // Regular verse note
+          const chapterNum = parseInt(refMatch[1]);
+          const verseNum = parseInt(refMatch[2]);
+
+          // Check if this note is in our range
+          let include = false;
+
+          if (reference.endVerse && reference.endVerse !== reference.verse) {
+            // Verse range within same chapter
+            include =
+              chapterNum === reference.chapter &&
+              verseNum >= reference.verse! &&
+              verseNum <= reference.endVerse;
+          } else if (reference.verse) {
+            // Single verse
+            include = chapterNum === reference.chapter && verseNum === reference.verse;
+          } else {
+            // Full chapter
+            include = chapterNum === reference.chapter;
+          }
+
+          if (!include) continue;
+        } else if (includeIntro && ref.includes("intro")) {
+          // Handle intro notes
+          if (ref === "front:intro") {
+            // Book intro - always include if includeIntro is true
+          } else if (ref.includes(":intro")) {
+            // Chapter intro - check if it's for our chapter
+            const introChapterMatch = ref.match(/(\d+):intro/);
+            if (introChapterMatch) {
+              const introChapter = parseInt(introChapterMatch[1]);
+              if (introChapter !== reference.chapter) continue;
+            }
+          }
+        } else {
+          // Skip notes that don't match our patterns
+          continue;
+        }
 
         const note: TranslationNote = {
-          reference: `${reference.book} ${chapter}:${verse}`,
-          quote: cols[6] || "",
-          note: cols[8] || "",
+          reference: `${reference.book} ${ref}`,
+          quote: quote || "",
+          note: noteText || "",
         };
 
         notes.push(note);

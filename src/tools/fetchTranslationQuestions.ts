@@ -1,18 +1,17 @@
 /**
  * Fetch Translation Questions Tool
  * Tool for fetching translation questions for a specific Bible reference
+ * Uses shared core service for consistency with Netlify functions
  */
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { parseReference } from "../parsers/referenceParser.js";
-import { ResourceAggregator } from "../services/ResourceAggregator.js";
+import { fetchTranslationQuestions } from "../../netlify/functions/_shared/translation-questions-service.js";
 import { estimateTokens } from "../utils/tokenCounter.js";
-import { formatCitation } from "../utils/referenceFormatter.js";
 
 // Input schema
 export const FetchTranslationQuestionsArgs = z.object({
-  reference: z.string().describe('Bible reference (e.g., "Matthew 5:1")'),
+  reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
   language: z.string().optional().default("en").describe('Language code (default: "en")'),
   organization: z
     .string()
@@ -36,46 +35,33 @@ export async function handleFetchTranslationQuestions(args: FetchTranslationQues
       organization: args.organization,
     });
 
-    // Parse the Bible reference
-    const reference = parseReference(args.reference);
-    if (!reference) {
-      throw new Error(`Invalid Bible reference: ${args.reference}`);
-    }
-
-    // Set up options for translation questions only
-    const options = {
+    // Use the shared translation questions service (same as Netlify functions)
+    const result = await fetchTranslationQuestions({
+      reference: args.reference,
       language: args.language,
       organization: args.organization,
-      resources: ["questions"],
-    };
+    });
 
-    // Fetch translation questions using aggregator
-    const aggregator = new ResourceAggregator();
-    const resources = await aggregator.aggregateResources(reference, options);
-
-    // Build response
+    // Build enhanced response format for MCP
     const response = {
-      reference: {
-        book: reference.book,
-        chapter: reference.chapter,
-        verse: reference.verse,
-        verseEnd: reference.endVerse,
-      },
-      translationQuestions: resources.translationQuestions || [],
+      translationQuestions: result.translationQuestions,
+      citation: result.citation,
+      language: args.language,
+      organization: args.organization,
       metadata: {
-        language: args.language,
-        organization: args.organization,
-        timestamp: new Date().toISOString(),
-        questionsCount: resources.translationQuestions?.length || 0,
-        tokenEstimate: estimateTokens(JSON.stringify(resources)),
         responseTime: Date.now() - startTime,
+        tokenEstimate: estimateTokens(JSON.stringify(result)),
+        timestamp: new Date().toISOString(),
+        questionsFound: result.metadata.questionsFound,
+        cached: result.metadata.cached,
       },
     };
 
     logger.info("Translation questions fetched successfully", {
       reference: args.reference,
-      questionsCount: response.metadata.questionsCount,
+      questionsFound: result.metadata.questionsFound,
       responseTime: response.metadata.responseTime,
+      cached: result.metadata.cached,
     });
 
     return response;

@@ -3,109 +3,53 @@
  * GET /api/get-languages
  * IMPLEMENTS: Enhanced caching with version-aware keys and proper headers
  */
-import { DCSApiClient } from "../../src/services/DCSApiClient.js";
-import { corsHeaders, errorResponse, withConservativeCache, buildDCSCacheKey, } from "./_shared/utils";
+import { timedResponse, errorResponse } from "./_shared/utils";
+import { getLanguages } from "./_shared/languages-service";
 export const handler = async (event, context) => {
-    console.log("Get languages requested with enhanced caching");
-    // Handle CORS preflight
-    if (event.httpMethod === "OPTIONS") {
-        return { statusCode: 204, headers: corsHeaders };
-    }
-    if (event.httpMethod !== "GET") {
-        return errorResponse(405, "Method not allowed", "METHOD_NOT_ALLOWED");
-    }
     const startTime = Date.now();
-    // Fix Request construction for production
-    const protocol = event.headers["x-forwarded-proto"] || "https";
-    const host = event.headers.host || "translation-helps-mcp.netlify.app";
-    const path = event.path || "/.netlify/functions/get-languages";
-    const request = new Request(`${protocol}://${host}${path}`, {
-        method: event.httpMethod,
-        headers: event.headers,
-    });
-    try {
-        // Build conservative cache key
-        const cacheKey = buildDCSCacheKey("languages", {});
-        console.log("Fetching languages using enhanced caching strategy...");
-        // Use enhanced caching with proper headers
-        const cacheResult = await withConservativeCache(request, cacheKey, async () => {
-            console.log("Cache miss - fetching fresh languages from DCS");
-            // Use our DCS API client to fetch language data
-            const dcsClient = new DCSApiClient();
-            const response = await dcsClient.getLanguages();
-            if (!response.success) {
-                console.error("Failed to fetch languages from DCS:", response.error);
-                throw new Error(response.error?.message || "Failed to fetch languages from DCS");
-            }
-            const languages = response.data || [];
-            // Transform the data to include additional metadata for the UI
-            const transformedLanguages = languages.map((lang) => ({
-                code: lang.code,
-                name: lang.name,
-                romanizedName: lang.romanizedName,
-                direction: lang.direction,
-                region: lang.region,
-                homeCountry: lang.homeCountry,
-                countryCodes: lang.countryCodes,
-                alternativeNames: lang.alternativeNames,
-                isGatewayLanguage: lang.isGatewayLanguage,
-                // Add common resource types that are typically available
-                resources: ["scripture", "notes", "questions", "words", "links"],
-            }));
-            console.log(`Successfully fetched ${transformedLanguages.length} languages from DCS`);
-            return {
-                success: true,
-                data: transformedLanguages,
-                count: transformedLanguages.length,
-                timestamp: new Date().toISOString(),
-            };
-        }, {
-            cacheType: "languages", // Uses conservative 30-minute TTL
-            bypassCache: false,
-        });
-        // Prepare final response with metadata
-        const responseData = {
-            ...cacheResult.data,
-            cached: cacheResult.cached,
-            metadata: {
-                source: "Door43 Content Service with Enhanced Caching",
-                responseTime: Date.now() - startTime,
-                cacheInfo: cacheResult.cacheInfo,
-                implementsPatterns: ["enhanced-caching", "version-aware-keys", "proper-cache-headers"],
-            },
-        };
-        // Log metrics with cache info
-        console.log("METRIC", {
-            function: "get-languages",
-            duration: responseData.metadata.responseTime,
-            languageCount: cacheResult.data.count,
-            cached: cacheResult.cached,
-            cacheVersion: cacheResult.cacheInfo?.version,
-            implementsEnhancedCaching: true,
-        });
+    // Handle CORS
+    if (event.httpMethod === "OPTIONS") {
         return {
             statusCode: 200,
             headers: {
-                ...corsHeaders,
-                ...cacheResult.cacheHeaders,
-                "X-Implements-Patterns": "enhanced-caching,version-aware-keys,proper-headers",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
             },
-            body: JSON.stringify(responseData),
+            body: "",
         };
     }
-    catch (error) {
-        console.error("Error in enhanced get-languages:", error);
-        // Log error metrics
-        console.log("METRIC", {
-            function: "get-languages",
-            duration: Date.now() - startTime,
-            error: true,
-            errorType: error instanceof Error ? error.name : "UnknownError",
+    try {
+        const params = new URLSearchParams(event.queryStringParameters || {});
+        const organization = params.get("organization") || "unfoldingWord";
+        const includeAlternateNames = params.get("includeAlternateNames") === "true";
+        // Use the shared languages service
+        const result = await getLanguages({
+            organization,
+            includeAlternateNames,
         });
-        // Handle specific error types
-        if (error instanceof Error && error.message.includes("DCS")) {
-            return errorResponse(503, "Unable to fetch languages from upstream service", "UPSTREAM_ERROR");
-        }
-        return errorResponse(500, "An unexpected error occurred", "INTERNAL_ERROR");
+        // Build response matching the original API format + enhanced structure
+        const response = {
+            // Original format for backward compatibility
+            languages: result.languages,
+            organization,
+            // Metadata
+            metadata: {
+                timestamp: new Date().toISOString(),
+                responseTime: result.metadata.responseTime,
+                cached: result.metadata.cached,
+                languagesFound: result.metadata.languagesFound,
+                version: "3.6.0",
+            },
+        };
+        return timedResponse(response, startTime, undefined, {
+            cached: result.metadata.cached,
+            cacheType: result.metadata.cached ? "memory" : undefined,
+        });
+    }
+    catch (error) {
+        console.error("Languages error:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return errorResponse(500, errorMessage, "FETCH_ERROR");
     }
 };

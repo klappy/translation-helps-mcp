@@ -1,15 +1,22 @@
 /**
  * Extract References Tool
- * Extract Bible references from text
+ * Tool for extracting Bible references from text
+ * Uses shared core service for consistency with Netlify functions
  */
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
+import { extractReferences } from "../../netlify/functions/_shared/references-service.js";
+import { estimateTokens } from "../utils/tokenCounter.js";
 
 // Input schema
 export const ExtractReferencesArgs = z.object({
-  text: z.string(),
-  context: z.string().optional(),
+  text: z.string().describe("Text containing Bible references to extract"),
+  includeContext: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Include context around each reference"),
 });
 
 export type ExtractReferencesArgs = z.infer<typeof ExtractReferencesArgs>;
@@ -21,93 +28,48 @@ export async function handleExtractReferences(args: ExtractReferencesArgs) {
   const startTime = Date.now();
 
   try {
-    logger.info("Extracting references from text", { textLength: args.text.length });
-
-    // Simple regex patterns for Bible references
-    const patterns = [
-      /\b(?:1|2|3)\s*(?:John|Peter|Kings|Samuel|Chronicles|Corinthians|Thessalonians|Timothy)\s+\d+(?::\d+(?:-\d+)?)?/gi,
-      /\b(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi)\s+\d+(?::\d+(?:-\d+)?)?/gi,
-      /\b(?:Matthew|Mark|Luke|John|Acts|Romans|Galatians|Ephesians|Philippians|Colossians|Philemon|Hebrews|James|Jude|Revelation)\s+\d+(?::\d+(?:-\d+)?)?/gi,
-      /\b(?:Gen|Ex|Lev|Num|Deut|Josh|Judg|Ruth|1Sam|2Sam|1Kgs|2Kgs|1Chr|2Chr|Ezra|Neh|Est|Job|Ps|Prov|Eccl|Song|Isa|Jer|Lam|Ezek|Dan|Hos|Joel|Am|Ob|Jon|Mic|Nah|Hab|Zeph|Hag|Zech|Mal|Mt|Mk|Lk|Jn|Acts|Rom|1Cor|2Cor|Gal|Eph|Phil|Col|1Th|2Th|1Tim|2Tim|Tit|Phlm|Heb|Jas|1Pet|2Pet|1Jn|2Jn|3Jn|Jude|Rev)\.?\s*\d+(?::\d+(?:-\d+)?)?/gi,
-    ];
-
-    const foundReferences: Array<{
-      text: string;
-      startIndex: number;
-      endIndex: number;
-      book: string;
-      chapter?: string;
-      verse?: string;
-      confidence: number;
-    }> = [];
-
-    // Extract references using patterns
-    patterns.forEach((pattern) => {
-      let match;
-      while ((match = pattern.exec(args.text)) !== null) {
-        const referenceText = match[0];
-        const parts = referenceText.split(/[\s:]+/);
-
-        foundReferences.push({
-          text: referenceText,
-          startIndex: match.index,
-          endIndex: match.index + referenceText.length,
-          book: parts[0],
-          chapter: parts[1],
-          verse: parts[2],
-          confidence: 0.8, // Placeholder confidence
-        });
-      }
+    logger.info("Extracting references from text", {
+      textLength: args.text.length,
+      includeContext: args.includeContext,
     });
 
-    // Remove duplicates and sort by position
-    const uniqueReferences = foundReferences
-      .filter(
-        (ref, index, self) =>
-          index === self.findIndex((r) => r.text === ref.text && r.startIndex === ref.startIndex)
-      )
-      .sort((a, b) => a.startIndex - b.startIndex);
-
-    const results = {
+    // Use the shared references service (same as Netlify functions)
+    const result = await extractReferences({
       text: args.text,
-      context: args.context,
-      references: uniqueReferences,
-      totalFound: uniqueReferences.length,
-      timestamp: new Date().toISOString(),
-      responseTime: Date.now() - startTime,
+      includeContext: args.includeContext,
+    });
+
+    // Build enhanced response format for MCP
+    const response = {
+      references: result.references,
+      metadata: {
+        responseTime: Date.now() - startTime,
+        tokenEstimate: estimateTokens(JSON.stringify(result)),
+        timestamp: new Date().toISOString(),
+        referencesFound: result.metadata.referencesFound,
+        textLength: args.text.length,
+      },
     };
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(results, null, 2),
-        },
-      ],
-    };
+    logger.info("References extracted successfully", {
+      textLength: args.text.length,
+      referencesFound: result.metadata.referencesFound,
+      responseTime: response.metadata.responseTime,
+    });
+
+    return response;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Failed to extract references", {
-      args: { textLength: args.text.length, context: args.context },
-      error: (error as Error).message,
+      textLength: args.text.length,
+      error: errorMessage,
       responseTime: Date.now() - startTime,
     });
 
     return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: (error as Error).message,
-              textLength: args.text.length,
-              timestamp: new Date().toISOString(),
-            },
-            null,
-            2
-          ),
-        },
-      ],
-      isError: true,
+      error: errorMessage,
+      text: args.text.substring(0, 100) + "...",
+      timestamp: new Date().toISOString(),
     };
   }
 }

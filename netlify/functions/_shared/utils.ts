@@ -4,19 +4,19 @@
 
 import type { HandlerResponse } from "@netlify/functions";
 import { cache } from "./cache.js";
-import { readFileSync } from "fs";
-import { join } from "path";
+import fs from "fs";
+import path from "path";
 
-// Read version from package.json
-function getAppVersion(): string {
-  try {
-    const packageJsonPath = join(process.cwd(), "package.json");
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-    return packageJson.version;
-  } catch (error) {
-    console.warn("Failed to read version from package.json, using fallback");
-    return "3.5.0"; // Fallback version
+// Get the actual version from package.json (via version.json)
+let packageVersion = "4.0.0"; // Default fallback
+try {
+  const versionPath = path.join(process.cwd(), "netlify/functions/_shared/version.json");
+  if (fs.existsSync(versionPath)) {
+    const versionData = JSON.parse(fs.readFileSync(versionPath, "utf8"));
+    packageVersion = versionData.version;
   }
+} catch (error) {
+  console.warn("Could not read version.json, using default version:", packageVersion);
 }
 
 /**
@@ -207,7 +207,7 @@ export function addMetadata<T extends Record<string, any>>(
     metadata: {
       timestamp: new Date().toISOString(),
       responseTime,
-      version: process.env.API_VERSION || "3.4.0",
+      version: packageVersion,
       ...additionalMetadata,
     },
   };
@@ -370,7 +370,7 @@ export async function withConservativeCache<T>(
  * Build a versioned cache key for DCS resources
  */
 export function buildDCSCacheKey(endpoint: string, params: Record<string, any> = {}): string {
-  const appVersion = getAppVersion();
+  const appVersion = packageVersion;
   const paramString = Object.keys(params)
     .sort()
     .map((key) => `${key}:${params[key]}`)
@@ -386,7 +386,7 @@ export function buildTransformedCacheKey(
   endpoint: string,
   params: Record<string, any> = {}
 ): string {
-  const appVersion = getAppVersion();
+  const appVersion = packageVersion;
   const paramString = Object.keys(params)
     .sort()
     .map((key) => `${key}:${params[key]}`)

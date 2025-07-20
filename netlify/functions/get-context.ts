@@ -4,8 +4,8 @@
  */
 
 import { Handler } from "@netlify/functions";
-import { handleGetContext } from "../../src/tools/getContext.js";
-import { timedResponse, errorResponse } from "./_shared/utils.js";
+import { getContextFromTranslationNotes } from "./_shared/context-service";
+import { timedResponse, errorResponse } from "./_shared/utils";
 
 export const handler: Handler = async (event, context) => {
   const startTime = Date.now();
@@ -31,6 +31,7 @@ export const handler: Handler = async (event, context) => {
       organization = "unfoldingWord",
       includeRawData = "false",
       maxTokens,
+      deepAnalysis = "true",
     } = event.queryStringParameters || {};
 
     if (!reference) {
@@ -39,29 +40,22 @@ export const handler: Handler = async (event, context) => {
       });
     }
 
-    const mcpResult = await handleGetContext({
+    // Use the shared context service
+    const contextResult = await getContextFromTranslationNotes({
       reference,
       language,
       organization,
       includeRawData: includeRawData === "true",
       maxTokens: maxTokens ? parseInt(maxTokens) : undefined,
+      deepAnalysis: deepAnalysis === "true",
     });
 
-    // Unwrap the MCP response format to get the actual data
-    let actualData;
-    try {
-      // MCP returns { content: [{ type: "text", text: "JSON string" }] }
-      // We want to extract and parse the actual JSON data
-      const textContent = mcpResult.content?.[0]?.text;
-      actualData = textContent ? JSON.parse(textContent) : mcpResult;
-    } catch (parseError) {
-      // If parsing fails, return the original result
-      actualData = mcpResult;
-    }
+    // Token estimate will be calculated by the context service
 
-    return timedResponse(actualData, startTime);
+    return timedResponse(contextResult, startTime);
   } catch (error) {
     console.error("Get context error:", error);
-    return errorResponse(500, "Failed to get context for reference", "INTERNAL_SERVER_ERROR");
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return errorResponse(500, errorMessage, "INTERNAL_SERVER_ERROR");
   }
 };

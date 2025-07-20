@@ -1,14 +1,13 @@
 /**
  * Fetch Translation Notes Tool
  * Tool for fetching translation notes for a specific Bible reference
+ * Uses shared core service for consistency with Netlify functions
  */
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { parseReference } from "../parsers/referenceParser.js";
-import { ResourceAggregator } from "../services/ResourceAggregator.js";
+import { fetchTranslationNotes } from "../../netlify/functions/_shared/translation-notes-service.js";
 import { estimateTokens } from "../utils/tokenCounter.js";
-import { formatCitation } from "../utils/referenceFormatter.js";
 
 // Input schema
 export const FetchTranslationNotesArgs = z.object({
@@ -22,8 +21,13 @@ export const FetchTranslationNotesArgs = z.object({
   includeIntro: z
     .boolean()
     .optional()
-    .default(false)
-    .describe("Include introduction notes (default: false)"),
+    .default(true)
+    .describe("Include book and chapter introduction notes for context (default: true)"),
+  includeContext: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe("Include contextual notes from related passages (default: true)"),
 });
 
 export type FetchTranslationNotesArgs = z.infer<typeof FetchTranslationNotesArgs>;
@@ -40,50 +44,43 @@ export async function handleFetchTranslationNotes(args: FetchTranslationNotesArg
       language: args.language,
       organization: args.organization,
       includeIntro: args.includeIntro,
+      includeContext: args.includeContext,
     });
 
-    // Parse the Bible reference
-    const reference = parseReference(args.reference);
-    if (!reference) {
-      throw new Error(`Invalid Bible reference: ${args.reference}`);
-    }
-
-    // Set up options for translation notes only
-    const options = {
+    // Use the shared translation notes service (same as Netlify functions)
+    const result = await fetchTranslationNotes({
+      reference: args.reference,
       language: args.language,
       organization: args.organization,
-      resources: ["notes"],
-    };
+      includeIntro: args.includeIntro,
+      includeContext: args.includeContext,
+    });
 
-    // Fetch translation notes using aggregator
-    const aggregator = new ResourceAggregator();
-    const resources = await aggregator.aggregateResources(reference, options);
-
-    // Build response in OLD API format + metadata for MCP
+    // Build enhanced response format for MCP
     const response = {
-      translationNotes: resources.translationNotes || [],
-      citation: {
-        resource: `${args.organization}_tn`,
-        title: `${args.organization} Translation Notes`,
-        organization: args.organization,
-        language: args.language,
-        url: `https://git.door43.org/${args.organization}/${args.language}_tn`,
-        version: "master",
-      },
+      verseNotes: result.verseNotes,
+      contextNotes: result.contextNotes,
+      translationNotes: result.translationNotes, // Keep original for backward compatibility
+      citation: result.citation,
       language: args.language,
       organization: args.organization,
       metadata: {
         responseTime: Date.now() - startTime,
-        tokenEstimate: estimateTokens(JSON.stringify(resources)),
+        tokenEstimate: estimateTokens(JSON.stringify(result)),
         timestamp: new Date().toISOString(),
-        notesCount: resources.translationNotes?.length || 0,
+        verseNotesCount: result.metadata.verseNotesCount,
+        contextNotesCount: result.metadata.contextNotesCount,
+        totalNotesCount: result.metadata.sourceNotesCount,
+        cached: result.metadata.cached,
       },
     };
 
     logger.info("Translation notes fetched successfully", {
       reference: args.reference,
-      notesCount: response.metadata.notesCount,
+      verseNotesCount: response.metadata.verseNotesCount,
+      contextNotesCount: response.metadata.contextNotesCount,
       responseTime: response.metadata.responseTime,
+      cached: result.metadata.cached,
     });
 
     return response;

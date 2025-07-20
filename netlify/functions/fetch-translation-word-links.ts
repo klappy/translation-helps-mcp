@@ -1,25 +1,6 @@
 import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify/functions";
-import { parseReference } from "./_shared/reference-parser";
-import { timedResponse } from "./_shared/utils";
-import { ResourceAggregator } from "./_shared/resource-aggregator";
-
-interface TranslationWordLink {
-  word: string;
-  occurrences: number;
-  twlid: string;
-  reference?: string;
-  id?: string;
-  tags?: string;
-  origWords?: string;
-  occurrence?: number;
-}
-
-interface LinksResponse {
-  translationWordLinks?: TranslationWordLink[];
-  error?: string;
-  language?: string;
-  organization?: string;
-}
+import { timedResponse, errorResponse } from "./_shared/utils";
+import { fetchWordLinks } from "./_shared/word-links-service";
 
 export const handler: Handler = async (
   event: HandlerEvent,
@@ -48,51 +29,42 @@ export const handler: Handler = async (
     const language = params.get("language") || "en";
     const organization = params.get("organization") || "unfoldingWord";
 
-    console.log(`🔗 fetch-translation-word-links called with:`, {
+    if (!referenceParam) {
+      return errorResponse(400, "Missing reference parameter", "MISSING_PARAMETER");
+    }
+
+    // Use the shared word links service
+    const result = await fetchWordLinks({
       reference: referenceParam,
       language,
       organization,
     });
 
-    if (!referenceParam) {
-      return {
-        statusCode: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ error: "Missing reference parameter" }),
-      };
-    }
-
-    // Parse the reference
-    const reference = parseReference(referenceParam);
-    if (!reference) {
-      return {
-        statusCode: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify({ error: "Invalid reference format" }),
-      };
-    }
-
-    // Use the ResourceAggregator to fetch TWL data
-    const aggregator = new ResourceAggregator();
-    const twlLinks = await aggregator.fetchTranslationWordLinks(reference, {
+    // Build response matching the original API format + enhanced structure
+    const response = {
+      // Original format for backward compatibility
+      translationWordLinks: result.translationWordLinks,
+      citation: result.citation,
       language,
       organization,
-      resources: ["links"],
+
+      // Metadata
+      metadata: {
+        timestamp: new Date().toISOString(),
+        responseTime: result.metadata.responseTime,
+        cached: result.metadata.cached,
+        linksFound: result.metadata.linksFound,
+        version: "3.6.0",
+      },
+    };
+
+    return timedResponse(response, startTime, undefined, {
+      cached: result.metadata.cached,
+      cacheType: result.metadata.cached ? "memory" : undefined,
     });
-
-    const result: LinksResponse = {
-      translationWordLinks: twlLinks,
-      language,
-      organization,
-    };
-
-    return timedResponse(result, startTime);
   } catch (error) {
-    console.error("Error in fetch-translation-word-links:", error);
-    return {
-      statusCode: 500,
-      headers: { "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({ error: "Internal server error" }),
-    };
+    console.error("Word links error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return errorResponse(500, errorMessage, "FETCH_ERROR");
   }
 };

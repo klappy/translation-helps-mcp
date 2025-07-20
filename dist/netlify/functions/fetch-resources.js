@@ -3,105 +3,80 @@
  * Fetches Bible translation resources for a specific reference
  * IMPLEMENTS: Enhanced caching, ingredients array pattern, request deduplication
  */
-import { ResourceAggregator } from "./_shared/resource-aggregator";
-import { parseReference } from "./_shared/reference-parser";
-import { timedResponse } from "./_shared/utils";
-import { z } from "zod";
-// Configuration schema with defaults
-const configSchema = z.object({
-    language: z.string().default("en"),
-    organization: z.string().default("unfoldingWord"),
-    resources: z.array(z.string()).default(["scripture", "notes", "questions", "words", "links"]),
-});
-export const handler = async (event) => {
+import { timedResponse, errorResponse } from "./_shared/utils";
+import { fetchResources } from "./_shared/resources-service";
+export const handler = async (event, context) => {
     const startTime = Date.now();
-    // Set CORS headers
-    const headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Content-Type": "application/json",
-    };
+    // Handle CORS
     if (event.httpMethod === "OPTIONS") {
-        return { statusCode: 200, headers, body: "" };
+        return {
+            statusCode: 200,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            },
+            body: "",
+        };
     }
     try {
-        // Parse and validate input
+        // Parse input from both query params and body
+        const params = new URLSearchParams(event.queryStringParameters || {});
         const body = event.body ? JSON.parse(event.body) : {};
-        // Parse configuration with defaults
-        const config = configSchema.parse({
-            language: body.language || event.queryStringParameters?.language,
-            organization: body.organization || event.queryStringParameters?.organization,
-            resources: body.resources || event.queryStringParameters?.resources?.split(","),
-        });
-        const reference = body.reference || event.queryStringParameters?.reference;
-        if (!reference) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    error: "Reference parameter is required",
-                    example: "?reference=John 3:16&language=en&organization=unfoldingWord&resources=all",
-                }),
-            };
+        const referenceParam = body.reference || params.get("reference");
+        const language = body.language || params.get("language") || "en";
+        const organization = body.organization || params.get("organization") || "unfoldingWord";
+        const resourcesParam = body.resources || params.get("resources");
+        const resources = resourcesParam
+            ? Array.isArray(resourcesParam)
+                ? resourcesParam
+                : resourcesParam.split(",")
+            : ["scripture", "notes", "questions", "words"];
+        const includeIntro = (body.includeIntro ?? params.get("includeIntro")) !== "false";
+        const includeVerseNumbers = (body.includeVerseNumbers ?? params.get("includeVerseNumbers")) !== "false";
+        const format = body.format || params.get("format") || "text";
+        if (!referenceParam) {
+            return errorResponse(400, "Missing reference parameter", "MISSING_PARAMETER");
         }
-        console.log(`📖 Fetch Resources Request:`, {
-            reference,
-            config,
-            method: event.httpMethod,
+        // Use the shared resources service
+        const result = await fetchResources({
+            reference: referenceParam,
+            language,
+            organization,
+            resources,
+            includeIntro,
+            includeVerseNumbers,
+            format: format,
         });
-        // Parse the reference
-        const parsedRef = parseReference(reference);
-        if (!parsedRef) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: "Invalid reference format", reference }),
-            };
-        }
-        // Handle "all" resources shorthand
-        const resourceTypes = config.resources.includes("all")
-            ? ["scripture", "notes", "questions", "words", "links"]
-            : config.resources;
-        // Fetch resources
-        const aggregator = new ResourceAggregator();
-        const resourceData = await aggregator.fetchResources(parsedRef, {
-            language: config.language,
-            organization: config.organization,
-            resources: resourceTypes,
-        });
-        // Add metadata
+        // Build response matching the original API format + enhanced structure
         const response = {
-            ...resourceData,
-            reference: parsedRef,
-            config: {
-                language: config.language,
-                organization: config.organization,
-                resources: resourceTypes,
-            },
+            // Original format for backward compatibility
+            reference: result.reference,
+            scripture: result.scripture,
+            translationNotes: result.translationNotes,
+            translationQuestions: result.translationQuestions,
+            translationWords: result.translationWords,
+            citations: result.citations,
+            language,
+            organization,
+            // Metadata
             metadata: {
-                cached: false,
-            },
-            summary: {
-                scripture: resourceData.scriptures?.length || 0,
-                notes: resourceData.translationNotes?.length || 0,
-                questions: resourceData.translationQuestions?.length || 0,
-                words: resourceData.translationWords?.length || 0,
-                links: resourceData.translationWordLinks?.length || 0,
+                timestamp: new Date().toISOString(),
+                responseTime: result.metadata.responseTime,
+                cached: result.metadata.cached,
+                resourcesRequested: result.metadata.resourcesRequested,
+                resourcesFound: result.metadata.resourcesFound,
+                version: "3.6.0",
             },
         };
-        return timedResponse(response, startTime, headers);
+        return timedResponse(response, startTime, undefined, {
+            cached: result.metadata.cached,
+            cacheType: result.metadata.cached ? "memory" : undefined,
+        });
     }
     catch (error) {
-        console.error("❌ Fetch Resources Error:", error);
-        return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({
-                error: "Internal server error",
-                details: error instanceof Error ? error.message : String(error),
-                hint: "Check that organization and language are correct. Example: organization=unfoldingWord, language=en",
-            }),
-        };
+        console.error("Resources error:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return errorResponse(500, errorMessage, "FETCH_ERROR");
     }
 };
