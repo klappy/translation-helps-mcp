@@ -9,10 +9,12 @@ const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 	kit: {
 		adapter: adapter({
-			// Enable static fallback for client-side routing
-			fallback: 'index.html'
-		})
+			// Pure SPA mode - no SSR
+			fallback: 'index.html',
+			split: false
+		}),
 		// Disabled prerendering to let fallback handle all routes
+		prerender: { entries: [] }
 	},
 	extensions: ['.svelte', '.svx']
 };
