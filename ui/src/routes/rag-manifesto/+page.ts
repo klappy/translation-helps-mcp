@@ -2,9 +2,9 @@ export const prerender = true;
 
 export function load() {
 	return {
-		title: 'RAG Reinvented: The Stateless Bible API That Stays Fresh Forever',
+		title: 'Building the Foundation for Real-Time Bible RAG',
 		description:
-			'Discover how our stateless RAG approach eliminates sync problems, vector databases, and stale data while saving 97% on infrastructure costs.',
+			"We're systematically replacing traditional RAG layers, starting with the data access foundation. Concrete lookups solved. Semantic search coming next.",
 		ogImage: '/api-manifesto-og.png'
 	};
 }

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UI 3.8.0] - 2025-01-20
+
+### ✨ New Features
+
+- **RAG Manifesto Roadmap**: Added comprehensive development roadmap showing progression from concrete to abstract Bible RAG
+  - Phase 1-3: Completed foundation layers (concrete lookups, word networks, browsable catalog)
+  - Phase 4: Semantic indexing and topical search (in development)
+  - Phase 5: Full vector datastore replacement (planned)
+  - Visual roadmap with completion status and clear timeline
+
+### 🏗️ Improvements
+
+- **Honest Messaging**: Updated landing page to accurately represent current capabilities vs. future roadmap
+- **Educational Content**: Added explanation of why foundational data access must be solved before semantic search
+- **Strategic Positioning**: Positioned as building the foundation for real-time Bible RAG rather than claiming full replacement
+- **Page Metadata**: Updated title and description to reflect accurate positioning
+
 ## [UI 3.7.0] - 2025-01-20
 
 ### 🐛 Bug Fixes
