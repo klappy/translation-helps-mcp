@@ -11,12 +11,8 @@ const config = {
 		adapter: adapter({
 			// Enable static fallback for client-side routing
 			fallback: 'index.html'
-		}),
-		// Enable prerendering for all routes
-		prerender: {
-			entries: ['*'],
-			handleHttpError: 'warn'
-		}
+		})
+		// Disabled prerendering to let fallback handle all routes
 	},
 	extensions: ['.svelte', '.svx']
 };
