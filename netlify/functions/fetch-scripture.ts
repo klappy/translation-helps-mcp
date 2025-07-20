@@ -85,6 +85,22 @@ export const handler: Handler = async (
       };
     }
 
+    // Check for cached transformed response FIRST
+    const responseKey = `scripture:${referenceParam}:${language}:${organization}:${translation}`;
+    const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
+
+    if (cachedResponse.value) {
+      console.log(`🚀 FAST cache hit for processed response: ${responseKey}`);
+      return timedResponse(cachedResponse.value, startTime, undefined, {
+        cached: true,
+        cacheType: cachedResponse.cacheType,
+        expiresAt: cachedResponse.expiresAt,
+        ttlSeconds: cachedResponse.ttlSeconds,
+      });
+    }
+
+    console.log(`🔄 Processing fresh request: ${responseKey}`);
+
     // Search catalog for Bible resource
     const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Bible,Aligned%20Bible&lang=${language}&owner=${organization}`;
     console.log(`🔍 Searching catalog: ${catalogUrl}`);
@@ -340,6 +356,9 @@ export const handler: Handler = async (
       expiresAt: overallCached ? earliestExpiry : undefined,
       ttlSeconds: overallCached ? shortestTtl : undefined,
     };
+
+    // Cache the transformed response for fast future retrieval
+    await cache.setTransformedResponse(responseKey, result);
 
     return timedResponse(result, startTime, undefined, cacheInfo);
   } catch (error) {

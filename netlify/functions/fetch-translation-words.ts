@@ -2,6 +2,7 @@ import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify
 import { parseReference } from "./_shared/reference-parser";
 import { ResourceAggregator } from "./_shared/resource-aggregator";
 import { timedResponse } from "./_shared/utils";
+import { cache } from "./_shared/cache";
 
 interface TranslationWord {
   term: string;
@@ -91,6 +92,22 @@ export const handler: Handler = async (
         };
       }
 
+      // Check for cached transformed response FIRST
+      const responseKey = `words:${referenceParam}:${language}:${organization}`;
+      const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
+
+      if (cachedResponse.value) {
+        console.log(`🚀 FAST cache hit for processed words: ${responseKey}`);
+        return timedResponse(cachedResponse.value, startTime, undefined, {
+          cached: true,
+          cacheType: cachedResponse.cacheType,
+          expiresAt: cachedResponse.expiresAt,
+          ttlSeconds: cachedResponse.ttlSeconds,
+        });
+      }
+
+      console.log(`🔄 Processing fresh words request: ${responseKey}`);
+
       translationWords = await aggregator.fetchTranslationWords(
         reference,
         {
@@ -136,6 +153,10 @@ export const handler: Handler = async (
       language,
       organization,
     };
+
+    // Cache the transformed response for fast future retrieval
+    const cacheKey = `words:${referenceParam}:${language}:${organization}`;
+    await cache.setTransformedResponse(cacheKey, result);
 
     return timedResponse(result, startTime);
   } catch (error) {
