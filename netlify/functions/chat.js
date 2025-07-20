@@ -97,8 +97,11 @@ export async function handler(event, context) {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: messages,
-        temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 500,
+        temperature: 0.2, // Reduced to 0.2 for more literal responses but have some flexibility
+        top_p: 0.2, // 0.2 to minimize creativity but not too much
+        frequency_penalty: 0.4,
+        presence_penalty: 0.4,
       }),
     });
 
