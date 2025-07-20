@@ -48,7 +48,7 @@
 			</h1>
 
 			<p class="mb-8 text-2xl text-gray-300 md:text-3xl">
-				Because Translation Resources Change Every Day
+				We're Building the Foundation for Real-Time Bible RAG
 			</p>
 
 			<div
@@ -162,6 +162,21 @@
 					</div>
 				</div>
 			</div>
+
+			<div class="mx-auto mt-12 max-w-4xl">
+				<div class="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-6 text-center">
+					<h4 class="mb-2 font-bold text-yellow-400">🎯 Our Focus: The Foundation Layer</h4>
+					<p class="text-gray-300">
+						We're solving the data access problem first - concrete lookups, word articles,
+						translation resources.
+						<strong class="text-yellow-400">Abstract topical search</strong> ("What does the Bible
+						say about love?") is Phase 4 of our roadmap.
+						<br /><span class="text-sm text-gray-400"
+							>Most Bible RAG projects fail because they skip this foundation.</span
+						>
+					</p>
+				</div>
+			</div>
 		</div>
 	</section>
 
@@ -178,9 +193,11 @@
 				>
 					Always Fresh. Never Wrong.
 				</h2>
-				<p class="text-xl text-gray-300">A stateless RAG that queries the source in real-time.</p>
+				<p class="text-xl text-gray-300">
+					A stateless foundation for Bible RAG that queries sources in real-time.
+				</p>
 				<p class="mt-4 text-lg text-gray-400">
-					Replace your traditional RAG infrastructure. Keep your LLM (GPT-4, Claude, etc).
+					We've solved the data access layer. Semantic search and topical queries are coming next.
 				</p>
 			</div>
 
@@ -211,6 +228,95 @@
 					<div class="mb-4 text-5xl">🛡️</div>
 					<h3 class="mb-2 text-xl font-bold">Zero Maintenance</h3>
 					<p class="text-gray-400">No sync jobs. No update scripts. No re-embeddings. Ever.</p>
+				</div>
+			</div>
+
+			<!-- Roadmap Section -->
+			<div
+				class="mb-16 rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5 p-8"
+			>
+				<h3 class="mb-6 text-center text-2xl font-bold text-blue-400">
+					🗺️ The Journey: From Concrete to Abstract
+				</h3>
+				<p class="mb-8 text-center text-gray-300">
+					We're systematically replacing every layer of traditional RAG, starting with the
+					foundation.
+				</p>
+
+				<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+					<div class="rounded-lg border border-green-500/20 bg-green-500/5 p-6">
+						<div class="mb-2 flex items-center gap-2">
+							<span class="text-green-400">✅</span>
+							<h4 class="font-bold text-green-400">Phase 1: Concrete Lookups</h4>
+						</div>
+						<p class="text-sm text-gray-400">
+							Specific verses, chapters, translation notes, word definitions. The foundation that
+							everyone gets wrong.
+						</p>
+					</div>
+
+					<div class="rounded-lg border border-green-500/20 bg-green-500/5 p-6">
+						<div class="mb-2 flex items-center gap-2">
+							<span class="text-green-400">✅</span>
+							<h4 class="font-bold text-green-400">Phase 2: Word Networks</h4>
+						</div>
+						<p class="text-sm text-gray-400">
+							Translation Word Links (TWL) - aggregate word articles by verse, range, chapter, book.
+							Smart connections.
+						</p>
+					</div>
+
+					<div class="rounded-lg border border-green-500/20 bg-green-500/5 p-6">
+						<div class="mb-2 flex items-center gap-2">
+							<span class="text-green-400">✅</span>
+							<h4 class="font-bold text-green-400">Phase 3: Browsable Catalog</h4>
+						</div>
+						<p class="text-sm text-gray-400">
+							All translation word articles with variations. Searchable, explorable, comprehensive.
+						</p>
+					</div>
+
+					<div class="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-6">
+						<div class="mb-2 flex items-center gap-2">
+							<span class="text-yellow-400">🚧</span>
+							<h4 class="font-bold text-yellow-400">Phase 4: Semantic Indexing</h4>
+						</div>
+						<p class="text-sm text-gray-400">
+							Index and make articles searchable by topic. "What does the Bible say about hope?" -
+							coming soon.
+						</p>
+					</div>
+
+					<div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-6">
+						<div class="mb-2 flex items-center gap-2">
+							<span class="text-purple-400">🔮</span>
+							<h4 class="font-bold text-purple-400">Phase 5: Full Replacement</h4>
+						</div>
+						<p class="text-sm text-gray-400">
+							Complete vector datastore replacement. Abstract questions, thematic analysis,
+							conceptual search.
+						</p>
+					</div>
+
+					<div class="rounded-lg border border-blue-500/20 bg-blue-500/5 p-6">
+						<div class="mb-2 flex items-center gap-2">
+							<span class="text-blue-400">♾️</span>
+							<h4 class="font-bold text-blue-400">Always Fresh</h4>
+						</div>
+						<p class="text-sm text-gray-400">
+							Every phase stays current. No sync jobs, no stale data, no matter how complex the
+							queries get.
+						</p>
+					</div>
+				</div>
+
+				<div class="mt-8 rounded-lg bg-blue-500/10 p-6 text-center">
+					<h4 class="mb-2 font-bold text-blue-400">Why Start with the Foundation?</h4>
+					<p class="text-gray-300">
+						Most Bible RAG projects fail because they skip straight to vector search without getting
+						the basic data access right. We're building from the ground up - rock solid at every
+						layer.
+					</p>
 				</div>
 			</div>
 
