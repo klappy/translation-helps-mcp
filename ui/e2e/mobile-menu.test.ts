@@ -23,7 +23,7 @@ test.describe('Mobile Menu', () => {
 		await page.setViewportSize({ width: 375, height: 667 });
 		
 		const menuButton = page.locator('button[aria-label="Toggle mobile menu"]');
-		const mobileMenu = page.locator('nav div.absolute.top-full');
+		const mobileMenu = page.locator('[data-testid="mobile-menu"]');
 		
 		// Initially, mobile menu should not be visible
 		await expect(mobileMenu).not.toBeVisible();
@@ -35,7 +35,7 @@ test.describe('Mobile Menu', () => {
 		await expect(mobileMenu).toBeVisible();
 		
 		// Menu button should show X icon when open
-		const closeIcon = page.locator('button[aria-label="Toggle mobile menu"] svg').nth(0);
+		const closeIcon = page.locator('button[aria-label="Toggle mobile menu"] svg').first();
 		await expect(closeIcon).toBeVisible();
 		
 		// Click again to close
@@ -52,15 +52,23 @@ test.describe('Mobile Menu', () => {
 		const menuButton = page.locator('button[aria-label="Toggle mobile menu"]');
 		await menuButton.click();
 		
-		const mobileMenu = page.locator('nav div.absolute.top-full');
+		const mobileMenu = page.locator('[data-testid="mobile-menu"]');
 		await expect(mobileMenu).toBeVisible();
 		
-		// Check that all navigation items are present
-		const expectedItems = ['Home', 'Test', 'Chat', 'API', 'MCP Tools', 'Performance'];
+		// Check that all navigation items are present using more specific selectors
+		const expectedItems = [
+			{ text: 'Home', href: '/' },
+			{ text: 'Test', href: '/test' },
+			{ text: 'Chat', href: '/chat' },
+			{ text: 'API', href: '/api' },
+			{ text: 'MCP Tools', href: '/mcp-tools' },
+			{ text: 'Performance', href: '/performance' }
+		];
 		
 		for (const item of expectedItems) {
-			const menuItem = mobileMenu.locator(`a:has-text("${item}")`);
+			const menuItem = mobileMenu.locator(`a[href="${item.href}"]`);
 			await expect(menuItem).toBeVisible();
+			await expect(menuItem).toContainText(item.text);
 		}
 		
 		// Check GitHub link is present
@@ -75,7 +83,7 @@ test.describe('Mobile Menu', () => {
 		const menuButton = page.locator('button[aria-label="Toggle mobile menu"]');
 		await menuButton.click();
 		
-		const mobileMenu = page.locator('nav div.absolute.top-full');
+		const mobileMenu = page.locator('[data-testid="mobile-menu"]');
 		await expect(mobileMenu).toBeVisible();
 		
 		// Click on Test page
