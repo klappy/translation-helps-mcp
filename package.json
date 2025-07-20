@@ -8,6 +8,8 @@
     "build": "cd ui && npm install && npm run build",
     "build:netlify": "cd ui && npm install && npm run build",
     "build:cloudflare": "cd ui && npm install && npm run build:cloudflare",
+    "build:cloudflare-full": "npm install && node scripts/generate-platform-functions.js && cd ui && npm install && npm run build:cloudflare",
+    "generate:functions": "node scripts/generate-platform-functions.js",
     "preview": "cd ui && npm run preview",
     "preview:netlify": "cd ui && npm run preview",
     "preview:cloudflare": "cd ui && npx wrangler pages dev build",
