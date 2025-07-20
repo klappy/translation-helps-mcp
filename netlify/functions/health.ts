@@ -3,18 +3,24 @@
  * GET /api/health
  */
 
-import { Handler } from "@netlify/functions";
+import type { Handler } from "@netlify/functions";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { cache } from "./_shared/cache";
 
-// Import version from the generated version.json file
-let VERSION = "3.4.0"; // Default fallback
-try {
-  const versionData = require("./_shared/version.json");
-  VERSION = versionData.version || VERSION;
-} catch (error) {
-  // If version.json doesn't exist, try environment variable
-  VERSION = process.env.API_VERSION || VERSION;
+// Read version from package.json
+function getAppVersion(): string {
+  try {
+    const packageJsonPath = join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch (error) {
+    console.warn("Failed to read version from package.json, using fallback");
+    return "3.5.0"; // Fallback version
+  }
 }
+
+const VERSION = getAppVersion(); // Get version from package.json
 
 export const handler: Handler = async (event, context) => {
   console.log("Health check requested");

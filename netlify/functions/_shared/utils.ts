@@ -4,6 +4,20 @@
 
 import type { HandlerResponse } from "@netlify/functions";
 import { cache } from "./cache.js";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Read version from package.json
+function getAppVersion(): string {
+  try {
+    const packageJsonPath = join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch (error) {
+    console.warn("Failed to read version from package.json, using fallback");
+    return "3.5.0"; // Fallback version
+  }
+}
 
 /**
  * CORS headers for API responses
@@ -355,34 +369,28 @@ export async function withConservativeCache<T>(
 /**
  * Build a versioned cache key for DCS resources
  */
-export function buildDCSCacheKey(
-  resourceType: string,
-  language: string,
-  params: Record<string, any> = {}
-): string {
-  // Sort params for consistent key generation
-  const sortedParams = Object.keys(params)
+export function buildDCSCacheKey(endpoint: string, params: Record<string, any> = {}): string {
+  const appVersion = getAppVersion();
+  const paramString = Object.keys(params)
     .sort()
     .map((key) => `${key}:${params[key]}`)
-    .join("|");
+    .join(":");
 
-  const baseKey = `${resourceType}:${language}`;
-  return sortedParams ? `${baseKey}:${sortedParams}` : baseKey;
+  return `v${appVersion}:dcs:${endpoint}${paramString ? `:${paramString}` : ""}`;
 }
 
 /**
  * Build cache key for transformed/processed responses
  */
 export function buildTransformedCacheKey(
-  operation: string,
-  inputs: Record<string, any> = {}
+  endpoint: string,
+  params: Record<string, any> = {}
 ): string {
-  // Create deterministic hash of inputs
-  const inputStr = JSON.stringify(inputs, Object.keys(inputs).sort());
-  const hash =
-    inputStr.length > 50
-      ? `hash_${inputStr.length}_${inputStr.slice(0, 20)}`
-      : inputStr.replace(/[^a-zA-Z0-9]/g, "_");
+  const appVersion = getAppVersion();
+  const paramString = Object.keys(params)
+    .sort()
+    .map((key) => `${key}:${params[key]}`)
+    .join(":");
 
-  return `transformed:${operation}:${hash}`;
+  return `v${appVersion}:transformed:${endpoint}${paramString ? `:${paramString}` : ""}`;
 }

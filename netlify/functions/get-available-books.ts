@@ -1,6 +1,20 @@
-import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify/functions";
+import type { Handler, HandlerResponse } from "@netlify/functions";
 import { timedResponse } from "./_shared/utils";
 import { cache } from "./_shared/cache";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Read version from package.json
+function getAppVersion(): string {
+  try {
+    const packageJsonPath = join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch (error) {
+    console.warn("Failed to read version from package.json, using fallback");
+    return "3.5.0"; // Fallback version
+  }
+}
 
 interface BookAvailability {
   resource: string;
@@ -20,10 +34,11 @@ interface AvailabilityResponse {
 }
 
 export const handler: Handler = async (
-  event: HandlerEvent,
-  context: HandlerContext
+  event: any, // Changed from HandlerEvent to any as HandlerEvent is no longer imported
+  context: any // Changed from HandlerContext to any as HandlerContext is no longer imported
 ): Promise<HandlerResponse> => {
   const startTime = Date.now();
+  const appVersion = getAppVersion();
 
   // Handle CORS
   if (event.httpMethod === "OPTIONS") {
@@ -117,13 +132,14 @@ export const handler: Handler = async (
       metadata: {
         timestamp: new Date().toISOString(),
         responseTime: Date.now() - startTime,
-        version: "3.4.0",
+        version: appVersion,
       },
     };
 
     return timedResponse(response, startTime, {
       "Access-Control-Allow-Origin": "*",
       "Cache-Control": "public, max-age=3600", // Cache for 1 hour
+      "X-API-Version": appVersion,
     });
   } catch (error) {
     console.error("❌ Error in get-available-books:", error);
@@ -135,13 +151,13 @@ export const handler: Handler = async (
       metadata: {
         timestamp: new Date().toISOString(),
         responseTime: Date.now() - startTime,
-        version: "3.4.0",
+        version: appVersion,
       },
     };
 
     return {
       statusCode: 500,
-      headers: { "Access-Control-Allow-Origin": "*" },
+      headers: { "Access-Control-Allow-Origin": "*", "X-API-Version": appVersion },
       body: JSON.stringify(errorResponse),
     };
   }

@@ -1,253 +1,113 @@
-# Enhanced Caching Strategy Implementation Guide
-
-This guide shows how to implement the enhanced caching strategy across your Netlify functions for optimal performance and reliability.
+# Enhanced Caching Implementation Guide
 
 ## Overview
 
-The enhanced caching approach provides:
-
-- **App version-aware cache keys** (prevents stale data across deployments)
-- **Netlify Blobs storage** with memory cache fallback
-- **24-hour maximum TTL cap** for safety while preserving original cache times
-- **Proper HTTP cache headers** for browser/CDN caching
-- **Graceful cache bypass** for debugging and fresh data
-- **Automatic orphan key prevention** through versioning
+This guide documents the implementation of an enhanced multi-level caching system for the Translation Helps MCP API, featuring version-aware cache keys, Netlify Blobs support, and comprehensive HTTP cache headers.
 
 ## Key Features
 
-### TTL Limits (Original Values + 24hr Cap)
+### Version-Aware Cache Keys
 
-```typescript
-const CACHE_TTLS = {
-  organizations: 1 hour        // original value
-  languages: 1 hour           // original value
-  resources: 5 minutes        // original value
-  fileContent: 10 minutes     // original value
-  metadata: 30 minutes        // original value
-  deduplication: 1 minute     // original value
-  transformedResponse: 10 minutes // new type for processed responses
-}
-// All capped at maximum 24 hours for safety
+All cache keys include app version: `v3.5.0:languages:all`
+
+This ensures automatic cache invalidation when the app is deployed with a new version, preventing stale data issues.
+
+### Multi-Level Caching Architecture
+
+1. **Netlify Blobs** (Primary) - Persistent storage across function invocations
+2. **Memory Cache** (Fallback) - Fast in-memory storage within function scope
+3. **Netlify Edge CDN** - Global content delivery network caching
+4. **Browser Cache** - Client-side caching with proper headers
+
+### Cache TTL Management
+
+- **Languages**: 1 hour (3600 seconds)
+- **Resources**: 5 minutes (300 seconds)
+- **File Content**: 10 minutes (600 seconds)
+- **Maximum TTL**: 24 hours (86400 seconds) - Safety cap
+
+## Implementation Details
+
+### Cache Key Structure
+
+```
+v{version}:{type}:{endpoint}:{params}
 ```
 
-### Cache Key Versioning
+Examples:
 
-All cache keys include app version: `v3.4.0:languages:all`
+- `v3.5.0:languages:all`
+- `v3.5.0:dcs:fetch-scripture:reference:John+3:16:language:en`
+- `v3.5.0:transformed:get-context:reference:Titus+1:1`
 
-This ensures cache invalidation on deployments without manual intervention.
+### HTTP Cache Headers
 
-## Implementation Pattern
+Responses include comprehensive cache headers:
 
-### 1. Import Required Functions
-
-```typescript
-import {
-  corsHeaders,
-  errorResponse,
-  withConservativeCache,
-  buildDCSCacheKey,
-} from "./_shared/utils";
+```
+Cache-Control: public, max-age=3600, s-maxage=3600
+X-Cache-Status: hit
+X-Cache-Type: memory
+X-Cache-Version: 3.5.0
+X-Cache-Expires: 2025-01-20T21:30:00.000Z
+X-Cache-TTL: 3600
 ```
 
-### 2. Create Request Object
+### Cache Bypass Options
+
+Clients can bypass cache using:
+
+- `Cache-Control: no-cache` header
+- `X-Bypass-Cache: true` header
+
+## Usage Examples
+
+### Basic Caching
 
 ```typescript
-const request = new Request(`${event.headers.host}${event.path}`, {
-  method: event.httpMethod,
-  headers: event.headers as Record<string, string>,
-});
-```
+import { withConservativeCache } from "./_shared/utils";
 
-### 3. Build Cache Key
-
-For DCS resources:
-
-```typescript
-const cacheKey = buildDCSCacheKey("languages", "all", {});
-// or with params:
-const cacheKey = buildDCSCacheKey("notes", "en", { book: "gen", chapter: "1" });
-```
-
-For transformed responses:
-
-```typescript
-const cacheKey = buildTransformedCacheKey("processReferences", { text, language });
-```
-
-### 4. Use Conservative Caching
-
-```typescript
-const cacheResult = await withConservativeCache(
-  request,
-  cacheKey,
-  async () => {
-    // Your data fetching logic here
-    return await fetchData();
-  },
-  {
-    cacheType: "languages", // Choose appropriate type
-    bypassCache: false, // Optional: force bypass
-  }
+const result = await withConservativeCache(
+  () => fetchLanguages(),
+  "languages:all",
+  3600 // 1 hour TTL
 );
 ```
 
-### 5. Return Response with Cache Headers
+### With Response Transformation
 
 ```typescript
-return {
-  statusCode: 200,
-  headers: {
-    ...corsHeaders,
-    ...cacheResult.cacheHeaders, // Includes proper Cache-Control, X-Cache-* headers
-  },
-  body: JSON.stringify({
-    ...cacheResult.data,
-    cached: cacheResult.cached,
-    metadata: {
-      responseTime: Date.now() - startTime,
-      cacheInfo: cacheResult.cacheInfo,
-    },
-  }),
-};
-```
-
-## Cache Headers Explained
-
-The system automatically sets appropriate headers:
-
-### Cache Hit
-
-```
-Cache-Control: public, max-age=1800
-X-Cache-Status: HIT
-X-Cache-Type: netlify-blobs
-X-Cache-Version: 3.4.0
-X-Cache-Expires: 2024-01-15T10:30:00.000Z
-```
-
-### Cache Miss
-
-```
-Cache-Control: public, max-age=1800
-X-Cache-Status: MISS
-X-Cache-Type: netlify-blobs
-X-Cache-Version: 3.4.0
-X-Cache-Expires: 2024-01-15T10:30:00.000Z
-```
-
-### Cache Bypass
-
-```
-Cache-Control: no-cache, no-store, must-revalidate
-X-Cache-Status: BYPASSED
-```
-
-## Cache Bypass Options
-
-### Via Headers
-
-```bash
-# Force bypass cache
-curl -H "Cache-Control: no-cache" /api/get-languages
-curl -H "X-Bypass-Cache: true" /api/get-languages
-```
-
-### Via Code
-
-```typescript
-const cacheResult = await withConservativeCache(request, cacheKey, fetcher, { bypassCache: true });
+const result = await withConservativeCache(
+  () => fetchScripture(reference),
+  `scripture:${reference}`,
+  600, // 10 minutes TTL
+  (data) => transformScriptureResponse(data)
+);
 ```
 
 ## Migration Checklist
 
-To migrate an existing function:
-
-- [ ] Import `withConservativeCache` and `buildDCSCacheKey`
-- [ ] Create Request object from event
-- [ ] Replace manual cache logic with `withConservativeCache`
-- [ ] Use appropriate cache key builder
-- [ ] Update response headers to include `cacheResult.cacheHeaders`
-- [ ] Update response body to include cache metadata
-- [ ] Test with cache bypass headers
-
-## Example: Complete Function
-
-```typescript
-import { Handler } from "@netlify/functions";
-import {
-  corsHeaders,
-  errorResponse,
-  withConservativeCache,
-  buildDCSCacheKey,
-} from "./_shared/utils";
-
-export const handler: Handler = async (event, context) => {
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: corsHeaders };
-  }
-
-  const startTime = Date.now();
-  const request = new Request(`${event.headers.host}${event.path}`, {
-    method: event.httpMethod,
-    headers: event.headers as Record<string, string>,
-  });
-
-  try {
-    const cacheKey = buildDCSCacheKey("your-resource", "en", {});
-
-    const cacheResult = await withConservativeCache(
-      request,
-      cacheKey,
-      async () => {
-        // Your data fetching logic
-        return await fetchYourData();
-      },
-      { cacheType: "resources" }
-    );
-
-    return {
-      statusCode: 200,
-      headers: {
-        ...corsHeaders,
-        ...cacheResult.cacheHeaders,
-      },
-      body: JSON.stringify({
-        ...cacheResult.data,
-        cached: cacheResult.cached,
-        metadata: {
-          responseTime: Date.now() - startTime,
-          cacheInfo: cacheResult.cacheInfo,
-        },
-      }),
-    };
-  } catch (error) {
-    return errorResponse(500, "Internal error", "INTERNAL_ERROR");
-  }
-};
-```
-
-## Monitoring
-
-The system provides detailed cache metrics:
-
-```typescript
-console.log("METRIC", {
-  function: "your-function",
-  duration: responseTime,
-  cached: cacheResult.cached,
-  cacheVersion: cacheResult.cacheInfo?.version,
-  implementsEnhancedCaching: true,
-});
-```
+- [x] Update all functions to use `withConservativeCache` helper
+- [x] Implement version-aware cache keys
+- [x] Add comprehensive HTTP cache headers
+- [x] Test cache bypass functionality
+- [x] Verify Netlify Blobs integration
+- [x] Update documentation and examples
 
 ## Benefits
 
-1. **Version Safety**: Cache automatically invalidates on deployments
-2. **Netlify Blobs Storage**: Persistent caching across function invocations
-3. **Original Performance**: Preserves your existing cache times with 24hr safety cap
-4. **Graceful Degradation**: Falls back to memory cache if Netlify Blobs fails
-5. **Debug Friendly**: Easy cache bypass for debugging
-6. **HTTP Standard**: Proper Cache-Control headers for browser/CDN caching
-7. **Orphan Prevention**: Versioned keys prevent accumulated cache debris
+1. **Performance**: Up to 100% API call reduction within TTL windows
+2. **Cost Efficiency**: Reduced external API calls and function executions
+3. **Reliability**: Graceful fallback from Blobs to memory cache
+4. **Freshness**: Automatic cache invalidation on deployments
+5. **Transparency**: Detailed cache headers for debugging
+6. **Flexibility**: Cache bypass options for development/testing
 
-This pattern enhances your existing caching with safety nets and better observability.
+## Monitoring
+
+Cache performance can be monitored via:
+
+- `X-Cache-Status` headers
+- `X-Cache-Type` headers
+- `X-Cache-TTL` headers
+- Function logs with cache hit/miss indicators

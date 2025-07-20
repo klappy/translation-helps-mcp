@@ -5,6 +5,20 @@
  */
 
 import { getStore } from "@netlify/blobs";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Read version from package.json
+function getAppVersion(): string {
+  try {
+    const packageJsonPath = join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch (error) {
+    console.warn("Failed to read version from package.json, using fallback");
+    return "3.5.0"; // Fallback version
+  }
+}
 
 interface CacheItem {
   value: any;
@@ -28,33 +42,27 @@ const CACHE_TTLS = {
 type CacheType = keyof typeof CACHE_TTLS;
 
 export class CacheManager {
-  private store: any;
-  private memoryCache: Map<string, CacheItem> = new Map();
+  private store: any = null;
+  private memoryCache = new Map<string, { data: any; expires: number }>();
   private pendingRequests: Map<string, Promise<any>> = new Map();
   private useNetlifyBlobs: boolean = true;
   private appVersion: string;
 
   constructor() {
+    this.appVersion = getAppVersion();
+
     try {
       this.store = getStore("translation-helps-cache");
       console.log("🚀 Netlify Blobs cache initialized");
     } catch (error) {
-      console.log(
+      console.warn(
         "⚠️ Netlify Blobs failed, falling back to in-memory cache:",
         (error as Error).message
       );
       this.useNetlifyBlobs = false;
     }
 
-    // Load app version for cache keys
-    try {
-      const versionFile = require("./version.json");
-      this.appVersion = versionFile.version || "3.4.0";
-      console.log(`📦 Cache initialized with app version: ${this.appVersion}`);
-    } catch (error) {
-      this.appVersion = "3.4.0";
-      console.log(`⚠️ Could not load version file, using default: ${this.appVersion}`);
-    }
+    console.log(`📦 Cache initialized with app version: ${this.appVersion}`);
   }
 
   private getVersionedKey(key: string, cacheType?: CacheType): string {
@@ -68,7 +76,7 @@ export class CacheManager {
 
     if (this.useNetlifyBlobs) {
       try {
-        const item = await this.store.get(fullKey);
+        const item = await this.store?.get(fullKey);
         if (!item) {
           console.log(`❌ Cache miss: ${fullKey}`);
           return null;
@@ -108,20 +116,20 @@ export class CacheManager {
     }
 
     // Check version compatibility
-    if (item.version !== this.appVersion) {
+    if (item.data.version !== this.appVersion) {
       console.log(`🔄 Version mismatch, invalidating memory: ${fullKey}`);
       this.memoryCache.delete(fullKey);
       return null;
     }
 
-    if (Date.now() > item.expiry) {
+    if (Date.now() > item.expires) {
       console.log(`⏰ Memory cache expired: ${fullKey}`);
       this.memoryCache.delete(fullKey);
       return null;
     }
 
     console.log(`✅ Memory cache hit: ${fullKey}`);
-    return item.value;
+    return item.data.value;
   }
 
   async getWithCacheInfo(
@@ -139,7 +147,7 @@ export class CacheManager {
 
     if (this.useNetlifyBlobs) {
       try {
-        const item = await this.store.get(fullKey);
+        const item = await this.store?.get(fullKey);
         if (!item) {
           console.log(`❌ Cache miss: ${fullKey}`);
           return { value: null, cached: false };
@@ -186,28 +194,28 @@ export class CacheManager {
     }
 
     // Check version compatibility
-    if (item.version !== this.appVersion) {
+    if (item.data.version !== this.appVersion) {
       console.log(`🔄 Version mismatch, invalidating memory: ${fullKey}`);
       this.memoryCache.delete(fullKey);
       return { value: null, cached: false };
     }
 
-    if (Date.now() > item.expiry) {
+    if (Date.now() > item.expires) {
       console.log(`⏰ Memory cache expired: ${fullKey}`);
       this.memoryCache.delete(fullKey);
       return { value: null, cached: false };
     }
 
     console.log(`✅ Memory cache hit: ${fullKey}`);
-    const expiresAt = new Date(item.expiry).toISOString();
-    const ttlSeconds = Math.round((item.expiry - Date.now()) / 1000);
+    const expiresAt = new Date(item.expires).toISOString();
+    const ttlSeconds = Math.round((item.expires - Date.now()) / 1000);
     return {
-      value: item.value,
+      value: item.data.value,
       cached: true,
       cacheType: "memory",
       expiresAt,
       ttlSeconds,
-      version: item.version,
+      version: item.data.version,
     };
   }
 
@@ -227,7 +235,7 @@ export class CacheManager {
           version: this.appVersion,
           createdAt: Date.now(),
         };
-        await this.store.set(fullKey, JSON.stringify(cacheItem), {
+        await this.store?.set(fullKey, JSON.stringify(cacheItem), {
           ttl: ttl,
         });
         console.log(`💾 Cached in Netlify Blobs: ${fullKey} (TTL: ${ttl}s, v${this.appVersion})`);
@@ -246,7 +254,7 @@ export class CacheManager {
       version: this.appVersion,
       createdAt: Date.now(),
     };
-    this.memoryCache.set(fullKey, cacheItem);
+    this.memoryCache.set(fullKey, { data: cacheItem, expires: expiry });
     console.log(`💾 Cached in memory: ${fullKey} (TTL: ${ttl}s, v${this.appVersion})`);
   }
 
@@ -255,7 +263,7 @@ export class CacheManager {
 
     if (this.useNetlifyBlobs) {
       try {
-        await this.store.delete(fullKey);
+        await this.store?.delete(fullKey);
         console.log(`🗑️ Deleted from Netlify Blobs: ${fullKey}`);
         return;
       } catch (error) {
@@ -272,7 +280,7 @@ export class CacheManager {
   async clear(): Promise<void> {
     if (this.useNetlifyBlobs) {
       try {
-        await this.store.clear();
+        await this.store?.clear();
         console.log("🧹 Netlify Blobs cache cleared");
         return;
       } catch (error) {
