@@ -2,24 +2,46 @@
 
 import fs from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
 
 const buildDir = path.join(process.cwd(), 'build');
 const baseUrl = 'http://localhost:4173';
 
 console.log('🔧 Creating route HTML files for direct access...');
 
-// Check if we're in a CI/build environment
-const isCI =
-	process.env.CI || process.env.NETLIFY || process.env.VERCEL || process.env.GITHUB_ACTIONS;
-
-if (isCI) {
-	console.log('🏗️  Running in CI/build environment - skipping route file generation');
-	console.log('✅ SvelteKit will handle routing automatically');
-	process.exit(0);
-}
-
 // Routes to create static files for
 const routes = ['api', 'chat', 'test', 'performance', 'mcp-tools', 'rag-manifesto'];
+
+async function sleep(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function startPreviewServer() {
+	console.log('🚀 Starting temporary preview server...');
+	const serverProcess = spawn('npm', ['run', 'preview'], {
+		stdio: ['pipe', 'pipe', 'pipe'],
+		cwd: process.cwd()
+	});
+
+	// Wait for server to start
+	await sleep(3000);
+
+	// Check if server is responding
+	for (let i = 0; i < 10; i++) {
+		try {
+			const response = await fetch(baseUrl);
+			if (response.ok) {
+				console.log('✅ Preview server is ready');
+				return serverProcess;
+			}
+		} catch {
+			// Server not ready yet
+		}
+		await sleep(1000);
+	}
+
+	throw new Error('Failed to start preview server');
+}
 
 async function fetchRouteContent(route) {
 	try {
@@ -49,19 +71,20 @@ async function createRouteFiles() {
 	}
 }
 
-// Check if preview server is running (local development only)
+// Main execution
+let serverProcess;
 try {
-	const healthCheck = await fetch(`${baseUrl}/`);
-	if (healthCheck.ok) {
-		await createRouteFiles();
-		console.log(`\n✅ Created HTML files for: ${routes.map((r) => `/${r}`).join(', ')}`);
-		console.log('✅ Direct access to all routes should now work!');
-	} else {
-		throw new Error('Server not responding');
+	serverProcess = await startPreviewServer();
+	await createRouteFiles();
+	console.log(`\n✅ Created HTML files for: ${routes.map((r) => `/${r}`).join(', ')}`);
+	console.log('✅ Direct access to all routes should now work!');
+} catch (error) {
+	console.error('❌ Failed to create route files:', error.message);
+	process.exit(1);
+} finally {
+	if (serverProcess) {
+		console.log('🛑 Stopping preview server...');
+		serverProcess.kill();
+		await sleep(1000);
 	}
-} catch {
-	console.log('⚠️  Preview server not running - skipping route file generation');
-	console.log('💡 For local development: run "npm run preview" first, then this script');
-	console.log('✅ SvelteKit will handle routing in production');
-	process.exit(0);
 }
