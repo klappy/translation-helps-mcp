@@ -51,9 +51,12 @@
 	<div class="space-y-6">
 		<!-- Input section -->
 		<div>
-			<label class="mb-2 block text-sm font-medium">Try a Scripture Reference</label>
+			<label for="scripture-input" class="mb-2 block text-sm font-medium"
+				>Try a Scripture Reference</label
+			>
 			<div class="flex gap-2">
 				<input
+					id="scripture-input"
 					type="text"
 					bind:value={selectedReference}
 					placeholder="e.g., John 3:16"
