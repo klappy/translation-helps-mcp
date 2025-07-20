@@ -28,36 +28,10 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Cache-Control = "public, max-age=300"
 
-# SvelteKit client-side routing for specific UI routes
+# SPA fallback: serve index.html for all non-API routes
+# This must come AFTER the API redirect (lower priority)
 [[redirects]]
-  from = "/mcp-tools"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/rag-manifesto"
-  to = "/index.html"
-  status = 200
-
-
-
-[[redirects]]
-  from = "/chat"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/test"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/performance"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/about"
+  from = "/*"
   to = "/index.html"
   status = 200
 
