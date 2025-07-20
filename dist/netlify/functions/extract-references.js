@@ -2,78 +2,37 @@
  * Extract References Endpoint
  * POST /api/extract-references
  */
-import { extractReferences } from './_shared/reference-parser';
+import { extractReferences } from "./_shared/reference-parser";
+import { timedResponse, errorResponse } from "./_shared/utils";
 export const handler = async (event, context) => {
-    console.log('Extract references requested');
-    const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Content-Type': 'application/json',
-    };
+    const startTime = Date.now();
+    console.log("Extract references requested");
     // Handle CORS preflight
-    if (event.httpMethod === 'OPTIONS') {
+    if (event.httpMethod === "OPTIONS") {
         return {
             statusCode: 200,
-            headers,
-            body: '',
+            headers: { "Access-Control-Allow-Origin": "*" },
+            body: "",
         };
     }
-    if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers,
-            body: JSON.stringify({
-                error: 'Method not allowed',
-                message: 'This endpoint only accepts POST requests'
-            }),
-        };
+    if (event.httpMethod !== "GET") {
+        return errorResponse(405, "This endpoint only accepts GET requests", "METHOD_NOT_ALLOWED");
     }
     try {
-        if (!event.body) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    error: 'Bad request',
-                    message: 'Request body is required'
-                }),
-            };
-        }
-        const { text } = JSON.parse(event.body);
-        if (!text || typeof text !== 'string') {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({
-                    error: 'Bad request',
-                    message: 'Text field is required and must be a string'
-                }),
-            };
+        const { text } = event.queryStringParameters || {};
+        if (!text || typeof text !== "string") {
+            return errorResponse(400, "Text parameter is required and must be a string", "MISSING_PARAMETER", { example: "/api/extract-references?text=See%20John%203:16%20and%20Genesis%201:1" });
         }
         const references = extractReferences(text);
-        const response = {
+        const result = {
             text,
             references,
             count: references.length,
-            timestamp: new Date().toISOString()
         };
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify(response, null, 2),
-        };
+        return timedResponse(result, startTime);
     }
     catch (error) {
-        console.error('Extract references error:', error);
-        return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({
-                error: 'Internal server error',
-                message: 'Failed to extract references from text',
-                timestamp: new Date().toISOString()
-            }),
-        };
+        console.error("Extract references error:", error);
+        return errorResponse(500, "Failed to extract references from text", "INTERNAL_SERVER_ERROR");
     }
 };

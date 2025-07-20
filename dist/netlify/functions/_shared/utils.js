@@ -1,6 +1,21 @@
 /**
  * Shared utilities for Netlify Functions
  */
+import { cache } from "./cache.js";
+import { readFileSync } from "fs";
+import { join } from "path";
+// Read version from package.json
+function getAppVersion() {
+    try {
+        const packageJsonPath = join(process.cwd(), "package.json");
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+        return packageJson.version;
+    }
+    catch (error) {
+        console.warn("Failed to read version from package.json, using fallback");
+        return "3.5.0"; // Fallback version
+    }
+}
 /**
  * CORS headers for API responses
  */
@@ -149,6 +164,21 @@ export function deepMerge(target, source) {
     return result;
 }
 /**
+ * Add consistent metadata to any response object
+ */
+export function addMetadata(data, startTime, additionalMetadata) {
+    const responseTime = Date.now() - startTime;
+    return {
+        ...data,
+        metadata: {
+            timestamp: new Date().toISOString(),
+            responseTime,
+            version: process.env.API_VERSION || "3.4.0",
+            ...additionalMetadata,
+        },
+    };
+}
+/**
  * Add response time to any response object
  */
 export function addResponseTime(data, startTime) {
@@ -161,7 +191,120 @@ export function addResponseTime(data, startTime) {
 /**
  * Create a response with timing information
  */
-export function timedResponse(data, startTime, headers) {
-    const responseData = addResponseTime(data, startTime);
+export function timedResponse(data, startTime, headers, cacheInfo) {
+    const additionalMetadata = cacheInfo
+        ? {
+            cached: cacheInfo.cached,
+            cacheType: cacheInfo.cacheType,
+            cacheExpiresAt: cacheInfo.expiresAt,
+            cacheTtlSeconds: cacheInfo.ttlSeconds,
+        }
+        : {};
+    const responseData = addMetadata(data, startTime, additionalMetadata);
     return successResponse(responseData, headers);
+}
+/**
+ * Enhanced response caching helper
+ * Implements consistent caching strategy across all functions with version-aware keys
+ */
+export async function withConservativeCache(request, cacheKey, fetcher, options) {
+    const { cacheType = "transformedResponse", customTtl, bypassCache = false } = options || {};
+    // Check for cache bypass headers
+    const shouldBypassCache = bypassCache ||
+        request.headers.get("cache-control")?.includes("no-cache") ||
+        request.headers.get("x-bypass-cache") === "true";
+    if (shouldBypassCache) {
+        console.log(`🚫 Cache bypassed for: ${cacheKey}`);
+        const data = await fetcher();
+        return {
+            data,
+            cached: false,
+            cacheHeaders: {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "X-Cache-Status": "BYPASSED",
+            },
+        };
+    }
+    try {
+        // Try to get from cache first
+        const cacheResult = await cache.getWithCacheInfo(cacheKey, cacheType);
+        if (cacheResult.cached && cacheResult.value) {
+            console.log(`🎯 Serving from cache: ${cacheKey}`);
+            return {
+                data: cacheResult.value,
+                cached: true,
+                cacheInfo: {
+                    expiresAt: cacheResult.expiresAt,
+                    ttlSeconds: cacheResult.ttlSeconds,
+                    version: cacheResult.version,
+                },
+                cacheHeaders: {
+                    "Cache-Control": `public, max-age=${Math.max(0, cacheResult.ttlSeconds || 0)}`,
+                    "X-Cache-Status": "HIT",
+                    "X-Cache-Type": cacheResult.cacheType || "unknown",
+                    "X-Cache-Version": cacheResult.version || "unknown",
+                    "X-Cache-Expires": cacheResult.expiresAt || "unknown",
+                },
+            };
+        }
+        // Cache miss - fetch fresh data
+        console.log(`⚡ Cache miss, fetching fresh: ${cacheKey}`);
+        const data = await fetcher();
+        // Store in cache for next time
+        await cache.set(cacheKey, data, cacheType, customTtl);
+        // Get cache info for headers
+        const newCacheResult = await cache.getWithCacheInfo(cacheKey, cacheType);
+        return {
+            data,
+            cached: false,
+            cacheInfo: {
+                expiresAt: newCacheResult.expiresAt,
+                ttlSeconds: newCacheResult.ttlSeconds,
+                version: newCacheResult.version,
+            },
+            cacheHeaders: {
+                "Cache-Control": `public, max-age=${newCacheResult.ttlSeconds || 300}`,
+                "X-Cache-Status": "MISS",
+                "X-Cache-Type": newCacheResult.cacheType || "unknown",
+                "X-Cache-Version": newCacheResult.version || "unknown",
+                "X-Cache-Expires": newCacheResult.expiresAt || "unknown",
+            },
+        };
+    }
+    catch (error) {
+        console.error(`❌ Cache error for ${cacheKey}:`, error);
+        // Fallback to direct fetch without caching
+        const data = await fetcher();
+        return {
+            data,
+            cached: false,
+            cacheHeaders: {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "X-Cache-Status": "ERROR",
+                "X-Cache-Error": error.message,
+            },
+        };
+    }
+}
+/**
+ * Build a versioned cache key for DCS resources
+ */
+export function buildDCSCacheKey(endpoint, params = {}) {
+    const appVersion = getAppVersion();
+    const paramString = Object.keys(params)
+        .sort()
+        .map((key) => `${key}:${params[key]}`)
+        .join(":");
+    return `v${appVersion}:dcs:${endpoint}${paramString ? `:${paramString}` : ""}`;
+}
+/**
+ * Build cache key for transformed/processed responses
+ */
+export function buildTransformedCacheKey(endpoint, params = {}) {
+    const appVersion = getAppVersion();
+    const paramString = Object.keys(params)
+        .sort()
+        .map((key) => `${key}:${params[key]}`)
+        .join(":");
+    return `v${appVersion}:transformed:${endpoint}${paramString ? `:${paramString}` : ""}`;
 }
