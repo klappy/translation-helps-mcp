@@ -6,7 +6,7 @@
 import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { cache } from "../cache";
+import { cache } from "../cache-platform-agnostic";
 
 // Read version from package.json
 function getAppVersion(): string {

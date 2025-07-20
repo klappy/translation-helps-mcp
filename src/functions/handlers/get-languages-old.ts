@@ -1,14 +1,17 @@
 /**
- * Pure Get Languages Handler - No Caching
- * Contains only business logic, caching handled by platform wrappers
+ * Platform-agnostic Get Languages Handler
+ * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
 import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import { timedResponse, errorResponse } from "../utils";
 import { getLanguages } from "../languages-service";
 
 export const getLanguagesHandler: PlatformHandler = async (
   request: PlatformRequest
 ): Promise<PlatformResponse> => {
+  const startTime = Date.now();
+
   // Handle CORS
   if (request.method === "OPTIONS") {
     return {
@@ -26,7 +29,7 @@ export const getLanguagesHandler: PlatformHandler = async (
     const organization = request.queryStringParameters.organization || "unfoldingWord";
     const includeAlternateNames = request.queryStringParameters.includeAlternateNames === "true";
 
-    // Pure business logic - no caching here
+    // Use the shared languages service
     const result = await getLanguages({
       organization,
       includeAlternateNames,
@@ -38,12 +41,13 @@ export const getLanguagesHandler: PlatformHandler = async (
       languages: result.languages,
       organization,
 
-      // Metadata (without cache info - that's handled by wrapper)
+      // Metadata
       metadata: {
         timestamp: new Date().toISOString(),
         responseTime: result.metadata.responseTime,
+        cached: result.metadata.cached,
         languagesFound: result.metadata.languagesFound,
-        version: "4.0.0",
+        version: "3.6.0",
       },
     };
 
@@ -51,6 +55,7 @@ export const getLanguagesHandler: PlatformHandler = async (
       statusCode: 200,
       headers: {
         "Content-Type": "application/json",
+        "Cache-Control": result.metadata.cached ? "max-age=300" : "no-cache",
       },
       body: JSON.stringify(response),
     };
