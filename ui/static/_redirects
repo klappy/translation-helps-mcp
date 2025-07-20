@@ -1,0 +1,8 @@
+# API routes to functions
+/api/*  /.netlify/functions/:splat  200
+
+# Test redirect
+/test-redirect  /  301
+
+# SPA fallback - serve index.html for all other routes
+/*  /index.html  200 
