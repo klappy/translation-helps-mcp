@@ -28,6 +28,13 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Cache-Control = "public, max-age=300"
 
+# SvelteKit client-side routing fallback (exclude API routes)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
 # Function-specific configuration
 [functions]
   directory = "netlify/functions"
