@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - 2025-01-22
+
+### ⚡ Performance Improvements
+
+- **USFM Parsing Optimizations**: Major performance improvements for verse ranges and chapter ranges
+  - **Verse Range Optimization**: Eliminated redundant chapter parsing for multi-verse requests
+    - 2 verses: 50% fewer operations
+    - 10 verses (e.g., Matthew 5:3-12): 90% fewer operations
+    - 50 verses (long passages): 98% fewer operations
+  - **Chapter Range Optimization**: New `extractChapterRange()` function for efficient multi-chapter extraction
+    - 3 chapters: 67% fewer USFM processing operations
+    - 10 chapters: 90% fewer USFM processing operations
+  - **Algorithmic Improvements**: Smart caching of chapter parsing eliminates redundant work
+    - Verse ranges now find chapter once vs N times (N = verse count)
+    - Chapter ranges now split USFM once vs N times (N = chapter count)
+  - **Real-World Impact**: Faster API responses, reduced CPU usage, improved mobile performance
+
+### 🧪 Testing
+
+- **Comprehensive Scripture Test Suite**: Added 51 tests covering all scripture fetching scenarios
+  - Single verses, verse ranges, full chapters, chapter ranges
+  - Book abbreviations (Jn, Gen, Mt, etc.)
+  - Old Testament and New Testament with smart fallback logic
+  - Edge cases, error handling, performance validation
+  - USFM parsing validation to ensure clean text extraction
+- **Multi-Organization Support**: Tests validate fallback between translation organizations
+  - Primary: unfoldingWord (New Testament)
+  - Fallback: Door43, STR, WA, translate (Old Testament coverage)
+
 ## [3.5.1] - 2025-01-20
 
 ### 🔧 Fixed

@@ -86,6 +86,22 @@ function normalizeResponse(data: any) {
     delete normalized.metadata.timestamp;
   }
 
+  if (normalized.metadata?.cacheExpiresAt) {
+    delete normalized.metadata.cacheExpiresAt;
+  }
+
+  if (normalized.metadata?.cacheTtlSeconds) {
+    delete normalized.metadata.cacheTtlSeconds;
+  }
+
+  if (normalized.metadata?.responseTime) {
+    delete normalized.metadata.responseTime;
+  }
+
+  if (normalized.responseTime) {
+    delete normalized.responseTime;
+  }
+
   if (normalized.timestamp) {
     delete normalized.timestamp;
   }

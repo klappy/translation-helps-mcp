@@ -1,6 +1,11 @@
 import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify/functions";
 import { parseReference } from "./_shared/reference-parser";
-import { extractVerseText, extractVerseRange, extractChapterText } from "./_shared/usfm-extractor";
+import {
+  extractVerseText,
+  extractVerseRange,
+  extractChapterText,
+  extractChapterRange,
+} from "./_shared/usfm-extractor";
 import { timedResponse } from "./_shared/utils";
 import { cache } from "./_shared/cache";
 
@@ -268,18 +273,11 @@ export const handler: Handler = async (
         let text: string | null = null;
 
         if (!reference.verse && reference.verseEnd) {
-          // Chapter range
+          // Chapter range - use optimized extraction
           const startChapter = reference.chapter;
           const endChapter = reference.verseEnd;
-          let combinedText = "";
 
-          for (let chapter = startChapter; chapter <= endChapter; chapter++) {
-            const chapterText = extractChapterText(usfm, chapter);
-            if (chapterText) {
-              combinedText += chapterText + "\n\n";
-            }
-          }
-          text = combinedText.trim() || null;
+          text = extractChapterRange(usfm, startChapter, endChapter) || null;
         } else if (reference.verse && reference.verseEnd) {
           // Verse range within same chapter
           text = extractVerseRange(usfm, reference.chapter, reference.verse, reference.verseEnd);

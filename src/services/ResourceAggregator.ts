@@ -10,6 +10,7 @@ import {
   extractVerseText,
   extractVerseRange,
   extractChapterText,
+  extractChapterRange,
   validateCleanText,
 } from "../utils/usfmExtractor.js";
 
