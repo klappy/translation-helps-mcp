@@ -17,9 +17,15 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Define the functions to generate
+// Currently implemented handlers (Phase 1)
 const functions = [
   { name: "get-languages", handler: "getLanguagesHandler" },
   { name: "fetch-scripture", handler: "fetchScriptureHandler" },
+  { name: "health", handler: "healthHandler" },
+];
+
+// TODO: Add these handlers in Phase 2
+const todoFunctions = [
   { name: "fetch-resources", handler: "fetchResourcesHandler" },
   { name: "fetch-translation-notes", handler: "fetchTranslationNotesHandler" },
   { name: "fetch-translation-questions", handler: "fetchTranslationQuestionsHandler" },
@@ -30,7 +36,6 @@ const functions = [
   { name: "browse-translation-words", handler: "browseTranslationWordsHandler" },
   { name: "get-words-for-reference", handler: "getWordsForReferenceHandler" },
   { name: "list-available-resources", handler: "listAvailableResourcesHandler" },
-  { name: "health", handler: "healthHandler" },
 ];
 
 // Template for Netlify functions
