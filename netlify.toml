@@ -1,5 +1,4 @@
 # Netlify Configuration for SvelteKit
-# Updated to fix build command override issue
 
 [build]
   command = "npm run build:netlify"
