@@ -8,6 +8,16 @@ const baseUrl = 'http://localhost:4173';
 
 console.log('🔧 Creating route HTML files for direct access...');
 
+// Check if we're in a CI/build environment
+const isCI =
+	process.env.CI || process.env.NETLIFY || process.env.VERCEL || process.env.GITHUB_ACTIONS;
+
+if (isCI) {
+	console.log('🏗️  Running in CI/build environment - skipping route file generation');
+	console.log('✅ SvelteKit will handle routing automatically');
+	process.exit(0);
+}
+
 // Routes to create static files for
 const routes = ['api', 'chat', 'test', 'performance', 'mcp-tools', 'rag-manifesto'];
 
@@ -39,7 +49,7 @@ async function createRouteFiles() {
 	}
 }
 
-// Check if preview server is running
+// Check if preview server is running (local development only)
 try {
 	const healthCheck = await fetch(`${baseUrl}/`);
 	if (healthCheck.ok) {
@@ -50,7 +60,8 @@ try {
 		throw new Error('Server not responding');
 	}
 } catch {
-	console.error('❌ Preview server not running! Please run "npm run preview" first.');
-	console.error('❌ Then run this script again.');
-	process.exit(1);
+	console.log('⚠️  Preview server not running - skipping route file generation');
+	console.log('💡 For local development: run "npm run preview" first, then this script');
+	console.log('✅ SvelteKit will handle routing in production');
+	process.exit(0);
 }
