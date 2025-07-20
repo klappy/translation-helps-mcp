@@ -26,7 +26,13 @@ export const handler: Handler = async (event, context) => {
   }
 
   const startTime = Date.now();
-  const request = new Request(`${event.headers.host}${event.path}`, {
+
+  // Fix Request construction for production
+  const protocol = event.headers["x-forwarded-proto"] || "https";
+  const host = event.headers.host || "translation-helps-mcp.netlify.app";
+  const path = event.path || "/.netlify/functions/get-languages";
+
+  const request = new Request(`${protocol}://${host}${path}`, {
     method: event.httpMethod,
     headers: event.headers as Record<string, string>,
   });
