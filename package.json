@@ -7,7 +7,7 @@
     "dev": "netlify dev",
     "prebuild": "echo '{\"version\": \"'$npm_package_version'\"}' > netlify/functions/_shared/version.json",
     "build": "tsc && cp netlify/functions/_shared/version.json dist/netlify/functions/_shared/",
-    "build:ui": "cd ui && npm install && npm run build",
+    "build:ui": "cd ui && npm install && npm run build && cp ../_redirects build/_redirects",
     "build:all": "npm run build && npm run build:ui",
     "test": "vitest",
     "test:watch": "vitest watch",
