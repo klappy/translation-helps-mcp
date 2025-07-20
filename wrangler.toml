@@ -6,7 +6,7 @@ pages_build_output_dir = "ui/build"
 [env.production.vars]
   NODE_ENV = "production"
 
-[env.dev.vars]
+[env.preview.vars]
   NODE_ENV = "development"
 
 # For Pages deployment, use: npx wrangler pages deploy ui/build
