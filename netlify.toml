@@ -28,6 +28,12 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Cache-Control = "public, max-age=300"
 
+# Test redirect to debug
+[[redirects]]
+  from = "/test-redirect"
+  to = "/"
+  status = 301
+
 # SPA fallback: serve index.html for all non-API routes
 # This must come AFTER the API redirect (lower priority)
 [[redirects]]
