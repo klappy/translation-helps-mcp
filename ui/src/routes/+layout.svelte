@@ -60,6 +60,7 @@
 
 	// Mobile menu state
 	let mobileMenuOpen = false;
+	let currentPath = '';
 
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
@@ -70,8 +71,11 @@
 	}
 
 	// Close mobile menu when route changes
-	$: if (mobileMenuOpen) {
-		closeMobileMenu();
+	$: {
+		if (currentPath && currentPath !== $page.url.pathname && mobileMenuOpen) {
+			closeMobileMenu();
+		}
+		currentPath = $page.url.pathname;
 	}
 </script>
 
@@ -176,6 +180,7 @@
 		<!-- Mobile Navigation -->
 		{#if mobileMenuOpen}
 			<div
+				data-testid="mobile-menu"
 				class="absolute top-full right-0 left-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-xl md:hidden"
 			>
 				<div class="space-y-4 px-4 py-6">
