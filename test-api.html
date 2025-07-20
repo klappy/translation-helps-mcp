@@ -3,214 +3,340 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Translation Helps API Test</title>
+    <title>Translation Helps API 🙏</title>
     <style>
       body {
-        font-family: Arial, sans-serif;
-        max-width: 1200px;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        max-width: 900px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 2rem;
+        line-height: 1.6;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         min-height: 100vh;
       }
       .container {
         background: rgba(255, 255, 255, 0.1);
+        padding: 2rem;
+        border-radius: 20px;
         backdrop-filter: blur(10px);
-        border-radius: 15px;
-        padding: 30px;
-        margin-bottom: 20px;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
       }
       h1 {
-        text-align: center;
-        margin-bottom: 30px;
-        font-size: 2.5em;
-      }
-      .form-group {
-        margin-bottom: 20px;
-      }
-      label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-      }
-      input,
-      select {
-        width: 100%;
-        padding: 10px;
-        border: none;
-        border-radius: 5px;
-        background: rgba(255, 255, 255, 0.9);
-        color: #333;
-      }
-      button {
-        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
-        margin: 5px;
-      }
-      button:hover {
-        opacity: 0.9;
-      }
-      .results {
-        margin-top: 20px;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 10px;
-        padding: 20px;
-        max-height: 400px;
-        overflow-y: auto;
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
       }
       .endpoint {
-        margin-bottom: 15px;
-        padding: 15px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1.5rem 0;
       }
       .endpoint h3 {
-        margin: 0 0 10px 0;
-        color: #ffd700;
+        margin-top: 0;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
-      .status {
-        font-weight: bold;
-        margin-bottom: 10px;
-      }
-      .status.success {
-        color: #4caf50;
-      }
-      .status.error {
-        color: #f44336;
-      }
-      .status.loading {
-        color: #ff9800;
-      }
-      pre {
-        background: rgba(0, 0, 0, 0.5);
-        padding: 10px;
+      code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.2rem 0.5rem;
         border-radius: 5px;
-        overflow-x: auto;
-        font-size: 12px;
+        font-family: "Monaco", "Menlo", monospace;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 0.5rem;
+        margin: 0.5rem 0;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 1rem;
+      }
+      input[type="text"]::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+      }
+      input[type="text"]:focus {
+        outline: none;
+        border-color: #4caf50;
+        background: rgba(255, 255, 255, 0.2);
+      }
+      .test-button {
+        background: #4caf50;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 0.5rem 0.5rem 0.5rem 0;
+        transition: all 0.3s ease;
+      }
+      .test-button:hover {
+        background: #45a049;
+        transform: translateY(-2px);
+      }
+      .test-button:active {
+        transform: translateY(0);
+      }
+      .quick-fill {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+      }
+      .quick-button {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+      }
+      .quick-button:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+      #results {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        white-space: pre-wrap;
+        font-family: monospace;
+        max-height: 500px;
+        overflow-y: auto;
+      }
+      .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+      }
+      .status-success {
+        background: #4caf50;
+      }
+      .status-error {
+        background: #f44336;
+      }
+      .status-loading {
+        background: #ff9800;
+        animation: pulse 1s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      .input-group {
+        margin: 1rem 0;
+      }
+      .input-group label {
+        display: block;
+        margin-bottom: 0.3rem;
+        font-size: 0.9rem;
+        opacity: 0.9;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>🚀 Translation Helps API Test</h1>
+      <h1>🙏 Translation Helps API</h1>
+      <p>A serverless API for Bible translation resources</p>
 
-      <div class="form-group">
-        <label for="reference">Bible Reference:</label>
-        <input type="text" id="reference" value="John 3:16" placeholder="e.g., John 3:16" />
+      <div class="endpoint">
+        <h3><span class="status-indicator" id="health-status"></span>🏥 Health Check</h3>
+        <p><code>GET /api/health</code></p>
+        <button class="test-button" onclick="testHealth()">Test Health</button>
       </div>
 
-      <div class="form-group">
-        <label for="language">Language:</label>
-        <select id="language">
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-        </select>
+      <div class="endpoint">
+        <h3>📖 Fetch Resources</h3>
+        <p><code>GET /api/fetch-resources?reference={reference}&language={lang}</code></p>
+
+        <div class="input-group">
+          <label for="reference">Scripture Reference:</label>
+          <input
+            type="text"
+            id="reference"
+            placeholder="e.g., John 3:16, Matthew 5:1-10, Titus 1:1-3"
+            value="Titus 1:1"
+          />
+          <div class="quick-fill">
+            <button class="quick-button" onclick="setReference('John 3:16')">John 3:16</button>
+            <button class="quick-button" onclick="setReference('Genesis 1:1-3')">
+              Genesis 1:1-3
+            </button>
+            <button class="quick-button" onclick="setReference('Psalm 23')">Psalm 23</button>
+            <button class="quick-button" onclick="setReference('Matthew 5:1-10')">
+              Matthew 5:1-10
+            </button>
+            <button class="quick-button" onclick="setReference('Romans 8:28')">Romans 8:28</button>
+            <button class="quick-button" onclick="setReference('Titus 1')">
+              Titus 1 (full chapter)
+            </button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="language">Language Code:</label>
+          <input type="text" id="language" placeholder="e.g., en, es, fr, hi" value="en" />
+          <div class="quick-fill">
+            <button class="quick-button" onclick="setLanguage('en')">English</button>
+            <button class="quick-button" onclick="setLanguage('es')">Spanish</button>
+            <button class="quick-button" onclick="setLanguage('fr')">French</button>
+            <button class="quick-button" onclick="setLanguage('hi')">Hindi</button>
+            <button class="quick-button" onclick="setLanguage('zh')">Chinese</button>
+          </div>
+        </div>
+
+        <button class="test-button" onclick="testFetchResources()">Fetch Resources</button>
       </div>
 
-      <div class="form-group">
-        <label for="organization">Organization:</label>
-        <select id="organization">
-          <option value="unfoldingWord">unfoldingWord</option>
-          <option value="bible">Bible</option>
-        </select>
+      <div class="endpoint">
+        <h3>🔍 Extract References</h3>
+        <p><code>GET /api/extract-references?text={text}</code></p>
+
+        <div class="input-group">
+          <label for="extract-text">Text with References:</label>
+          <input
+            type="text"
+            id="extract-text"
+            placeholder="e.g., See John 3:16 and compare with Romans 8:28"
+            value="Check out John 3:16 and also Matthew 5:1-10"
+          />
+        </div>
+
+        <button class="test-button" onclick="testExtractReferences()">Extract References</button>
       </div>
 
-      <button onclick="testAllEndpoints()">🧪 Test All Endpoints</button>
-      <button onclick="clearResults()">🗑️ Clear Results</button>
+      <div class="endpoint">
+        <h3>🌍 Get Languages</h3>
+        <p><code>GET /api/get-languages?includeMetadata={true|false}</code></p>
 
-      <div id="results" class="results"></div>
+        <div class="input-group">
+          <label> <input type="checkbox" id="include-metadata" /> Include metadata </label>
+        </div>
+
+        <button class="test-button" onclick="testGetLanguages()">Get Languages</button>
+      </div>
+
+      <h3>🧪 Test Results</h3>
+      <div id="results">Click a test button to see API responses...</div>
+
+      <div style="margin-top: 2rem; text-align: center; opacity: 0.8">
+        <p>Built with ❤️ for Bible translators worldwide</p>
+        <p><small>Powered by Netlify Functions + Door43 Content Service</small></p>
+        <p>
+          <small>Version: <span id="api-version">checking...</span></small>
+        </p>
+      </div>
     </div>
 
     <script>
-      const endpoints = [
-        { name: "Scripture", path: "/.netlify/functions/fetch-scripture" },
-        { name: "Translation Notes", path: "/.netlify/functions/fetch-translation-notes" },
-        { name: "Translation Questions", path: "/.netlify/functions/fetch-translation-questions" },
-        { name: "Translation Words", path: "/.netlify/functions/fetch-translation-words" },
-        {
-          name: "Translation Word Links",
-          path: "/.netlify/functions/fetch-translation-word-links",
-        },
-        { name: "All Resources", path: "/.netlify/functions/fetch-resources" },
-      ];
+      // Helper functions
+      function setReference(ref) {
+        document.getElementById("reference").value = ref;
+      }
 
-      async function testEndpoint(endpoint) {
-        const reference = document.getElementById("reference").value;
-        const language = document.getElementById("language").value;
-        const organization = document.getElementById("organization").value;
+      function setLanguage(lang) {
+        document.getElementById("language").value = lang;
+      }
 
-        const params = new URLSearchParams({
-          reference: reference,
-          language: language,
-          organization: organization,
-        });
+      function updateStatus(elementId, status) {
+        const element = document.getElementById(elementId);
+        element.className = "status-indicator status-" + status;
+      }
 
-        const url = `${endpoint.path}?${params.toString()}`;
+      async function makeRequest(path, showTiming = true) {
+        const resultsDiv = document.getElementById("results");
+        resultsDiv.textContent = "Loading...";
 
-        const resultDiv = document.createElement("div");
-        resultDiv.className = "endpoint";
-        resultDiv.innerHTML = `
-                <h3>${endpoint.name}</h3>
-                <div class="status loading">⏳ Loading...</div>
-                <div>URL: ${url}</div>
-            `;
-
-        document.getElementById("results").appendChild(resultDiv);
+        const startTime = performance.now();
 
         try {
-          const startTime = performance.now();
-          const response = await fetch(url);
+          const response = await fetch(path);
           const endTime = performance.now();
-          const responseTime = (endTime - startTime).toFixed(0);
+          const data = await response.json();
 
-          if (response.ok) {
-            const data = await response.json();
-            resultDiv.innerHTML = `
-                        <h3>${endpoint.name}</h3>
-                        <div class="status success">✅ Success (${responseTime}ms)</div>
-                        <div>URL: ${url}</div>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    `;
-          } else {
-            const errorText = await response.text();
-            resultDiv.innerHTML = `
-                        <h3>${endpoint.name}</h3>
-                        <div class="status error">❌ Error (${response.status})</div>
-                        <div>URL: ${url}</div>
-                        <pre>${errorText}</pre>
-                    `;
+          let output = "";
+          if (showTiming) {
+            output += `Response Time: ${(endTime - startTime).toFixed(0)}ms\n`;
+            output += `Status: ${response.status} ${response.statusText}\n`;
+            output += `─────────────────────────────────────\n\n`;
           }
+          output += JSON.stringify(data, null, 2);
+
+          resultsDiv.textContent = output;
+          return { success: response.ok, data };
         } catch (error) {
-          resultDiv.innerHTML = `
-                    <h3>${endpoint.name}</h3>
-                    <div class="status error">❌ Network Error</div>
-                    <div>URL: ${url}</div>
-                    <pre>${error.message}</pre>
-                `;
+          resultsDiv.textContent = `Error: ${error.message}`;
+          return { success: false, error };
         }
       }
 
-      async function testAllEndpoints() {
-        document.getElementById("results").innerHTML = "";
+      // Test functions
+      async function testHealth() {
+        updateStatus("health-status", "loading");
+        const result = await makeRequest("/api/health");
+        updateStatus("health-status", result.success ? "success" : "error");
 
-        for (const endpoint of endpoints) {
-          await testEndpoint(endpoint);
-          // Small delay between requests
-          await new Promise((resolve) => setTimeout(resolve, 100));
+        // Update version display
+        if (result.success && result.data.version) {
+          document.getElementById("api-version").textContent = result.data.version;
         }
       }
 
-      function clearResults() {
-        document.getElementById("results").innerHTML = "";
+      async function testFetchResources() {
+        const reference = document.getElementById("reference").value;
+        const language = document.getElementById("language").value;
+
+        if (!reference) {
+          document.getElementById("results").textContent = "Please enter a scripture reference";
+          return;
+        }
+
+        const params = new URLSearchParams({ reference, language });
+        await makeRequest(`/api/fetch-resources?${params}`);
       }
+
+      async function testExtractReferences() {
+        const text = document.getElementById("extract-text").value;
+
+        if (!text) {
+          document.getElementById("results").textContent =
+            "Please enter some text containing scripture references";
+          return;
+        }
+
+        const params = new URLSearchParams({ text });
+        await makeRequest(`/api/extract-references?${params}`);
+      }
+
+      async function testGetLanguages() {
+        const includeMetadata = document.getElementById("include-metadata").checked;
+        const params = new URLSearchParams({ includeMetadata });
+        await makeRequest(`/api/get-languages?${params}`);
+      }
+
+      // Run health check on load
+      window.addEventListener("DOMContentLoaded", () => {
+        testHealth();
+      });
     </script>
   </body>
 </html>
