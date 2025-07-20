@@ -1,11 +1,13 @@
 /**
  * SvelteKit API Route for fetch-scripture
- * Auto-generated from shared handler
+ * Auto-generated from shared handler with in-memory caching
  */
 
 import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
 import { fetchScriptureHandler } from '$lib/../../../src/functions/handlers/fetch-scripture';
+import { MemoryCacheAdapter } from '$lib/../../../src/functions/caches/memory-cache';
 
-export const GET = createSvelteKitHandler(fetchScriptureHandler);
-export const POST = createSvelteKitHandler(fetchScriptureHandler);
-export const OPTIONS = createSvelteKitHandler(fetchScriptureHandler);
+const cache = new MemoryCacheAdapter();
+export const GET = createSvelteKitHandler(fetchScriptureHandler, cache);
+export const POST = createSvelteKitHandler(fetchScriptureHandler, cache);
+export const OPTIONS = createSvelteKitHandler(fetchScriptureHandler, cache);

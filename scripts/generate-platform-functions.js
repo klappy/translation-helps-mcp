@@ -41,27 +41,31 @@ const todoFunctions = [
 // Template for Netlify functions
 const netlifyTemplate = (functionName, handlerName) => `/**
  * Netlify Function Wrapper for ${functionName}
- * Auto-generated from shared handler
+ * Auto-generated from shared handler with Netlify Blobs caching
  */
 
 import { createNetlifyHandler } from '../../src/functions/platform-adapter';
 import { ${handlerName} } from '../../src/functions/handlers/${functionName}';
+import { NetlifyCacheAdapter } from '../../src/functions/caches/netlify-cache';
 
-export const handler = createNetlifyHandler(${handlerName});
+const cache = new NetlifyCacheAdapter();
+export const handler = createNetlifyHandler(${handlerName}, cache);
 `;
 
 // Template for SvelteKit API routes
 const svelteKitTemplate = (functionName, handlerName) => `/**
  * SvelteKit API Route for ${functionName}
- * Auto-generated from shared handler
+ * Auto-generated from shared handler with in-memory caching
  */
 
 import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
 import { ${handlerName} } from '$lib/../../../src/functions/handlers/${functionName}';
+import { MemoryCacheAdapter } from '$lib/../../../src/functions/caches/memory-cache';
 
-export const GET = createSvelteKitHandler(${handlerName});
-export const POST = createSvelteKitHandler(${handlerName});
-export const OPTIONS = createSvelteKitHandler(${handlerName});
+const cache = new MemoryCacheAdapter();
+export const GET = createSvelteKitHandler(${handlerName}, cache);
+export const POST = createSvelteKitHandler(${handlerName}, cache);
+export const OPTIONS = createSvelteKitHandler(${handlerName}, cache);
 `;
 
 // Create directories

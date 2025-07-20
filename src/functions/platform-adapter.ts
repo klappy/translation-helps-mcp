@@ -15,8 +15,14 @@ export interface PlatformResponse {
 
 export type PlatformHandler = (request: PlatformRequest) => Promise<PlatformResponse>;
 
-// Netlify adapter
-export function createNetlifyHandler(handler: PlatformHandler) {
+// Cache interface for platform wrappers
+export interface CacheAdapter {
+  get(key: string): Promise<any>;
+  set(key: string, value: any, ttl?: number): Promise<void>;
+}
+
+// Netlify adapter with caching
+export function createNetlifyHandler(handler: PlatformHandler, cacheAdapter?: CacheAdapter) {
   return async (event: any, context: any) => {
     const request: PlatformRequest = {
       method: event.httpMethod,
@@ -26,7 +32,46 @@ export function createNetlifyHandler(handler: PlatformHandler) {
       queryStringParameters: event.queryStringParameters || {},
     };
 
+    // Add caching logic if cache adapter provided
+    if (cacheAdapter) {
+      const cacheKey = `${event.path}:${JSON.stringify(event.queryStringParameters || {})}`;
+
+      // Try cache first
+      try {
+        const cached = await cacheAdapter.get(cacheKey);
+        if (cached) {
+          return {
+            statusCode: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Headers": "Content-Type",
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+              "X-Cache": "HIT",
+            },
+            body: JSON.stringify(cached),
+          };
+        }
+      } catch (error) {
+        console.warn("Cache read failed:", error);
+      }
+    }
+
     const response = await handler(request);
+
+    // Cache successful responses
+    if (cacheAdapter && response.statusCode === 200) {
+      try {
+        const responseData = JSON.parse(response.body);
+        await cacheAdapter.set(
+          `${event.path}:${JSON.stringify(event.queryStringParameters || {})}`,
+          responseData,
+          3600000
+        ); // 1 hour
+      } catch (error) {
+        console.warn("Cache write failed:", error);
+      }
+    }
 
     return {
       statusCode: response.statusCode,
@@ -35,6 +80,7 @@ export function createNetlifyHandler(handler: PlatformHandler) {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Content-Type",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "X-Cache": "MISS",
         ...response.headers,
       },
       body: response.body,
@@ -42,8 +88,8 @@ export function createNetlifyHandler(handler: PlatformHandler) {
   };
 }
 
-// SvelteKit adapter
-export function createSvelteKitHandler(handler: PlatformHandler) {
+// SvelteKit adapter with caching
+export function createSvelteKitHandler(handler: PlatformHandler, cacheAdapter?: CacheAdapter) {
   return async ({ request }: { request: Request }) => {
     const url = new URL(request.url);
     const queryStringParameters: Record<string, string> = {};
@@ -59,7 +105,45 @@ export function createSvelteKitHandler(handler: PlatformHandler) {
       queryStringParameters,
     };
 
+    // Add caching logic if cache adapter provided
+    if (cacheAdapter) {
+      const cacheKey = `${url.pathname}:${JSON.stringify(queryStringParameters)}`;
+
+      // Try cache first
+      try {
+        const cached = await cacheAdapter.get(cacheKey);
+        if (cached) {
+          return new Response(JSON.stringify(cached), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Headers": "Content-Type",
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+              "X-Cache": "HIT",
+            },
+          });
+        }
+      } catch (error) {
+        console.warn("Cache read failed:", error);
+      }
+    }
+
     const response = await handler(platformRequest);
+
+    // Cache successful responses
+    if (cacheAdapter && response.statusCode === 200) {
+      try {
+        const responseData = JSON.parse(response.body);
+        await cacheAdapter.set(
+          `${url.pathname}:${JSON.stringify(queryStringParameters)}`,
+          responseData,
+          3600000
+        ); // 1 hour
+      } catch (error) {
+        console.warn("Cache write failed:", error);
+      }
+    }
 
     return new Response(response.body, {
       status: response.statusCode,
@@ -68,6 +152,7 @@ export function createSvelteKitHandler(handler: PlatformHandler) {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Content-Type",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "X-Cache": "MISS",
         ...response.headers,
       },
     });
