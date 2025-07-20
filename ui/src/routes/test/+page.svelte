@@ -89,7 +89,11 @@
 		count: 5,
 		parallel: false, // Default to sequential to avoid rate limits
 		delay: 500, // Increased delay to be more gentle on the server
-		batchSize: 10 // Run tests in batches to avoid overwhelming the server
+		batchSize: 10, // Run tests in batches to avoid overwhelming the server
+		adaptiveThrottling: true, // Automatically adjust delay based on response times
+		retryOnFailure: true, // Retry failed requests with exponential backoff
+		maxRetries: 3, // Maximum retry attempts per request
+		rateLimitBackoff: 2000 // Additional delay when hitting rate limits
 	};
 
 	// API endpoints with enhanced metadata
@@ -289,14 +293,20 @@
 		debugLogs.push(`⏱️ Delay between requests: ${bulkConfig.delay}ms`);
 		debugLogs.push(`📦 Batch size: ${bulkConfig.batchSize} tests per batch`);
 
-		// Process tests in batches
-		const batchSize = bulkConfig.batchSize || 10;
-		for (let batchStart = 0; batchStart < testCases.length; batchStart += batchSize) {
-			const batch = testCases.slice(batchStart, batchStart + batchSize);
-			const batchNumber = Math.floor(batchStart / batchSize) + 1;
-			const totalBatches = Math.ceil(testCases.length / batchSize);
+		// Process tests in batches with adaptive throttling
+		let currentDelay = bulkConfig.delay;
+		let currentBatchSize = bulkConfig.batchSize || 10;
+		const maxBatchSize = Math.min(bulkConfig.batchSize || 10, 50); // Safety cap
 
-			debugLogs.push(`📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} tests)`);
+		for (let batchStart = 0; batchStart < testCases.length; batchStart += currentBatchSize) {
+			const batch = testCases.slice(batchStart, batchStart + currentBatchSize);
+			const batchNumber = Math.floor(batchStart / currentBatchSize) + 1;
+			const totalBatches = Math.ceil(testCases.length / currentBatchSize);
+			const batchStartTime = performance.now();
+
+			debugLogs.push(
+				`📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} tests, delay: ${currentDelay}ms)`
+			);
 
 			if (bulkConfig.parallel) {
 				// Parallel execution within batch
@@ -328,15 +338,42 @@
 					);
 					results.push(result);
 
-					if (bulkConfig.delay > 0 && i < batch.length - 1) {
-						await new Promise((resolve) => setTimeout(resolve, bulkConfig.delay));
+					if (currentDelay > 0 && i < batch.length - 1) {
+						await new Promise((resolve) => setTimeout(resolve, currentDelay));
 					}
+				}
+			}
+
+			// Adaptive throttling: adjust delays based on batch performance
+			if (bulkConfig.adaptiveThrottling && batchNumber < totalBatches) {
+				const batchTime = performance.now() - batchStartTime;
+				const avgResponseTime = batchTime / batch.length;
+				const batchErrors = results
+					.slice(-batch.length)
+					.filter((r) => r.status !== 'success').length;
+				const errorRate = batchErrors / batch.length;
+
+				// Adjust delay based on performance
+				if (avgResponseTime > 3000 || errorRate > 0.1) {
+					// Slow responses or errors - increase delay
+					currentDelay = Math.min(currentDelay * 1.5, 5000);
+					if (currentBatchSize > 5) currentBatchSize = Math.max(5, currentBatchSize - 5);
+					debugLogs.push(
+						`🐌 Slowing down: delay increased to ${currentDelay}ms, batch size reduced to ${currentBatchSize}`
+					);
+				} else if (avgResponseTime < 1000 && errorRate === 0) {
+					// Fast, successful responses - can speed up slightly
+					currentDelay = Math.max(currentDelay * 0.9, 100);
+					currentBatchSize = Math.min(currentBatchSize + 2, maxBatchSize);
+					debugLogs.push(
+						`⚡ Speeding up: delay reduced to ${currentDelay}ms, batch size increased to ${currentBatchSize}`
+					);
 				}
 			}
 
 			// Delay between batches
 			if (batchNumber < totalBatches) {
-				const batchDelay = Math.max(bulkConfig.delay * 2, 1000); // Longer delay between batches
+				const batchDelay = Math.max(currentDelay * 2, 1000); // Longer delay between batches
 				debugLogs.push(`⏸️ Waiting ${batchDelay}ms before next batch...`);
 				await new Promise((resolve) => setTimeout(resolve, batchDelay));
 			}
@@ -1019,7 +1056,7 @@
 									type="number"
 									bind:value={bulkConfig.batchSize}
 									min="1"
-									max="50"
+									max="200"
 									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
 								/>
 							</div>
@@ -1035,6 +1072,24 @@
 										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
 									/>
 									<span class="ml-2 text-sm text-gray-300">Parallel Execution</span>
+								</label>
+								<label class="flex items-center">
+									<input
+										type="checkbox"
+										bind:checked={bulkConfig.adaptiveThrottling}
+										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+									/>
+									<span class="ml-2 text-sm text-gray-300"
+										>Adaptive Throttling (Auto-adjust delays)</span
+									>
+								</label>
+								<label class="flex items-center">
+									<input
+										type="checkbox"
+										bind:checked={bulkConfig.retryOnFailure}
+										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+									/>
+									<span class="ml-2 text-sm text-gray-300">Retry Failed Requests</span>
 								</label>
 							</div>
 						</div>
