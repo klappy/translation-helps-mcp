@@ -4,7 +4,12 @@
  */
 
 import { Reference } from "./reference-parser";
-import { extractVerseText, extractVerseRange, extractChapterText } from "./usfm-extractor";
+import {
+  extractVerseText,
+  extractVerseRange,
+  extractChapterText,
+  extractChapterRange,
+} from "./usfm-extractor";
 
 export interface ResourceOptions {
   language: string;
@@ -870,19 +875,11 @@ export class ResourceAggregator {
     try {
       // Handle different reference types
       if (!reference.verse && reference.verseEnd) {
-        // Chapter range - need to extract multiple chapters
+        // Chapter range - use optimized extraction
         const startChapter = reference.chapter;
         const endChapter = reference.verseEnd;
-        let combinedText = "";
 
-        for (let chapter = startChapter; chapter <= endChapter; chapter++) {
-          const chapterText = extractChapterText(usfm, chapter);
-          if (chapterText) {
-            combinedText += chapterText + "\n\n";
-          }
-        }
-
-        return combinedText.trim() || null;
+        return extractChapterRange(usfm, startChapter, endChapter) || null;
       } else if (reference.verse && reference.verseEnd) {
         // Verse range within same chapter
         return extractVerseRange(usfm, reference.chapter, reference.verse, reference.verseEnd);

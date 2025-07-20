@@ -1,7 +1,7 @@
 {
 	"name": "translation-helps-ui",
 	"type": "module",
-	"version": "3.5.0",
+	"version": "3.6.0",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",

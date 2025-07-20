@@ -1,6 +1,6 @@
 {
   "name": "translation-helps-mcp",
-  "version": "3.5.1",
+  "version": "3.6.0",
   "description": "MCP Server for aggregating Bible translation resources from Door43",
   "type": "module",
   "scripts": {
@@ -20,6 +20,7 @@
     "test:parity": "vitest run tests/endpoint-parity.test.ts",
     "test:regression": "vitest run tests/regression.test.ts",
     "test:unit": "vitest run tests/DCSApiClient.test.ts",
+    "test:scripture": "vitest run tests/scripture-comprehensive.test.ts",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {

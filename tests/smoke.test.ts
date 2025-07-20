@@ -88,6 +88,8 @@ describe("Smoke Tests - Quick Health Check", () => {
         const normalized = JSON.parse(JSON.stringify(obj));
         if (normalized.responseTime) delete normalized.responseTime;
         if (normalized.metadata?.timestamp) delete normalized.metadata.timestamp;
+        if (normalized.metadata?.cacheExpiresAt) delete normalized.metadata.cacheExpiresAt;
+        if (normalized.metadata?.cacheTtlSeconds) delete normalized.metadata.cacheTtlSeconds;
         if (normalized.timestamp) delete normalized.timestamp;
         return normalized;
       };
