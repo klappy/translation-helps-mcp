@@ -1,17 +1,10 @@
 /**
  * Get Languages Endpoint
  * GET /api/get-languages
- * IMPLEMENTS: Enhanced caching with proper TTLs (documented pattern)
+ * IMPLEMENTS: Enhanced caching with version-aware keys and proper headers
  */
 import { DCSApiClient } from "../../src/services/DCSApiClient.js";
-import { cache } from "./_shared/cache";
-import { corsHeaders, errorResponse } from "./_shared/utils";
-import { readFileSync } from "fs";
-import { join } from "path";
-// Get version directly from package.json - SINGLE SOURCE OF TRUTH!
-const packageJsonPath = join(process.cwd(), "package.json");
-const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-const API_VERSION = packageJson.version;
+import { corsHeaders, errorResponse, withConservativeCache, buildDCSCacheKey, } from "./_shared/utils";
 export const handler = async (event, context) => {
     console.log("Get languages requested with enhanced caching");
     // Handle CORS preflight
@@ -22,14 +15,22 @@ export const handler = async (event, context) => {
         return errorResponse(405, "Method not allowed", "METHOD_NOT_ALLOWED");
     }
     const startTime = Date.now();
+    // Fix Request construction for production
+    const protocol = event.headers["x-forwarded-proto"] || "https";
+    const host = event.headers.host || "translation-helps-mcp.netlify.app";
+    const path = event.path || "/.netlify/functions/get-languages";
+    const request = new Request(`${protocol}://${host}${path}`, {
+        method: event.httpMethod,
+        headers: event.headers,
+    });
     try {
-        // Enhanced cache key with version for cache invalidation on releases
-        const cacheKey = `languages:all:v${API_VERSION}`;
-        console.log("Fetching ALL languages using enhanced caching and request deduplication...");
-        // Use enhanced caching with request deduplication (documented pattern)
-        const languagesData = await cache.getWithDeduplication(cacheKey, async () => {
-            console.log("Cache miss - fetching from DCS dedicated languages endpoint");
-            // Use our DCS API client to fetch language data from the fast endpoint
+        // Build conservative cache key
+        const cacheKey = buildDCSCacheKey("languages", {});
+        console.log("Fetching languages using enhanced caching strategy...");
+        // Use enhanced caching with proper headers
+        const cacheResult = await withConservativeCache(request, cacheKey, async () => {
+            console.log("Cache miss - fetching fresh languages from DCS");
+            // Use our DCS API client to fetch language data
             const dcsClient = new DCSApiClient();
             const response = await dcsClient.getLanguages();
             if (!response.success) {
@@ -57,40 +58,37 @@ export const handler = async (event, context) => {
                 data: transformedLanguages,
                 count: transformedLanguages.length,
                 timestamp: new Date().toISOString(),
-                cached: false,
             };
-        }, "languages" // Use languages TTL (1 hour)
-        );
-        // Prepare final response with enhanced metadata
+        }, {
+            cacheType: "languages", // Uses conservative 30-minute TTL
+            bypassCache: false,
+        });
+        // Prepare final response with metadata
         const responseData = {
-            ...languagesData,
+            ...cacheResult.data,
+            cached: cacheResult.cached,
             metadata: {
-                source: "Door43 Content Service via Enhanced DCS API",
-                apiVersion: API_VERSION,
+                source: "Door43 Content Service with Enhanced Caching",
                 responseTime: Date.now() - startTime,
-                cacheStats: cache.getStats(),
-                implementsPatterns: [
-                    "dedicated-languages-endpoint",
-                    "enhanced-caching",
-                    "request-deduplication",
-                ],
+                cacheInfo: cacheResult.cacheInfo,
+                implementsPatterns: ["enhanced-caching", "version-aware-keys", "proper-cache-headers"],
             },
         };
-        // Log enhanced metrics
+        // Log metrics with cache info
         console.log("METRIC", {
             function: "get-languages",
             duration: responseData.metadata.responseTime,
-            languageCount: languagesData.count,
-            cacheStats: cache.getStats(),
-            implementsDocumentedPatterns: true,
+            languageCount: cacheResult.data.count,
+            cached: cacheResult.cached,
+            cacheVersion: cacheResult.cacheInfo?.version,
+            implementsEnhancedCaching: true,
         });
         return {
             statusCode: 200,
             headers: {
                 ...corsHeaders,
-                "Cache-Control": "public, max-age=3600", // 1 hour cache (matches internal TTL)
-                "X-Cache": "ENHANCED",
-                "X-Implements-Patterns": "dedicated-endpoint,enhanced-caching,request-dedup",
+                ...cacheResult.cacheHeaders,
+                "X-Implements-Patterns": "enhanced-caching,version-aware-keys,proper-headers",
             },
             body: JSON.stringify(responseData),
         };
@@ -103,7 +101,6 @@ export const handler = async (event, context) => {
             duration: Date.now() - startTime,
             error: true,
             errorType: error instanceof Error ? error.name : "UnknownError",
-            cacheStats: cache.getStats(),
         });
         // Handle specific error types
         if (error instanceof Error && error.message.includes("DCS")) {

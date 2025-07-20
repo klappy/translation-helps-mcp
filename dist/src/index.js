@@ -36,7 +36,7 @@ const FetchResourcesSchema = z.object({
         .default(["scripture", "notes", "questions", "words", "links"])
         .describe("Resource types to fetch"),
 });
-const SearchResourcesSchema = z.object({
+const ListAvailableResourcesSchema = z.object({
     language: z.string().optional().describe("Filter by language"),
     organization: z.string().optional().describe("Filter by organization"),
     resource: z.string().optional().describe("Filter by resource type"),
@@ -141,9 +141,9 @@ async function main() {
                     inputSchema: FetchResourcesSchema,
                 },
                 {
-                    name: "translation_helps_search_resources",
-                    description: "Search for available translation resources",
-                    inputSchema: SearchResourcesSchema,
+                    name: "translation_helps_list_available_resources",
+                    description: "List available translation resources from the DCS catalog",
+                    inputSchema: ListAvailableResourcesSchema,
                 },
                 {
                     name: "translation_helps_get_context",
@@ -208,8 +208,8 @@ async function main() {
                     const validatedArgs = FetchResourcesSchema.parse(args);
                     return await handleFetchResources(validatedArgs);
                 }
-                case "translation_helps_search_resources": {
-                    const validatedArgs = SearchResourcesSchema.parse(args);
+                case "translation_helps_list_available_resources": {
+                    const validatedArgs = ListAvailableResourcesSchema.parse(args);
                     return await handleSearchResources(validatedArgs);
                 }
                 case "translation_helps_get_context": {

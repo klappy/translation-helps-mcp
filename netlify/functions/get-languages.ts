@@ -39,7 +39,7 @@ export const handler: Handler = async (event, context) => {
 
   try {
     // Build conservative cache key
-    const cacheKey = buildDCSCacheKey("languages", "all", {});
+    const cacheKey = buildDCSCacheKey("languages", {});
 
     console.log("Fetching languages using enhanced caching strategy...");
 

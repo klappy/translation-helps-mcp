@@ -2,9 +2,22 @@
  * Health Check Endpoint
  * GET /api/health
  */
+import { readFileSync } from "fs";
+import { join } from "path";
 import { cache } from "./_shared/cache";
-// Version from environment variable (set by Netlify) or package.json version for local dev
-const VERSION = process.env.API_VERSION || "1.3.0";
+// Read version from package.json
+function getAppVersion() {
+    try {
+        const packageJsonPath = join(process.cwd(), "package.json");
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+        return packageJson.version;
+    }
+    catch (error) {
+        console.warn("Failed to read version from package.json, using fallback");
+        return "3.5.0"; // Fallback version
+    }
+}
+const VERSION = getAppVersion(); // Get version from package.json
 export const handler = async (event, context) => {
     console.log("Health check requested");
     const headers = {
