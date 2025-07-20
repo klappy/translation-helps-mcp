@@ -1,27 +1,14 @@
-# Simplified Netlify Configuration for SvelteKit
+# Netlify Configuration for SvelteKit
+# Updated to fix build command override issue
 
 [build]
-  command = "cd ui && npm install && npm run build"
+  command = "npm run build:netlify"
   publish = "ui/build"
 
 [build.environment]
   NODE_VERSION = "20"
 
-# Remove all the complex CORS and function configuration
-# SvelteKit adapter handles this automatically
-
-# Simple redirects for legacy API calls (optional - for backwards compatibility)
-[[redirects]]
-  from = "/.netlify/functions/fetch-scripture"
-  to = "/api/scripture"
-  status = 200
-
-[[redirects]]
-  from = "/.netlify/functions/mcp-fetch-scripture"  
-  to = "/api/scripture"
-  status = 200
-
-# Let SvelteKit handle everything else
+# SvelteKit adapter handles routing automatically
 [[redirects]]
   from = "/*"
   to = "/index.html"
