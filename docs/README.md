@@ -24,6 +24,7 @@
 
 - **[MCP Translation Helps Architecture](MCP_TRANSLATION_HELPS_ARCHITECTURE.md)** - System design and components
 - **[Netlify Functions Architecture](NETLIFY_FUNCTIONS_ARCHITECTURE.md)** - Deployment architecture
+- **[Netlify Blobs Setup Guide](NETLIFY_BLOBS_SETUP.md)** - Understanding cache behavior (local vs production) 💾
 - **[Comprehensive Translation Helps Patterns](COMPREHENSIVE_TRANSLATION_HELPS_PATTERNS.md)** - Detailed implementation patterns
 
 ### Development Workflow

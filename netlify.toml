@@ -8,6 +8,10 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# Development environment variables for Netlify Blobs
+[context.dev.environment]
+  NETLIFY_BLOBS_CONTEXT = ""  # This will be populated automatically by netlify dev
+
 # Redirect /api/* to functions
 [[redirects]]
   from = "/api/*"
