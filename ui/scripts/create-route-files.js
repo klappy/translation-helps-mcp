@@ -4,41 +4,53 @@ import fs from 'fs';
 import path from 'path';
 
 const buildDir = path.join(process.cwd(), 'build');
-const indexHtmlPath = path.join(buildDir, 'index.html');
+const baseUrl = 'http://localhost:4173';
 
 console.log('🔧 Creating route HTML files for direct access...');
 
-// Read the index.html file to use as a template
-if (!fs.existsSync(indexHtmlPath)) {
-	console.error('❌ index.html not found in build directory');
-	process.exit(1);
+// Routes to create static files for
+const routes = ['api', 'chat', 'test', 'performance', 'mcp-tools', 'rag-manifesto'];
+
+async function fetchRouteContent(route) {
+	try {
+		const response = await fetch(`${baseUrl}/${route}`);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch /${route}: ${response.status}`);
+		}
+		return await response.text();
+	} catch (error) {
+		console.error(`❌ Failed to fetch /${route}:`, error.message);
+		return null;
+	}
 }
 
-const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
+async function createRouteFiles() {
+	for (const route of routes) {
+		console.log(`📥 Fetching content for /${route}...`);
+		const content = await fetchRouteContent(route);
 
-// Create api.html with node_ids for api page (node 4)
-const apiHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,4]');
+		if (content) {
+			const filePath = path.join(buildDir, `${route}.html`);
+			fs.writeFileSync(filePath, content);
+			console.log(`✅ Created ${route}.html`);
+		} else {
+			console.log(`⚠️  Skipped ${route}.html due to fetch error`);
+		}
+	}
+}
 
-// Create chat.html with node_ids for chat page (node 5)
-const chatHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,5]');
-
-// Create test.html with node_ids for test page (node 9)
-const testHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,9]');
-
-// Create performance.html with node_ids for performance page (node 6)
-const performanceHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,6]');
-
-// Create mcp-tools.html with node_ids for mcp-tools page (node 10)
-const mcpToolsHtml = indexHtml.replace(/"node_ids":\[[^\]]*\]/, '"node_ids":[0,10]');
-
-// Write the files
-fs.writeFileSync(path.join(buildDir, 'api.html'), apiHtml);
-fs.writeFileSync(path.join(buildDir, 'chat.html'), chatHtml);
-fs.writeFileSync(path.join(buildDir, 'test.html'), testHtml);
-fs.writeFileSync(path.join(buildDir, 'performance.html'), performanceHtml);
-fs.writeFileSync(path.join(buildDir, 'mcp-tools.html'), mcpToolsHtml);
-
-console.log('✅ Created api.html, chat.html, test.html, performance.html, and mcp-tools.html');
-console.log(
-	'✅ Direct access to /api, /chat, /test, /performance, and /mcp-tools should now work!'
-);
+// Check if preview server is running
+try {
+	const healthCheck = await fetch(`${baseUrl}/`);
+	if (healthCheck.ok) {
+		await createRouteFiles();
+		console.log(`\n✅ Created HTML files for: ${routes.map((r) => `/${r}`).join(', ')}`);
+		console.log('✅ Direct access to all routes should now work!');
+	} else {
+		throw new Error('Server not responding');
+	}
+} catch {
+	console.error('❌ Preview server not running! Please run "npm run preview" first.');
+	console.error('❌ Then run this script again.');
+	process.exit(1);
+}
