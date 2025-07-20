@@ -77,6 +77,22 @@ export const handler: Handler = async (
       };
     }
 
+    // Check for cached transformed response FIRST
+    const responseKey = `notes:${referenceParam}:${language}:${organization}`;
+    const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
+
+    if (cachedResponse.value) {
+      console.log(`🚀 FAST cache hit for processed notes: ${responseKey}`);
+      return timedResponse(cachedResponse.value, startTime, undefined, {
+        cached: true,
+        cacheType: cachedResponse.cacheType,
+        expiresAt: cachedResponse.expiresAt,
+        ttlSeconds: cachedResponse.ttlSeconds,
+      });
+    }
+
+    console.log(`🔄 Processing fresh notes request: ${responseKey}`);
+
     // Search catalog for Translation Notes
     const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Notes&lang=${language}&owner=${organization}`;
     console.log(`🔍 Searching catalog: ${catalogUrl}`);
@@ -189,6 +205,9 @@ export const handler: Handler = async (
       language,
       organization,
     };
+
+    // Cache the transformed response for fast future retrieval
+    await cache.setTransformedResponse(responseKey, result);
 
     return timedResponse(result, startTime);
   } catch (error) {
