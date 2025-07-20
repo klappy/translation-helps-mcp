@@ -2,19 +2,19 @@
  * Shared utilities for Netlify Functions
  */
 import { cache } from "./cache.js";
-import { readFileSync } from "fs";
-import { join } from "path";
-// Read version from package.json
-function getAppVersion() {
-    try {
-        const packageJsonPath = join(process.cwd(), "package.json");
-        const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-        return packageJson.version;
+import fs from "fs";
+import path from "path";
+// Get the actual version from package.json (via version.json)
+let packageVersion = "4.0.0"; // Default fallback
+try {
+    const versionPath = path.join(process.cwd(), "netlify/functions/_shared/version.json");
+    if (fs.existsSync(versionPath)) {
+        const versionData = JSON.parse(fs.readFileSync(versionPath, "utf8"));
+        packageVersion = versionData.version;
     }
-    catch (error) {
-        console.warn("Failed to read version from package.json, using fallback");
-        return "3.5.0"; // Fallback version
-    }
+}
+catch (error) {
+    console.warn("Could not read version.json, using default version:", packageVersion);
 }
 /**
  * CORS headers for API responses
@@ -173,7 +173,7 @@ export function addMetadata(data, startTime, additionalMetadata) {
         metadata: {
             timestamp: new Date().toISOString(),
             responseTime,
-            version: process.env.API_VERSION || "3.4.0",
+            version: packageVersion,
             ...additionalMetadata,
         },
     };
@@ -290,7 +290,7 @@ export async function withConservativeCache(request, cacheKey, fetcher, options)
  * Build a versioned cache key for DCS resources
  */
 export function buildDCSCacheKey(endpoint, params = {}) {
-    const appVersion = getAppVersion();
+    const appVersion = packageVersion;
     const paramString = Object.keys(params)
         .sort()
         .map((key) => `${key}:${params[key]}`)
@@ -301,7 +301,7 @@ export function buildDCSCacheKey(endpoint, params = {}) {
  * Build cache key for transformed/processed responses
  */
 export function buildTransformedCacheKey(endpoint, params = {}) {
-    const appVersion = getAppVersion();
+    const appVersion = packageVersion;
     const paramString = Object.keys(params)
         .sort()
         .map((key) => `${key}:${params[key]}`)

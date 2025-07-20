@@ -1,182 +1,85 @@
 /**
- * Tool handler for getting a specific translation word article
- * Retrieves the content of a translation word article by term or path
+ * Get Translation Word Tool
+ * Tool for fetching translation words for a specific Bible reference
+ * Uses shared core service for consistency with Netlify functions
  */
 
-import { DCSApiClient } from "../services/DCSApiClient.js";
+import { z } from "zod";
 import { logger } from "../utils/logger.js";
+import { fetchTranslationWords } from "../../netlify/functions/_shared/translation-words-service.js";
+import { estimateTokens } from "../utils/tokenCounter.js";
 
-interface GetTranslationWordParams {
-  term?: string;
-  path?: string;
-  language?: string;
-  organization?: string;
-}
+// Input schema
+export const GetTranslationWordArgs = z.object({
+  reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
+  language: z.string().optional().default("en").describe('Language code (default: "en")'),
+  organization: z
+    .string()
+    .optional()
+    .default("unfoldingWord")
+    .describe('Organization (default: "unfoldingWord")'),
+  category: z.string().optional().describe("Filter by category (kt, names, other)"),
+});
 
-interface TranslationWordContent {
-  term: string;
-  path: string;
-  content: string;
-  category?: string;
-}
+export type GetTranslationWordArgs = z.infer<typeof GetTranslationWordArgs>;
 
-export async function handleGetTranslationWord(
-  params: GetTranslationWordParams
-): Promise<{ content: TranslationWordContent[] }> {
-  const client = new DCSApiClient();
-  const organization = params.organization || "unfoldingWord";
-  const language = params.language || "en";
-
-  logger.info("Getting translation word", {
-    term: params.term,
-    path: params.path,
-    language,
-    organization,
-  });
+/**
+ * Handle the get translation word tool call
+ */
+export async function handleGetTranslationWord(args: GetTranslationWordArgs) {
+  const startTime = Date.now();
 
   try {
-    const repoName = `${language}_tw`;
-    const results: TranslationWordContent[] = [];
+    logger.info("Fetching translation words", {
+      reference: args.reference,
+      language: args.language,
+      organization: args.organization,
+      category: args.category,
+    });
 
-    if (params.path) {
-      // Direct path provided
-      const response = await client.getRawFileContent(organization, repoName, params.path);
+    // Use the shared translation words service (same as Netlify functions)
+    const result = await fetchTranslationWords({
+      reference: args.reference,
+      language: args.language,
+      organization: args.organization,
+      category: args.category,
+    });
 
-      if (response.success && response.data) {
-        const pathParts = params.path.split("/");
-        const category = pathParts.length > 1 ? pathParts[pathParts.length - 2] : undefined;
-        const term = pathParts[pathParts.length - 1].replace(".md", "");
+    // Build enhanced response format for MCP
+    const response = {
+      translationWords: result.translationWords,
+      citation: result.citation,
+      language: args.language,
+      organization: args.organization,
+      metadata: {
+        responseTime: Date.now() - startTime,
+        tokenEstimate: estimateTokens(JSON.stringify(result)),
+        timestamp: new Date().toISOString(),
+        wordsFound: result.metadata.wordsFound,
+        cached: result.metadata.cached,
+      },
+    };
 
-        results.push({
-          term,
-          path: params.path,
-          content: response.data,
-          category,
-        });
-      }
-    } else if (params.term) {
-      // Search for the term
-      const term = params.term.toLowerCase();
+    logger.info("Translation words fetched successfully", {
+      reference: args.reference,
+      wordsFound: result.metadata.wordsFound,
+      responseTime: response.metadata.responseTime,
+      cached: result.metadata.cached,
+    });
 
-      // Try common paths based on term structure
-      const possiblePaths: string[] = [];
-
-      // Try first letter directory pattern (e.g., "grace" -> "g/grace.md")
-      const firstLetter = term[0];
-      possiblePaths.push(`bible/other/${firstLetter}/${term}.md`);
-      possiblePaths.push(`bible/kt/${firstLetter}/${term}.md`);
-      possiblePaths.push(`bible/names/${firstLetter}/${term}.md`);
-
-      // Also try direct lookup in common categories
-      possiblePaths.push(`bible/other/${term}.md`);
-      possiblePaths.push(`bible/kt/${term}.md`);
-      possiblePaths.push(`bible/names/${term}.md`);
-
-      // Try each possible path
-      for (const path of possiblePaths) {
-        try {
-          const response = await client.getRawFileContent(organization, repoName, path);
-
-          if (response.success && response.data) {
-            const pathParts = path.split("/");
-            const category = pathParts[1]; // bible/kt/... -> kt
-
-            results.push({
-              term,
-              path,
-              content: response.data,
-              category,
-            });
-
-            // Found the term, no need to continue searching
-            break;
-          }
-        } catch (error) {
-          // Path doesn't exist, try next one
-          logger.debug("Path not found", { path });
-        }
-      }
-
-      // If still not found, try browsing and finding it
-      if (results.length === 0) {
-        logger.info("Term not found in common locations, browsing repository");
-
-        // Get all categories
-        const browseResponse = await client.getRepositoryContents(organization, repoName, "bible");
-
-        if (browseResponse.success && browseResponse.data) {
-          for (const category of browseResponse.data) {
-            if (category.type !== "dir") continue;
-
-            // Check each category for the term
-            const categoryPath = `bible/${category.name}`;
-
-            // First check if there's a direct file
-            const directPath = `${categoryPath}/${term}.md`;
-            try {
-              const response = await client.getRawFileContent(organization, repoName, directPath);
-
-              if (response.success && response.data) {
-                results.push({
-                  term,
-                  path: directPath,
-                  content: response.data,
-                  category: category.name,
-                });
-                break;
-              }
-            } catch (error) {
-              // Not found directly, check subdirectories
-              const subDirResponse = await client.getRepositoryContents(
-                organization,
-                repoName,
-                categoryPath
-              );
-
-              if (subDirResponse.success && subDirResponse.data) {
-                for (const subDir of subDirResponse.data) {
-                  if (subDir.type === "dir" && subDir.name === firstLetter) {
-                    // Check in the first letter subdirectory
-                    const letterPath = `${categoryPath}/${firstLetter}/${term}.md`;
-                    try {
-                      const response = await client.getRawFileContent(
-                        organization,
-                        repoName,
-                        letterPath
-                      );
-
-                      if (response.success && response.data) {
-                        results.push({
-                          term,
-                          path: letterPath,
-                          content: response.data,
-                          category: category.name,
-                        });
-                        break;
-                      }
-                    } catch (error) {
-                      // Not found here either
-                    }
-                  }
-                }
-              }
-            }
-
-            if (results.length > 0) break;
-          }
-        }
-      }
-    } else {
-      throw new Error("Either 'term' or 'path' parameter is required");
-    }
-
-    logger.info("Found translation word articles", { count: results.length });
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("Failed to fetch translation words", {
+      reference: args.reference,
+      error: errorMessage,
+      responseTime: Date.now() - startTime,
+    });
 
     return {
-      content: results,
+      error: errorMessage,
+      reference: args.reference,
+      timestamp: new Date().toISOString(),
     };
-  } catch (error) {
-    logger.error("Error getting translation word", { error });
-    throw error;
   }
 }

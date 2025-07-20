@@ -1,18 +1,30 @@
 /**
  * Get Context Tool
- * Get contextual information for a Bible reference
+ * Get contextual information for a Bible reference using shared context service
+ * Uses the same implementation as Netlify functions for consistency
  */
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
+import { getContextFromTranslationNotes } from "../../netlify/functions/_shared/context-service.js";
+import { estimateTokens } from "../utils/tokenCounter.js";
 
 // Input schema
 export const GetContextArgs = z.object({
-  reference: z.string(),
-  language: z.string().optional(),
-  organization: z.string().optional(),
-  includeRawData: z.boolean().optional(),
-  maxTokens: z.number().optional(),
+  reference: z.string().describe("Bible reference (e.g., 'John 3:16')"),
+  language: z.string().optional().default("en").describe("Language code (default: 'en')"),
+  organization: z
+    .string()
+    .optional()
+    .default("unfoldingWord")
+    .describe("Organization (default: 'unfoldingWord')"),
+  includeRawData: z.boolean().optional().default(false).describe("Include raw USFM data"),
+  maxTokens: z.number().optional().describe("Maximum tokens for context"),
+  deepAnalysis: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe("Perform deep analysis of surrounding context"),
 });
 
 export type GetContextArgs = z.infer<typeof GetContextArgs>;
@@ -26,56 +38,32 @@ export async function handleGetContext(args: GetContextArgs) {
   try {
     logger.info("Getting context for reference", args);
 
-    // Placeholder implementation
-    const context = {
+    // Use the shared context service (same as Netlify functions)
+    const contextResult = await getContextFromTranslationNotes({
       reference: args.reference,
-      language: args.language || "en",
-      organization: args.organization || "unfoldingWord",
-
-      // Basic context information
-      book: {
-        name: "Example Book",
-        testament: "New Testament",
-        genre: "Gospel",
-        author: "Unknown",
-        writtenDate: "~70-100 AD",
-      },
-
-      chapter: {
-        number: 1,
-        summary: "This chapter introduces key themes and characters.",
-        keyThemes: ["faith", "hope", "love"],
-      },
-
-      passage: {
-        text: "Example passage text would go here.",
-        crossReferences: ["Matt 5:16", "Rom 8:28"],
-        keyWords: ["faith", "believe", "eternal"],
-      },
-
-      historicalContext: {
-        period: "First Century",
-        location: "Palestine",
-        audience: "Early Christians",
-      },
-
-      literaryContext: {
-        previousPassage: "Previous context",
-        followingPassage: "Following context",
-        literaryForm: "Narrative",
-      },
-
-      includeRawData: args.includeRawData || false,
+      language: args.language,
+      organization: args.organization,
+      includeRawData: args.includeRawData,
       maxTokens: args.maxTokens,
-      timestamp: new Date().toISOString(),
-      responseTime: Date.now() - startTime,
-    };
+      deepAnalysis: args.deepAnalysis,
+    });
+
+    // Calculate token estimate
+    contextResult.metadata.tokenEstimate = estimateTokens(JSON.stringify(contextResult));
+
+    logger.info("Context extracted successfully", {
+      reference: args.reference,
+      bookIntroFound: contextResult.metadata.bookIntroFound,
+      chapterIntroFound: contextResult.metadata.chapterIntroFound,
+      verseNotesFound: contextResult.metadata.verseNotesFound,
+      responseTime: contextResult.metadata.responseTime,
+    });
 
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify(context, null, 2),
+          text: JSON.stringify(contextResult, null, 2),
         },
       ],
     };

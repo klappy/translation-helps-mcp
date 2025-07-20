@@ -1,14 +1,26 @@
 /**
  * Get Languages Tool
- * Get available languages from the translation resources
+ * Tool for fetching available languages from Door43
+ * Uses shared core service for consistency with Netlify functions
  */
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
+import { getLanguages } from "../../netlify/functions/_shared/languages-service.js";
+import { estimateTokens } from "../utils/tokenCounter.js";
 
 // Input schema
 export const GetLanguagesArgs = z.object({
-  organization: z.string().optional(),
+  organization: z
+    .string()
+    .optional()
+    .default("unfoldingWord")
+    .describe('Organization (default: "unfoldingWord")'),
+  includeAlternateNames: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Include alternate language names (default: false)"),
 });
 
 export type GetLanguagesArgs = z.infer<typeof GetLanguagesArgs>;
@@ -20,61 +32,50 @@ export async function handleGetLanguages(args: GetLanguagesArgs) {
   const startTime = Date.now();
 
   try {
-    logger.info("Getting available languages", args);
-
-    // Placeholder implementation with common languages
-    const languages = [
-      { code: "en", name: "English", direction: "ltr", organization: "unfoldingWord" },
-      { code: "es", name: "Español", direction: "ltr", organization: "unfoldingWord" },
-      { code: "fr", name: "Français", direction: "ltr", organization: "unfoldingWord" },
-      { code: "ar", name: "العربية", direction: "rtl", organization: "unfoldingWord" },
-      { code: "hi", name: "हिन्दी", direction: "ltr", organization: "unfoldingWord" },
-      { code: "zh", name: "中文", direction: "ltr", organization: "unfoldingWord" },
-    ];
-
-    const filteredLanguages = args.organization
-      ? languages.filter((lang) => lang.organization === args.organization)
-      : languages;
-
-    const results = {
-      languages: filteredLanguages,
-      total: filteredLanguages.length,
+    logger.info("Fetching available languages", {
       organization: args.organization,
-      timestamp: new Date().toISOString(),
-      responseTime: Date.now() - startTime,
+      includeAlternateNames: args.includeAlternateNames,
+    });
+
+    // Use the shared languages service (same as Netlify functions)
+    const result = await getLanguages({
+      organization: args.organization,
+      includeAlternateNames: args.includeAlternateNames,
+    });
+
+    // Build enhanced response format for MCP
+    const response = {
+      languages: result.languages,
+      organization: args.organization,
+      metadata: {
+        responseTime: Date.now() - startTime,
+        tokenEstimate: estimateTokens(JSON.stringify(result)),
+        timestamp: new Date().toISOString(),
+        languagesFound: result.metadata.languagesFound,
+        cached: result.metadata.cached,
+      },
     };
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(results, null, 2),
-        },
-      ],
-    };
+    logger.info("Languages fetched successfully", {
+      organization: args.organization,
+      languagesFound: result.metadata.languagesFound,
+      responseTime: response.metadata.responseTime,
+      cached: result.metadata.cached,
+    });
+
+    return response;
   } catch (error) {
-    logger.error("Failed to get languages", {
-      args,
-      error: (error as Error).message,
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("Failed to fetch languages", {
+      organization: args.organization,
+      error: errorMessage,
       responseTime: Date.now() - startTime,
     });
 
     return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: (error as Error).message,
-              organization: args.organization,
-              timestamp: new Date().toISOString(),
-            },
-            null,
-            2
-          ),
-        },
-      ],
-      isError: true,
+      error: errorMessage,
+      organization: args.organization,
+      timestamp: new Date().toISOString(),
     };
   }
 }

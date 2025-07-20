@@ -6,6 +6,6 @@ export const handler: Handler = async (
   context: HandlerContext
 ): Promise<HandlerResponse> => {
   // Just call the existing fetch-resources API function
-  const result = await fetchResourcesHandler(event);
+  const result = await fetchResourcesHandler(event, context);
   return result as HandlerResponse;
 };

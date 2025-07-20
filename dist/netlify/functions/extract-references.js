@@ -2,37 +2,54 @@
  * Extract References Endpoint
  * POST /api/extract-references
  */
-import { extractReferences } from "./_shared/reference-parser";
 import { timedResponse, errorResponse } from "./_shared/utils";
+import { extractReferences } from "./_shared/references-service";
 export const handler = async (event, context) => {
     const startTime = Date.now();
-    console.log("Extract references requested");
-    // Handle CORS preflight
+    // Handle CORS
     if (event.httpMethod === "OPTIONS") {
         return {
             statusCode: 200,
-            headers: { "Access-Control-Allow-Origin": "*" },
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            },
             body: "",
         };
     }
-    if (event.httpMethod !== "GET") {
-        return errorResponse(405, "This endpoint only accepts GET requests", "METHOD_NOT_ALLOWED");
-    }
     try {
-        const { text } = event.queryStringParameters || {};
-        if (!text || typeof text !== "string") {
-            return errorResponse(400, "Text parameter is required and must be a string", "MISSING_PARAMETER", { example: "/api/extract-references?text=See%20John%203:16%20and%20Genesis%201:1" });
+        // Parse input from both query params and body
+        const params = new URLSearchParams(event.queryStringParameters || {});
+        const body = event.body ? JSON.parse(event.body) : {};
+        const text = body.text || params.get("text");
+        const includeContext = (body.includeContext ?? params.get("includeContext")) === "true";
+        if (!text) {
+            return errorResponse(400, "Missing text parameter", "MISSING_PARAMETER");
         }
-        const references = extractReferences(text);
-        const result = {
+        // Use the shared references service
+        const result = await extractReferences({
             text,
-            references,
-            count: references.length,
+            includeContext,
+        });
+        // Build response matching the original API format + enhanced structure
+        const response = {
+            // Original format for backward compatibility
+            references: result.references,
+            // Metadata
+            metadata: {
+                timestamp: new Date().toISOString(),
+                responseTime: result.metadata.responseTime,
+                referencesFound: result.metadata.referencesFound,
+                textLength: text.length,
+                version: "3.6.0",
+            },
         };
-        return timedResponse(result, startTime);
+        return timedResponse(response, startTime);
     }
     catch (error) {
         console.error("Extract references error:", error);
-        return errorResponse(500, "Failed to extract references from text", "INTERNAL_SERVER_ERROR");
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return errorResponse(500, errorMessage, "EXTRACT_ERROR");
     }
 };
