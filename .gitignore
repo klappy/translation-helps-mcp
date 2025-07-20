@@ -27,9 +27,14 @@ node_modules/
 # Local Netlify folder
 .netlify
 
+# Cloudflare Wrangler
+.wrangler/
+wrangler.toml.bak
+
 # Build output
 dist/
 build/
+ui/build/
 
 # Test output
 coverage/
