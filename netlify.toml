@@ -1,29 +1,28 @@
-# Netlify Configuration for Translation Helps API + UI
+# Simplified Netlify Configuration for SvelteKit
 
 [build]
-  functions = "netlify/functions"
+  command = "cd ui && npm install && npm run build"
   publish = "ui/build"
-  command = "npm run build:all"
 
 [build.environment]
   NODE_VERSION = "20"
 
-# Development environment variables for Netlify Blobs
-[context.dev.environment]
-  NETLIFY_BLOBS_CONTEXT = ""  # This will be populated automatically by netlify dev
+# Remove all the complex CORS and function configuration
+# SvelteKit adapter handles this automatically
 
-# CORS headers for API endpoints
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type, Authorization"
-    Cache-Control = "public, max-age=300"
+# Simple redirects for legacy API calls (optional - for backwards compatibility)
+[[redirects]]
+  from = "/.netlify/functions/fetch-scripture"
+  to = "/api/scripture"
+  status = 200
 
+[[redirects]]
+  from = "/.netlify/functions/mcp-fetch-scripture"  
+  to = "/api/scripture"
+  status = 200
 
-
-# Function-specific configuration
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild" 
+# Let SvelteKit handle everything else
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
