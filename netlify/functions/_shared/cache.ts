@@ -51,18 +51,35 @@ export class CacheManager {
   constructor() {
     this.appVersion = getAppVersion();
 
-    try {
-      this.store = getStore("translation-helps-cache");
-      console.log("🚀 Netlify Blobs cache initialized");
-    } catch (error) {
-      console.warn(
-        "⚠️ Netlify Blobs failed, falling back to in-memory cache:",
-        (error as Error).message
+    // Check if we're in local development
+    const isLocalDev = process.env.NETLIFY_LOCAL === "true";
+
+    if (isLocalDev) {
+      console.log(
+        "🏠 Local development detected - using in-memory cache (Netlify Blobs not supported locally)"
       );
       this.useNetlifyBlobs = false;
+    } else {
+      // Production: Use manual configuration since automatic doesn't work
+      try {
+        this.store = getStore({
+          name: "translation-helps-cache",
+          siteID: process.env.NETLIFY_SITE_ID || "",
+          token: process.env.NETLIFY_API_TOKEN || "",
+          apiURL: "https://api.netlify.com",
+        });
+        console.log("🚀 Netlify Blobs cache initialized successfully");
+      } catch (error) {
+        console.warn(
+          "⚠️ Netlify Blobs failed, falling back to in-memory cache:",
+          (error as Error).message
+        );
+        this.useNetlifyBlobs = false;
+      }
     }
 
-    console.log(`📦 Cache initialized with app version: ${this.appVersion}`);
+    const cacheType = this.useNetlifyBlobs ? "Netlify Blobs" : "in-memory";
+    console.log(`📦 Cache initialized with app version: ${this.appVersion} (${cacheType})`);
   }
 
   private getVersionedKey(key: string, cacheType?: CacheType): string {

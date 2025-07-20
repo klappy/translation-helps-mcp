@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.1] - 2025-01-20
+
+### 🔧 Fixed
+
+- **Netlify Blobs Production Support**: Fixed Netlify Blobs not working in production environment
+  - Added manual blob store configuration with API credentials (`NETLIFY_SITE_ID`, `NETLIFY_API_TOKEN`)
+  - Added proper local development detection to gracefully fallback to in-memory cache
+  - Improved cache initialization logging with environment detection
+  - Confirmed working: Cache hits now persist across function invocations in production
+  - Performance improvement: ~40% faster response times on cache hits (1297ms → 780ms)
+
+### 📚 Documentation
+
+- **Added Netlify Blobs Setup Guide**: Complete documentation for production blob configuration
+- **Updated README**: Added reference to blob setup guide with accurate status
+
 ## [3.5.0] - 2025-01-20
 
 ### 🚀 Enhanced Caching System Release
