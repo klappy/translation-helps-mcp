@@ -6,7 +6,7 @@
 import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { cache } from "../cache-platform-agnostic";
+// Cache stats now handled by platform wrappers
 
 // Read version from package.json
 function getAppVersion(): string {
@@ -77,7 +77,7 @@ export const healthHandler: PlatformHandler = async (
       ],
       uptime: process.uptime(),
       memoryUsage: process.memoryUsage(),
-      cache: cache.getStats(),
+      cache: "Platform-specific caching enabled (stats available in platform wrappers)",
     };
 
     return {
