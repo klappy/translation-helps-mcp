@@ -55,6 +55,12 @@
 			label: 'Performance',
 			icon: TrendingUp,
 			description: 'Performance & cost analysis'
+		},
+		{
+			href: '/rag-manifesto',
+			label: 'RAG Manifesto',
+			icon: Zap,
+			description: 'The right way to do Bible RAG'
 		}
 	];
 

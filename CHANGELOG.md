@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UI 3.7.0] - 2025-01-20
+
+### 🐛 Bug Fixes
+
+- **Page Refresh Support**: Fixed all pages to work correctly on browser refresh
+  - Updated route file generation script to fetch actual server-rendered content instead of copying homepage
+  - Added automatic post-build script to create proper HTML files for all routes
+  - Fixed `/rag-manifesto`, `/mcp-tools`, `/performance`, `/api`, `/chat`, and `/test` pages to load correctly on direct navigation
+  - Added Playwright test verification for page refresh functionality
+  - Configured preview server reuse for testing
+
+### 🏗️ Improvements
+
+- **Build Process**: Enhanced build process to automatically generate refreshable route files
+- **Navigation**: Renamed "API vs RAG" to "RAG Manifesto" for better clarity and branding
+- **Testing**: Added end-to-end testing for page refresh scenarios
+
 ## [4.0.0] - 2025-01-20
 
 ### 🏗️ **MAJOR ARCHITECTURAL REFACTORING** - Unified Service Architecture
