@@ -3,6 +3,7 @@
  */
 
 import type { HandlerResponse } from "@netlify/functions";
+import { cache } from "./cache.js";
 
 /**
  * CORS headers for API responses
@@ -231,4 +232,157 @@ export function timedResponse<T extends Record<string, any>>(
     : {};
   const responseData = addMetadata(data, startTime, additionalMetadata);
   return successResponse(responseData, headers);
+}
+
+/**
+ * Enhanced response caching helper
+ * Implements consistent caching strategy across all functions with version-aware keys
+ */
+export async function withConservativeCache<T>(
+  request: Request,
+  cacheKey: string,
+  fetcher: () => Promise<T>,
+  options?: {
+    cacheType?:
+      | "organizations"
+      | "languages"
+      | "resources"
+      | "fileContent"
+      | "metadata"
+      | "transformedResponse";
+    customTtl?: number;
+    bypassCache?: boolean;
+  }
+): Promise<{
+  data: T;
+  cached: boolean;
+  cacheHeaders: Record<string, string>;
+  cacheInfo?: {
+    expiresAt?: string;
+    ttlSeconds?: number;
+    version?: string;
+  };
+}> {
+  const { cacheType = "transformedResponse", customTtl, bypassCache = false } = options || {};
+
+  // Check for cache bypass headers
+  const shouldBypassCache =
+    bypassCache ||
+    request.headers.get("cache-control")?.includes("no-cache") ||
+    request.headers.get("x-bypass-cache") === "true";
+
+  if (shouldBypassCache) {
+    console.log(`🚫 Cache bypassed for: ${cacheKey}`);
+    const data = await fetcher();
+    return {
+      data,
+      cached: false,
+      cacheHeaders: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "X-Cache-Status": "BYPASSED",
+      },
+    };
+  }
+
+  try {
+    // Try to get from cache first
+    const cacheResult = await cache.getWithCacheInfo(cacheKey, cacheType);
+
+    if (cacheResult.cached && cacheResult.value) {
+      console.log(`🎯 Serving from cache: ${cacheKey}`);
+
+      return {
+        data: cacheResult.value,
+        cached: true,
+        cacheInfo: {
+          expiresAt: cacheResult.expiresAt,
+          ttlSeconds: cacheResult.ttlSeconds,
+          version: cacheResult.version,
+        },
+        cacheHeaders: {
+          "Cache-Control": `public, max-age=${Math.max(0, cacheResult.ttlSeconds || 0)}`,
+          "X-Cache-Status": "HIT",
+          "X-Cache-Type": cacheResult.cacheType || "unknown",
+          "X-Cache-Version": cacheResult.version || "unknown",
+          "X-Cache-Expires": cacheResult.expiresAt || "unknown",
+        },
+      };
+    }
+
+    // Cache miss - fetch fresh data
+    console.log(`⚡ Cache miss, fetching fresh: ${cacheKey}`);
+    const data = await fetcher();
+
+    // Store in cache for next time
+    await cache.set(cacheKey, data, cacheType, customTtl);
+
+    // Get cache info for headers
+    const newCacheResult = await cache.getWithCacheInfo(cacheKey, cacheType);
+
+    return {
+      data,
+      cached: false,
+      cacheInfo: {
+        expiresAt: newCacheResult.expiresAt,
+        ttlSeconds: newCacheResult.ttlSeconds,
+        version: newCacheResult.version,
+      },
+      cacheHeaders: {
+        "Cache-Control": `public, max-age=${newCacheResult.ttlSeconds || 300}`,
+        "X-Cache-Status": "MISS",
+        "X-Cache-Type": newCacheResult.cacheType || "unknown",
+        "X-Cache-Version": newCacheResult.version || "unknown",
+        "X-Cache-Expires": newCacheResult.expiresAt || "unknown",
+      },
+    };
+  } catch (error) {
+    console.error(`❌ Cache error for ${cacheKey}:`, error);
+
+    // Fallback to direct fetch without caching
+    const data = await fetcher();
+    return {
+      data,
+      cached: false,
+      cacheHeaders: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "X-Cache-Status": "ERROR",
+        "X-Cache-Error": (error as Error).message,
+      },
+    };
+  }
+}
+
+/**
+ * Build a versioned cache key for DCS resources
+ */
+export function buildDCSCacheKey(
+  resourceType: string,
+  language: string,
+  params: Record<string, any> = {}
+): string {
+  // Sort params for consistent key generation
+  const sortedParams = Object.keys(params)
+    .sort()
+    .map((key) => `${key}:${params[key]}`)
+    .join("|");
+
+  const baseKey = `${resourceType}:${language}`;
+  return sortedParams ? `${baseKey}:${sortedParams}` : baseKey;
+}
+
+/**
+ * Build cache key for transformed/processed responses
+ */
+export function buildTransformedCacheKey(
+  operation: string,
+  inputs: Record<string, any> = {}
+): string {
+  // Create deterministic hash of inputs
+  const inputStr = JSON.stringify(inputs, Object.keys(inputs).sort());
+  const hash =
+    inputStr.length > 50
+      ? `hash_${inputStr.length}_${inputStr.slice(0, 20)}`
+      : inputStr.replace(/[^a-zA-Z0-9]/g, "_");
+
+  return `transformed:${operation}:${hash}`;
 }
