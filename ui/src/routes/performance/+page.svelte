@@ -14,7 +14,7 @@
 	let demoResults: any[] = [];
 	let loading = false;
 
-	// ⚡ UPDATED performance data with Response-Level Caching (January 2025)
+	// ⚡ UPDATED performance data with Response-Level Caching (July 2025)
 	const performanceData = {
 		endpoints: [
 			{ name: 'Health Check', avgTime: 176, grade: 'A+', cost: 0.000001, requestsPerSecond: 5.68 },

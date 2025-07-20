@@ -1,6 +1,6 @@
 # Translation Helps MCP Performance Report
 
-**Generated**: January 20, 2025  
+**Generated**: July 20, 2025  
 **Target**: https://translation-helps-mcp.netlify.app  
 **Version**: 3.5.1 (Response-Level Caching Enabled)
 
