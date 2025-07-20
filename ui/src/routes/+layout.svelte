@@ -16,9 +16,7 @@
 		Wrench
 	} from 'lucide-svelte';
 	import '../app.css';
-
-	// Version info
-	const VERSION = '3.4.0';
+	import { VERSION } from '$lib/version';
 
 	// Navigation items
 	const navItems = [
@@ -78,10 +76,8 @@
 </script>
 
 <svelte:head>
-	<meta
-		name="description"
-		content="Translation Helps MCP Server - AI-Powered Bible Translation Assistance"
-	/>
+	<title>Translation Helps MCP - {VERSION}</title>
+	<meta name="description" content="Bible translation resources API and MCP server" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </svelte:head>
