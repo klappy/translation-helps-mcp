@@ -117,21 +117,21 @@
 				<h1 class="mb-8 text-5xl font-bold text-white md:text-7xl">
 					Your Bible Data is
 					<span class="bg-gradient-to-r from-red-400 to-orange-500 bg-clip-text text-transparent">
-						Already Outdated
+						Getting Stale
 					</span>
 				</h1>
 
 				<p class="mb-8 text-2xl text-gray-300 md:text-3xl">
 					We're Building <span
 						class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text font-bold text-transparent"
-						>The Foundation</span
-					> for Real-Time Bible RAG
+						>Reliable Infrastructure</span
+					> for Real-Time Bible Data Access
 				</p>
 
 				<div
 					class="mb-8 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-6 py-3 text-lg font-bold text-green-300 backdrop-blur-xl"
 				>
-					<span>🎉</span>
+					<span>✅</span>
 					<span>Open Source • No API Keys • $7-15/mo on Cloudflare</span>
 				</div>
 
@@ -171,70 +171,69 @@
 		<section id="problem" bind:this={problemRef} class="px-4 py-20">
 			<div class="mx-auto max-w-6xl">
 				<div class="mb-16 text-center">
-					<h2 class="mb-4 text-4xl font-bold md:text-5xl">The RAG Tax You're Paying</h2>
+					<h2 class="mb-4 text-4xl font-bold md:text-5xl">The Data Access Challenge</h2>
 					<div class="font-mono text-6xl text-red-500">
 						${monthlyRagCost.toLocaleString()}/month
 					</div>
-					<p class="mt-2 text-gray-400">Average cost for a typical Bible app with RAG</p>
+					<p class="mt-2 text-gray-400">Typical cost for Bible apps with traditional RAG systems</p>
 				</div>
 
 				<div class="grid items-center gap-12 md:grid-cols-2">
 					<div>
 						<h3 class="mb-6 text-2xl font-bold text-red-400">
-							Why Traditional Bible RAG Approaches Fail
+							Why Traditional Bible Data Approaches Struggle
 						</h3>
 						<ul class="space-y-4">
 							<li class="flex items-start gap-3">
 								<span class="mt-1 text-red-500">❌</span>
 								<div>
-									<strong>Stale Data in Days:</strong> Bible scholars update resources daily - your RAG
-									is already wrong
+									<strong>Data Gets Stale Fast:</strong> Bible scholars update resources frequently -
+									your cached data is often outdated
 								</div>
 							</li>
 							<li class="flex items-start gap-3">
 								<span class="mt-1 text-red-500">❌</span>
 								<div>
-									<strong>Sync Failures:</strong> Even the smartest teams can't keep databases in sync
-									with source content
+									<strong>Sync Complexity:</strong> Keeping databases synchronized with source content
+									is challenging and error-prone
 								</div>
 							</li>
 							<li class="flex items-start gap-3">
 								<span class="mt-1 text-red-500">❌</span>
 								<div>
-									<strong>Vector Database Costs:</strong> $100-500/month for embeddings that are outdated
-									tomorrow
+									<strong>Vector Database Costs:</strong> $100-500/month for embeddings that may be outdated
 								</div>
 							</li>
 							<li class="flex items-start gap-3">
 								<span class="mt-1 text-red-500">❌</span>
 								<div>
-									<strong>REST APIs Don't Work:</strong> Traditional APIs return data formats that LLMs
-									can't use effectively
+									<strong>API Format Mismatch:</strong> Traditional APIs return data formats that require
+									extra processing for LLMs
 								</div>
 							</li>
 							<li class="flex items-start gap-3">
 								<span class="mt-1 text-red-500">❌</span>
 								<div>
-									<strong>Maintenance Never Ends:</strong> Update scripts, sync jobs, re-embeddings -
-									forever
+									<strong>Ongoing Maintenance:</strong> Update scripts, sync jobs, re-embeddings need
+									constant attention
 								</div>
 							</li>
 						</ul>
 					</div>
 
 					<div class="rounded-2xl border border-red-500/20 bg-gray-800 p-8">
-						<h4 class="mb-4 text-center text-xl font-bold">The Traditional RAG Sync Problem</h4>
+						<h4 class="mb-4 text-center text-xl font-bold">The Traditional Data Sync Problem</h4>
 						<div class="space-y-4">
 							<div class="rounded-lg bg-gray-900 p-4 font-mono text-sm">
 								<div class="text-red-400">// Monday: Bible scholars update Greek text</div>
 								<div>// Tuesday: Your sync job hasn't run yet ⚠️</div>
-								<div>// Wednesday: SQL database finally updates</div>
+								<div>// Wednesday: Database finally updates</div>
 								<div>// Thursday: Vector embeddings still outdated ❌</div>
-								<div>// Friday: Your RAG returns old translation data 💥</div>
+								<div>// Friday: Your app returns old translation data 💥</div>
 							</div>
 							<div class="text-center text-gray-400">
 								Result: <span class="font-bold text-red-500"
-									>Your RAG's "knowledge" is already stale</span
+									>Your app's data is behind the source</span
 								>
 							</div>
 						</div>
@@ -243,14 +242,14 @@
 
 				<div class="mx-auto mt-12 max-w-4xl">
 					<div class="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-6 text-center">
-						<h4 class="mb-2 font-bold text-yellow-400">🎯 Our Focus: The Foundation Layer</h4>
+						<h4 class="mb-2 font-bold text-yellow-400">🎯 Our Focus: Reliable Data Access</h4>
 						<p class="text-gray-300">
-							We're solving the data access problem first - concrete lookups, word articles,
+							We're solving the data access problem first - reliable lookups, word articles,
 							translation resources.
-							<strong class="text-yellow-400">Abstract topical search</strong> ("What does the Bible
-							say about love?") is Phase 4 of our roadmap.
+							<strong class="text-yellow-400">Semantic search and AI generation</strong> are future
+							phases.
 							<br /><span class="text-sm text-gray-400"
-								>Most Bible RAG projects fail because they skip this foundation.</span
+								>Most Bible data projects fail because they skip this foundation.</span
 							>
 						</p>
 					</div>
@@ -269,13 +268,13 @@
 					<h2
 						class="mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-4xl font-bold text-transparent md:text-5xl"
 					>
-						Always Fresh. Never Wrong.
+						Always Current. Reliable Foundation.
 					</h2>
 					<p class="text-xl text-gray-300">
-						A stateless foundation for Bible RAG that queries sources in real-time.
+						A stateless approach to Bible data that queries sources in real-time.
 					</p>
 					<p class="mt-4 text-lg text-gray-400">
-						We've solved the data access layer. Semantic search and topical queries are coming next.
+						We've built the data access layer. Enhanced AI features are coming next.
 					</p>
 				</div>
 
@@ -283,10 +282,10 @@
 					<div
 						class="rounded-2xl border border-green-500/20 bg-gradient-to-br from-green-500/10 to-blue-500/10 p-8"
 					>
-						<div class="mb-4 text-5xl">🔄</div>
-						<h3 class="mb-2 text-xl font-bold">Always Current</h3>
+						<div class="mb-4 text-5xl">✅</div>
+						<h3 class="mb-2 text-xl font-bold">Current & Reliable</h3>
 						<p class="text-gray-400">
-							Direct access to source content. When scholars update, you get it instantly.
+							Direct access to source content. When scholars update, you get it reliably.
 						</p>
 					</div>
 
@@ -296,7 +295,7 @@
 						<div class="mb-4 text-5xl">🤖</div>
 						<h3 class="mb-2 text-xl font-bold">LLM-Optimized</h3>
 						<p class="text-gray-400">
-							Returns exactly what AI needs. Not JSON blobs your LLM can't parse.
+							Returns structured data that works well with AI systems. Not raw blobs.
 						</p>
 					</div>
 
@@ -304,8 +303,10 @@
 						class="rounded-2xl border border-green-500/20 bg-gradient-to-br from-green-500/10 to-blue-500/10 p-8"
 					>
 						<div class="mb-4 text-5xl">🛡️</div>
-						<h3 class="mb-2 text-xl font-bold">Zero Maintenance</h3>
-						<p class="text-gray-400">No sync jobs. No update scripts. No re-embeddings. Ever.</p>
+						<h3 class="mb-2 text-xl font-bold">Low Maintenance</h3>
+						<p class="text-gray-400">
+							Minimal sync jobs. Smart caching. Much less maintenance overhead.
+						</p>
 					</div>
 				</div>
 
@@ -314,10 +315,10 @@
 					class="mb-16 rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5 p-8"
 				>
 					<h3 class="mb-6 text-center text-2xl font-bold text-blue-400">
-						🗺️ The Journey: From Concrete to Abstract
+						🗺️ Development Roadmap: From Data Access to AI Enhancement
 					</h3>
 					<p class="mb-8 text-center text-gray-300">
-						We're systematically replacing every layer of traditional RAG, starting with the
+						We're systematically building better Bible data infrastructure, starting with the
 						foundation.
 					</p>
 
@@ -325,76 +326,76 @@
 						<div class="rounded-lg border border-green-500/20 bg-green-500/5 p-6">
 							<div class="mb-2 flex items-center gap-2">
 								<span class="text-green-400">✅</span>
-								<h4 class="font-bold text-green-400">Phase 1: Concrete Lookups</h4>
+								<h4 class="font-bold text-green-400">Phase 1: Data Access ✅</h4>
 							</div>
 							<p class="text-sm text-gray-400">
 								Specific verses, chapters, translation notes, word definitions. The foundation that
-								everyone gets wrong.
+								most projects struggle with.
 							</p>
 						</div>
 
 						<div class="rounded-lg border border-green-500/20 bg-green-500/5 p-6">
 							<div class="mb-2 flex items-center gap-2">
 								<span class="text-green-400">✅</span>
-								<h4 class="font-bold text-green-400">Phase 2: Word Networks</h4>
+								<h4 class="font-bold text-green-400">Phase 2: Word Networks ✅</h4>
 							</div>
 							<p class="text-sm text-gray-400">
-								Translation Word Links (TWL) - aggregate word articles by verse, range, chapter,
-								book. Smart connections.
+								Translation Word Links - aggregate word articles by verse, range, chapter, book.
+								Intelligent connections.
 							</p>
 						</div>
 
 						<div class="rounded-lg border border-green-500/20 bg-green-500/5 p-6">
 							<div class="mb-2 flex items-center gap-2">
 								<span class="text-green-400">✅</span>
-								<h4 class="font-bold text-green-400">Phase 3: Browsable Catalog</h4>
+								<h4 class="font-bold text-green-400">Phase 3: Resource Catalog ✅</h4>
 							</div>
 							<p class="text-sm text-gray-400">
-								All translation word articles with variations. Searchable, explorable,
-								comprehensive.
+								All translation word articles with variations. Browsable, searchable, comprehensive
+								access.
 							</p>
 						</div>
 
 						<div class="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-6">
 							<div class="mb-2 flex items-center gap-2">
 								<span class="text-yellow-400">🚧</span>
-								<h4 class="font-bold text-yellow-400">Phase 4: Semantic Indexing</h4>
+								<h4 class="font-bold text-yellow-400">Phase 4: Semantic Search 🚧</h4>
 							</div>
 							<p class="text-sm text-gray-400">
 								Index and make articles searchable by topic. "What does the Bible say about hope?" -
-								coming soon.
+								in development.
 							</p>
 						</div>
 
 						<div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-6">
 							<div class="mb-2 flex items-center gap-2">
 								<span class="text-purple-400">🔮</span>
-								<h4 class="font-bold text-purple-400">Phase 5: Full Replacement</h4>
+								<h4 class="font-bold text-purple-400">Phase 5: AI Enhancement 🔮</h4>
 							</div>
 							<p class="text-sm text-gray-400">
-								Complete vector datastore replacement. Abstract questions, thematic analysis,
-								conceptual search.
+								Enhanced vector storage. Abstract questions, thematic analysis, conceptual search
+								capabilities.
 							</p>
 						</div>
 
 						<div class="rounded-lg border border-blue-500/20 bg-blue-500/5 p-6">
 							<div class="mb-2 flex items-center gap-2">
 								<span class="text-blue-400">♾️</span>
-								<h4 class="font-bold text-blue-400">Always Fresh</h4>
+								<h4 class="font-bold text-blue-400">Always Current ♾️</h4>
 							</div>
 							<p class="text-sm text-gray-400">
-								Every phase stays current. No sync jobs, no stale data, no matter how complex the
-								queries get.
+								Every phase stays current. No sync jobs, no stale data, no matter how advanced the
+								features get.
 							</p>
 						</div>
 					</div>
 
 					<div class="mt-8 rounded-lg bg-blue-500/10 p-6 text-center">
-						<h4 class="mb-2 font-bold text-blue-400">Why Start with the Foundation?</h4>
+						<h4 class="mb-2 font-bold text-blue-400">Why Start with Data Access?</h4>
 						<p class="text-gray-300">
-							Most Bible RAG projects fail because they skip straight to vector search without
-							getting the basic data access right. We're building from the ground up - rock solid at
-							every layer.
+							Most Bible data projects fail because they jump to advanced features without getting
+							the basic data access right. We're building from the ground up - reliable at every
+							layer.
 						</p>
 					</div>
 				</div>
@@ -408,40 +409,38 @@
 				<!-- Real World Evidence Section -->
 				<div class="mt-20 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-8">
 					<h3 class="mb-6 text-center text-2xl font-bold text-yellow-400">
-						🚨 The Dirty Secret of Bible AI RAG Stacks
+						🚨 The Reality of Bible Data Infrastructure
 					</h3>
 					<div class="mx-auto max-w-3xl space-y-4 text-lg">
 						<p class="text-gray-300">
-							<strong class="text-yellow-400">Scenario 1:</strong> Teams spend months building RAG
-							systems. They're inconsistent, expensive, and
-							<span class="font-bold text-yellow-400">still outdated</span>
-							because Bible resources are revised daily.
+							<strong class="text-yellow-400">Challenge 1:</strong> Teams spend months building data
+							systems. They're complex, expensive, and
+							<span class="font-bold text-yellow-400">still get outdated</span>
+							because Bible resources are updated frequently.
 						</p>
 						<p class="text-gray-300">
-							<strong class="text-yellow-400">Scenario 2:</strong> Other teams parse everything into
-							SQL databases for faster lookups. But keeping them synced with content creators?
-							<span class="font-bold text-red-400">Even the best teams fail.</span>
+							<strong class="text-yellow-400">Challenge 2:</strong> Other teams build databases for
+							faster lookups. But keeping them synced with content creators?
+							<span class="font-bold text-red-400">Even experienced teams struggle.</span>
 						</p>
 						<p class="text-gray-300">
-							<strong class="text-yellow-400">Scenario 3:</strong> Hybrid approaches that combine
-							SQL + vectors + caching layers? Now you're maintaining THREE systems that all drift
-							out of sync at different rates.
-							<span class="font-bold text-red-400"
-								>Triple the complexity, triple the failure points.</span
-							>
+							<strong class="text-yellow-400">Challenge 3:</strong> Hybrid approaches that combine
+							databases + vectors + caching? Now you're maintaining multiple systems that drift out
+							of sync at different rates.
+							<span class="font-bold text-red-400">More complexity, more failure points.</span>
 						</p>
 						<p class="text-gray-300">
-							<strong class="text-yellow-400">The Reality:</strong> We've never seen ANY
-							implementation - whether RAG or database - that actually stays current with Bible
-							translation resources.
-							<span class="italic">If it has been done, please share!</span>
+							<strong class="text-yellow-400">Our Approach:</strong> We've built a system that stays
+							current with Bible translation resources through intelligent caching and real-time
+							source access.
+							<span class="italic">It's working in production.</span>
 						</p>
 						<div class="mt-6 rounded-lg bg-black/30 p-4 text-center">
 							<p class="text-xl font-bold text-green-400">
-								This is RAG done right: Real-time, Always-fresh, Guaranteed.
+								This is reliable data access: Real-time, Always-current, Production-tested.
 							</p>
 							<p class="mt-2 text-gray-400">
-								A stateless RAG that fetches directly from the source. No sync needed.
+								A practical approach that fetches from canonical sources with smart caching.
 							</p>
 						</div>
 					</div>
@@ -453,8 +452,8 @@
 		<section id="proof" bind:this={proofRef} class="px-4 py-20">
 			<div class="mx-auto max-w-6xl">
 				<div class="mb-16 text-center">
-					<h2 class="mb-4 text-4xl font-bold md:text-5xl">See Real-Time Updates in Action</h2>
-					<p class="text-xl text-gray-300">This data was updated by scholars this morning</p>
+					<h2 class="mb-4 text-4xl font-bold md:text-5xl">See Real-Time Access in Action</h2>
+					<p class="text-xl text-gray-300">This data is fetched from current sources</p>
 				</div>
 
 				<LiveDemo />
@@ -468,14 +467,13 @@
 		<!-- Adoption Section -->
 		<section class="bg-gradient-to-b from-purple-950 to-black px-4 py-20">
 			<div class="mx-auto max-w-4xl text-center">
-				<h2 class="mb-8 text-4xl font-bold md:text-5xl">Start Saving in 3 Minutes</h2>
+				<h2 class="mb-8 text-4xl font-bold md:text-5xl">Start Building in 3 Minutes</h2>
 
 				<div class="mb-12 grid gap-8 md:grid-cols-3">
 					<div class="rounded-xl bg-gray-800 p-6">
 						<div class="mb-2 text-3xl font-bold text-green-400">1</div>
-						<h3 class="mb-2 text-xl font-bold">Get Your API Key</h3>
-						<p class="text-gray-400">Sign up and get instant access</p>
-						<p class="mt-2 text-sm text-green-400">(Just kidding, no API key needed)</p>
+						<h3 class="mb-2 text-xl font-bold">Clone & Deploy</h3>
+						<p class="text-gray-400">Open source, no API keys needed</p>
 					</div>
 
 					<div class="rounded-xl bg-gray-800 p-6">
@@ -486,8 +484,8 @@
 
 					<div class="rounded-xl bg-gray-800 p-6">
 						<div class="mb-2 text-3xl font-bold text-green-400">3</div>
-						<h3 class="mb-2 text-xl font-bold">Never Sync Again</h3>
-						<p class="text-gray-400">Delete your update scripts forever</p>
+						<h3 class="mb-2 text-xl font-bold">Reduce Maintenance</h3>
+						<p class="text-gray-400">Much less sync overhead</p>
 					</div>
 				</div>
 
@@ -501,10 +499,10 @@
 				</div>
 
 				<p class="mt-8 text-gray-400">
-					Join teams who finally have <span class="font-bold text-green-400"
-						>accurate Bible data</span
+					Join teams who have <span class="font-bold text-green-400"
+						>reliable Bible data access</span
 					>
-					without the maintenance nightmare
+					without the traditional maintenance burden
 				</p>
 
 				<div class="mt-8 rounded-lg bg-blue-500/10 p-4 text-center">
@@ -512,8 +510,8 @@
 						🤝 Open source & no API keys needed • Deploy on your existing infrastructure
 					</p>
 					<p class="mt-2 text-xs text-gray-400">
-						Need help with custom implementation? We'll guide you through integration with your
-						Bible translation product.
+						Need help with integration? We'll guide you through connecting with your Bible
+						translation tools.
 					</p>
 				</div>
 			</div>

@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] - 2025-07-21
+
+### 🔧 Client-Side Infrastructure Fixes
+
+- **Fixed JavaScript Runtime Errors**: Resolved critical Node.js module imports in browser environment
+  - Updated `ui/src/lib/version.ts` to use static version instead of server-side file system access
+  - Enhanced `scripts/sync-version.js` to automatically populate UI version during build
+  - Fixed all browser console errors related to `node:path` and `node:fs` imports
+  - Restored full JavaScript functionality across all UI pages
+
+### 📊 Health Check System Enhancement
+
+- **Categorized Health Monitoring**: Reorganized health endpoints by Core, Extended, and Experimental categories
+  - **Core Endpoints** (5): Essential Bible content (scripture, notes, questions, languages, books)
+  - **Extended Endpoints** (7): Enhanced features (translation words, resources, context, search)
+  - **Experimental Endpoints** (3): Newer features (word links, MCP integration)
+  - Added category-based statistics and status breakdown in health API response
+
+### 🎨 UI/UX Improvements
+
+- **Live Health Status Integration**: Health indicators integrated directly into navigation menu
+  - Real-time status badges for each endpoint category
+  - Color-coded status indicators (green/yellow/red) for immediate health visibility
+  - Elegant hover effects and tooltips showing detailed health information
+  - Non-intrusive design that enhances rather than clutters the navigation
+
+### 🚀 Build System Enhancements
+
+- **Automatic Version Synchronization**: Build scripts now automatically sync version across all components
+  - UI build processes include version sync step
+  - Cloudflare builds maintain version consistency
+  - Single source of truth for version management from root package.json
+
 ## [4.3.0] - 2025-07-27
 
 ### 🚀 Major Platform Migration

@@ -5,9 +5,9 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { getVersion } from '$lib/version.js';
+import { VERSION } from '$lib/version.js';
 
-// Define test cases for each endpoint
+// Define test cases for each endpoint organized by category
 interface EndpointTest {
 	name: string;
 	url: string;
@@ -15,12 +15,14 @@ interface EndpointTest {
 	expectedFields: string[];
 	method?: 'GET' | 'POST';
 	body?: Record<string, unknown>;
+	category: 'core' | 'extended' | 'experimental';
 }
 
 interface EndpointResult {
 	name: string;
 	status: 'healthy' | 'warning' | 'error';
 	responseTime: number;
+	category: 'core' | 'extended' | 'experimental';
 	cached?: {
 		status: 'healthy' | 'warning' | 'error';
 		responseTime: number;
@@ -43,108 +45,117 @@ interface EndpointResult {
 }
 
 const ENDPOINT_TESTS: EndpointTest[] = [
-	// Core Bible content endpoints
+	// CORE - Essential Bible content endpoints
 	{
 		name: 'fetch-scripture',
 		url: '/api/fetch-scripture',
 		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['scripture']
+		expectedFields: ['scripture'],
+		category: 'core'
 	},
 	{
 		name: 'fetch-translation-notes',
 		url: '/api/fetch-translation-notes',
 		params: { reference: 'Titus 1:1', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['translationNotes']
+		expectedFields: ['translationNotes'],
+		category: 'core'
 	},
 	{
 		name: 'fetch-translation-questions',
 		url: '/api/fetch-translation-questions',
 		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['translationQuestions']
+		expectedFields: ['translationQuestions'],
+		category: 'core'
 	},
-	{
-		name: 'fetch-translation-words',
-		url: '/api/fetch-translation-words',
-		params: { reference: 'Titus 1:1', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['translationWords']
-	},
-	{
-		name: 'fetch-translation-word-links',
-		url: '/api/fetch-translation-word-links',
-		params: { reference: 'Genesis 1:1', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['wordLinks']
-	},
-
-	// Comprehensive resource endpoints
-	{
-		name: 'fetch-resources',
-		url: '/api/fetch-resources',
-		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['resources']
-	},
-	{
-		name: 'get-context',
-		url: '/api/get-context',
-		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['context']
-	},
-
-	// Metadata and search endpoints
 	{
 		name: 'get-languages',
 		url: '/api/get-languages',
 		params: { organization: 'unfoldingWord' },
-		expectedFields: ['languages']
+		expectedFields: ['languages'],
+		category: 'core'
 	},
 	{
 		name: 'get-available-books',
 		url: '/api/get-available-books',
 		params: { language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['books']
-	},
-	{
-		name: 'list-available-resources',
-		url: '/api/list-available-resources',
-		params: { language: 'en', query: 'faith' },
-		expectedFields: ['resources']
+		expectedFields: ['books'],
+		category: 'core'
 	},
 
-	// Translation words browsing
+	// EXTENDED - Enhanced features and comprehensive resources
+	{
+		name: 'fetch-translation-words',
+		url: '/api/fetch-translation-words',
+		params: { reference: 'Titus 1:1', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['translationWords'],
+		category: 'extended'
+	},
+	{
+		name: 'fetch-resources',
+		url: '/api/fetch-resources',
+		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['resources'],
+		category: 'extended'
+	},
+	{
+		name: 'get-context',
+		url: '/api/get-context',
+		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['context'],
+		category: 'extended'
+	},
 	{
 		name: 'browse-translation-words',
 		url: '/api/browse-translation-words',
 		params: { language: 'en', category: 'kt', organization: 'unfoldingWord' },
-		expectedFields: ['words']
+		expectedFields: ['words'],
+		category: 'extended'
 	},
 	{
 		name: 'get-translation-word',
 		url: '/api/get-translation-word',
 		params: { term: 'grace', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['term']
+		expectedFields: ['term'],
+		category: 'extended'
+	},
+	{
+		name: 'list-available-resources',
+		url: '/api/list-available-resources',
+		params: { language: 'en', query: 'faith' },
+		expectedFields: ['resources'],
+		category: 'extended'
+	},
+	{
+		name: 'extract-references',
+		url: '/api/extract-references',
+		params: { text: 'See John 3:16 and Romans 1:1 for more details' },
+		expectedFields: ['references'],
+		category: 'extended'
+	},
+
+	// EXPERIMENTAL - Newer features and integrations
+	{
+		name: 'fetch-translation-word-links',
+		url: '/api/fetch-translation-word-links',
+		params: { reference: 'Genesis 1:1', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['wordLinks'],
+		category: 'experimental'
 	},
 	{
 		name: 'get-words-for-reference',
 		url: '/api/get-words-for-reference',
 		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
-		expectedFields: ['words']
+		expectedFields: ['words'],
+		category: 'experimental'
 	},
-
-	// Parsing and utility endpoints
-	{
-		name: 'extract-references',
-		url: '/api/extract-references',
-		params: { text: 'See John 3:16 and Romans 1:1 for more details' },
-		expectedFields: ['references']
-	},
-
-	// MCP protocol endpoint
 	{
 		name: 'mcp-endpoint',
 		url: '/api/mcp',
 		params: {},
 		expectedFields: ['tools'],
 		method: 'POST',
-		body: { jsonrpc: '2.0', method: 'tools/list', id: 1 }
+		body: { jsonrpc: '2.0', method: 'tools/list', id: 1 },
+		category: 'experimental'
 	}
 ];
 
@@ -247,6 +258,7 @@ async function testEndpointDual(baseUrl: string, test: EndpointTest): Promise<En
 		name: test.name,
 		status: overallStatus,
 		responseTime: avgResponseTime,
+		category: test.category,
 		cached: cachedResult,
 		bypassed: bypassedResult,
 		// Include legacy fields for backward compatibility
@@ -266,6 +278,11 @@ export const GET: RequestHandler = async ({ url }) => {
 	// Test all endpoints in parallel
 	const results = await Promise.all(ENDPOINT_TESTS.map((test) => testEndpointDual(baseUrl, test)));
 
+	// Group results by category
+	const coreResults = results.filter((r: EndpointResult) => r.category === 'core');
+	const extendedResults = results.filter((r: EndpointResult) => r.category === 'extended');
+	const experimentalResults = results.filter((r: EndpointResult) => r.category === 'experimental');
+
 	// Summary stats
 	const totalEndpoints = results.length;
 	const healthyEndpoints = results.filter((r: EndpointResult) => r.status === 'healthy').length;
@@ -273,6 +290,20 @@ export const GET: RequestHandler = async ({ url }) => {
 	const errorEndpoints = results.filter((r: EndpointResult) => r.status === 'error').length;
 	const avgResponseTime =
 		results.reduce((sum: number, r: EndpointResult) => sum + r.responseTime, 0) / totalEndpoints;
+
+	// Category-based stats
+	const getCategoryStats = (categoryResults: EndpointResult[]) => ({
+		total: categoryResults.length,
+		healthy: categoryResults.filter((r) => r.status === 'healthy').length,
+		warning: categoryResults.filter((r) => r.status === 'warning').length,
+		error: categoryResults.filter((r) => r.status === 'error').length,
+		avgResponseTime:
+			categoryResults.length > 0
+				? Math.round(
+						categoryResults.reduce((sum, r) => sum + r.responseTime, 0) / categoryResults.length
+					)
+				: 0
+	});
 
 	// Overall health status
 	let overallStatus = 'healthy';
@@ -282,7 +313,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const healthData = {
 		status: overallStatus,
 		timestamp: new Date().toISOString(),
-		version: getVersion(),
+		version: VERSION,
 		uptime: process.uptime?.() || 0,
 		memory: process.memoryUsage?.() || null,
 		summary: {
@@ -291,6 +322,11 @@ export const GET: RequestHandler = async ({ url }) => {
 			warningEndpoints,
 			errorEndpoints,
 			avgResponseTime: Math.round(avgResponseTime)
+		},
+		categories: {
+			core: getCategoryStats(coreResults),
+			extended: getCategoryStats(extendedResults),
+			experimental: getCategoryStats(experimentalResults)
 		},
 		endpoints: results,
 		responseTime: Date.now() - startTime
