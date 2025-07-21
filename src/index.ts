@@ -14,6 +14,8 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import fs from "fs";
+import path from "path";
 
 // Import tool handlers with updated names
 import { handleFetchScripture, FetchScriptureArgs } from "./tools/fetchScripture.js";
@@ -33,6 +35,18 @@ import { handleExtractReferences } from "./tools/extractReferences.js";
 import { handleFetchResources } from "./tools/fetchResources.js";
 import { handleGetWordsForReference } from "./tools/getWordsForReference.js";
 import { handleSearchResources } from "./tools/searchResources.js";
+
+// Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
+function getVersion(): string {
+  try {
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch (error) {
+    console.warn("Failed to read version from ROOT package.json, using fallback");
+    return "4.1.0"; // Only as absolute fallback
+  }
+}
 
 // Tool definitions
 const tools = [
@@ -149,7 +163,7 @@ const tools = [
 const server = new Server(
   {
     name: "translation-helps-mcp",
-    version: "4.1.0",
+    version: getVersion(),
   },
   {
     capabilities: {

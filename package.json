@@ -25,7 +25,8 @@
     "test:regression": "vitest run tests/regression.test.ts",
     "test:unit": "vitest run tests/DCSApiClient.test.ts",
     "test:scripture": "vitest run tests/scripture-comprehensive.test.ts",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "sync-version": "node scripts/sync-version.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.0.6",
