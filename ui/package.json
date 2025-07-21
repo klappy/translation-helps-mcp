@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"build:cloudflare": "cp svelte.config.cloudflare.js svelte.config.js && vite build && git checkout svelte.config.js",
+		"build:cloudflare": "cp svelte.config.cloudflare.js svelte.config.js && npx vite build && git checkout svelte.config.js",
 		"build:cloudflare-full": "cd .. && node scripts/generate-platform-functions.js && cd ui && npm run build:cloudflare",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
