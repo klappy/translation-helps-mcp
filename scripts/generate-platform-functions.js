@@ -21,7 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const functions = [
   { name: "get-languages", handler: "getLanguagesHandler" },
   { name: "fetch-scripture", handler: "fetchScriptureHandler" },
-  { name: "health", handler: "healthHandler" },
+  // Note: health endpoint uses custom detailed implementation in ui/src/routes/api/health/+server.ts
 ];
 
 // TODO: Add these handlers in Phase 2
