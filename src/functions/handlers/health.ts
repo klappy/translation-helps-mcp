@@ -3,92 +3,53 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
-import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
-// Cache stats now handled by platform wrappers
+import type { PlatformHandler } from "../platform-adapter.js";
+import fs from "fs";
+import path from "path";
 
-// Static version - updated when deploying
-const VERSION = "4.1.0";
-
-export const healthHandler: PlatformHandler = async (
-  request: PlatformRequest
-): Promise<PlatformResponse> => {
-  console.log("Health check requested");
-
-  // Handle CORS preflight
-  if (request.method === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-      },
-      body: "",
-    };
-  }
-
-  if (request.method !== "GET") {
-    return {
-      statusCode: 405,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
-      body: JSON.stringify({
-        error: "Method not allowed",
-        message: "This endpoint only accepts GET requests",
-      }),
-    };
-  }
-
+// Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
+function getVersion(): string {
   try {
-    const response = {
-      status: "healthy",
-      timestamp: new Date().toISOString(),
-      version: VERSION,
-      environment: process.env.NODE_ENV || "production",
-      architecture: "platform-agnostic",
-      endpoints: [
-        "/api/health",
-        "/api/fetch-resources",
-        "/api/fetch-scripture",
-        "/api/get-context",
-        "/api/get-languages",
-        "/api/extract-references",
-        "/api/fetch-translation-notes",
-        "/api/fetch-translation-questions",
-        "/api/fetch-translation-words",
-        "/api/browse-translation-words",
-        "/api/get-words-for-reference",
-        "/api/list-available-resources",
-      ],
-      uptime: process.uptime ? process.uptime() : 0,
-      memoryUsage: process.memoryUsage ? process.memoryUsage() : { heapUsed: 0 },
-      cache: "Platform-specific caching enabled (stats available in platform wrappers)",
-    };
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch (error) {
+    console.warn("Failed to read version from ROOT package.json, using fallback");
+    return "4.1.0"; // Only as absolute fallback
+  }
+}
+
+export const healthHandler: PlatformHandler = async (context, headers = {}) => {
+  try {
+    const version = getVersion();
 
     return {
       statusCode: 200,
+      body: JSON.stringify({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        version,
+        service: "translation-helps-mcp",
+        description: "MCP Server for Bible translation resources",
+      }),
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache",
+        ...headers,
       },
-      body: JSON.stringify(response, null, 2),
     };
   } catch (error) {
-    console.error("Health check error:", error);
-
     return {
       statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
       body: JSON.stringify({
-        status: "unhealthy",
-        error: "Internal server error",
+        status: "error",
+        error: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
       }),
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
     };
   }
 };

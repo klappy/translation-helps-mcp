@@ -5,6 +5,20 @@
 
 import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { getLanguages } from "../languages-service";
+import fs from "fs";
+import path from "path";
+
+// Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
+function getVersion(): string {
+  try {
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch (error) {
+    console.warn("Failed to read version from ROOT package.json, using fallback");
+    return "4.1.0"; // Only as absolute fallback
+  }
+}
 
 export const getLanguagesHandler: PlatformHandler = async (
   request: PlatformRequest
@@ -40,10 +54,9 @@ export const getLanguagesHandler: PlatformHandler = async (
 
       // Metadata (without cache info - that's handled by wrapper)
       metadata: {
-        timestamp: new Date().toISOString(),
         responseTime: result.metadata.responseTime,
         languagesFound: result.metadata.languagesFound,
-        version: "4.1.0",
+        version: getVersion(),
       },
     };
 
