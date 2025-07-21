@@ -5,6 +5,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
+import { getVersion } from '$lib/version.js';
 
 // Define test cases for each endpoint
 interface EndpointTest {
@@ -281,7 +282,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const healthData = {
 		status: overallStatus,
 		timestamp: new Date().toISOString(),
-		version: '4.0.0',
+		version: getVersion(),
 		uptime: process.uptime?.() || 0,
 		memory: process.memoryUsage?.() || null,
 		summary: {
