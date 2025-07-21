@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount, onDestroy } from 'svelte';
 	import {
 		Zap,
 		TestTube,
@@ -14,10 +15,19 @@
 		HelpCircle,
 		TrendingUp,
 		Wrench,
-		Droplets
+		Droplets,
+		Activity
 	} from 'lucide-svelte';
 	import '../app.css';
 	import { VERSION } from '$lib/version';
+	import {
+		startHealthMonitoring,
+		stopHealthMonitoring,
+		coreHealth,
+		extendedHealth,
+		experimentalHealth,
+		overallHealth
+	} from '$lib/services/healthService';
 
 	// Navigation items
 	const navItems = [
@@ -78,6 +88,15 @@
 		}
 		currentPath = $page.url.pathname;
 	}
+
+	// Health monitoring lifecycle
+	onMount(() => {
+		startHealthMonitoring(30000); // Refresh every 30 seconds
+	});
+
+	onDestroy(() => {
+		stopHealthMonitoring();
+	});
 </script>
 
 <svelte:head>
@@ -193,6 +212,123 @@
 
 				<!-- Right side actions -->
 				<div class="flex items-center space-x-4">
+					<!-- Health Status Indicators -->
+					<div class="hidden items-center space-x-2 lg:flex">
+						<!-- Core Health -->
+						<div class="group relative">
+							<div
+								class="flex items-center space-x-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:bg-white/10"
+							>
+								<div
+									class="h-2 w-2 rounded-full {$coreHealth.status === 'loading'
+										? 'animate-pulse bg-gray-400'
+										: $coreHealth.status === 'healthy'
+											? 'bg-emerald-400'
+											: $coreHealth.status === 'warning'
+												? 'bg-yellow-400'
+												: 'bg-red-400'}"
+								></div>
+								<span class="text-xs font-medium {$coreHealth.color}">Core</span>
+							</div>
+
+							<!-- Tooltip -->
+							<div
+								class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 transform rounded-lg border border-blue-500/30 bg-black/90 px-3 py-2 text-xs whitespace-nowrap text-blue-200 opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover:opacity-100"
+							>
+								{$coreHealth.tooltip}
+								<div
+									class="absolute top-full left-1/2 h-0 w-0 -translate-x-1/2 transform border-t-4 border-r-4 border-l-4 border-transparent border-t-black/90"
+								></div>
+							</div>
+						</div>
+
+						<!-- Extended Health -->
+						<div class="group relative">
+							<div
+								class="flex items-center space-x-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:bg-white/10"
+							>
+								<div
+									class="h-2 w-2 rounded-full {$extendedHealth.status === 'loading'
+										? 'animate-pulse bg-gray-400'
+										: $extendedHealth.status === 'healthy'
+											? 'bg-emerald-400'
+											: $extendedHealth.status === 'warning'
+												? 'bg-yellow-400'
+												: 'bg-red-400'}"
+								></div>
+								<span class="text-xs font-medium {$extendedHealth.color}">Ext</span>
+							</div>
+
+							<!-- Tooltip -->
+							<div
+								class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 transform rounded-lg border border-blue-500/30 bg-black/90 px-3 py-2 text-xs whitespace-nowrap text-blue-200 opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover:opacity-100"
+							>
+								{$extendedHealth.tooltip}
+								<div
+									class="absolute top-full left-1/2 h-0 w-0 -translate-x-1/2 transform border-t-4 border-r-4 border-l-4 border-transparent border-t-black/90"
+								></div>
+							</div>
+						</div>
+
+						<!-- Experimental Health -->
+						<div class="group relative">
+							<div
+								class="flex items-center space-x-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:bg-white/10"
+							>
+								<div
+									class="h-2 w-2 rounded-full {$experimentalHealth.status === 'loading'
+										? 'animate-pulse bg-gray-400'
+										: $experimentalHealth.status === 'healthy'
+											? 'bg-emerald-400'
+											: $experimentalHealth.status === 'warning'
+												? 'bg-yellow-400'
+												: 'bg-red-400'}"
+								></div>
+								<span class="text-xs font-medium {$experimentalHealth.color}">Exp</span>
+							</div>
+
+							<!-- Tooltip -->
+							<div
+								class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 transform rounded-lg border border-blue-500/30 bg-black/90 px-3 py-2 text-xs whitespace-nowrap text-blue-200 opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover:opacity-100"
+							>
+								{$experimentalHealth.tooltip}
+								<div
+									class="absolute top-full left-1/2 h-0 w-0 -translate-x-1/2 transform border-t-4 border-r-4 border-l-4 border-transparent border-t-black/90"
+								></div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Compact Health Status for smaller screens -->
+					<div class="flex items-center lg:hidden">
+						<div class="group relative">
+							<div
+								class="flex items-center space-x-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:bg-white/10"
+							>
+								<Activity class="h-4 w-4 {$overallHealth.color}" />
+								<div
+									class="h-2 w-2 rounded-full {$overallHealth.status === 'loading'
+										? 'animate-pulse bg-gray-400'
+										: $overallHealth.status === 'healthy'
+											? 'bg-emerald-400'
+											: $overallHealth.status === 'warning'
+												? 'bg-yellow-400'
+												: 'bg-red-400'}"
+								></div>
+							</div>
+
+							<!-- Tooltip -->
+							<div
+								class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 transform rounded-lg border border-blue-500/30 bg-black/90 px-3 py-2 text-xs whitespace-nowrap text-blue-200 opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover:opacity-100"
+							>
+								{$overallHealth.tooltip}
+								<div
+									class="absolute top-full left-1/2 h-0 w-0 -translate-x-1/2 transform border-t-4 border-r-4 border-l-4 border-transparent border-t-black/90"
+								></div>
+							</div>
+						</div>
+					</div>
+
 					<!-- Version Badge -->
 					<div class="hidden sm:block">
 						<div
@@ -258,6 +394,68 @@
 					{/each}
 
 					<div class="border-t border-blue-500/30 pt-4">
+						<!-- API Health Status -->
+						<div class="mb-4 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-xl">
+							<div class="mb-3 flex items-center space-x-2">
+								<Activity class="h-4 w-4 {$overallHealth.color}" />
+								<div class="text-sm font-medium text-white">API Health</div>
+							</div>
+
+							<div class="space-y-2">
+								<!-- Core Health -->
+								<div class="flex items-center justify-between">
+									<div class="flex items-center space-x-2">
+										<div
+											class="h-2 w-2 rounded-full {$coreHealth.status === 'loading'
+												? 'animate-pulse bg-gray-400'
+												: $coreHealth.status === 'healthy'
+													? 'bg-emerald-400'
+													: $coreHealth.status === 'warning'
+														? 'bg-yellow-400'
+														: 'bg-red-400'}"
+										></div>
+										<span class="text-xs font-medium {$coreHealth.color}">Core</span>
+									</div>
+									<span class="text-xs text-blue-300/70">{$coreHealth.tooltip}</span>
+								</div>
+
+								<!-- Extended Health -->
+								<div class="flex items-center justify-between">
+									<div class="flex items-center space-x-2">
+										<div
+											class="h-2 w-2 rounded-full {$extendedHealth.status === 'loading'
+												? 'animate-pulse bg-gray-400'
+												: $extendedHealth.status === 'healthy'
+													? 'bg-emerald-400'
+													: $extendedHealth.status === 'warning'
+														? 'bg-yellow-400'
+														: 'bg-red-400'}"
+										></div>
+										<span class="text-xs font-medium {$extendedHealth.color}">Extended</span>
+									</div>
+									<span class="text-xs text-blue-300/70">{$extendedHealth.tooltip}</span>
+								</div>
+
+								<!-- Experimental Health -->
+								<div class="flex items-center justify-between">
+									<div class="flex items-center space-x-2">
+										<div
+											class="h-2 w-2 rounded-full {$experimentalHealth.status === 'loading'
+												? 'animate-pulse bg-gray-400'
+												: $experimentalHealth.status === 'healthy'
+													? 'bg-emerald-400'
+													: $experimentalHealth.status === 'warning'
+														? 'bg-yellow-400'
+														: 'bg-red-400'}"
+										></div>
+										<span class="text-xs font-medium {$experimentalHealth.color}">Experimental</span
+										>
+									</div>
+									<span class="text-xs text-blue-300/70">{$experimentalHealth.tooltip}</span>
+								</div>
+							</div>
+						</div>
+
 						<a
 							href="https://github.com/klappy/translation-helps-mcp"
 							target="_blank"
