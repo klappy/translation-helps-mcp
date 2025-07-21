@@ -4,13 +4,23 @@
 
 The production site at `https://translation-helps-mcp.pages.dev` was experiencing 500/503 errors due to:
 
-1. **Node.js API Compatibility**: Code using `process.uptime()` and `process.memoryUsage()` that don't exist in Cloudflare Workers
-2. **Environment Variable Access**: Unsafe access to `process.env` without checking if `process` exists
-3. **Potential Build Configuration**: Need to verify correct adapter is being used
+1. **CRITICAL: Node.js File System APIs**: `src/version.ts` was using `fs.readFileSync` and `path.resolve` which don't exist in Cloudflare Workers
+2. **Node.js API Compatibility**: Code using `process.uptime()` and `process.memoryUsage()` that don't exist in Cloudflare Workers
+3. **Environment Variable Access**: Unsafe access to `process.env` without checking if `process` exists
+4. **Potential Build Configuration**: Need to verify correct adapter is being used
 
 ## Fixes Applied
 
-### 1. Fixed Node.js Compatibility Issues
+### 1. CRITICAL FIX: Replaced Node.js File System APIs
+
+**File**: `src/version.ts`
+
+- Removed `fs.readFileSync` and `path.resolve` imports that fail in Cloudflare Workers
+- Replaced with build-time import of package.json for version resolution
+- Added platform-agnostic fallbacks for edge cases
+- This was the root cause of all 500 errors across API endpoints
+
+### 2. Fixed Node.js Compatibility Issues
 
 **File**: `ui/src/routes/api/health/+server.ts`
 
