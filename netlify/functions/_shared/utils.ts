@@ -8,7 +8,7 @@ import fs from "fs";
 import path from "path";
 
 // Get the actual version from package.json (via version.json)
-let packageVersion = "4.0.0"; // Default fallback
+let packageVersion = "4.1.0"; // Default fallback
 try {
   const versionPath = path.join(process.cwd(), "netlify/functions/_shared/version.json");
   if (fs.existsSync(versionPath)) {

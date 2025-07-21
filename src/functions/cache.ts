@@ -3,8 +3,8 @@
  * No external dependencies - compatible with all platforms
  */
 
-import { readFileSync } from "fs";
-import { join } from "path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 // Read version from package.json
 function getAppVersion(): string {
@@ -14,7 +14,7 @@ function getAppVersion(): string {
     return packageJson.version;
   } catch (error) {
     console.warn("Failed to read version from package.json, using fallback");
-    return "3.8.0"; // Fallback version
+    return "4.1.0"; // Fallback version
   }
 }
 

@@ -149,7 +149,7 @@ const tools = [
 const server = new Server(
   {
     name: "translation-helps-mcp",
-    version: "3.6.0",
+    version: "4.1.0",
   },
   {
     capabilities: {

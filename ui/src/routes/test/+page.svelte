@@ -99,58 +99,58 @@
 	// API endpoints with enhanced metadata
 	const endpoints = [
 		{
-			name: 'Scripture',
+			name: 'Fetch Scripture',
 			icon: BookOpen,
-			path: '/.netlify/functions/fetch-scripture',
-			description: 'Fetch Bible verses with context',
+			path: '/api/fetch-scripture',
+			description: 'Get Bible verses with translation information',
 			color: 'from-blue-500 to-cyan-500',
 			category: 'core'
 		},
 		{
-			name: 'Translation Notes',
+			name: 'Fetch Translation Notes',
 			icon: FileText,
-			path: '/.netlify/functions/fetch-translation-notes',
-			description: 'Get translation notes and insights',
+			path: '/api/fetch-translation-notes',
+			description: 'Get detailed translation notes for Bible verses',
 			color: 'from-green-500 to-emerald-500',
 			category: 'translation'
 		},
 		{
-			name: 'Translation Questions',
+			name: 'Fetch Translation Questions',
 			icon: Users,
-			path: '/.netlify/functions/fetch-translation-questions',
-			description: 'Find answers to translation questions',
+			path: '/api/fetch-translation-questions',
+			description: 'Get comprehension questions for Bible passages',
 			color: 'from-purple-500 to-pink-500',
 			category: 'translation'
 		},
 		{
-			name: 'Translation Words',
+			name: 'Fetch Translation Words',
 			icon: Code,
-			path: '/.netlify/functions/fetch-translation-words',
-			description: 'Get word definitions and usage',
+			path: '/api/fetch-translation-words',
+			description: 'Get definitions and information for biblical terms',
 			color: 'from-orange-500 to-red-500',
 			category: 'linguistics'
 		},
 		{
-			name: 'Translation Word Links',
+			name: 'Fetch Translation Word Links',
 			icon: MessageSquare,
-			path: '/.netlify/functions/fetch-translation-word-links',
-			description: 'Get links to translation word articles',
+			path: '/api/fetch-translation-word-links',
+			description: 'Get word links for Bible references',
 			color: 'from-indigo-500 to-blue-500',
 			category: 'linguistics'
 		},
 		{
-			name: 'All Resources',
+			name: 'Fetch Resources',
 			icon: Zap,
-			path: '/.netlify/functions/fetch-resources',
-			description: 'Fetch all resources for a reference',
+			path: '/api/fetch-resources',
+			description: 'Get all available resources for a Bible reference',
 			color: 'from-yellow-500 to-orange-500',
 			category: 'comprehensive'
 		},
 		{
-			name: 'Available Books',
+			name: 'Get Available Books',
 			icon: BookOpen,
-			path: '/.netlify/functions/get-available-books',
-			description: 'Get list of available books for each resource type',
+			path: '/api/get-available-books',
+			description: 'Get list of available Bible books',
 			color: 'from-teal-500 to-cyan-500',
 			category: 'metadata'
 		}
@@ -477,7 +477,7 @@
 		try {
 			// First, get available books for each resource
 			const availabilityResponse = await fetch(
-				'/.netlify/functions/get-available-books?language=en&organization=unfoldingWord'
+				'/api/get-available-books?language=en&organization=unfoldingWord'
 			);
 			if (!availabilityResponse.ok) {
 				console.warn('Could not fetch available books, using fallback references');

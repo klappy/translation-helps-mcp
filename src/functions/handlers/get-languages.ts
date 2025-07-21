@@ -43,7 +43,7 @@ export const getLanguagesHandler: PlatformHandler = async (
         timestamp: new Date().toISOString(),
         responseTime: result.metadata.responseTime,
         languagesFound: result.metadata.languagesFound,
-        version: "4.0.0",
+        version: "4.1.0",
       },
     };
 

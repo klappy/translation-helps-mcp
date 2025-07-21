@@ -77,15 +77,15 @@
 		loading = true;
 		demoResults = [];
 
-		const endpoints = [
-			'/.netlify/functions/health',
-			'/.netlify/functions/get-languages',
-			'/.netlify/functions/fetch-scripture?reference=John+3:16&language=en&organization=unfoldingWord&translation=all',
-			'/.netlify/functions/fetch-translation-notes?reference=Titus+1:1&language=en&organization=unfoldingWord'
+		const defaultEndpoints = [
+			'/api/health',
+			'/api/get-languages',
+			'/api/fetch-scripture?reference=John+3:16&language=en&organization=unfoldingWord&translation=all',
+			'/api/fetch-translation-notes?reference=Titus+1:1&language=en&organization=unfoldingWord'
 		];
 
 		for (let i = 0; i < 5; i++) {
-			for (const endpoint of endpoints) {
+			for (const endpoint of defaultEndpoints) {
 				const startTime = Date.now();
 				try {
 					const response = await fetch(`https://translation-helps-mcp.netlify.app${endpoint}`);

@@ -1,4 +1,14 @@
-# Cloudflare Deployment - The Even Simpler Way! ⚡
+# Cloudflare Deployment - HTTP MCP Revolution! ⚡
+
+## 🌟 NEW: Stateless HTTP MCP on Cloudflare Workers
+
+Translation Helps MCP v4.1.0 introduces revolutionary **HTTP-based MCP** that runs perfectly on Cloudflare Workers without WebSockets or long-lived connections!
+
+### ✨ Live Production Deployment
+
+- **HTTP MCP Endpoint**: `https://ab56217a.translation-helps-mcp.pages.dev/api/mcp`
+- **Interactive Test UI**: `https://ab56217a.translation-helps-mcp.pages.dev/mcp-http-test`
+- **All 11 Tools Available**: Complete translation toolkit via HTTP
 
 ## Why Cloudflare?
 
@@ -6,6 +16,7 @@
 - **Cheaper Pricing**: First 100,000 requests per day are FREE
 - **Global Edge Network**: 300+ locations worldwide
 - **Better Performance**: V8 isolates instead of containers
+- **Perfect for Stateless MCP**: Request/response model fits MCP-over-HTTP perfectly
 
 ## The Simple Setup
 
