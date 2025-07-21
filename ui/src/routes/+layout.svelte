@@ -40,15 +40,9 @@
 		},
 		{
 			href: '/mcp-tools',
-			label: 'API',
+			label: 'MCP Tools API',
 			icon: Code,
-			description: 'API documentation'
-		},
-		{
-			href: '/mcp-tools',
-			label: 'MCP Tools',
-			icon: Wrench,
-			description: 'MCP server tools documentation'
+			description: 'MCP server tools and API documentation'
 		},
 		{
 			href: '/performance',
@@ -290,7 +284,7 @@
 							class="flex items-center space-x-2 text-gray-300 transition-colors hover:text-white"
 						>
 							<Code class="h-4 w-4" />
-							<span class="text-sm">API Reference</span>
+							<span class="text-sm">MCP Tools API</span>
 						</a>
 						<a
 							href="/test"
@@ -320,7 +314,7 @@
 							rel="noopener noreferrer"
 							class="transition-colors hover:text-white">GitHub</a
 						>
-						<a href="/mcp-tools" class="transition-colors hover:text-white">API</a>
+						<a href="/mcp-tools" class="transition-colors hover:text-white">MCP Tools API</a>
 						<a href="/test" class="transition-colors hover:text-white">Test</a>
 					</div>
 				</div>
