@@ -35,7 +35,6 @@
 		User,
 		Lightbulb
 	} from 'lucide-svelte';
-	import { LLMChatService } from '$lib/services/llmChatService';
 
 	const coreFeatures = [
 		{
@@ -145,20 +144,6 @@
 	let demoContext = '';
 	let showApiDetails = false;
 
-	// Initialize chat service
-	const chatService = new LLMChatService();
-	let chatServiceReady = false;
-
-	// Initialize chat service
-	onMount(async () => {
-		try {
-			await chatService.initialize();
-			chatServiceReady = true;
-		} catch (error) {
-			console.error('Failed to initialize chat service for homepage demo:', error);
-		}
-	});
-
 	function toggleDemo() {
 		showDemo = !showDemo;
 		if (!showDemo) {
@@ -171,18 +156,11 @@
 	}
 
 	async function runDemo() {
-		if (!chatServiceReady) {
-			demoResponse = '⚠️ Chat service is not ready yet. Please try again in a moment.';
-			return;
-		}
-
 		demoLoading = true;
 		demoResponse = '';
 		demoApiCalls = [];
 		demoContext = '';
 		showApiDetails = false;
-
-		const messageStartTime = performance.now();
 
 		try {
 			// Detect scripture references and word queries (same logic as chat page)
@@ -302,18 +280,36 @@
 
 			demoContext = contextMessage;
 
-			// Generate AI response using the real chat service
-			const response = await chatService.generateResponse(contextMessage);
+			// Make simple chat request (non-streaming)
+			try {
+				const chatResponse = await fetch('/api/chat-stream', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						message: contextMessage,
+						chatHistory: []
+					})
+				});
 
-			if (response.success) {
-				// Stream the response character by character for visual effect
-				const fullResponse = response.response || 'No response received.';
-				for (let i = 0; i <= fullResponse.length; i++) {
-					demoResponse = fullResponse.slice(0, i);
-					await new Promise((resolve) => setTimeout(resolve, 15));
+				if (chatResponse.ok) {
+					const chatData = await chatResponse.json();
+					const fullResponse = chatData.response || 'No response received.';
+
+					// Simple typing animation
+					for (let i = 0; i <= fullResponse.length; i++) {
+						demoResponse = fullResponse.slice(0, i);
+						await new Promise((resolve) => setTimeout(resolve, 15));
+					}
+				} else {
+					demoResponse =
+						'Error: Failed to get AI response. Please check that OpenAI API key is configured.';
 				}
-			} else {
-				demoResponse = `Error: ${response.error || 'Failed to generate response'}`;
+			} catch (chatError) {
+				console.error('Chat error:', chatError);
+				demoResponse =
+					'Error: AI chat service is not available. This demo shows the API data pipeline - the chat feature requires OpenAI API configuration.';
 			}
 		} catch (error) {
 			console.error('Demo error:', error);
@@ -529,15 +525,12 @@
 					<div class="mb-6 flex flex-wrap gap-4">
 						<button
 							on:click={runDemo}
-							disabled={demoLoading || !chatServiceReady}
+							disabled={demoLoading}
 							class="inline-flex items-center rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
 						>
 							{#if demoLoading}
 								<RefreshCw class="mr-2 h-4 w-4 animate-spin" />
 								Processing...
-							{:else if !chatServiceReady}
-								<AlertCircle class="mr-2 h-4 w-4" />
-								Initializing...
 							{:else}
 								<Zap class="mr-2 h-4 w-4" />
 								Ask The Aqueduct
