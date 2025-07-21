@@ -111,6 +111,6 @@ The complete technical document is in active development and will include implem
 - **🎯 Try the live demo**: Test the MCP pipeline on this site
 - **💬 Join the conversation**: See how The Aqueduct works in practice
 
-_Expected release: Q1 2025_
+_Expected release: August 2025_
 
 ---

@@ -396,7 +396,7 @@
 						class="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 backdrop-blur-xl"
 					>
 						<CheckCircle class="mr-2 h-3 w-3" />
-						Version 4.2 • Production Ready
+						Version 4.3 • Production Ready
 					</div>
 					<a
 						href="/changelog"
