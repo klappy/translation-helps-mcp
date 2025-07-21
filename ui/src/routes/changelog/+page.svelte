@@ -170,54 +170,95 @@
 
 <style>
 	:global(.changelog-content h1) {
-		@apply mb-8 text-4xl font-bold text-white;
+		color: white;
+		font-size: 2.25rem;
+		font-weight: bold;
+		margin-bottom: 2rem;
 	}
 
 	:global(.changelog-content h2) {
-		@apply mt-12 mb-6 text-2xl font-bold text-blue-300;
+		color: #93c5fd;
+		font-size: 1.5rem;
+		font-weight: bold;
+		margin-bottom: 1.5rem;
+		margin-top: 3rem;
 	}
 
 	:global(.changelog-content h3) {
-		@apply mt-8 mb-4 text-xl font-bold text-white;
+		color: white;
+		font-size: 1.25rem;
+		font-weight: bold;
+		margin-bottom: 1rem;
+		margin-top: 2rem;
 	}
 
 	:global(.changelog-content h4) {
-		@apply mt-6 mb-3 text-lg font-bold text-gray-300;
+		color: #d1d5db;
+		font-size: 1.125rem;
+		font-weight: bold;
+		margin-bottom: 0.75rem;
+		margin-top: 1.5rem;
 	}
 
 	:global(.changelog-content p) {
-		@apply mb-4 leading-relaxed text-gray-300;
+		color: #d1d5db;
+		margin-bottom: 1rem;
+		line-height: 1.625;
 	}
 
 	:global(.changelog-content ul) {
-		@apply mb-6;
+		margin-bottom: 1.5rem;
 	}
 
 	:global(.changelog-content li) {
-		@apply mb-2 ml-4 text-gray-300;
+		color: #d1d5db;
+		margin-bottom: 0.5rem;
+		margin-left: 1rem;
 	}
 
 	:global(.changelog-content strong) {
-		@apply font-bold text-blue-300;
+		font-weight: bold;
+		color: #93c5fd;
 	}
 
 	:global(.changelog-content code) {
-		@apply rounded border border-blue-500/30 bg-gray-800/50 px-2 py-1 text-green-300;
+		background-color: rgba(31, 41, 55, 0.5);
+		color: #86efac;
+		padding: 0.25rem 0.5rem;
+		border-radius: 0.25rem;
+		border: 1px solid rgba(59, 130, 246, 0.3);
 	}
 
 	:global(.changelog-content pre) {
-		@apply my-4 overflow-x-auto rounded-lg border border-blue-500/30 bg-gray-800/50 p-4 backdrop-blur-sm;
+		background-color: rgba(31, 41, 55, 0.5);
+		border-radius: 0.5rem;
+		padding: 1rem;
+		border: 1px solid rgba(59, 130, 246, 0.3);
+		backdrop-filter: blur(4px);
+		overflow-x: auto;
+		margin: 1rem 0;
 	}
 
 	:global(.changelog-content pre code) {
-		@apply border-0 bg-transparent px-0 py-0 text-sm text-green-300;
+		color: #86efac;
+		font-size: 0.875rem;
+		background: transparent;
+		padding: 0;
+		border: none;
 	}
 
 	:global(.changelog-content a) {
-		@apply text-blue-400 underline transition-colors hover:text-blue-300;
+		color: #60a5fa;
+		text-decoration: underline;
+		transition: color 0.2s;
+	}
+
+	:global(.changelog-content a:hover) {
+		color: #93c5fd;
 	}
 
 	:global(.changelog-content hr) {
-		@apply my-8 border-blue-500/30;
+		border-color: rgba(59, 130, 246, 0.3);
+		margin: 2rem 0;
 	}
 </style>
