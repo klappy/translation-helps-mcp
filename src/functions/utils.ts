@@ -10,27 +10,10 @@ interface ApiResponse {
 }
 
 import { cache } from "./cache.js";
-import fs from "node:fs";
-import path from "node:path";
+import { getVersion } from "../version.js";
 
 // Get the actual version from package.json (SINGLE SOURCE OF TRUTH)
-let packageVersion = "4.3.0"; // Fallback only if package.json read fails
-try {
-  // Read from ROOT package.json - SINGLE SOURCE OF TRUTH
-  const packageJsonPath = path.join(process.cwd(), "package.json");
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-  packageVersion = packageJson.version;
-} catch (error) {
-  console.warn("Failed to read version from ROOT package.json, using fallback");
-  // Use version.json as backup
-  try {
-    const versionPath = path.join(process.cwd(), "src/functions/version.json");
-    const versionData = JSON.parse(fs.readFileSync(versionPath, "utf8"));
-    packageVersion = versionData.version;
-  } catch (versionError) {
-    console.warn("Failed to read version.json backup, using hardcoded fallback");
-  }
-}
+const packageVersion = getVersion();
 
 /**
  * CORS headers for API responses

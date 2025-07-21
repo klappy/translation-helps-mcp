@@ -1,20 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
-import fs from 'fs';
-import path from 'path';
-
-// Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
-function getVersion(): string {
-	try {
-		const packageJsonPath = path.join(process.cwd(), 'package.json');
-		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-		return packageJson.version;
-	} catch (error) {
-		console.warn('Failed to read version from ROOT package.json, using fallback');
-		return '4.3.0'; // Only as absolute fallback
-	}
-}
+import { getVersion } from '../../../../../src/version.js';
 
 // Import our existing tool handlers
 import { handleFetchScripture } from '../../../../../src/tools/fetchScripture.js';

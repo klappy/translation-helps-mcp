@@ -5,20 +5,7 @@
 
 import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { getLanguages } from "../languages-service";
-import fs from "fs";
-import path from "path";
-
-// Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
-function getVersion(): string {
-  try {
-    const packageJsonPath = path.join(process.cwd(), "package.json");
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-    return packageJson.version;
-  } catch (error) {
-    console.warn("Failed to read version from ROOT package.json, using fallback");
-    return "4.3.0"; // Only as absolute fallback
-  }
-}
+import { getVersion } from "../../version.js";
 
 export const getLanguagesHandler: PlatformHandler = async (
   request: PlatformRequest
