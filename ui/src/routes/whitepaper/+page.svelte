@@ -58,10 +58,10 @@
 </script>
 
 <svelte:head>
-	<title>Whitepaper - The Aqueduct</title>
+	<title>Whitepaper Preview - The Aqueduct</title>
 	<meta
 		name="description"
-		content="The Aqueduct: A Stateless RAG Architecture for Bible Translation. Technical architecture documentation for building LLM-native translation workflows."
+		content="Preview of The Aqueduct technical whitepaper: A Stateless RAG Architecture for Bible Translation. Get a sneak peek at the upcoming comprehensive technical documentation."
 	/>
 </svelte:head>
 
@@ -122,21 +122,27 @@
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							stroke-width="2"
-							d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+							d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+						/>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
 						/>
 					</svg>
-					Technical Architecture • Stateless RAG • LLM-Native
+					Technical Preview • Coming Q1 2025 • Sneak Peek
 				</div>
 				<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
 					<span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
 						The Aqueduct
-					</span> Whitepaper
+					</span> Whitepaper Preview
 				</h1>
 				<p class="mx-auto max-w-3xl text-xl leading-relaxed text-gray-300 md:text-2xl">
-					A comprehensive technical overview of stateless RAG architecture for Bible translation
-					workflows.
+					Get a sneak peek at our upcoming technical whitepaper on stateless RAG architecture for
+					Bible translation workflows.
 					<strong class="text-purple-300"
-						>Building the future of LLM-native translation tools.</strong
+						>The full document with implementation guides is coming soon!</strong
 					>
 				</p>
 			</div>
@@ -149,7 +155,7 @@
 					<div
 						class="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center backdrop-blur-xl"
 					>
-						<div class="mb-2 text-red-300">⚠️ Error Loading Whitepaper</div>
+						<div class="mb-2 text-red-300">⚠️ Error Loading Whitepaper Preview</div>
 						<div class="text-gray-300">{data.error}</div>
 					</div>
 				{:else}
