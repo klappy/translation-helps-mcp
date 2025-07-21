@@ -70,7 +70,7 @@ Add to `package.json`:
 
 ```toml
 name = "translation-helps-mcp"
-compatibility_date = "2024-01-15"
+compatibility_date = "2025-01-15"
 pages_build_output_dir = "ui/build"
 
 [env.production]
