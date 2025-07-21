@@ -266,29 +266,41 @@
 	<!-- Animated Background -->
 	<div class="fixed inset-0 overflow-hidden">
 		<div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900"></div>
-		<div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_70%)]"></div>
-		<div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(168,85,247,0.1),transparent_70%)]"></div>
+		<div
+			class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_70%)]"
+		></div>
+		<div
+			class="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(168,85,247,0.1),transparent_70%)]"
+		></div>
 		<!-- Animated SVG paths -->
-		<svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-			<path d="M0,50 Q25,20 50,50 T100,50" 
-				stroke="rgba(59,130,246,0.1)" 
-				stroke-width="0.5" 
+		<svg class="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+			<path
+				d="M0,50 Q25,20 50,50 T100,50"
+				stroke="rgba(59,130,246,0.1)"
+				stroke-width="0.5"
 				fill="none"
-				opacity="0.6">
-				<animate attributeName="d" 
-					values="M0,50 Q25,20 50,50 T100,50;M0,50 Q25,80 50,50 T100,50;M0,50 Q25,20 50,50 T100,50" 
-					dur="20s" 
-					repeatCount="indefinite"/>
+				opacity="0.6"
+			>
+				<animate
+					attributeName="d"
+					values="M0,50 Q25,20 50,50 T100,50;M0,50 Q25,80 50,50 T100,50;M0,50 Q25,20 50,50 T100,50"
+					dur="20s"
+					repeatCount="indefinite"
+				/>
 			</path>
-			<path d="M0,30 Q50,10 100,30" 
-				stroke="rgba(168,85,247,0.1)" 
-				stroke-width="0.3" 
+			<path
+				d="M0,30 Q50,10 100,30"
+				stroke="rgba(168,85,247,0.1)"
+				stroke-width="0.3"
 				fill="none"
-				opacity="0.4">
-				<animate attributeName="d" 
-					values="M0,30 Q50,10 100,30;M0,30 Q50,50 100,30;M0,30 Q50,10 100,30" 
-					dur="15s" 
-					repeatCount="indefinite"/>
+				opacity="0.4"
+			>
+				<animate
+					attributeName="d"
+					values="M0,30 Q50,10 100,30;M0,30 Q50,50 100,30;M0,30 Q50,10 100,30"
+					dur="15s"
+					repeatCount="indefinite"
+				/>
 			</path>
 		</svg>
 	</div>
@@ -298,9 +310,16 @@
 		<div class="mx-auto max-w-7xl">
 			<!-- Hero Section -->
 			<div class="mb-16 text-center">
-				<div class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl">
+				<div
+					class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl"
+				>
 					<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M13 10V3L4 14h7v7l9-11h-7z"
+						/>
 					</svg>
 					Multi-Platform Performance • Real-world Data
 				</div>
@@ -311,12 +330,12 @@
 					Performance
 				</h1>
 				<p class="mx-auto max-w-4xl text-xl leading-relaxed text-gray-300 md:text-2xl">
-					<strong class="text-blue-300">Real-world comparison</strong> between Cloudflare Workers and Netlify Functions.
-					Both platforms deliver exceptional performance with different strengths.
+					<strong class="text-blue-300">Real-world comparison</strong> between Cloudflare Workers and
+					Netlify Functions. Both platforms deliver exceptional performance with different strengths.
 				</p>
 
 				<!-- Platform Selector -->
-				<div class="mb-8 mt-12 flex justify-center">
+				<div class="mt-12 mb-8 flex justify-center">
 					<div class="rounded-xl border border-blue-500/30 bg-white/5 p-1 backdrop-blur-xl">
 						<button
 							class="rounded-lg px-6 py-3 font-medium transition-all"
@@ -349,7 +368,9 @@
 
 				<!-- Live Metrics Cards -->
 				<div class="mb-12 grid grid-cols-1 gap-6 md:grid-cols-4">
-					<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+					<div
+						class="rounded-3xl border border-blue-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl"
+					>
 						<div class="text-2xl font-bold text-blue-400">
 							{currentMetrics.responseTime.toFixed(0)}ms
 						</div>
@@ -359,7 +380,9 @@
 						</div>
 					</div>
 
-					<div class="rounded-3xl border border-green-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+					<div
+						class="rounded-3xl border border-green-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl"
+					>
 						<div class="text-2xl font-bold text-green-400">
 							{currentMetrics.cacheHitRate.toFixed(1)}%
 						</div>
@@ -369,7 +392,9 @@
 						</div>
 					</div>
 
-					<div class="rounded-3xl border border-purple-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+					<div
+						class="rounded-3xl border border-purple-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl"
+					>
 						<div class="text-2xl font-bold text-purple-400">
 							{currentMetrics.successRate.toFixed(1)}%
 						</div>
@@ -377,7 +402,9 @@
 						<div class="mt-1 text-xs text-gray-400">Production ready</div>
 					</div>
 
-					<div class="rounded-3xl border border-orange-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+					<div
+						class="rounded-3xl border border-orange-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl"
+					>
 						<div class="text-2xl font-bold text-orange-400">
 							{currentMetrics.requestsPerSecond.toFixed(1)}
 						</div>
@@ -408,13 +435,20 @@
 
 				<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 					{#each Object.entries(platformComparison) as [key, platformInfo]}
-						<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl">
+						<div
+							class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl"
+						>
 							<h3 class="mb-6 text-xl font-bold text-white">{platformInfo.name}</h3>
 
 							<div class="mb-6">
 								<h4 class="mb-3 flex items-center font-semibold text-green-400">
 									<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M5 13l4 4L19 7"
+										/>
 									</svg>
 									Strengths
 								</h4>
@@ -431,7 +465,12 @@
 							<div class="mb-6">
 								<h4 class="mb-3 flex items-center font-semibold text-orange-400">
 									<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+										/>
 									</svg>
 									Considerations
 								</h4>
@@ -445,7 +484,9 @@
 								</ul>
 							</div>
 
-							<div class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm backdrop-blur-sm">
+							<div
+								class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm backdrop-blur-sm"
+							>
 								<strong class="text-blue-300">Pricing:</strong>
 								<span class="text-gray-300">
 									{platformInfo.pricing.freeLimit} free, then {platformInfo.pricing.costAfter}
@@ -458,35 +499,35 @@
 
 			<!-- Live Demo Results -->
 			{#if isLiveDemo}
-				<div
-					class="mb-16"
-					in:fly={{ y: 20, duration: 400, easing: quintOut }}
-				>
+				<div class="mb-16" in:fly={{ y: 20, duration: 400, easing: quintOut }}>
 					<h2 class="mb-8 text-center text-3xl font-bold text-white">Live Performance Demo</h2>
 
 					{#if loading}
 						<div class="text-center">
-							<div class="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-blue-400"></div>
+							<div
+								class="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-blue-400"
+							></div>
 							<p class="mt-4 text-gray-300">
 								Testing {platformComparison[platform as 'netlify' | 'cloudflare'].name}...
 							</p>
 						</div>
 					{:else}
-						<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl">
+						<div
+							class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl"
+						>
 							<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
 								{#each demoResults.slice(-4) as result}
 									<div
-										class="rounded-xl border p-4 text-center backdrop-blur-sm"
-										class:border-blue-400={result.platform === 'cloudflare'}
-										class:bg-blue-500/10={result.platform === 'cloudflare'}
-										class:border-orange-400={result.platform === 'netlify'}
-										class:bg-orange-500/10={result.platform === 'netlify'}
+										class="rounded-xl border p-4 text-center backdrop-blur-sm {result.platform ===
+										'cloudflare'
+											? 'border-blue-400 bg-blue-500/10'
+											: 'border-orange-400 bg-orange-500/10'}"
 									>
 										<div class="text-lg font-bold text-white">{result.endpoint}</div>
 										<div
-											class="text-2xl font-bold"
-											class:text-blue-400={result.platform === 'cloudflare'}
-											class:text-orange-400={result.platform === 'netlify'}
+											class="text-2xl font-bold {result.platform === 'cloudflare'
+												? 'text-blue-400'
+												: 'text-orange-400'}"
 										>
 											{result.duration}ms
 										</div>
@@ -501,7 +542,8 @@
 										class="font-bold"
 										class:text-blue-400={platform === 'cloudflare'}
 										class:text-orange-400={platform === 'netlify'}
-									>{currentMetrics.responseTime.toFixed(0)}ms</span>
+										>{currentMetrics.responseTime.toFixed(0)}ms</span
+									>
 									on {platformComparison[platform as 'netlify' | 'cloudflare'].name}
 								</p>
 							</div>
@@ -516,11 +558,15 @@
 
 				<div class="grid grid-cols-1 gap-12 lg:grid-cols-2">
 					<!-- Endpoint Performance -->
-					<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl">
+					<div
+						class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl"
+					>
 						<h3 class="mb-6 text-xl font-bold text-white">Endpoint Response Times</h3>
 						<div class="space-y-4">
 							{#each activeData.endpoints as endpoint}
-								<div class="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 backdrop-blur-sm">
+								<div
+									class="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 backdrop-blur-sm"
+								>
 									<div>
 										<div class="font-semibold text-white">{endpoint.name}</div>
 										<div class="text-sm text-gray-400">
@@ -546,12 +592,18 @@
 					</div>
 
 					<!-- Load Testing Results -->
-					<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl">
+					<div
+						class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl"
+					>
 						<h3 class="mb-6 text-xl font-bold text-white">Load Testing Results</h3>
 						<div class="space-y-4">
 							{#each activeData.loadTesting as test}
-								<div class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 backdrop-blur-sm">
-									<div class="mb-2 font-semibold text-white">{test.concurrency} Concurrent Requests</div>
+								<div
+									class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 backdrop-blur-sm"
+								>
+									<div class="mb-2 font-semibold text-white">
+										{test.concurrency} Concurrent Requests
+									</div>
 									<div class="grid grid-cols-3 gap-2 text-sm">
 										<div>
 											<div class="text-gray-400">Success Rate</div>
@@ -584,7 +636,9 @@
 				<h2 class="mb-12 text-center text-3xl font-bold text-white">Cache Performance Impact</h2>
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 					{#each performanceData.cacheImprovements as cache}
-						<div class="rounded-3xl border border-green-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+						<div
+							class="rounded-3xl border border-green-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl"
+						>
 							<div class="mb-2 font-semibold text-white">{cache.reference}</div>
 							<div class="grid grid-cols-2 gap-2 text-sm">
 								<div>
@@ -609,8 +663,12 @@
 			<div class="mb-16">
 				<h2 class="mb-12 text-center text-3xl font-bold text-white">Cost Efficiency Comparison</h2>
 
-				<div class="overflow-hidden rounded-3xl border border-blue-500/30 bg-white/5 shadow-xl backdrop-blur-2xl">
-					<div class="border-b border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10 px-8 py-6">
+				<div
+					class="overflow-hidden rounded-3xl border border-blue-500/30 bg-white/5 shadow-xl backdrop-blur-2xl"
+				>
+					<div
+						class="border-b border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10 px-8 py-6"
+					>
 						<h3 class="text-xl font-bold text-white">Monthly Cost Comparison</h3>
 					</div>
 					<div class="overflow-x-auto">
@@ -618,8 +676,11 @@
 							<thead class="bg-gradient-to-r from-blue-500/5 to-purple-500/5">
 								<tr class="border-b border-blue-500/20">
 									<th class="px-6 py-4 text-left font-semibold text-gray-300">Usage Level</th>
-									<th class="px-6 py-4 text-right font-semibold text-gray-300">Cloudflare Workers</th>
-									<th class="px-6 py-4 text-right font-semibold text-gray-300">Netlify Functions</th>
+									<th class="px-6 py-4 text-right font-semibold text-gray-300"
+										>Cloudflare Workers</th
+									>
+									<th class="px-6 py-4 text-right font-semibold text-gray-300">Netlify Functions</th
+									>
 									<th class="px-6 py-4 text-right font-semibold text-gray-300">Winner</th>
 								</tr>
 							</thead>
@@ -649,17 +710,16 @@
 
 				<div class="mt-8 text-center">
 					<p class="text-lg text-gray-300">
-						💡 <strong class="text-blue-300">Key Insight:</strong> Cloudflare's daily free tier (100k requests) vs Netlify's
-						monthly tier (125k requests) makes Cloudflare virtually free for most use cases.
+						💡 <strong class="text-blue-300">Key Insight:</strong> Cloudflare's daily free tier (100k
+						requests) vs Netlify's monthly tier (125k requests) makes Cloudflare virtually free for most
+						use cases.
 					</p>
 				</div>
 			</div>
 
 			<!-- Call to Action -->
 			<div class="text-center">
-				<h2 class="mb-6 text-3xl font-bold text-white">
-					Experience Multi-Platform Performance
-				</h2>
+				<h2 class="mb-6 text-3xl font-bold text-white">Experience Multi-Platform Performance</h2>
 				<p class="mx-auto mb-8 max-w-2xl text-xl text-gray-300">
 					Both platforms deliver exceptional performance. Cloudflare excels at high throughput and
 					cost efficiency, while Netlify provides consistent, predictable performance.
@@ -682,8 +742,8 @@
 
 				<div class="mt-8 text-gray-300">
 					<p class="text-sm">
-						💡 <strong class="text-blue-300">Pro Tip:</strong> Both platforms use the same SvelteKit codebase with different
-						adapters. We can seamlessly switch between them or use both for redundancy!
+						💡 <strong class="text-blue-300">Pro Tip:</strong> Both platforms use the same SvelteKit
+						codebase with different adapters. We can seamlessly switch between them or use both for redundancy!
 					</p>
 				</div>
 			</div>
