@@ -5,14 +5,10 @@
  * Platform-agnostic: works in Node.js and Cloudflare Workers
  */
 
-// Import version from package.json at build time
-// This works in both Node.js and Cloudflare Workers environments
-import packageJson from "../package.json";
-
 let cachedVersion: string | null = null;
 
 /**
- * Get the project version from package.json
+ * Get the project version
  * This is the SINGLE SOURCE OF TRUTH for version information
  * Platform-agnostic: works in Node.js and Cloudflare Workers
  */
@@ -22,10 +18,19 @@ export function getVersion(): string {
     return cachedVersion;
   }
 
-  // Get version from imported package.json (build-time resolution)
-  if (packageJson.version && typeof packageJson.version === "string") {
-    cachedVersion = packageJson.version;
-    return packageJson.version;
+  // Try to read package.json dynamically (Node.js environments)
+  if (typeof process !== "undefined" && typeof require !== "undefined") {
+    try {
+      // Try to require package.json from parent directory
+      const packageJson = require("../package.json");
+      if (packageJson.version && typeof packageJson.version === "string") {
+        cachedVersion = packageJson.version;
+        return packageJson.version;
+      }
+    } catch (error) {
+      // If require fails, continue to other methods
+      console.warn("Could not load package.json dynamically:", error);
+    }
   }
 
   // Fallback to environment variable if set during build
@@ -34,7 +39,7 @@ export function getVersion(): string {
     return process.env.APP_VERSION;
   }
 
-  // Final fallback for edge cases
+  // Final fallback for edge cases (Cloudflare Workers, etc.)
   cachedVersion = "4.4.0";
   return cachedVersion;
 }
