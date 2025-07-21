@@ -34,7 +34,10 @@ export class DCSApiClient {
   private readonly userAgent: string;
 
   constructor(config: DCSClientConfig = {}) {
-    this.baseUrl = config.baseUrl || process.env.DCS_API_URL || "https://git.door43.org/api/v1";
+    this.baseUrl =
+      config.baseUrl ||
+      (typeof process !== "undefined" && process.env?.DCS_API_URL) ||
+      "https://git.door43.org/api/v1";
     this.timeout = config.timeout || 30000; // 30 seconds
     this.maxRetries = config.maxRetries || 3;
     this.retryDelay = config.retryDelay || 1000; // 1 second base delay

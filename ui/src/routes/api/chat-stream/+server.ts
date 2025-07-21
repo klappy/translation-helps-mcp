@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { message, chatHistory = [] } = await request.json();
 
 		// Get the OpenAI API key
-		const apiKey = process.env.OPENAI_API_KEY;
+		const apiKey = typeof process !== 'undefined' && process.env?.OPENAI_API_KEY;
 		if (!apiKey) {
 			throw error(500, 'OpenAI API key not configured');
 		}

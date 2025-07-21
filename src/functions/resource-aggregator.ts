@@ -73,7 +73,9 @@ export class ResourceAggregator {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.DCS_API_URL || "https://git.door43.org/api/v1";
+    this.baseUrl =
+      (typeof process !== "undefined" && process.env?.DCS_API_URL) ||
+      "https://git.door43.org/api/v1";
   }
 
   async fetchResources(reference: Reference, options: ResourceOptions): Promise<ResourceData> {
