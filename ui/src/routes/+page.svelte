@@ -697,6 +697,7 @@
 							</linearGradient>
 						</defs>
 						<path
+							id="flow-path"
 							d="M50,100 Q200,50 350,100"
 							stroke="url(#flow2)"
 							stroke-width="3"
@@ -712,7 +713,7 @@
 						</path>
 						<circle r="4" fill="rgb(59,130,246)">
 							<animateMotion dur="4s" repeatCount="indefinite">
-								<mpath href="path" d="M50,100 Q200,50 350,100" />
+								<mpath href="#flow-path" />
 							</animateMotion>
 						</circle>
 					</svg>
@@ -1027,7 +1028,7 @@
 						<li>
 							<a href="/performance" class="transition-colors hover:text-blue-400">Performance</a>
 						</li>
-						<li><a href="/api" class="transition-colors hover:text-blue-400">API Docs</a></li>
+						<li><a href="/mcp-tools" class="transition-colors hover:text-blue-400">API Docs</a></li>
 					</ul>
 				</div>
 			</div>
