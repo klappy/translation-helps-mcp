@@ -22,9 +22,9 @@
 	const navItems = [
 		{
 			href: '/',
-			label: 'Home',
+			label: 'Aqueduct',
 			icon: Zap,
-			description: 'Overview and features'
+			description: 'Epic landing & features'
 		},
 		{
 			href: '/test',
@@ -86,8 +86,8 @@
 </script>
 
 <svelte:head>
-	<title>Translation Helps MCP - {VERSION}</title>
-	<meta name="description" content="Bible translation resources API and MCP server" />
+	<title>The Aqueduct - {VERSION}</title>
+	<meta name="description" content="Stateless RAG aqueduct for Bible translation" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </svelte:head>
@@ -106,8 +106,8 @@
 							<BookOpen class="h-6 w-6 text-white" />
 						</div>
 						<div class="hidden sm:block">
-							<div class="text-lg font-bold text-white">Translation Helps</div>
-							<div class="text-xs text-gray-400">MCP Server v{VERSION}</div>
+							<div class="text-lg font-bold text-white">The Aqueduct</div>
+							<div class="text-xs text-gray-400">Stateless RAG v{VERSION}</div>
 						</div>
 					</a>
 				</div>
@@ -244,8 +244,8 @@
 							<BookOpen class="h-6 w-6 text-white" />
 						</div>
 						<div>
-							<div class="text-lg font-bold text-white">Translation Helps</div>
-							<div class="text-sm text-gray-400">MCP Server</div>
+							<div class="text-lg font-bold text-white">The Aqueduct</div>
+							<div class="text-sm text-gray-400">Stateless RAG</div>
 						</div>
 					</div>
 					<p class="mb-6 max-w-md text-gray-300">
@@ -306,7 +306,7 @@
 			<div class="mt-12 border-t border-white/10 pt-8">
 				<div class="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
 					<div class="text-sm text-gray-400">
-						© 2025 Translation Helps MCP Server. Built with ❤️ for the Bible translation community.
+						© 2025 The Aqueduct. Built with ❤️ for the Bible translation community.
 					</div>
 					<div class="flex items-center space-x-6 text-sm text-gray-400">
 						<div
