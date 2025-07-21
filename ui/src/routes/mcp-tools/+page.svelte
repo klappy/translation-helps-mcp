@@ -511,9 +511,45 @@
 		healthLoading = true;
 		try {
 			const response = await fetch('/api/health');
-			healthData = await response.json();
+			if (!response.ok) {
+				throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
+			}
+			const data = await response.json();
+
+			// Validate the response structure
+			if (!data || typeof data !== 'object') {
+				throw new Error('Invalid health check response: not an object');
+			}
+
+			// Ensure summary exists with required fields
+			if (!data.summary || typeof data.summary !== 'object') {
+				console.warn('Health check response missing summary, adding fallback');
+				data.summary = {
+					totalEndpoints: 0,
+					healthyEndpoints: 0,
+					warningEndpoints: 0,
+					errorEndpoints: 0,
+					avgResponseTime: 0
+				};
+			}
+
+			healthData = data;
 		} catch (error) {
 			console.error('Failed to load health check:', error);
+			// Set a fallback healthData to prevent crashes
+			healthData = {
+				status: 'error',
+				timestamp: new Date().toISOString(),
+				summary: {
+					totalEndpoints: 0,
+					healthyEndpoints: 0,
+					warningEndpoints: 0,
+					errorEndpoints: 0,
+					avgResponseTime: 0
+				},
+				endpoints: [],
+				error: error.message
+			};
 		} finally {
 			healthLoading = false;
 		}
@@ -766,30 +802,30 @@
 									></div>
 									<p class="mt-4 text-gray-400">Loading health status...</p>
 								</div>
-							{:else if healthData}
+							{:else if healthData && healthData.summary}
 								<!-- Summary Cards -->
 								<div class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
 									<div class="rounded-lg bg-gray-700/50 p-4 text-center">
 										<div class="text-2xl font-bold text-white">
-											{healthData.summary.totalEndpoints}
+											{healthData.summary.totalEndpoints || 0}
 										</div>
 										<div class="text-sm text-gray-400">Total Endpoints</div>
 									</div>
 									<div class="rounded-lg bg-gray-700/50 p-4 text-center">
 										<div class="text-2xl font-bold text-green-500">
-											{healthData.summary.healthyEndpoints}
+											{healthData.summary.healthyEndpoints || 0}
 										</div>
 										<div class="text-sm text-gray-400">Healthy</div>
 									</div>
 									<div class="rounded-lg bg-gray-700/50 p-4 text-center">
 										<div class="text-2xl font-bold text-yellow-500">
-											{healthData.summary.warningEndpoints}
+											{healthData.summary.warningEndpoints || 0}
 										</div>
 										<div class="text-sm text-gray-400">Warnings</div>
 									</div>
 									<div class="rounded-lg bg-gray-700/50 p-4 text-center">
 										<div class="text-2xl font-bold text-red-500">
-											{healthData.summary.errorEndpoints}
+											{healthData.summary.errorEndpoints || 0}
 										</div>
 										<div class="text-sm text-gray-400">Errors</div>
 									</div>
