@@ -33,12 +33,15 @@
 		coreHealth,
 		extendedHealth,
 		experimentalHealth,
-		overallHealth
+		overallHealth,
+		healthData,
+		isLoading,
+		refreshHealth
 	} from '$lib/services/healthService';
 
 	// Health check state
-	let healthData = null;
-	let healthLoading = false;
+	// let healthData = null; // This line is removed as per the edit hint
+	// let healthLoading = false; // This line is removed as per the edit hint
 
 	// Current selection state
 	let selectedCategory = 'overview';
@@ -518,68 +521,8 @@
 		]
 	};
 
-	// Load health check data
-	async function loadHealthCheck() {
-		healthLoading = true;
-		try {
-			// Add cache-busting to get fresh health data
-			const response = await fetch(
-				'/api/health?' +
-					new URLSearchParams({
-						_t: Date.now().toString()
-					}),
-				{
-					headers: {
-						'Cache-Control': 'no-cache',
-						'X-Cache-Bypass': 'true'
-					}
-				}
-			);
-			const data = await response.json();
-
-			// Accept both 200 (healthy) and 503 (degraded but with valid data)
-			if (!response.ok && response.status !== 503) {
-				throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
-			}
-
-			// Validate the response structure
-			if (!data || typeof data !== 'object') {
-				throw new Error('Invalid health check response: not an object');
-			}
-
-			// Ensure summary exists with required fields
-			if (!data.summary || typeof data.summary !== 'object') {
-				console.warn('Health check response missing summary, adding fallback');
-				data.summary = {
-					totalEndpoints: 0,
-					healthyEndpoints: 0,
-					warningEndpoints: 0,
-					errorEndpoints: 0,
-					avgResponseTime: 0
-				};
-			}
-
-			healthData = data;
-		} catch (error) {
-			console.error('Failed to load health check:', error);
-			// Set a fallback healthData to prevent crashes
-			healthData = {
-				status: 'error',
-				timestamp: new Date().toISOString(),
-				summary: {
-					totalEndpoints: 0,
-					healthyEndpoints: 0,
-					warningEndpoints: 0,
-					errorEndpoints: 0,
-					avgResponseTime: 0
-				},
-				endpoints: [],
-				error: error.message
-			};
-		} finally {
-			healthLoading = false;
-		}
-	}
+	// Load health check data - REMOVED: Now handled by health service
+	// The health service manages all health data fetching and state
 
 	// Get all tools for easy access
 	function getAllTools() {
@@ -598,7 +541,7 @@
 	}
 
 	// Get health status for an endpoint
-	function getEndpointHealth(apiEndpoint) {
+	function getEndpointHealth(apiEndpoint, healthData) {
 		if (!healthData?.endpoints) return null;
 		const endpointName = apiEndpoint.replace('/api/', '');
 		return healthData.endpoints.find((ep) => ep.name === endpointName);
@@ -670,7 +613,6 @@
 	}
 
 	onMount(() => {
-		loadHealthCheck();
 		startHealthMonitoring();
 	});
 
@@ -927,37 +869,37 @@
 								API Health Status
 							</h2>
 
-							{#if healthLoading}
+							{#if $isLoading}
 								<div class="py-8 text-center">
 									<div
 										class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-purple-500"
 									></div>
 									<p class="mt-4 text-gray-400">Loading health status...</p>
 								</div>
-							{:else if healthData && healthData.summary}
+							{:else if $healthData && $healthData.summary}
 								<!-- Summary Cards -->
 								<div class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
 									<div class="rounded-lg bg-gray-700/50 p-4 text-center">
 										<div class="text-2xl font-bold text-white">
-											{healthData.summary.totalEndpoints || 0}
+											{$healthData.summary.totalEndpoints || 0}
 										</div>
 										<div class="text-sm text-gray-400">Total Endpoints</div>
 									</div>
 									<div class="rounded-lg bg-gray-700/50 p-4 text-center">
 										<div class="text-2xl font-bold text-green-500">
-											{healthData.summary.healthyEndpoints || 0}
+											{$healthData.summary.healthyEndpoints || 0}
 										</div>
 										<div class="text-sm text-gray-400">Healthy</div>
 									</div>
 									<div class="rounded-lg bg-gray-700/50 p-4 text-center">
 										<div class="text-2xl font-bold text-yellow-500">
-											{healthData.summary.warningEndpoints || 0}
+											{$healthData.summary.warningEndpoints || 0}
 										</div>
 										<div class="text-sm text-gray-400">Warnings</div>
 									</div>
 									<div class="rounded-lg bg-gray-700/50 p-4 text-center">
 										<div class="text-2xl font-bold text-red-500">
-											{healthData.summary.errorEndpoints || 0}
+											{$healthData.summary.errorEndpoints || 0}
 										</div>
 										<div class="text-sm text-gray-400">Errors</div>
 									</div>
@@ -965,7 +907,7 @@
 
 								<!-- Endpoint Details -->
 								<div class="space-y-3">
-									{#each healthData.endpoints as endpoint}
+									{#each $healthData.endpoints as endpoint}
 										<div class="rounded-lg bg-gray-700/30 p-4">
 											<!-- Main endpoint status -->
 											<div class="mb-3 flex items-center justify-between">
@@ -1062,7 +1004,7 @@
 								<div class="mt-6 text-center">
 									<button
 										class="rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700"
-										on:click={loadHealthCheck}
+										on:click={refreshHealth}
 									>
 										Refresh Status
 									</button>
@@ -1073,7 +1015,7 @@
 									<p class="text-gray-400">Failed to load health status</p>
 									<button
 										class="mt-4 rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700"
-										on:click={loadHealthCheck}
+										on:click={refreshHealth}
 									>
 										Retry
 									</button>
@@ -1110,8 +1052,8 @@
 														<span class="rounded bg-gray-600 px-2 py-1 text-gray-300">
 															{tool.apiEndpoint}
 														</span>
-														{#if healthData}
-															{@const health = getEndpointHealth(tool.apiEndpoint)}
+														{#if $healthData}
+															{@const health = getEndpointHealth(tool.apiEndpoint, $healthData)}
 															{#if health}
 																<span
 																	class="flex items-center gap-1 {getStatusClass(health.status)}"
@@ -1142,8 +1084,8 @@
 							<div class="mb-6 flex items-center gap-3">
 								<svelte:component this={selectedTool.icon} class="h-6 w-6 text-purple-400" />
 								<h2 class="text-2xl font-bold text-white">{selectedTool.name}</h2>
-								{#if healthData}
-									{@const health = getEndpointHealth(selectedTool.apiEndpoint)}
+								{#if $healthData}
+									{@const health = getEndpointHealth(selectedTool.apiEndpoint, $healthData)}
 									{#if health}
 										<span class="flex items-center gap-1 text-sm {getStatusClass(health.status)}">
 											{#if health.status === 'healthy'}
