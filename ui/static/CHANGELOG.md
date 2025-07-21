@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added "Multimodal Breakthrough" section highlighting IPFS-based permanence
   - Introduced "Living Knowledge Flow" visual diagram showing data pipeline
   - Enhanced demo section with real API integration using `LLMChatService`
-  - Added "Version 4.2 • Production Ready" badge with dynamic versioning
+  - Added "Version 4.3 • Production Ready" badge with dynamic versioning
 
 - **Interactive Demo Upgrade**: Connected to real MCP services
   - Demo now makes actual API calls to scripture, translation notes, and word services

@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // Get the actual version from package.json (SINGLE SOURCE OF TRUTH)
-let packageVersion = "4.2.0"; // Fallback only if package.json read fails
+let packageVersion = "4.3.0"; // Fallback only if package.json read fails
 try {
   // Read from ROOT package.json - SINGLE SOURCE OF TRUTH
   const packageJsonPath = path.join(process.cwd(), "package.json");
