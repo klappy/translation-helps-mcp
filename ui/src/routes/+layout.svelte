@@ -39,7 +39,7 @@
 			description: 'AI-powered Bible assistant'
 		},
 		{
-			href: '/api',
+			href: '/mcp-tools',
 			label: 'API',
 			icon: Code,
 			description: 'API documentation'
@@ -286,7 +286,7 @@
 					<h3 class="mb-4 text-lg font-semibold text-white">Resources</h3>
 					<div class="space-y-3">
 						<a
-							href="/api"
+							href="/mcp-tools"
 							class="flex items-center space-x-2 text-gray-300 transition-colors hover:text-white"
 						>
 							<Code class="h-4 w-4" />
@@ -320,7 +320,7 @@
 							rel="noopener noreferrer"
 							class="transition-colors hover:text-white">GitHub</a
 						>
-						<a href="/api" class="transition-colors hover:text-white">API</a>
+						<a href="/mcp-tools" class="transition-colors hover:text-white">API</a>
 						<a href="/test" class="transition-colors hover:text-white">Test</a>
 					</div>
 				</div>
