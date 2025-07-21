@@ -13,7 +13,8 @@
 		Settings,
 		HelpCircle,
 		TrendingUp,
-		Wrench
+		Wrench,
+		Droplets
 	} from 'lucide-svelte';
 	import '../app.css';
 	import { VERSION } from '$lib/version';
@@ -86,8 +87,8 @@
 </script>
 
 <svelte:head>
-	<title>Translation Helps MCP - {VERSION}</title>
-	<meta name="description" content="Bible translation resources API and MCP server" />
+	<title>The Aqueduct - {VERSION}</title>
+	<meta name="description" content="Stateless RAG for Bible Translation. Cache-first. LLM-native. Order without control." />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </svelte:head>
@@ -101,13 +102,13 @@
 				<div class="flex items-center space-x-3">
 					<a href="/" class="group flex items-center space-x-3">
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 transition-transform duration-200 group-hover:scale-110"
+							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 transition-transform duration-200 group-hover:scale-110"
 						>
-							<BookOpen class="h-6 w-6 text-white" />
+							<Droplets class="h-6 w-6 text-white" />
 						</div>
 						<div class="hidden sm:block">
-							<div class="text-lg font-bold text-white">Translation Helps</div>
-							<div class="text-xs text-gray-400">MCP Server v{VERSION}</div>
+							<div class="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">The Aqueduct</div>
+							<div class="text-xs text-gray-400">Stateless RAG • v{VERSION}</div>
 						</div>
 					</a>
 				</div>
