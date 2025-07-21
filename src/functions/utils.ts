@@ -19,7 +19,8 @@ const packageVersion = getVersion();
  * CORS headers for API responses
  */
 export const corsHeaders = {
-  "Access-Control-Allow-Origin": process.env.ALLOWED_ORIGINS || "*",
+  "Access-Control-Allow-Origin":
+    (typeof process !== "undefined" && process.env?.ALLOWED_ORIGINS) || "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
   "Content-Type": "application/json",
@@ -64,12 +65,12 @@ export function successResponse(data: any, headers?: Record<string, string>): Ap
  * Validate API key if required
  */
 export function validateApiKey(headers: Record<string, string>): boolean {
-  if (process.env.REQUIRE_API_KEY !== "true") {
+  if (typeof process === "undefined" || process.env?.REQUIRE_API_KEY !== "true") {
     return true;
   }
 
   const apiKey = headers["x-api-key"] || headers["X-API-Key"];
-  return apiKey === process.env.API_KEY;
+  return apiKey === process.env?.API_KEY;
 }
 
 /**
@@ -132,7 +133,10 @@ export function getResourceTTL(resourceType: string): number {
     context: 15 * 60, // 15 minutes
   };
 
-  return ttls[resourceType] || parseInt(process.env.DEFAULT_TTL || "3600");
+  return (
+    ttls[resourceType] ||
+    parseInt((typeof process !== "undefined" && process.env?.DEFAULT_TTL) || "3600")
+  );
 }
 
 /**

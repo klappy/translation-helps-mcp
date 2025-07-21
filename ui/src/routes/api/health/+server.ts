@@ -314,8 +314,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		status: overallStatus,
 		timestamp: new Date().toISOString(),
 		version: VERSION,
-		uptime: process.uptime?.() || 0,
-		memory: process.memoryUsage?.() || null,
+		uptime: typeof process !== 'undefined' && process.uptime ? process.uptime() : 0,
+		memory: typeof process !== 'undefined' && process.memoryUsage ? process.memoryUsage() : null,
 		summary: {
 			totalEndpoints,
 			healthyEndpoints,
