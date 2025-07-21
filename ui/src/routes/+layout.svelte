@@ -306,7 +306,7 @@
 			<div class="mt-12 border-t border-white/10 pt-8">
 				<div class="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
 					<div class="text-sm text-gray-400">
-						© 2024 Translation Helps MCP Server. Built with ❤️ for the Bible translation community.
+						© 2025 Translation Helps MCP Server. Built with ❤️ for the Bible translation community.
 					</div>
 					<div class="flex items-center space-x-6 text-sm text-gray-400">
 						<div
