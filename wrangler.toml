@@ -5,10 +5,6 @@ pages_build_output_dir = "ui/.svelte-kit/cloudflare"
 # Enable Node.js compatibility for fs, path, etc.
 compatibility_flags = ["nodejs_compat"]
 
-# Build configuration
-[build]
-command = "cd ui && npm install && npm run build:cloudflare-full"
-
 # Cloudflare Pages specific configuration
 [env.production.vars]
   NODE_ENV = "production"
