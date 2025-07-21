@@ -42,6 +42,7 @@
 		"vitest-browser-svelte": "^0.1.0"
 	},
 	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.15.1",
 		"@neoconfetti/svelte": "^2.0.0",
 		"@sveltejs/adapter-cloudflare": "^7.1.0",
 		"@sveltejs/adapter-netlify": "^5.0.0",
