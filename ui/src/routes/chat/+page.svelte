@@ -334,7 +334,7 @@
 				try {
 					const scriptureStart = performance.now();
 					const scriptureResponse = await fetch(
-						`/.netlify/functions/mcp-fetch-scripture?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}&translation=all`
+						`/api/mcp-fetch-scripture?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}&translation=all`
 					);
 					const scriptureData = await scriptureResponse.json();
 					const scriptureTime = performance.now() - scriptureStart;
@@ -368,7 +368,7 @@
 				try {
 					const notesStart = performance.now();
 					const notesResponse = await fetch(
-						`/.netlify/functions/mcp-fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}`
+						`/api/mcp-fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}`
 					);
 					const notesData = await notesResponse.json();
 					const notesTime = performance.now() - notesStart;
@@ -406,7 +406,7 @@
 				try {
 					const wordStart = performance.now();
 					const wordResponse = await fetch(
-						`/.netlify/functions/mcp-fetch-translation-words?word=${encodeURIComponent(word)}&language=${chatConfig.language}&organization=${chatConfig.organization}&includeTitle=true&includeSubtitle=true&includeContent=true`
+						`/api/mcp-fetch-translation-words?word=${encodeURIComponent(word)}&language=${chatConfig.language}&organization=${chatConfig.organization}&includeTitle=true&includeSubtitle=true&includeContent=true`
 					);
 					const wordData = await wordResponse.json();
 					const wordTime = performance.now() - wordStart;
@@ -538,7 +538,7 @@
 			try {
 				const scriptureStart = performance.now();
 									const scriptureResponse = await fetch(
-						`/.netlify/functions/mcp-fetch-scripture?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}&translation=all`
+						`/api/mcp-fetch-scripture?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}&translation=all`
 					);
 				const scriptureData = await scriptureResponse.json();
 				const scriptureTime = performance.now() - scriptureStart;
@@ -572,7 +572,7 @@
 			try {
 				const notesStart = performance.now();
 									const notesResponse = await fetch(
-						`/.netlify/functions/mcp-fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}`
+						`/api/mcp-fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${chatConfig.language}&organization=${chatConfig.organization}`
 					);
 				const notesData = await notesResponse.json();
 				const notesTime = performance.now() - notesStart;
@@ -610,7 +610,7 @@
 			try {
 				const wordStart = performance.now();
 									const wordResponse = await fetch(
-						`/.netlify/functions/mcp-fetch-translation-words?word=${encodeURIComponent(word)}&language=${chatConfig.language}&organization=${chatConfig.organization}&includeTitle=true&includeSubtitle=true&includeContent=true`
+						`/api/mcp-fetch-translation-words?word=${encodeURIComponent(word)}&language=${chatConfig.language}&organization=${chatConfig.organization}&includeTitle=true&includeSubtitle=true&includeContent=true`
 					);
 				const wordData = await wordResponse.json();
 				const wordTime = performance.now() - wordStart;

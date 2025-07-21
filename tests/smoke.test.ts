@@ -4,7 +4,7 @@ const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8888";
 const TIMEOUT = 15000; // Shorter timeout for smoke tests
 
 async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
-  const url = new URL(`${BASE_URL}/.netlify/functions/${endpoint}`);
+  const url = new URL(`${BASE_URL}/api/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
       url.searchParams.set(key, value);

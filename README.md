@@ -2,7 +2,35 @@
 
 An MCP (Model Context Protocol) server that provides biblical translation resources from Door43 through simple, structured tools. Perfect for AI-powered Bible translation projects.
 
-## 🚀 Quick Start
+## 🌟 NEW: HTTP-based MCP on Cloudflare Workers
+
+Translation Helps MCP now supports **stateless HTTP-based MCP** that runs perfectly on Cloudflare Workers! This revolutionary approach eliminates the need for WebSockets or long-lived connections.
+
+### ⚡ Live Demo
+
+- **HTTP MCP Endpoint**: `https://ab56217a.translation-helps-mcp.pages.dev/api/mcp`
+- **Interactive Test UI**: `https://ab56217a.translation-helps-mcp.pages.dev/mcp-http-test`
+
+### 🚀 Quick Start (HTTP MCP)
+
+**For AI Applications:**
+
+```bash
+# Test any of the 11 available tools
+curl -X POST https://ab56217a.translation-helps-mcp.pages.dev/api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"method":"tools/call","params":{"name":"fetch_scripture","arguments":{"reference":"John 3:16"}}}'
+```
+
+**For Web Applications:**
+
+```javascript
+import { createMCPClient } from "$lib/mcp/http-client";
+const client = await createMCPClient("/api/mcp");
+const result = await client.callTool("fetch_scripture", { reference: "John 3:16" });
+```
+
+## 🚀 Quick Start (Traditional)
 
 1. **Install dependencies:**
 

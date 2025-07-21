@@ -629,7 +629,7 @@
 		try {
 			// Build URL with parameters
 			const functionName = endpoint.path.replace('/api/', '');
-			const url = new URL(`/.netlify/functions/${functionName}`, window.location.origin);
+			const url = new URL(`/api/${functionName}`, window.location.origin);
 
 			// Add parameters to URL
 			Object.entries(formData || {}).forEach(([key, value]) => {

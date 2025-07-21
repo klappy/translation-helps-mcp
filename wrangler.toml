@@ -1,6 +1,9 @@
 name = "translation-helps-mcp"
-compatibility_date = "2024-01-15"
+compatibility_date = "2024-12-01"
 pages_build_output_dir = "ui/build"
+
+# Enable Node.js compatibility for fs, path, etc.
+compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare Pages specific configuration
 [env.production.vars]

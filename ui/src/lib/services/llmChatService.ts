@@ -46,7 +46,7 @@ export class LLMChatService {
 		try {
 			console.log('🤖 Sending request to OpenAI...');
 
-			const response = await fetch('/.netlify/functions/chat-stream', {
+			const response = await fetch('/api/chat-stream', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'

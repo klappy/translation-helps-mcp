@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2025-07-21
+
+### 🚀 Major New Features
+
+- **HTTP-based MCP Server on Cloudflare Workers**: Revolutionary stateless MCP implementation
+  - Complete MCP-over-HTTP bridge at `/api/mcp` endpoint
+  - All 11 translation tools now accessible via HTTP requests
+  - Perfect for Cloudflare Workers' request/response model
+  - No WebSockets or long-lived connections required
+- **Interactive MCP Test Interface**: New `/mcp-http-test` page
+  - Live testing of all MCP tools with form-based UI
+  - Real-time tool discovery and parameter validation
+  - Error handling and response visualization
+- **JavaScript MCP Client Library**: `HTTPMCPClient` for easy integration
+  - Simple async/await API for calling MCP tools
+  - Automatic initialization and tool discovery
+  - Built-in error handling and type safety
+
+### ✨ Enhanced MCP Tools
+
+- **Complete Tool Coverage**: All 11 tools now work over HTTP
+  - `fetch_scripture` - Get Bible text
+  - `fetch_translation_notes` - Get translation notes
+  - `fetch_translation_questions` - Get study questions
+  - `get_languages` - List available languages
+  - `browse_translation_words` - Browse word dictionary
+  - `get_context` - Get cultural/theological context
+  - `extract_references` - Parse Bible references from text
+  - `fetch_resources` - Get multiple resource types
+  - `get_words_for_reference` - Get words for specific verses
+  - `get_translation_word` - Get individual word definitions
+  - `search_resources` - Search across all content
+
+### 🏗️ Infrastructure Improvements
+
+- **Unified Version Management**: Synchronized all version references across codebase
+- **Enhanced Health Monitoring**: Comprehensive endpoint testing with smoke tests
+- **Global Edge Deployment**: Leveraging Cloudflare's 300+ locations worldwide
+- **Zero Cold Start**: Instant responses with V8 isolates vs containers
+
+### 📚 Documentation Updates
+
+- **Cloudflare Deployment Guide**: Complete setup instructions for Workers deployment
+- **MCP Integration Examples**: Code samples for various AI platforms
+- **API Reference**: Full documentation of HTTP MCP endpoints
+
 ## [UI 3.8.0] - 2025-01-20
 
 ### ✨ New Features

@@ -4,23 +4,10 @@
  */
 
 import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
-import { readFileSync } from "fs";
-import { join } from "path";
 // Cache stats now handled by platform wrappers
 
-// Read version from package.json
-function getAppVersion(): string {
-  try {
-    const packageJsonPath = join(process.cwd(), "package.json");
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-    return packageJson.version;
-  } catch (error) {
-    console.warn("Failed to read version from package.json, using fallback");
-    return "4.0.0"; // Updated fallback version
-  }
-}
-
-const VERSION = getAppVersion(); // Get version from package.json
+// Static version - updated when deploying
+const VERSION = "4.1.0";
 
 export const healthHandler: PlatformHandler = async (
   request: PlatformRequest
@@ -75,8 +62,8 @@ export const healthHandler: PlatformHandler = async (
         "/api/get-words-for-reference",
         "/api/list-available-resources",
       ],
-      uptime: process.uptime(),
-      memoryUsage: process.memoryUsage(),
+      uptime: process.uptime ? process.uptime() : 0,
+      memoryUsage: process.memoryUsage ? process.memoryUsage() : { heapUsed: 0 },
       cache: "Platform-specific caching enabled (stats available in platform wrappers)",
     };
 
