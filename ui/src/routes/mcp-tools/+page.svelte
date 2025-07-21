@@ -674,73 +674,53 @@
 									: 'text-gray-300 hover:bg-gray-700'}"
 								on:click={() => selectCategory(key)}
 							>
+								<!-- Health Status Bullet Point -->
+								{#if category.healthKey === 'overall'}
+									<div
+										class="h-3 w-3 rounded-full {$overallHealth.status === 'healthy'
+											? 'bg-emerald-400'
+											: $overallHealth.status === 'warning'
+												? 'bg-yellow-400'
+												: $overallHealth.status === 'error'
+													? 'bg-red-400'
+													: 'animate-pulse bg-gray-400'}"
+									></div>
+								{:else if category.healthKey === 'core'}
+									<div
+										class="h-3 w-3 rounded-full {$coreHealth.status === 'healthy'
+											? 'bg-emerald-400'
+											: $coreHealth.status === 'warning'
+												? 'bg-yellow-400'
+												: $coreHealth.status === 'error'
+													? 'bg-red-400'
+													: 'animate-pulse bg-gray-400'}"
+									></div>
+								{:else if category.healthKey === 'extended'}
+									<div
+										class="h-3 w-3 rounded-full {$extendedHealth.status === 'healthy'
+											? 'bg-emerald-400'
+											: $extendedHealth.status === 'warning'
+												? 'bg-yellow-400'
+												: $extendedHealth.status === 'error'
+													? 'bg-red-400'
+													: 'animate-pulse bg-gray-400'}"
+									></div>
+								{:else if category.healthKey === 'experimental'}
+									<div
+										class="h-3 w-3 rounded-full {$experimentalHealth.status === 'healthy'
+											? 'bg-emerald-400'
+											: $experimentalHealth.status === 'warning'
+												? 'bg-yellow-400'
+												: $experimentalHealth.status === 'error'
+													? 'bg-red-400'
+													: 'animate-pulse bg-gray-400'}"
+									></div>
+								{:else}
+									<div class="h-3 w-3 rounded-full bg-blue-400/60"></div>
+								{/if}
+
 								<svelte:component this={category.icon} class="h-4 w-4" />
 								{category.name}
-								{#if category.healthKey}
-									{#if category.healthKey === 'overall'}
-										<span class="ml-auto flex items-center gap-1 text-xs">
-											{#if $overallHealth.status === 'healthy'}
-												<CheckCircle class="h-3 w-3 text-green-500" />
-											{:else if $overallHealth.status === 'warning'}
-												<AlertCircle class="h-3 w-3 text-yellow-500" />
-											{:else if $overallHealth.status === 'error'}
-												<AlertCircle class="h-3 w-3 text-red-500" />
-											{:else}
-												<div class="h-3 w-3 animate-pulse rounded-full bg-gray-400"></div>
-											{/if}
-											<span class="font-medium {$overallHealth.color}">
-												{$overallHealth.status === 'loading' ? '...' : $overallHealth.status}
-											</span>
-										</span>
-									{:else if category.healthKey === 'core'}
-										<span class="ml-auto flex items-center gap-1 text-xs">
-											{#if $coreHealth.status === 'healthy'}
-												<CheckCircle class="h-3 w-3 text-green-500" />
-											{:else if $coreHealth.status === 'warning'}
-												<AlertCircle class="h-3 w-3 text-yellow-500" />
-											{:else if $coreHealth.status === 'error'}
-												<AlertCircle class="h-3 w-3 text-red-500" />
-											{:else}
-												<div class="h-3 w-3 animate-pulse rounded-full bg-gray-400"></div>
-											{/if}
-											<span class="font-medium {$coreHealth.color}">
-												{$coreHealth.status === 'loading' ? '...' : $coreHealth.status}
-											</span>
-										</span>
-									{:else if category.healthKey === 'extended'}
-										<span class="ml-auto flex items-center gap-1 text-xs">
-											{#if $extendedHealth.status === 'healthy'}
-												<CheckCircle class="h-3 w-3 text-green-500" />
-											{:else if $extendedHealth.status === 'warning'}
-												<AlertCircle class="h-3 w-3 text-yellow-500" />
-											{:else if $extendedHealth.status === 'error'}
-												<AlertCircle class="h-3 w-3 text-red-500" />
-											{:else}
-												<div class="h-3 w-3 animate-pulse rounded-full bg-gray-400"></div>
-											{/if}
-											<span class="font-medium {$extendedHealth.color}">
-												{$extendedHealth.status === 'loading' ? '...' : $extendedHealth.status}
-											</span>
-										</span>
-									{:else if category.healthKey === 'experimental'}
-										<span class="ml-auto flex items-center gap-1 text-xs">
-											{#if $experimentalHealth.status === 'healthy'}
-												<CheckCircle class="h-3 w-3 text-green-500" />
-											{:else if $experimentalHealth.status === 'warning'}
-												<AlertCircle class="h-3 w-3 text-yellow-500" />
-											{:else if $experimentalHealth.status === 'error'}
-												<AlertCircle class="h-3 w-3 text-red-500" />
-											{:else}
-												<div class="h-3 w-3 animate-pulse rounded-full bg-gray-400"></div>
-											{/if}
-											<span class="font-medium {$experimentalHealth.color}">
-												{$experimentalHealth.status === 'loading'
-													? '...'
-													: $experimentalHealth.status}
-											</span>
-										</span>
-									{/if}
-								{/if}
 							</button>
 						{/each}
 
@@ -752,13 +732,30 @@
 								</div>
 								{#each tools as tool}
 									<button
-										class="w-full rounded-lg p-2 pl-6 text-left text-sm transition-all {selectedTool?.name ===
+										class="flex w-full items-center gap-2 rounded-lg p-2 pl-3 text-left text-sm transition-all {selectedTool?.name ===
 										tool.name
 											? 'bg-purple-600 text-white'
 											: 'text-gray-300 hover:bg-gray-700'}"
 										on:click={() => selectTool(tool)}
 									>
-										{tool.name}
+										<!-- Individual Tool Health Status Bullet -->
+										{#if $healthData}
+											{@const health = getEndpointHealth(tool.apiEndpoint, $healthData)}
+											{#if health}
+												<div
+													class="h-2 w-2 rounded-full {health.status === 'healthy'
+														? 'bg-emerald-400'
+														: health.status === 'warning'
+															? 'bg-yellow-400'
+															: 'bg-red-400'}"
+												></div>
+											{:else}
+												<div class="h-2 w-2 rounded-full bg-gray-400"></div>
+											{/if}
+										{:else}
+											<div class="h-2 w-2 animate-pulse rounded-full bg-gray-400"></div>
+										{/if}
+										<span class="flex-1">{tool.name}</span>
 									</button>
 								{/each}
 							</div>
@@ -1044,6 +1041,24 @@
 									>
 										<div class="flex items-start justify-between">
 											<div class="flex items-start gap-3">
+												<!-- Health Status Bullet Point -->
+												{#if $healthData}
+													{@const health = getEndpointHealth(tool.apiEndpoint, $healthData)}
+													{#if health}
+														<div
+															class="mt-1 h-4 w-4 rounded-full {health.status === 'healthy'
+																? 'bg-emerald-400'
+																: health.status === 'warning'
+																	? 'bg-yellow-400'
+																	: 'bg-red-400'}"
+														></div>
+													{:else}
+														<div class="mt-1 h-4 w-4 rounded-full bg-gray-400"></div>
+													{/if}
+												{:else}
+													<div class="mt-1 h-4 w-4 animate-pulse rounded-full bg-gray-400"></div>
+												{/if}
+
 												<svelte:component this={tool.icon} class="mt-1 h-5 w-5 text-purple-400" />
 												<div>
 													<h3 class="mb-2 font-semibold text-white">{tool.name}</h3>
@@ -1052,21 +1067,6 @@
 														<span class="rounded bg-gray-600 px-2 py-1 text-gray-300">
 															{tool.apiEndpoint}
 														</span>
-														{#if $healthData}
-															{@const health = getEndpointHealth(tool.apiEndpoint, $healthData)}
-															{#if health}
-																<span
-																	class="flex items-center gap-1 {getStatusClass(health.status)}"
-																>
-																	{#if health.status === 'healthy'}
-																		<CheckCircle class="h-3 w-3" />
-																	{:else}
-																		<AlertCircle class="h-3 w-3" />
-																	{/if}
-																	{health.status}
-																</span>
-															{/if}
-														{/if}
 													</div>
 												</div>
 											</div>
