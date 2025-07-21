@@ -33,7 +33,8 @@
 		Timer,
 		AlertCircle,
 		User,
-		Lightbulb
+		Lightbulb,
+		Clock
 	} from 'lucide-svelte';
 
 	const coreFeatures = [
@@ -143,6 +144,11 @@
 	}> = [];
 	let demoContext = '';
 	let showApiDetails = false;
+	let demoTiming = {
+		total: 0,
+		apiCalls: 0,
+		aiProcessing: 0
+	};
 
 	function toggleDemo() {
 		showDemo = !showDemo;
@@ -156,11 +162,13 @@
 	}
 
 	async function runDemo() {
+		const overallStart = performance.now();
 		demoLoading = true;
 		demoResponse = '';
 		demoApiCalls = [];
 		demoContext = '';
 		showApiDetails = false;
+		demoTiming = { total: 0, apiCalls: 0, aiProcessing: 0 };
 
 		try {
 			// Detect scripture references and word queries (same logic as chat page)
@@ -281,6 +289,7 @@
 			demoContext = contextMessage;
 
 			// Make simple chat request (non-streaming)
+			const aiStart = performance.now();
 			try {
 				const chatResponse = await fetch('/api/chat-stream', {
 					method: 'POST',
@@ -295,6 +304,9 @@
 
 				if (chatResponse.ok) {
 					const chatData = await chatResponse.json();
+					const aiEnd = performance.now();
+					demoTiming.aiProcessing = aiEnd - aiStart;
+
 					const fullResponse = chatData.response || 'No response received.';
 
 					// Simple typing animation
@@ -303,10 +315,14 @@
 						await new Promise((resolve) => setTimeout(resolve, 15));
 					}
 				} else {
+					const aiEnd = performance.now();
+					demoTiming.aiProcessing = aiEnd - aiStart;
 					demoResponse =
 						'Error: Failed to get AI response. Please check that OpenAI API key is configured.';
 				}
 			} catch (chatError) {
+				const aiEnd = performance.now();
+				demoTiming.aiProcessing = aiEnd - aiStart;
 				console.error('Chat error:', chatError);
 				demoResponse =
 					'Error: AI chat service is not available. This demo shows the API data pipeline - the chat feature requires OpenAI API configuration.';
@@ -315,6 +331,11 @@
 			console.error('Demo error:', error);
 			demoResponse = `Error: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`;
 		}
+
+		// Calculate final timing
+		const overallEnd = performance.now();
+		demoTiming.total = overallEnd - overallStart;
+		demoTiming.apiCalls = demoApiCalls.reduce((sum, call) => sum + call.responseTime, 0);
 
 		demoLoading = false;
 	}
@@ -551,6 +572,17 @@
 							<CheckCircle class="h-4 w-4 text-green-400" />
 							Live • Versioned • Real AI
 						</div>
+
+						{#if demoTiming.total > 0}
+							<div
+								class="flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-gray-500"
+							>
+								<Clock class="h-3 w-3" />
+								API: {(demoTiming.apiCalls / 1000).toFixed(1)}s • AI: {(
+									demoTiming.aiProcessing / 1000
+								).toFixed(1)}s • Total: {(demoTiming.total / 1000).toFixed(1)}s
+							</div>
+						{/if}
 					</div>
 
 					<!-- API Calls Details -->

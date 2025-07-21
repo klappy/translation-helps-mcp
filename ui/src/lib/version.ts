@@ -5,7 +5,7 @@
 export function getVersion(): string {
 	// In browser environment, always use static version
 	// This prevents Node.js fs/path imports from running in browser
-	return '4.2.0';
+	return '4.3.0';
 }
 
 export const VERSION = getVersion();

@@ -21,7 +21,7 @@ function getVersionFromPackageJson(): string {
   } catch (error) {
     console.warn("Failed to read version from ROOT package.json, using fallback");
   }
-  return "4.2.0"; // Only as absolute fallback
+  return "4.3.0"; // Only as absolute fallback
 }
 
 // Cache bypass detection
