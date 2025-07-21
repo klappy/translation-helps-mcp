@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
 		ArrowRight,
 		Zap,
@@ -24,8 +25,17 @@
 		Cpu,
 		Server,
 		CloudDrizzle,
-		Github
+		Github,
+		Building,
+		ChevronRight,
+		Pause,
+		RefreshCw,
+		Timer,
+		AlertCircle,
+		User,
+		Lightbulb
 	} from 'lucide-svelte';
+	import { LLMChatService } from '$lib/services/llmChatService';
 
 	const coreFeatures = [
 		{
@@ -125,38 +135,196 @@
 	let demoQuery = "What does John 3:16 say about God's love?";
 	let demoResponse = '';
 	let demoLoading = false;
+	let demoApiCalls: Array<{
+		endpoint: string;
+		params: any;
+		response: any;
+		responseTime: number;
+		status: 'success' | 'error';
+	}> = [];
+	let demoContext = '';
+	let showApiDetails = false;
+
+	// Initialize chat service
+	const chatService = new LLMChatService();
+	let chatServiceReady = false;
+
+	// Initialize chat service
+	onMount(async () => {
+		try {
+			await chatService.initialize();
+			chatServiceReady = true;
+		} catch (error) {
+			console.error('Failed to initialize chat service for homepage demo:', error);
+		}
+	});
 
 	function toggleDemo() {
 		showDemo = !showDemo;
+		if (!showDemo) {
+			// Reset demo state when closing
+			demoResponse = '';
+			demoApiCalls = [];
+			demoContext = '';
+			showApiDetails = false;
+		}
 	}
 
 	async function runDemo() {
+		if (!chatServiceReady) {
+			demoResponse = '⚠️ Chat service is not ready yet. Please try again in a moment.';
+			return;
+		}
+
 		demoLoading = true;
 		demoResponse = '';
+		demoApiCalls = [];
+		demoContext = '';
+		showApiDetails = false;
 
-		// Simulate API call with streaming effect
-		const fullResponse = `🌊 **From The Aqueduct:**
+		const messageStartTime = performance.now();
 
-**John 3:16 (ULT):** "For God so loved the world that he gave his one and only Son, so that everyone who believes in him will not perish but have eternal life."
+		try {
+			// Detect scripture references and word queries (same logic as chat page)
+			const scriptureMatch = demoQuery.match(/(\w+\s+\d+:\d+(?:-\d+)?)/);
+			const wordMatch = demoQuery.match(/["']([^"']+)["']/);
 
-**Translation Notes:**
-- "so loved" (οὕτως ἠγάπησεν) - indicates the manner and degree of God's love
-- "gave" (ἔδωκεν) - aorist tense showing completed action
-- "one and only" (μονογενῆ) - unique, one of a kind
+			// Fetch scripture context if reference detected
+			if (scriptureMatch) {
+				const reference = scriptureMatch[1];
+				try {
+					const scriptureStart = performance.now();
+					const scriptureResponse = await fetch(
+						`/api/fetch-scripture?reference=${encodeURIComponent(reference)}&language=en&organization=unfoldingWord&translation=all`
+					);
+					const scriptureData = await scriptureResponse.json();
+					const scriptureTime = performance.now() - scriptureStart;
 
-**Cross-references:** Romans 5:8, 1 John 4:9-10
+					demoApiCalls = [
+						...demoApiCalls,
+						{
+							endpoint: '/api/fetch-scripture',
+							params: { reference, language: 'en', organization: 'unfoldingWord' },
+							response: scriptureData,
+							responseTime: scriptureTime,
+							status: scriptureResponse.ok ? 'success' : 'error'
+						}
+					];
+				} catch (error) {
+					demoApiCalls = [
+						...demoApiCalls,
+						{
+							endpoint: '/api/fetch-scripture',
+							params: { reference, language: 'en', organization: 'unfoldingWord' },
+							response: null,
+							responseTime: 0,
+							status: 'error'
+						}
+					];
+				}
 
-**Source:** unfoldingWord (ULT) v31 | Cache: FRESH | Latency: 127ms
+				// Fetch translation notes
+				try {
+					const notesStart = performance.now();
+					const notesResponse = await fetch(
+						`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=en&organization=unfoldingWord`
+					);
+					const notesData = await notesResponse.json();
+					const notesTime = performance.now() - notesStart;
 
-*This response was generated using canonical versioning with live interlinking across multiple resources.*`;
+					demoApiCalls = [
+						...demoApiCalls,
+						{
+							endpoint: '/api/fetch-translation-notes',
+							params: { reference, language: 'en', organization: 'unfoldingWord' },
+							response: notesData,
+							responseTime: notesTime,
+							status: notesResponse.ok ? 'success' : 'error'
+						}
+					];
+				} catch (error) {
+					demoApiCalls = [
+						...demoApiCalls,
+						{
+							endpoint: '/api/fetch-translation-notes',
+							params: { reference, language: 'en', organization: 'unfoldingWord' },
+							response: null,
+							responseTime: 0,
+							status: 'error'
+						}
+					];
+				}
+			}
 
-		// Stream the response character by character
-		for (let i = 0; i <= fullResponse.length; i++) {
-			demoResponse = fullResponse.slice(0, i);
-			await new Promise((resolve) => setTimeout(resolve, 20));
+			// Fetch word data if word query detected
+			if (wordMatch) {
+				const word = wordMatch[1];
+				try {
+					const wordStart = performance.now();
+					const wordResponse = await fetch(
+						`/api/fetch-translation-words?word=${encodeURIComponent(word)}&language=en&organization=unfoldingWord&includeTitle=true&includeSubtitle=true&includeContent=true`
+					);
+					const wordData = await wordResponse.json();
+					const wordTime = performance.now() - wordStart;
+
+					demoApiCalls = [
+						...demoApiCalls,
+						{
+							endpoint: '/api/fetch-translation-words',
+							params: { word, language: 'en', organization: 'unfoldingWord' },
+							response: wordData,
+							responseTime: wordTime,
+							status: wordResponse.ok ? 'success' : 'error'
+						}
+					];
+				} catch (error) {
+					demoApiCalls = [
+						...demoApiCalls,
+						{
+							endpoint: '/api/fetch-translation-words',
+							params: { word, language: 'en', organization: 'unfoldingWord' },
+							response: null,
+							responseTime: 0,
+							status: 'error'
+						}
+					];
+				}
+			}
+
+			// Build context for AI (same logic as chat page)
+			let contextMessage = demoQuery + '\n\n---\n\n## MCP Response Data\n\n';
+
+			for (const call of demoApiCalls) {
+				if (call.status === 'success' && call.response) {
+					contextMessage += `### ${call.endpoint}\n\`\`\`json\n${JSON.stringify(call.response, null, 2)}\n\`\`\`\n\n`;
+				}
+			}
+
+			demoContext = contextMessage;
+
+			// Generate AI response using the real chat service
+			const response = await chatService.generateResponse(contextMessage);
+
+			if (response.success) {
+				// Stream the response character by character for visual effect
+				const fullResponse = response.response || 'No response received.';
+				for (let i = 0; i <= fullResponse.length; i++) {
+					demoResponse = fullResponse.slice(0, i);
+					await new Promise((resolve) => setTimeout(resolve, 15));
+				}
+			} else {
+				demoResponse = `Error: ${response.error || 'Failed to generate response'}`;
+			}
+		} catch (error) {
+			console.error('Demo error:', error);
+			demoResponse = `Error: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`;
 		}
 
 		demoLoading = false;
+	}
+
+	function toggleApiDetails() {
+		showApiDetails = !showApiDetails;
 	}
 </script>
 
@@ -311,18 +479,19 @@
 								d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
 							/>
 						</svg>
-						🎯 Try It: See How Better Content Improves AI Answers
+						🎯 Live MCP Pipeline Demo
 					</div>
 					<h2 class="mb-4 text-4xl font-bold text-white md:text-5xl">
 						<span
 							class="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent"
 						>
-							The Difference
+							Real API
 						</span>
-						is Immediate
+						• Real Responses
 					</h2>
 					<p class="mx-auto max-w-3xl text-xl text-gray-300">
-						Ask the same question. See canonical resources vs. generic LLM training data.
+						Watch The Aqueduct fetch canonical Bible resources in real-time, then generate
+						contextual AI responses using the actual chat service pipeline.
 					</p>
 				</div>
 
@@ -330,7 +499,7 @@
 					class="rounded-3xl border border-blue-500/30 bg-black/40 p-8 shadow-2xl backdrop-blur-2xl"
 				>
 					<div class="mb-6 flex items-center justify-between">
-						<h3 class="text-2xl font-semibold text-white">💬 Live Comparison</h3>
+						<h3 class="text-2xl font-semibold text-white">💬 Live Chat Demo</h3>
 						<button
 							on:click={toggleDemo}
 							class="rounded-full p-2 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
@@ -339,41 +508,166 @@
 						</button>
 					</div>
 
+					<!-- Input Section -->
 					<div class="mb-6">
+						<label class="mb-2 block text-sm font-medium text-gray-300"
+							>Ask anything about the Bible:</label
+						>
 						<input
 							bind:value={demoQuery}
-							placeholder="Ask anything about the Bible..."
+							placeholder="Try: 'What does John 3:16 say about God's love?' or 'Explain the word grace'"
 							class="w-full rounded-xl border border-white/20 bg-white/5 px-6 py-4 text-white placeholder-gray-400 backdrop-blur-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+							on:keydown={(e) => e.key === 'Enter' && !demoLoading && runDemo()}
 						/>
+						<div class="mt-2 text-xs text-gray-400">
+							💡 Try referencing Bible verses (e.g., John 3:16) or put words in quotes (e.g.,
+							"grace") to see the MCP pipeline in action
+						</div>
 					</div>
 
-					<div class="mb-6 flex gap-4">
+					<!-- Action Buttons -->
+					<div class="mb-6 flex flex-wrap gap-4">
 						<button
 							on:click={runDemo}
-							disabled={demoLoading}
+							disabled={demoLoading || !chatServiceReady}
 							class="inline-flex items-center rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
 						>
 							{#if demoLoading}
-								<div
-									class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-								></div>
+								<RefreshCw class="mr-2 h-4 w-4 animate-spin" />
 								Processing...
+							{:else if !chatServiceReady}
+								<AlertCircle class="mr-2 h-4 w-4" />
+								Initializing...
 							{:else}
 								<Zap class="mr-2 h-4 w-4" />
 								Ask The Aqueduct
 							{/if}
 						</button>
+
+						{#if demoApiCalls.length > 0}
+							<button
+								on:click={toggleApiDetails}
+								class="inline-flex items-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-300 backdrop-blur-xl transition-colors hover:bg-cyan-500/20"
+							>
+								<Timer class="mr-2 h-4 w-4" />
+								{showApiDetails ? 'Hide' : 'Show'} API Calls ({demoApiCalls.length})
+							</button>
+						{/if}
+
 						<div class="flex items-center gap-2 text-sm text-gray-400">
 							<CheckCircle class="h-4 w-4 text-green-400" />
-							Live • Cached • Versioned
+							Live • Versioned • Real AI
 						</div>
 					</div>
 
-					{#if demoResponse}
+					<!-- API Calls Details -->
+					{#if showApiDetails && demoApiCalls.length > 0}
 						<div
-							class="rounded-xl border border-green-500/30 bg-green-500/5 p-6 font-mono text-sm whitespace-pre-line text-gray-200"
+							class="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-6 backdrop-blur-xl"
 						>
-							{demoResponse}
+							<div class="mb-4 flex items-center gap-2">
+								<Timer class="h-5 w-5 text-cyan-400" />
+								<h4 class="text-lg font-semibold text-white">MCP API Pipeline</h4>
+							</div>
+							<div class="space-y-3">
+								{#each demoApiCalls as call, i}
+									<div
+										class="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-3"
+									>
+										<div class="flex items-center gap-3">
+											<div
+												class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-bold text-blue-300"
+											>
+												{i + 1}
+											</div>
+											<span class="font-mono text-sm text-white">{call.endpoint}</span>
+											{#if call.status === 'success'}
+												<CheckCircle class="h-4 w-4 text-green-400" />
+											{:else}
+												<AlertCircle class="h-4 w-4 text-red-400" />
+											{/if}
+										</div>
+										<span class="text-xs text-gray-400">{call.responseTime.toFixed(0)}ms</span>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					<!-- User Message Display -->
+					{#if demoQuery && (demoLoading || demoResponse)}
+						<div class="mb-4 flex items-start gap-3">
+							<div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600">
+								<User class="h-4 w-4 text-white" />
+							</div>
+							<div
+								class="flex-1 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 backdrop-blur-xl"
+							>
+								<p class="text-white">{demoQuery}</p>
+							</div>
+						</div>
+					{/if}
+
+					<!-- AI Response -->
+					{#if demoLoading || demoResponse}
+						<div class="flex items-start gap-3">
+							<div
+								class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
+							>
+								<Bot class="h-4 w-4 text-white" />
+							</div>
+							<div
+								class="flex-1 rounded-xl border border-green-500/30 bg-green-500/5 p-4 backdrop-blur-xl"
+							>
+								{#if demoLoading}
+									<div class="flex items-center gap-2 text-gray-400">
+										<RefreshCw class="h-4 w-4 animate-spin" />
+										<span>The Aqueduct is thinking...</span>
+									</div>
+								{:else if demoResponse}
+									<div class="prose prose-invert max-w-none">
+										<div class="whitespace-pre-line text-gray-200">{demoResponse}</div>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
+
+					<!-- Demo Instructions -->
+					{#if !demoLoading && !demoResponse}
+						<div
+							class="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-6 backdrop-blur-xl"
+						>
+							<div class="mb-3 flex items-center gap-2">
+								<Lightbulb class="h-5 w-5 text-yellow-400" />
+								<h4 class="font-semibold text-yellow-300">Try These Examples:</h4>
+							</div>
+							<div class="grid gap-2 md:grid-cols-2">
+								<button
+									on:click={() => (demoQuery = "What does John 3:16 say about God's love?")}
+									class="rounded-lg border border-white/10 bg-white/5 p-3 text-left text-sm text-gray-300 transition-colors hover:bg-white/10"
+								>
+									📖 "What does John 3:16 say about God's love?"
+								</button>
+								<button
+									on:click={() => (demoQuery = "Explain the word 'grace' from the Bible")}
+									class="rounded-lg border border-white/10 bg-white/5 p-3 text-left text-sm text-gray-300 transition-colors hover:bg-white/10"
+								>
+									💭 "Explain the word 'grace' from the Bible"
+								</button>
+								<button
+									on:click={() => (demoQuery = 'Show me Romans 8:28 with translation notes')}
+									class="rounded-lg border border-white/10 bg-white/5 p-3 text-left text-sm text-gray-300 transition-colors hover:bg-white/10"
+								>
+									📝 "Show me Romans 8:28 with translation notes"
+								</button>
+								<button
+									on:click={() => (demoQuery = "What does 'faith' mean in biblical context?")}
+									class="rounded-lg border border-white/10 bg-white/5 p-3 text-left text-sm text-gray-300 transition-colors hover:bg-white/10"
+								>
+									🔍 "What does 'faith' mean in biblical context?"
+								</button>
+							</div>
 						</div>
 					{/if}
 				</div>
