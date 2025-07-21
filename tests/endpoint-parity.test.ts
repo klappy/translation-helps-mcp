@@ -62,10 +62,7 @@ const TEST_CASES = {
 
 // Helper functions
 async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
-  // Remove 'mcp-' prefix if present (legacy test compatibility)
-  const cleanEndpoint = endpoint.replace(/^mcp-/, "");
-
-  const url = new URL(`${BASE_URL}/api/${cleanEndpoint}`);
+  const url = new URL(`${BASE_URL}/api/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
       url.searchParams.set(key, value);
@@ -125,7 +122,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
         `should return identical responses for scripture test case ${index + 1}: ${testCase.reference}`,
         async () => {
           const apiResponse = await makeRequest("fetch-scripture", testCase);
-          const mcpResponse = await makeRequest("mcp-fetch-scripture", testCase);
+          const mcpResponse = await makeRequest("fetch-scripture", testCase);
 
           // Validate response structure
           validateResponseStructure(apiResponse, [
@@ -164,7 +161,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
         `should return identical responses for translation notes test case ${index + 1}: ${testCase.reference}`,
         async () => {
           const apiResponse = await makeRequest("fetch-translation-notes", testCase);
-          const mcpResponse = await makeRequest("mcp-fetch-translation-notes", testCase);
+          const mcpResponse = await makeRequest("fetch-translation-notes", testCase);
 
           // Validate response structure
           validateResponseStructure(apiResponse, ["translationNotes", "metadata"]);
@@ -191,7 +188,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
         `should return identical responses for translation questions test case ${index + 1}: ${testCase.reference}`,
         async () => {
           const apiResponse = await makeRequest("fetch-translation-questions", testCase);
-          const mcpResponse = await makeRequest("mcp-fetch-translation-questions", testCase);
+          const mcpResponse = await makeRequest("fetch-translation-questions", testCase);
 
           // Validate response structure
           validateResponseStructure(apiResponse, ["translationQuestions", "metadata"]);
@@ -218,7 +215,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
         `should return identical responses for translation word links test case ${index + 1}: ${testCase.reference}`,
         async () => {
           const apiResponse = await makeRequest("fetch-translation-word-links", testCase);
-          const mcpResponse = await makeRequest("mcp-fetch-translation-word-links", testCase);
+          const mcpResponse = await makeRequest("fetch-translation-word-links", testCase);
 
           // Validate response structure
           validateResponseStructure(apiResponse, ["translationWordLinks", "metadata"]);
@@ -245,7 +242,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
         `should return identical responses for translation words test case ${index + 1}: ${testCase.word}`,
         async () => {
           const apiResponse = await makeRequest("fetch-translation-words", testCase);
-          const mcpResponse = await makeRequest("mcp-fetch-translation-words", testCase);
+          const mcpResponse = await makeRequest("fetch-translation-words", testCase);
 
           // Validate response structure
           validateResponseStructure(apiResponse, ["translationWords", "metadata"]);
@@ -272,7 +269,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
         `should return identical responses for fetch resources test case ${index + 1}`,
         async () => {
           const apiResponse = await makeRequest("fetch-resources", testCase);
-          const mcpResponse = await makeRequest("mcp-fetch-resources", testCase);
+          const mcpResponse = await makeRequest("fetch-resources", testCase);
 
           // Validate response structure
           validateResponseStructure(apiResponse, ["metadata"]);

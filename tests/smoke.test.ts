@@ -4,10 +4,7 @@ const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8888";
 const TIMEOUT = 15000; // Shorter timeout for smoke tests
 
 async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
-  // Remove 'mcp-' prefix if present (legacy test compatibility)
-  const cleanEndpoint = endpoint.replace(/^mcp-/, "");
-
-  const url = new URL(`${BASE_URL}/api/${cleanEndpoint}`);
+  const url = new URL(`${BASE_URL}/api/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
       url.searchParams.set(key, value);
@@ -55,7 +52,7 @@ describe("Smoke Tests - Quick Health Check", () => {
   it(
     "should return identical data from MCP endpoint",
     async () => {
-      const response = await makeRequest("mcp-fetch-scripture", {
+      const response = await makeRequest("fetch-scripture", {
         reference: "John 3:16",
         language: "en",
         organization: "unfoldingWord",
@@ -79,7 +76,7 @@ describe("Smoke Tests - Quick Health Check", () => {
           language: "en",
           organization: "unfoldingWord",
         }),
-        makeRequest("mcp-fetch-scripture", {
+        makeRequest("fetch-scripture", {
           reference: "John 3:16",
           language: "en",
           organization: "unfoldingWord",
