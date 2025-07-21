@@ -1,16 +1,11 @@
-import { getVersion as getServerVersion } from '../../../src/version.js';
-
 /**
- * Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
- * NO FALLBACKS - if this fails, the build should fail!
+ * Static version information for the UI
+ * This file is generated/updated during build time by scripts/sync-version.js
+ * DO NOT import server-side modules here!
  */
-export function getVersion(): string {
-	// During build time, this MUST work or the build fails
-	// NO browser fallbacks - the version is baked in at build time
-	return getServerVersion();
-}
 
-export const VERSION = getVersion();
+// This version is populated by the build script from package.json
+export const VERSION = '4.4.0';
 
 // Helper function to get version with 'v' prefix for display
 export const getDisplayVersion = () => `v${VERSION}`;

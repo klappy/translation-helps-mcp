@@ -1,11 +1,11 @@
 {
 	"name": "translation-helps-ui",
 	"type": "module",
-	"version": "4.3.0",
+	"version": "4.4.0",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
-		"build:cloudflare": "cp svelte.config.cloudflare.js svelte.config.js && npx vite build && git checkout svelte.config.js",
+		"build": "node ../scripts/sync-version.js && vite build",
+		"build:cloudflare": "node ../scripts/sync-version.js && cp svelte.config.cloudflare.js svelte.config.js && npx vite build && git checkout svelte.config.js",
 		"build:cloudflare-full": "cd .. && node scripts/generate-platform-functions.js && cd ui && npm run build:cloudflare",
 		"preview": "vite preview",
 		"prepare": "npx @sveltejs/kit sync || echo ''",

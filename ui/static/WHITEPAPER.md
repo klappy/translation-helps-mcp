@@ -4,47 +4,48 @@
 
 ## Executive Summary
 
-In the age of AI-powered tools, the Bible translation community is fragmenting. LLMs demand structured, versioned, and context-rich knowledge. But most translation tools, content systems, and QA pipelines were never built with LLMs in mind. The result? Drift. Dead links. Duplication. Divergence.
+Bible translation teams need reliable access to canonical resources for AI-powered tools. Most translation systems and QA pipelines were built before modern AI integration became essential. The result? Data access challenges, version conflicts, and integration complexity.
 
-**The Aqueduct** is a stateless, cache-driven, LLM-native RAG (Retrieval-Augmented Generation) architecture. It lets any tool, bot, or interface dynamically pull the right version of the right resource at the right time—without requiring centralized infrastructure or shared databases.
+**The Aqueduct** is a cache-first, stateless API architecture that provides consistent access to Bible translation resources. It allows tools, bots, and applications to reliably fetch versioned resources without requiring centralized infrastructure or complex database management.
 
 ---
 
 ## 1. The Core Problem
 
-### 1.1 Versioned Truth Is Plural
+### 1.1 Versioned Truth Requirements
 
-Translation workflows require simultaneous access to:
+Translation workflows require access to different resource states:
 
-- The _latest edits_
-- The _latest checked release_
-- A _frozen, known-good snapshot_
+- The _latest edits_ from active development
+- The _latest checked release_ for production use
+- A _frozen, known-good snapshot_ for consistency
 
-Most RAG systems assume a single ground truth. That assumption breaks Bible workflows.
+Most data access systems assume a single source of truth. Bible translation workflows require multiple concurrent versions.
 
-### 1.2 Multimodal Resources Drift
+### 1.2 Resource Synchronization Challenges
 
-Text, audio, glossaries, notes, maps—resources intended to align often live on different platforms and versions. Drift creeps in over time.
+Text, audio, glossaries, notes, maps—resources intended to align often live on different platforms and update cycles. Keeping them synchronized is challenging.
 
-### 1.3 Tool Ecosystem Fragmentation
+### 1.3 Tool Integration Complexity
 
-Each org builds their own tools. Each team builds their own pipelines. There's no common context layer. No universal index. Just isolation.
+Each organization builds their own tools. Each team develops their own pipelines. There's no common data access layer that works across different systems.
 
 ---
 
-## 2. Stateless RAG: The Aqueduct Model
+## 2. Current Implementation: Cache-First API
 
-The Aqueduct isn't a new platform. It's a protocol-driven method built from three insights:
+The Aqueduct currently provides reliable data access through:
 
-- **Model Context Protocol (MCP):** A method for LLMs to request versioned, traceable, multimodal context.
-- **Cache-first + zero storage:** Statelessness ensures no user data storage and ultralight deployment.
-- **Multimodal durability via IPFS:** Multimedia, source files, and indexed manifests are pinned for long-term access and offline use.
+- **✅ Stateless caching:** No user data storage with intelligent cache management
+- **✅ Version-aware requests:** Support for "latest", "checked", and specific version requests
+- **✅ MCP integration:** Model Context Protocol support for AI assistant integration
+- **✅ Production deployment:** Live on Cloudflare Workers with comprehensive testing
 
-### Architecture Overview
+### Current Architecture
 
 ```
-[Source Springs] --> [MCP Reservoir Cache] --> [LLM/Bot Outflows]
-(Git, IPFS, APIs)      (Stateless cache)        (Codex, WhatsApp, CLI)
+[Source Repositories] --> [Smart Cache Layer] --> [API Endpoints]
+(Git, DCS, Door43)        (Stateless cache)      (MCP/HTTP APIs)
 ```
 
 ---
@@ -64,40 +65,57 @@ The complete technical whitepaper will include:
 
 ---
 
-## 4. Key Principles (Preview)
+## 4. Key Principles (Current Implementation)
 
-### Canonical Truth = Plural
+### ✅ Multiple Truth States
 
-- `"latest"`: always evolving
+- `"latest"`: currently evolving resources
 - `"checked"`: field-tested releases
 - `"frozen"`: fixed for translation continuity
 
-### Not a Platform
+### ✅ Infrastructure Independence
 
-The Aqueduct is:
+The Aqueduct provides:
 
-- **Not a new platform**
-- **Not a shared infrastructure**
-- **Not a database or knowledge repo**
+- **Reliable data access** without requiring new infrastructure
+- **Cache-first performance** while staying current with sources
+- **API standardization** across different resource types
 
-It's a method for aligning disparate resources _without_ enforcing centralization.
+### ✅ Real-World Production Use
 
-### Real-World Impact
-
-- Codex editor pulls "checked" notes + "latest" Bible + glossary via MCP
-- WhatsApp bot loads "frozen" verse version + multimedia via IPFS fallback
-- QA dashboard shows AI-generated alerts using only cached MCP context
+- Scripture lookup APIs serving Bible text in multiple translations
+- Translation notes and study resources with contextual information
+- Word definition services with semantic connections
+- Comprehensive testing and monitoring in production
 
 ---
 
-## 5. Philosophical Foundations
+## 5. Future Development (Planned)
 
-The Aqueduct is a reimagining of the Open Components Ecosystem (OCE) for an AI-native world. It assumes:
+### 🚧 Multimodal Resource Support
 
-- **Tools will remain diverse**
-- **Resources will remain distributed**
-- **Truth must remain plural**
-- But _context can still flow._
+Planned enhancements include:
+
+- **IPFS archival** for permanent media storage
+- **Audio/video synchronization** across platforms
+- **Offline-ready resources** for field translation work
+
+### 🚧 Enhanced AI Integration
+
+- **Semantic search capabilities** for topical Bible study
+- **Advanced cross-referencing** with AI-powered analysis
+- **Vector search integration** for conceptual queries
+
+---
+
+## 6. Development Philosophy
+
+The Aqueduct is built on practical needs rather than theoretical frameworks. It assumes:
+
+- **Tools will remain diverse** - no single platform will dominate
+- **Resources will remain distributed** - centralization isn't always practical
+- **Truth must remain versioned** - different workflows need different states
+- **Access should be reliable** - consistent data access enables better tools
 
 ---
 
@@ -108,8 +126,8 @@ The Aqueduct is a reimagining of the Open Components Ecosystem (OCE) for an AI-n
 The complete technical document is in active development and will include implementation guides, performance analysis, and real-world deployment strategies.
 
 - **🔗 Follow the project**: [GitHub Repository](https://github.com/klappy/translation-helps-mcp)
-- **🎯 Try the live demo**: Test the MCP pipeline on this site
-- **💬 Join the conversation**: See how The Aqueduct works in practice
+- **🎯 Try the live demo**: Test the current API on this site
+- **💬 See it in action**: Check out the working implementation
 
 _Expected release: August 2025_
 

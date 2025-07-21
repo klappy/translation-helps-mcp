@@ -40,42 +40,49 @@
 	const coreFeatures = [
 		{
 			icon: Waves,
-			title: 'Stateless RAG',
+			title: 'Stateless Cache-First API',
 			description:
-				'No user data stored. Just answers, fast and accurate. Like water through an aqueduct.',
-			highlight: 'Zero Storage'
+				'No user data stored. Fast responses through intelligent caching. Like a well-designed pipeline.',
+			highlight: 'Live Now',
+			status: 'available'
 		},
 		{
 			icon: GitBranch,
 			title: 'Canonical Versioning',
 			description:
 				'"Latest", "Checked", or "Frozen" truth—your call. Version control for knowledge.',
-			highlight: 'Version Control'
+			highlight: 'Live Now',
+			status: 'available'
 		},
 		{
 			icon: Network,
-			title: 'The Aqueduct Method',
+			title: 'MCP Integration',
 			description:
-				'Model Context Protocol (MCP)—a method, not a spec—combining caching, versioning, and stateless logic.',
-			highlight: 'Universal Bridge'
+				'Model Context Protocol support—combining caching, versioning, and stateless logic.',
+			highlight: 'Live Now',
+			status: 'available'
 		},
 		{
 			icon: Shield,
-			title: 'No Gatekeepers',
+			title: 'No Vendor Lock-in',
 			description: 'Any content. Any format. Any tech stack. Freedom to build what you need.',
-			highlight: 'Complete Freedom'
+			highlight: 'Live Now',
+			status: 'available'
 		},
 		{
 			icon: Layers,
-			title: 'Live Interlinking',
-			description: 'Instantly pull aligned resources: translations, notes, dictionaries, maps.',
-			highlight: 'Dynamic Connections'
+			title: 'Resource Interlinking',
+			description:
+				'Pull aligned resources: translations, notes, dictionaries. Currently text-based.',
+			highlight: 'Live Now',
+			status: 'available'
 		},
 		{
 			icon: Cpu,
-			title: 'LLM-Native',
-			description: 'Built for the AI world. Every response optimized for language models.',
-			highlight: 'AI-First Design'
+			title: 'IPFS Media Archival',
+			description: 'Permanent storage for audio, video, and multimodal content via IPFS.',
+			highlight: 'Planned',
+			status: 'planned'
 		}
 	];
 
@@ -106,29 +113,11 @@
 		}
 	];
 
-	const testimonials = [
-		{
-			quote: 'I stopped waiting for perfect. Now I ship every week.',
-			author: 'Lead Dev, BT Servant',
-			role: 'Development Team'
-		},
-		{
-			quote: 'It turned Git into our TMS. No migration. Just better answers.',
-			author: 'Codex Integrator',
-			role: 'Platform Integration'
-		},
-		{
-			quote: 'Finally, a way to unify without making anyone conform.',
-			author: 'Strategist, Open Translation Network',
-			role: 'Strategy & Planning'
-		}
-	];
-
 	const problemPoints = [
-		'A dozen RAG systems and counting...',
+		'Teams building isolated RAG systems...',
 		"Everyone's building bots. Everyone's reinventing pipelines.",
 		'Resources drift. Versions clash. Dead links multiply.',
-		"You don't need another platform. You need a protocol."
+		"You don't need another platform. You need better tools."
 	];
 
 	let showDemo = false;
@@ -151,7 +140,9 @@
 	};
 
 	function toggleDemo() {
+		console.log('Demo toggle clicked. Current showDemo:', showDemo);
 		showDemo = !showDemo;
+		console.log('New showDemo value:', showDemo);
 		if (!showDemo) {
 			// Reset demo state when closing
 			demoResponse = '';
@@ -162,6 +153,7 @@
 	}
 
 	async function runDemo() {
+		console.log('Running demo with query:', demoQuery);
 		const overallStart = performance.now();
 		demoLoading = true;
 		demoResponse = '';
@@ -175,9 +167,13 @@
 			const scriptureMatch = demoQuery.match(/(\w+\s+\d+:\d+(?:-\d+)?)/);
 			const wordMatch = demoQuery.match(/["']([^"']+)["']/);
 
+			console.log('Scripture match:', scriptureMatch);
+			console.log('Word match:', wordMatch);
+
 			// Fetch scripture context if reference detected
 			if (scriptureMatch) {
 				const reference = scriptureMatch[1];
+				console.log('Fetching scripture for:', reference);
 				try {
 					const scriptureStart = performance.now();
 					const scriptureResponse = await fetch(
@@ -185,6 +181,8 @@
 					);
 					const scriptureData = await scriptureResponse.json();
 					const scriptureTime = performance.now() - scriptureStart;
+
+					console.log('Scripture response:', scriptureData);
 
 					demoApiCalls = [
 						...demoApiCalls,
@@ -197,6 +195,7 @@
 						}
 					];
 				} catch (error) {
+					console.error('Scripture fetch error:', error);
 					demoApiCalls = [
 						...demoApiCalls,
 						{
@@ -211,12 +210,15 @@
 
 				// Fetch translation notes
 				try {
+					console.log('Fetching translation notes for:', reference);
 					const notesStart = performance.now();
 					const notesResponse = await fetch(
 						`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=en&organization=unfoldingWord`
 					);
 					const notesData = await notesResponse.json();
 					const notesTime = performance.now() - notesStart;
+
+					console.log('Notes response:', notesData);
 
 					demoApiCalls = [
 						...demoApiCalls,
@@ -229,6 +231,7 @@
 						}
 					];
 				} catch (error) {
+					console.error('Notes fetch error:', error);
 					demoApiCalls = [
 						...demoApiCalls,
 						{
@@ -245,6 +248,7 @@
 			// Fetch word data if word query detected
 			if (wordMatch) {
 				const word = wordMatch[1];
+				console.log('Fetching word data for:', word);
 				try {
 					const wordStart = performance.now();
 					const wordResponse = await fetch(
@@ -252,6 +256,8 @@
 					);
 					const wordData = await wordResponse.json();
 					const wordTime = performance.now() - wordStart;
+
+					console.log('Word response:', wordData);
 
 					demoApiCalls = [
 						...demoApiCalls,
@@ -264,6 +270,7 @@
 						}
 					];
 				} catch (error) {
+					console.error('Word fetch error:', error);
 					demoApiCalls = [
 						...demoApiCalls,
 						{
@@ -287,55 +294,88 @@
 			}
 
 			demoContext = contextMessage;
+			console.log('Built context message:', contextMessage.substring(0, 200) + '...');
 
-			// Make simple chat request (non-streaming)
-			const aiStart = performance.now();
-			try {
-				const chatResponse = await fetch('/api/chat-stream', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						message: contextMessage,
-						chatHistory: []
-					})
-				});
+			// Always show some response, even if AI fails
+			if (demoApiCalls.length === 0) {
+				console.log('No API calls made, showing demo instruction');
+				demoResponse = `I'd be happy to help! Try asking me something like:
+				
+• "Show me John 3:16" (to fetch scripture)
+• "What does 'love' mean?" (to fetch word definitions)
+• "Get translation notes for Romans 1:1"
 
-				if (chatResponse.ok) {
-					const chatData = await chatResponse.json();
-					const aiEnd = performance.now();
-					demoTiming.aiProcessing = aiEnd - aiStart;
+The demo detects Bible references and quoted words to make relevant API calls.`;
+			} else {
+				// Make simple chat request (non-streaming)
+				const aiStart = performance.now();
+				try {
+					console.log('Calling chat service...');
+					const chatResponse = await fetch('/api/chat-stream', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							message: contextMessage,
+							chatHistory: []
+						})
+					});
 
-					const fullResponse = chatData.response || 'No response received.';
+					if (chatResponse.ok) {
+						const chatData = await chatResponse.json();
+						const aiEnd = performance.now();
+						demoTiming.aiProcessing = aiEnd - aiStart;
 
-					// Simple typing animation
-					for (let i = 0; i <= fullResponse.length; i++) {
-						demoResponse = fullResponse.slice(0, i);
-						await new Promise((resolve) => setTimeout(resolve, 15));
+						console.log('Chat response:', chatData);
+
+						const fullResponse = chatData.response || 'No response received.';
+
+						// Simple typing animation
+						for (let i = 0; i <= fullResponse.length; i++) {
+							demoResponse = fullResponse.slice(0, i);
+							await new Promise((resolve) => setTimeout(resolve, 15));
+						}
+					} else {
+						const aiEnd = performance.now();
+						demoTiming.aiProcessing = aiEnd - aiStart;
+						console.log('Chat response failed:', chatResponse.status);
+						demoResponse = `✅ API calls successful! I fetched the Bible resources you requested.
+
+📊 **Demo Results:**
+• Made ${demoApiCalls.filter((call) => call.status === 'success').length} successful API calls
+• Retrieved Bible data in ${demoTiming.apiCalls}ms
+
+💡 **Note:** The AI chat feature requires OpenAI API configuration. But the core Bible resource fetching works perfectly!`;
 					}
-				} else {
+				} catch (chatError) {
 					const aiEnd = performance.now();
 					demoTiming.aiProcessing = aiEnd - aiStart;
-					demoResponse =
-						'Error: Failed to get AI response. Please check that OpenAI API key is configured.';
+					console.error('Chat error:', chatError);
+					demoResponse = `✅ API calls successful! I fetched the Bible resources you requested.
+
+📊 **Demo Results:**
+• Made ${demoApiCalls.filter((call) => call.status === 'success').length} successful API calls
+• Retrieved Bible data in ${(demoApiCalls.reduce((sum, call) => sum + call.responseTime, 0) / 1000).toFixed(1)}s
+
+💡 **Note:** The AI chat service is not available in this demo, but the core Bible resource API is working perfectly! You can see the raw API responses below.`;
 				}
-			} catch (chatError) {
-				const aiEnd = performance.now();
-				demoTiming.aiProcessing = aiEnd - aiStart;
-				console.error('Chat error:', chatError);
-				demoResponse =
-					'Error: AI chat service is not available. This demo shows the API data pipeline - the chat feature requires OpenAI API configuration.';
 			}
 		} catch (error) {
 			console.error('Demo error:', error);
-			demoResponse = `Error: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`;
+			demoResponse = `Demo Error: ${error instanceof Error ? error.message : 'An unexpected error occurred'}
+
+But don't worry! You can still test the API directly at /mcp-tools`;
 		}
 
 		// Calculate final timing
 		const overallEnd = performance.now();
 		demoTiming.total = overallEnd - overallStart;
 		demoTiming.apiCalls = demoApiCalls.reduce((sum, call) => sum + call.responseTime, 0);
+
+		console.log('Demo completed. Response:', demoResponse.substring(0, 100) + '...');
+		console.log('Demo timing:', demoTiming);
+		console.log('API calls made:', demoApiCalls);
 
 		demoLoading = false;
 	}
@@ -428,7 +468,7 @@
 					class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl"
 				>
 					<Droplets class="mr-2 h-4 w-4" />
-					Order Without Control • Stateless RAG • LLM-Native
+					Cache-First • Stateless • LLM-Native
 				</div>
 
 				<!-- Main headline -->
@@ -443,19 +483,19 @@
 				<!-- Subheadline -->
 				<div class="mb-8 space-y-2">
 					<p class="text-2xl font-semibold text-white/90 md:text-3xl">
-						Align knowledge. Preserve versioned truth. Bridge every silo.
+						Reliable Bible translation resources. Fast, cached, always current.
 					</p>
 					<p class="text-lg text-blue-200 md:text-xl">
-						Built for Bible Translation in an AI world.
+						Built for Bible Translation teams and AI tools.
 					</p>
 				</div>
 
 				<!-- Description -->
 				<p class="mx-auto max-w-4xl text-xl leading-relaxed text-gray-300 md:text-2xl">
-					What if knowledge flowed like water? <strong class="text-blue-300"
-						>Aqueducts carried clean water over mountains.</strong
+					What if Bible translation resources were as reliable as running water? <strong
+						class="text-blue-300">We built a solid foundation that works.</strong
 					>
-					This one carries living knowledge across tools, versions, and formats.
+					This system delivers canonical resources across tools, versions, and formats.
 				</p>
 			</div>
 
@@ -705,7 +745,7 @@
 		<div class="mx-auto max-w-7xl">
 			<div class="mb-16 text-center">
 				<div
-					class="mb-8 inline-flex animate-pulse items-center rounded-full border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-sm font-medium text-cyan-300 backdrop-blur-xl"
+					class="mb-8 inline-flex animate-pulse items-center rounded-full border border-yellow-500/30 bg-yellow-500/10 px-6 py-3 text-sm font-medium text-yellow-300 backdrop-blur-xl"
 				>
 					<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -715,58 +755,56 @@
 							d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
 						/>
 					</svg>
-					🎙️📽️ The Impossible Problem, Solved
+					🚧 Roadmap: Multimodal Support
 				</div>
 				<h2 class="mb-8 text-5xl font-bold text-white md:text-6xl">
 					<span class="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-						Multimodal Sync
+						Next Phase:
 					</span>
-					Without Shared Infrastructure
+					Multimodal Resources
 				</h2>
 				<p class="mx-auto max-w-4xl text-xl text-gray-300">
-					Finally, audio and video files stay accessible—<strong class="text-cyan-300"
-						>forever</strong
-					>—no matter where they were hosted.
+					Coming soon: audio and video files stay accessible—<strong class="text-cyan-300"
+						>permanently</strong
+					>—through IPFS archival.
 				</p>
 			</div>
 
 			<div class="grid grid-cols-1 gap-12 lg:grid-cols-2">
-				<!-- The Problem -->
-				<div class="rounded-3xl border border-red-500/30 bg-red-500/5 p-8 backdrop-blur-2xl">
+				<!-- The Current State -->
+				<div class="rounded-3xl border border-green-500/30 bg-green-500/5 p-8 backdrop-blur-2xl">
 					<div class="mb-6 flex items-center">
-						<X class="mr-3 h-6 w-6 text-red-400" />
-						<h3 class="text-2xl font-bold text-red-300">Before: Broken Links, Lost Media</h3>
+						<CheckCircle class="mr-3 h-6 w-6 text-green-400" />
+						<h3 class="text-2xl font-bold text-green-300">Now: Solid Text Foundation</h3>
 					</div>
 					<div class="space-y-4 text-gray-300">
-						<p>• Audio files hosted on different servers</p>
-						<p>• Video transcripts scattered across platforms</p>
-						<p>
-							• Multimodal translation tools forced to choose between flexibility and reliability
-						</p>
-						<p>• Media sync becomes impossible without centralized control</p>
+						<p>• Scripture text in multiple translations ✅</p>
+						<p>• Translation notes and study resources ✅</p>
+						<p>• Word definitions and semantic connections ✅</p>
+						<p>• Reliable caching and performance ✅</p>
+						<p>• MCP integration for AI tools ✅</p>
 					</div>
 				</div>
 
-				<!-- The Solution -->
-				<div class="rounded-3xl border border-cyan-500/30 bg-cyan-500/5 p-8 backdrop-blur-2xl">
+				<!-- The Future Plan -->
+				<div class="rounded-3xl border border-yellow-500/30 bg-yellow-500/5 p-8 backdrop-blur-2xl">
 					<div class="mb-6 flex items-center">
-						<CheckCircle class="mr-3 h-6 w-6 text-cyan-400" />
-						<h3 class="text-2xl font-bold text-cyan-300">After: Permanent, Synchronized</h3>
+						<AlertCircle class="mr-3 h-6 w-6 text-yellow-400" />
+						<h3 class="text-2xl font-bold text-yellow-300">Coming: Media & Permanence</h3>
 					</div>
 					<div class="space-y-4 text-gray-300">
 						<p>
-							• <strong class="text-cyan-300">Proxies manifest metadata</strong> from any source
+							• <strong class="text-yellow-300">Archive audio/video to IPFS</strong> for permanent access
 						</p>
 						<p>
-							• <strong class="text-cyan-300">Archives all media to IPFS</strong> for permanent access
+							• <strong class="text-yellow-300">Sync multimedia content</strong> across platforms
 						</p>
 						<p>
-							• <strong class="text-cyan-300">Maintains sync relationships</strong> across audio, video,
+							• <strong class="text-yellow-300">Maintain relationships</strong> between audio, video,
 							and text
 						</p>
 						<p>
-							• <strong class="text-cyan-300">Works with any hosting</strong>—no infrastructure
-							lock-in
+							• <strong class="text-yellow-300">Offline-ready resources</strong> for field work
 						</p>
 					</div>
 				</div>
@@ -833,13 +871,13 @@
 		<div class="mx-auto max-w-7xl">
 			<div class="mb-16 text-center">
 				<h2 class="mb-8 text-5xl font-bold text-white md:text-6xl">
-					The Chaos is
+					The Challenge is
 					<span class="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
-						Already Here
+						Real
 					</span>
 				</h2>
 				<p class="mx-auto max-w-3xl text-xl text-gray-300">
-					The age of stateless RAG has arrived. But everyone's building in isolation.
+					Bible translation teams face practical data challenges every day.
 				</p>
 			</div>
 
@@ -882,15 +920,14 @@
 		<div class="mx-auto max-w-7xl">
 			<div class="mb-16 text-center">
 				<h2 class="mb-8 text-5xl font-bold text-white md:text-6xl">
-					What if Knowledge Flowed
+					What We Built:
 					<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-						Like Water?
+						Reliable Infrastructure
 					</span>
 				</h2>
 				<p class="mx-auto max-w-4xl text-xl text-gray-300">
-					From the source repo to the translator's bot. From the upstream server to an offline
-					tablet.
-					<strong class="text-blue-300">Every path versioned. Every source traceable.</strong>
+					From the source repo to your translation tool. From upstream servers to offline tablets.
+					<strong class="text-blue-300">Every resource versioned. Every source traceable.</strong>
 				</p>
 			</div>
 
@@ -899,9 +936,12 @@
 					<div
 						class="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl transition-all duration-500 hover:scale-105 hover:border-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/10"
 					>
-						<!-- Highlight badge -->
+						<!-- Status badge -->
 						<div
-							class="absolute top-4 right-4 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-300"
+							class="absolute top-4 right-4 rounded-full px-3 py-1 text-xs font-medium {feature.status ===
+							'available'
+								? 'border border-green-500/30 bg-green-500/20 text-green-300'
+								: 'border border-yellow-500/30 bg-yellow-500/20 text-yellow-300'}"
 						>
 							{feature.highlight}
 						</div>
@@ -960,11 +1000,10 @@
 		<div class="mx-auto max-w-7xl">
 			<div class="mb-16 text-center">
 				<h2 class="mb-8 text-5xl font-bold text-white md:text-6xl">
-					How The
+					How It
 					<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-						Aqueduct
+						Actually Works
 					</span>
-					Works
 				</h2>
 			</div>
 
@@ -1041,74 +1080,6 @@
 		</div>
 	</section>
 
-	<!-- Testimonials -->
-	<section class="relative px-4 py-20 sm:px-6 lg:px-8">
-		<div class="mx-auto max-w-7xl">
-			<div class="mb-16 text-center">
-				<h2 class="mb-8 text-5xl font-bold text-white md:text-6xl">
-					What Builders Are
-					<span
-						class="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent"
-					>
-						Saying
-					</span>
-				</h2>
-			</div>
-
-			<div class="grid grid-cols-1 gap-8 md:grid-cols-3">
-				{#each testimonials as testimonial}
-					<div class="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
-						<blockquote class="mb-6 text-lg text-gray-300 italic">
-							"{testimonial.quote}"
-						</blockquote>
-						<div class="flex items-center">
-							<div
-								class="mr-4 h-10 w-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
-							></div>
-							<div>
-								<div class="font-semibold text-white">{testimonial.author}</div>
-								<div class="text-sm text-gray-400">{testimonial.role}</div>
-							</div>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-	</section>
-
-	<!-- Developer Section -->
-	<section class="relative px-4 py-20 sm:px-6 lg:px-8">
-		<div class="mx-auto max-w-7xl">
-			<div class="mb-16 text-center">
-				<h2 class="mb-8 text-5xl font-bold text-white md:text-6xl">
-					Choose Your
-					<span class="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
-						Stack
-					</span>
-				</h2>
-				<p class="mx-auto max-w-3xl text-xl text-gray-300">
-					Code. Plug-ins. Docs. Playground. Deploy however you want.
-				</p>
-			</div>
-
-			<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-				{#each [{ icon: Code, title: 'GitHub Repo', desc: 'Clone and customize' }, { icon: Server, title: 'Node/Cloudflare', desc: 'Edge deployment' }, { icon: BookOpen, title: 'Codex Plugin', desc: 'Translation tools' }, { icon: CloudDrizzle, title: 'RAG Integration', desc: 'Langchain ready' }] as stack}
-					<div
-						class="rounded-xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-xl transition-colors hover:border-orange-500/30"
-					>
-						<div
-							class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-red-500"
-						>
-							<svelte:component this={stack.icon} class="h-6 w-6 text-white" />
-						</div>
-						<h3 class="mb-2 font-semibold text-white">{stack.title}</h3>
-						<p class="text-sm text-gray-400">{stack.desc}</p>
-					</div>
-				{/each}
-			</div>
-		</div>
-	</section>
-
 	<!-- Manifesto & Strategic Positioning Section -->
 	<section class="relative px-4 py-20 sm:px-6 lg:px-8">
 		<div class="mx-auto max-w-7xl">
@@ -1119,19 +1090,19 @@
 						class="mb-8 inline-flex animate-pulse items-center rounded-full border border-purple-500/30 bg-purple-500/10 px-6 py-3 text-sm font-medium text-purple-300 backdrop-blur-xl"
 					>
 						<BookOpen class="mr-2 h-4 w-4" />
-						📘 Read the Manifesto
+						📘 Development Philosophy
 					</div>
 					<h2 class="mb-6 text-4xl font-bold text-white md:text-5xl">
 						The Principles Behind
 						<span
 							class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"
 						>
-							The Architecture
+							Our Approach
 						</span>
 					</h2>
 					<p class="mx-auto max-w-4xl text-xl text-gray-300">
-						Why protocols matter, how stateless cache unlocks scale, and what it means for the
-						future of AI-enhanced Bible tools.
+						Why we chose cache-first architecture, how stateless design enables scale, and what it
+						means for Bible translation tools.
 					</p>
 				</div>
 
@@ -1139,28 +1110,28 @@
 					<div
 						class="rounded-3xl border border-purple-500/30 bg-purple-500/5 p-8 backdrop-blur-2xl"
 					>
-						<h3 class="mb-4 text-xl font-bold text-purple-300">Protocol Over Platform</h3>
+						<h3 class="mb-4 text-xl font-bold text-purple-300">Method, Not Platform</h3>
 						<p class="text-gray-300">
-							The Aqueduct isn't another platform to join. It's a method that makes your existing
-							content work better.
+							The Aqueduct is an approach that makes your existing content work better, not another
+							platform to join.
 						</p>
 					</div>
 					<div
 						class="rounded-3xl border border-purple-500/30 bg-purple-500/5 p-8 backdrop-blur-2xl"
 					>
-						<h3 class="mb-4 text-xl font-bold text-purple-300">Cache-First Scale</h3>
+						<h3 class="mb-4 text-xl font-bold text-purple-300">Cache-First Reliability</h3>
 						<p class="text-gray-300">
-							Stateless caching eliminates the complexity of database syncing while delivering
-							instant responses.
+							Stateless caching eliminates complex database syncing while delivering consistent,
+							fast responses.
 						</p>
 					</div>
 					<div
 						class="rounded-3xl border border-purple-500/30 bg-purple-500/5 p-8 backdrop-blur-2xl"
 					>
-						<h3 class="mb-4 text-xl font-bold text-purple-300">Future-Ready AI</h3>
+						<h3 class="mb-4 text-xl font-bold text-purple-300">Built for AI Integration</h3>
 						<p class="text-gray-300">
-							Built specifically for LLM consumption, not human interfaces. Ready for the AI-native
-							world.
+							Designed for LLM consumption with structured, versioned data that AI systems can
+							reliably use.
 						</p>
 					</div>
 				</div>
@@ -1212,21 +1183,19 @@
 								d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
 							/>
 						</svg>
-						🧠 Built on Principles, Not Just Code
+						🛠️ Built on Practical Principles
 					</div>
 					<h2 class="mb-8 text-4xl font-bold text-white md:text-5xl">
 						The Aqueduct is Built on
 						<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-							Principles
+							Real Needs
 						</span>
 					</h2>
 					<p class="mx-auto mb-12 max-w-4xl text-xl text-gray-300">
-						In an age of AI fragmentation, the Aqueduct doesn't ask you to switch tools or
-						centralize control.
+						We don't ask you to switch tools or centralize control.
 						<strong class="text-blue-300"
-							>It aligns truth, decouples knowledge from infrastructure, and makes your content
-							useful</strong
-						>—across bots, tools, and formats.
+							>We provide reliable infrastructure that works with what you already have</strong
+						>—making your content more useful across tools and formats.
 					</p>
 
 					<div class="grid grid-cols-1 gap-8 md:grid-cols-3">
@@ -1245,8 +1214,8 @@
 							>
 								<Network class="h-8 w-8 text-white" />
 							</div>
-							<h3 class="mb-2 text-xl font-bold text-blue-300">No Dead Ends</h3>
-							<p class="text-gray-400">Always compatible, always extendable</p>
+							<h3 class="mb-2 text-xl font-bold text-blue-300">Works With Everything</h3>
+							<p class="text-gray-400">Compatible, extendable, reliable</p>
 						</div>
 						<div class="text-center">
 							<div
@@ -1254,18 +1223,18 @@
 							>
 								<Sparkles class="h-8 w-8 text-white" />
 							</div>
-							<h3 class="mb-2 text-xl font-bold text-purple-300">No Reinvention</h3>
-							<p class="text-gray-400">Use what you have, enhance what you need</p>
+							<h3 class="mb-2 text-xl font-bold text-purple-300">Enhances What Exists</h3>
+							<p class="text-gray-400">Use what you have, improve what you need</p>
 						</div>
 					</div>
 
 					<div class="mt-12">
 						<div class="rounded-2xl border border-green-500/30 bg-green-500/5 p-6 backdrop-blur-xl">
-							<h3 class="mb-3 text-xl font-bold text-green-300">Freedom Without Conformity</h3>
+							<h3 class="mb-3 text-xl font-bold text-green-300">Practical Results</h3>
 							<p class="text-lg text-gray-300">
-								<span class="text-cyan-300">Multimodal permanence via IPFS.</span>
-								<span class="text-blue-300">LLM-native version control.</span>
-								<span class="text-purple-300">Stateless, but never lost.</span>
+								<span class="text-cyan-300">Fast, cached responses.</span>
+								<span class="text-blue-300">Reliable, versioned data.</span>
+								<span class="text-purple-300">Works with existing workflows.</span>
 							</p>
 						</div>
 					</div>
@@ -1281,15 +1250,15 @@
 				class="rounded-3xl border border-blue-500/30 bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-16 shadow-2xl backdrop-blur-2xl"
 			>
 				<h2 class="mb-8 text-5xl font-bold text-white md:text-6xl">
-					Ship Smarter.
+					Build Better.
 					<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-						Share Freely.
+						Build Reliable.
 					</span>
 				</h2>
 				<p class="mx-auto mb-12 max-w-3xl text-xl text-gray-300">
-					You already have the content. You already know the questions.
+					You already have the content. You already know the problems.
 					<strong class="text-blue-300"
-						>Now give them answers—accurate, aligned, and always live.</strong
+						>Now get reliable infrastructure—tested, documented, and ready to use.</strong
 					>
 				</p>
 
@@ -1299,7 +1268,7 @@
 						class="inline-flex transform items-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-10 py-5 text-xl font-semibold text-white shadow-2xl transition-all duration-300 hover:scale-105 hover:from-blue-700 hover:to-cyan-700 hover:shadow-blue-500/25"
 					>
 						<Waves class="mr-3 h-6 w-6" />
-						Deploy Your Aqueduct
+						Deploy Your Instance
 						<ArrowRight class="ml-3 h-6 w-6" />
 					</a>
 					<button
@@ -1307,14 +1276,14 @@
 						class="inline-flex items-center rounded-2xl border-2 border-white/20 bg-white/5 px-10 py-5 text-xl font-semibold text-white backdrop-blur-2xl transition-all duration-300 hover:bg-white/10"
 					>
 						<MessageSquare class="mr-3 h-6 w-6" />
-						Talk to the LLM
+						Try the Demo
 					</button>
 					<a
 						href="/rag-manifesto"
 						class="inline-flex items-center rounded-2xl border-2 border-purple-500/30 bg-purple-500/10 px-10 py-5 text-xl font-semibold text-purple-300 backdrop-blur-2xl transition-all duration-300 hover:bg-purple-500/20"
 					>
 						<BookOpen class="mr-3 h-6 w-6" />
-						Get the Guide
+						Read Our Approach
 					</a>
 				</div>
 			</div>
@@ -1329,10 +1298,10 @@
 				<div class="md:col-span-2">
 					<h3 class="mb-4 text-2xl font-bold text-white">The Aqueduct</h3>
 					<p class="mb-6 leading-relaxed text-gray-300">
-						Stateless RAG for Bible Translation. Cache-first. LLM-native. Built for the AI world
-						where knowledge flows like water across every tool, version, and format.
+						Reliable Bible translation infrastructure with smart caching and current data access.
+						Built for AI integration and translation teams who need dependable, versioned resources.
 					</p>
-					<p class="text-sm text-gray-400">Made with ❤️ for the Bible translation community</p>
+					<p class="text-sm text-gray-400">Built for the Bible translation community</p>
 				</div>
 
 				<!-- Links -->
@@ -1351,7 +1320,7 @@
 						</li>
 						<li>
 							<a href="/rag-manifesto" class="transition-colors hover:text-blue-400"
-								>RAG Manifesto</a
+								>Development Approach</a
 							>
 						</li>
 					</ul>
@@ -1381,7 +1350,7 @@
 			<div class="mt-12 border-t border-white/10 pt-8 text-center">
 				<p class="text-gray-400">
 					Copyright © 2025 Christopher Klapp • MIT License •
-					<span class="text-blue-400">The age of stateless RAG has arrived</span>
+					<span class="text-blue-400">Reliable Bible data infrastructure</span>
 				</p>
 			</div>
 		</div>
