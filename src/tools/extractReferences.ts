@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { extractReferences } from "../../netlify/functions/_shared/references-service.js";
+import { extractReferences } from "../functions/references-service.js";
 import { estimateTokens } from "../utils/tokenCounter.js";
 
 // Input schema

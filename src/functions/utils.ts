@@ -2,7 +2,13 @@
  * Shared utilities for Netlify Functions
  */
 
-import type { HandlerResponse } from "@netlify/functions";
+// Generic response interface (replaces Netlify-specific HandlerResponse)
+interface ApiResponse {
+  statusCode: number;
+  headers: Record<string, string>;
+  body: string;
+}
+
 import { cache } from "./cache.js";
 import fs from "node:fs";
 import path from "node:path";
@@ -44,7 +50,7 @@ export function errorResponse(
   message: string,
   code?: string,
   details?: Record<string, any>
-): HandlerResponse {
+): ApiResponse {
   return {
     statusCode,
     headers: corsHeaders,
@@ -60,7 +66,7 @@ export function errorResponse(
 /**
  * Create a standardized success response
  */
-export function successResponse(data: any, headers?: Record<string, string>): HandlerResponse {
+export function successResponse(data: any, headers?: Record<string, string>): ApiResponse {
   return {
     statusCode: 200,
     headers: {
@@ -242,7 +248,7 @@ export function timedResponse<T extends Record<string, any>>(
   startTime: number,
   headers?: Record<string, string>,
   cacheInfo?: { cached: boolean; cacheType?: string; expiresAt?: string; ttlSeconds?: number }
-): HandlerResponse {
+): ApiResponse {
   const additionalMetadata = cacheInfo
     ? {
         cached: cacheInfo.cached,

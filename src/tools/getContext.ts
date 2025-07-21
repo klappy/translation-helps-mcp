@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { getContextFromTranslationNotes } from "../../netlify/functions/_shared/context-service.js";
+import { getContextFromTranslationNotes } from "../functions/context-service.js";
 import { estimateTokens } from "../utils/tokenCounter.js";
 
 // Input schema
