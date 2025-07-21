@@ -261,26 +261,44 @@
 	/>
 </svelte:head>
 
-<!-- Page Content -->
-<section class="relative min-h-screen" in:fade={{ duration: 300 }}>
+<!-- Main Content -->
+<section class="relative min-h-screen">
 	<!-- Animated Background -->
 	<div class="fixed inset-0 overflow-hidden">
 		<div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900"></div>
-		<div
-			class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_70%)]"
-		></div>
-		<div
-			class="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(168,85,247,0.1),transparent_70%)]"
-		></div>
+		<div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_70%)]"></div>
+		<div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(168,85,247,0.1),transparent_70%)]"></div>
+		<!-- Animated SVG paths -->
+		<svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+			<path d="M0,50 Q25,20 50,50 T100,50" 
+				stroke="rgba(59,130,246,0.1)" 
+				stroke-width="0.5" 
+				fill="none"
+				opacity="0.6">
+				<animate attributeName="d" 
+					values="M0,50 Q25,20 50,50 T100,50;M0,50 Q25,80 50,50 T100,50;M0,50 Q25,20 50,50 T100,50" 
+					dur="20s" 
+					repeatCount="indefinite"/>
+			</path>
+			<path d="M0,30 Q50,10 100,30" 
+				stroke="rgba(168,85,247,0.1)" 
+				stroke-width="0.3" 
+				fill="none"
+				opacity="0.4">
+				<animate attributeName="d" 
+					values="M0,30 Q50,10 100,30;M0,30 Q50,50 100,30;M0,30 Q50,10 100,30" 
+					dur="15s" 
+					repeatCount="indefinite"/>
+			</path>
+		</svg>
 	</div>
 
-	<!-- Hero Section -->
+	<!-- Content -->
 	<div class="relative z-10 px-4 py-16 sm:px-6 lg:px-8">
 		<div class="mx-auto max-w-7xl">
+			<!-- Hero Section -->
 			<div class="mb-16 text-center">
-				<div
-					class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl"
-				>
+				<div class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl">
 					<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
 					</svg>
@@ -298,24 +316,30 @@
 				</p>
 
 				<!-- Platform Selector -->
-				<div class="mb-8 flex justify-center">
-					<div class="rounded-lg bg-white/10 p-1">
+				<div class="mb-8 mt-12 flex justify-center">
+					<div class="rounded-xl border border-blue-500/30 bg-white/5 p-1 backdrop-blur-xl">
 						<button
-							class="rounded-md px-6 py-2 transition-all"
-							class:bg-white={platform === 'cloudflare'}
-							class:text-blue-600={platform === 'cloudflare'}
-							class:text-white={platform !== 'cloudflare'}
-							class:bg-transparent={platform !== 'cloudflare'}
+							class="rounded-lg px-6 py-3 font-medium transition-all"
+							class:bg-gradient-to-r={platform === 'cloudflare'}
+							class:from-blue-600={platform === 'cloudflare'}
+							class:to-cyan-600={platform === 'cloudflare'}
+							class:text-white={platform === 'cloudflare'}
+							class:shadow-lg={platform === 'cloudflare'}
+							class:text-gray-300={platform !== 'cloudflare'}
+							class:hover:text-white={platform !== 'cloudflare'}
 							on:click={() => (platform = 'cloudflare')}
 						>
 							🔷 Cloudflare Workers
 						</button>
 						<button
-							class="rounded-md px-6 py-2 transition-all"
-							class:bg-white={platform === 'netlify'}
-							class:text-blue-600={platform === 'netlify'}
-							class:text-white={platform !== 'netlify'}
-							class:bg-transparent={platform !== 'netlify'}
+							class="rounded-lg px-6 py-3 font-medium transition-all"
+							class:bg-gradient-to-r={platform === 'netlify'}
+							class:from-orange-600={platform === 'netlify'}
+							class:to-red-600={platform === 'netlify'}
+							class:text-white={platform === 'netlify'}
+							class:shadow-lg={platform === 'netlify'}
+							class:text-gray-300={platform !== 'netlify'}
+							class:hover:text-white={platform !== 'netlify'}
 							on:click={() => (platform = 'netlify')}
 						>
 							🔶 Netlify Functions
@@ -325,431 +349,344 @@
 
 				<!-- Live Metrics Cards -->
 				<div class="mb-12 grid grid-cols-1 gap-6 md:grid-cols-4">
-					<div class="rounded-lg border-l-4 border-blue-500 bg-white p-6 shadow-lg">
-						<div class="text-2xl font-bold text-blue-600">
+					<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+						<div class="text-2xl font-bold text-blue-400">
 							{currentMetrics.responseTime.toFixed(0)}ms
 						</div>
-						<div class="text-gray-600">Avg Response Time</div>
-						<div class="mt-1 text-xs text-gray-500">
+						<div class="text-gray-300">Avg Response Time</div>
+						<div class="mt-1 text-xs text-gray-400">
 							{platform === 'cloudflare' ? 'Variable (cache dependent)' : 'Consistent'}
 						</div>
 					</div>
 
-					<div class="rounded-lg border-l-4 border-green-500 bg-white p-6 shadow-lg">
-						<div class="text-2xl font-bold text-green-600">
+					<div class="rounded-3xl border border-green-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+						<div class="text-2xl font-bold text-green-400">
 							{currentMetrics.cacheHitRate.toFixed(1)}%
 						</div>
-						<div class="text-gray-600">Cache Hit Rate</div>
-						<div class="mt-1 text-xs text-gray-500">
+						<div class="text-gray-300">Cache Hit Rate</div>
+						<div class="mt-1 text-xs text-gray-400">
 							{platform === 'cloudflare' ? 'Memory + Edge' : 'Netlify Blobs'}
 						</div>
 					</div>
 
-					<div class="rounded-lg border-l-4 border-purple-500 bg-white p-6 shadow-lg">
-						<div class="text-2xl font-bold text-purple-600">
+					<div class="rounded-3xl border border-purple-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+						<div class="text-2xl font-bold text-purple-400">
 							{currentMetrics.successRate.toFixed(1)}%
 						</div>
-						<div class="text-gray-600">Success Rate</div>
-						<div class="mt-1 text-xs text-gray-500">Production ready</div>
+						<div class="text-gray-300">Success Rate</div>
+						<div class="mt-1 text-xs text-gray-400">Production ready</div>
 					</div>
 
-					<div class="rounded-lg border-l-4 border-orange-500 bg-white p-6 shadow-lg">
-						<div class="text-2xl font-bold text-orange-600">
+					<div class="rounded-3xl border border-orange-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+						<div class="text-2xl font-bold text-orange-400">
 							{currentMetrics.requestsPerSecond.toFixed(1)}
 						</div>
-						<div class="text-gray-600">Requests/Second</div>
-						<div class="mt-1 text-xs text-gray-500">
+						<div class="text-gray-300">Requests/Second</div>
+						<div class="mt-1 text-xs text-gray-400">
 							{platform === 'cloudflare' ? '6x higher throughput' : 'Baseline'}
 						</div>
 					</div>
 				</div>
 
+				<!-- Demo Button -->
 				<button
-					class="rounded-lg bg-blue-600 px-8 py-3 font-bold text-white transition-colors hover:bg-blue-700"
+					class="rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-600/80 to-cyan-600/80 px-8 py-4 font-bold text-white shadow-lg backdrop-blur-xl transition-all hover:from-blue-500/90 hover:to-cyan-500/90 hover:shadow-xl disabled:opacity-50"
 					on:click={runLiveDemo}
 					disabled={loading}
 				>
 					{loading
-						? 'Running Demo...'
+						? '🔄 Running Demo...'
 						: `🚀 Test ${platformComparison[platform as 'netlify' | 'cloudflare'].name}`}
 				</button>
 			</div>
-		</div>
-	</section>
 
-	<!-- Platform Comparison -->
-	<section class="bg-gradient-to-br from-gray-50 to-blue-50 py-16">
-		<div class="container mx-auto px-4">
-			<h2 class="mb-12 text-center text-3xl font-bold text-gray-900">
-				Platform Strengths & Trade-offs
-			</h2>
+			<!-- Platform Comparison Section -->
+			<div class="mb-16">
+				<h2 class="mb-12 text-center text-3xl font-bold text-white">
+					Platform Strengths & Trade-offs
+				</h2>
 
-			<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-				{#each Object.entries(platformComparison) as [key, platformInfo]}
-					<div class="rounded-lg bg-white p-6 shadow-lg">
-						<h3 class="mb-4 text-xl font-bold text-gray-800">{platformInfo.name}</h3>
+				<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+					{#each Object.entries(platformComparison) as [key, platformInfo]}
+						<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl">
+							<h3 class="mb-6 text-xl font-bold text-white">{platformInfo.name}</h3>
 
-						<div class="mb-4">
-							<h4 class="mb-2 font-semibold text-green-700">✅ Strengths</h4>
-							<ul class="space-y-1 text-sm text-gray-600">
-								{#each platformInfo.strongPoints as point}
-									<li>• {point}</li>
-								{/each}
-							</ul>
+							<div class="mb-6">
+								<h4 class="mb-3 flex items-center font-semibold text-green-400">
+									<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+									</svg>
+									Strengths
+								</h4>
+								<ul class="space-y-2 text-gray-300">
+									{#each platformInfo.strongPoints as point}
+										<li class="flex items-start">
+											<span class="mr-2 text-green-400">•</span>
+											{point}
+										</li>
+									{/each}
+								</ul>
+							</div>
+
+							<div class="mb-6">
+								<h4 class="mb-3 flex items-center font-semibold text-orange-400">
+									<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+									</svg>
+									Considerations
+								</h4>
+								<ul class="space-y-2 text-gray-300">
+									{#each platformInfo.weakPoints as point}
+										<li class="flex items-start">
+											<span class="mr-2 text-orange-400">•</span>
+											{point}
+										</li>
+									{/each}
+								</ul>
+							</div>
+
+							<div class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm backdrop-blur-sm">
+								<strong class="text-blue-300">Pricing:</strong>
+								<span class="text-gray-300">
+									{platformInfo.pricing.freeLimit} free, then {platformInfo.pricing.costAfter}
+								</span>
+							</div>
 						</div>
-
-						<div class="mb-4">
-							<h4 class="mb-2 font-semibold text-orange-700">⚠️ Considerations</h4>
-							<ul class="space-y-1 text-sm text-gray-600">
-								{#each platformInfo.weakPoints as point}
-									<li>• {point}</li>
-								{/each}
-							</ul>
-						</div>
-
-						<div class="rounded bg-gray-50 p-3 text-sm">
-							<strong>Pricing:</strong>
-							{platformInfo.pricing.freeLimit} free, then {platformInfo.pricing.costAfter}
-						</div>
-					</div>
-				{/each}
+					{/each}
+				</div>
 			</div>
-		</div>
-	</section>
 
-	<!-- Live Demo Results -->
-	{#if isLiveDemo}
-		<section
-			class="bg-gradient-to-br from-gray-50 to-blue-50 py-12"
-			in:fly={{ y: 20, duration: 400, easing: quintOut }}
-		>
-			<div class="container mx-auto px-4">
-				<h2 class="mb-8 text-center text-3xl font-bold text-gray-900">Live Performance Demo</h2>
+			<!-- Live Demo Results -->
+			{#if isLiveDemo}
+				<div
+					class="mb-16"
+					in:fly={{ y: 20, duration: 400, easing: quintOut }}
+				>
+					<h2 class="mb-8 text-center text-3xl font-bold text-white">Live Performance Demo</h2>
 
-				{#if loading}
-					<div class="text-center">
-						<div
-							class="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"
-						></div>
-						<p class="mt-4 text-gray-700">
-							Testing {platformComparison[platform as 'netlify' | 'cloudflare'].name}...
-						</p>
-					</div>
-				{:else}
-					<div class="rounded-lg border border-gray-200 bg-white p-6 shadow-lg">
-						<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-							{#each demoResults.slice(-4) as result}
-								<div
-									class="rounded border p-4 text-center"
-									class:border-blue-200={result.platform === 'cloudflare'}
-									class:bg-gradient-to-br={result.platform === 'cloudflare'}
-									class:from-blue-50={result.platform === 'cloudflare'}
-									class:to-cyan-50={result.platform === 'cloudflare'}
-									class:border-orange-200={result.platform === 'netlify'}
-									class:from-orange-50={result.platform === 'netlify'}
-									class:to-yellow-50={result.platform === 'netlify'}
-								>
-									<div class="text-lg font-bold text-gray-900">{result.endpoint}</div>
+					{#if loading}
+						<div class="text-center">
+							<div class="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-blue-400"></div>
+							<p class="mt-4 text-gray-300">
+								Testing {platformComparison[platform as 'netlify' | 'cloudflare'].name}...
+							</p>
+						</div>
+					{:else}
+						<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl">
+							<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+								{#each demoResults.slice(-4) as result}
 									<div
-										class="text-2xl font-bold"
-										class:text-blue-700={result.platform === 'cloudflare'}
-										class:text-orange-700={result.platform === 'netlify'}
+										class="rounded-xl border p-4 text-center backdrop-blur-sm"
+										class:border-blue-400={result.platform === 'cloudflare'}
+										class:bg-blue-500/10={result.platform === 'cloudflare'}
+										class:border-orange-400={result.platform === 'netlify'}
+										class:bg-orange-500/10={result.platform === 'netlify'}
 									>
-										{result.duration}ms
+										<div class="text-lg font-bold text-white">{result.endpoint}</div>
+										<div
+											class="text-2xl font-bold"
+											class:text-blue-400={result.platform === 'cloudflare'}
+											class:text-orange-400={result.platform === 'netlify'}
+										>
+											{result.duration}ms
+										</div>
+										<div class="text-sm text-gray-400">{result.timestamp}</div>
 									</div>
-									<div class="text-sm text-gray-600">{result.timestamp}</div>
+								{/each}
+							</div>
+
+							<div class="text-center">
+								<p class="text-gray-300">
+									Average Response Time: <span
+										class="font-bold"
+										class:text-blue-400={platform === 'cloudflare'}
+										class:text-orange-400={platform === 'netlify'}
+									>{currentMetrics.responseTime.toFixed(0)}ms</span>
+									on {platformComparison[platform as 'netlify' | 'cloudflare'].name}
+								</p>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Performance Metrics Section -->
+			<div class="mb-16">
+				<h2 class="mb-12 text-center text-3xl font-bold text-white">Performance Metrics</h2>
+
+				<div class="grid grid-cols-1 gap-12 lg:grid-cols-2">
+					<!-- Endpoint Performance -->
+					<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl">
+						<h3 class="mb-6 text-xl font-bold text-white">Endpoint Response Times</h3>
+						<div class="space-y-4">
+							{#each activeData.endpoints as endpoint}
+								<div class="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 backdrop-blur-sm">
+									<div>
+										<div class="font-semibold text-white">{endpoint.name}</div>
+										<div class="text-sm text-gray-400">
+											Grade: {endpoint.grade} | {endpoint.requestsPerSecond.toFixed(1)} RPS
+											{#if 'note' in endpoint && endpoint.note}
+												<br /><em class="text-xs">{endpoint.note}</em>
+											{/if}
+										</div>
+									</div>
+									<div class="text-right">
+										<div
+											class="text-xl font-bold"
+											class:text-blue-400={platform === 'cloudflare'}
+											class:text-orange-400={platform === 'netlify'}
+										>
+											{endpoint.avgTime}ms
+										</div>
+										<div class="text-sm text-green-400">~${endpoint.cost.toFixed(6)}/request</div>
+									</div>
 								</div>
 							{/each}
 						</div>
-
-						<div class="text-center">
-							<p class="text-gray-700">
-								Average Response Time: <span
-									class="font-bold"
-									class:text-blue-700={platform === 'cloudflare'}
-									class:text-orange-700={platform === 'netlify'}
-									>{currentMetrics.responseTime.toFixed(0)}ms</span
-								>
-								on {platformComparison[platform as 'netlify' | 'cloudflare'].name}
-							</p>
-						</div>
 					</div>
-				{/if}
-			</div>
-		</section>
-	{/if}
 
-	<!-- Performance Comparison -->
-	<section class="py-16">
-		<div class="container mx-auto px-4">
-			<h2 class="mb-12 text-center text-3xl font-bold">Performance Metrics</h2>
-
-			<div class="grid grid-cols-1 gap-12 lg:grid-cols-2">
-				<!-- Endpoint Performance -->
-				<div class="rounded-lg bg-white p-6 shadow-lg">
-					<h3 class="mb-6 text-xl font-bold text-gray-800">Endpoint Response Times</h3>
-					<div class="space-y-4">
-						{#each activeData.endpoints as endpoint}
-							<div class="flex items-center justify-between rounded bg-gray-50 p-4">
-								<div>
-									<div class="font-semibold">{endpoint.name}</div>
-									<div class="text-sm text-gray-600">
-										Grade: {endpoint.grade} | {endpoint.requestsPerSecond.toFixed(1)} RPS
-										{#if 'note' in endpoint && endpoint.note}
-											<br /><em class="text-xs">{endpoint.note}</em>
-										{/if}
-									</div>
-								</div>
-								<div class="text-right">
-									<div
-										class="text-xl font-bold"
-										class:text-blue-600={platform === 'cloudflare'}
-										class:text-orange-600={platform === 'netlify'}
-									>
-										{endpoint.avgTime}ms
-									</div>
-									<div class="text-sm text-green-600">~${endpoint.cost.toFixed(6)}/request</div>
-								</div>
-							</div>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Load Testing Results -->
-				<div class="rounded-lg bg-white p-6 shadow-lg">
-					<h3 class="mb-6 text-xl font-bold text-gray-800">Load Testing Results</h3>
-					<div class="space-y-4">
-						{#each activeData.loadTesting as test}
-							<div class="rounded bg-gray-50 p-4">
-								<div class="mb-2 font-semibold">{test.concurrency} Concurrent Requests</div>
-								<div class="grid grid-cols-3 gap-2 text-sm">
-									<div>
-										<div class="text-gray-600">Success Rate</div>
-										<div class="font-bold text-green-600">{test.successRate}%</div>
-									</div>
-									<div>
-										<div class="text-gray-600">Avg Response</div>
-										<div
-											class="font-bold"
-											class:text-blue-600={platform === 'cloudflare'}
-											class:text-orange-600={platform === 'netlify'}
-										>
-											{test.avgResponse}ms
+					<!-- Load Testing Results -->
+					<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl">
+						<h3 class="mb-6 text-xl font-bold text-white">Load Testing Results</h3>
+						<div class="space-y-4">
+							{#each activeData.loadTesting as test}
+								<div class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 backdrop-blur-sm">
+									<div class="mb-2 font-semibold text-white">{test.concurrency} Concurrent Requests</div>
+									<div class="grid grid-cols-3 gap-2 text-sm">
+										<div>
+											<div class="text-gray-400">Success Rate</div>
+											<div class="font-bold text-green-400">{test.successRate}%</div>
+										</div>
+										<div>
+											<div class="text-gray-400">Avg Response</div>
+											<div
+												class="font-bold"
+												class:text-blue-400={platform === 'cloudflare'}
+												class:text-orange-400={platform === 'netlify'}
+											>
+												{test.avgResponse}ms
+											</div>
+										</div>
+										<div>
+											<div class="text-gray-400">Throughput</div>
+											<div class="font-bold text-purple-400">{test.rps} RPS</div>
 										</div>
 									</div>
-									<div>
-										<div class="text-gray-600">Throughput</div>
-										<div class="font-bold text-purple-600">{test.rps} RPS</div>
-									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Cache Performance -->
+			<div class="mb-16">
+				<h2 class="mb-12 text-center text-3xl font-bold text-white">Cache Performance Impact</h2>
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+					{#each performanceData.cacheImprovements as cache}
+						<div class="rounded-3xl border border-green-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl">
+							<div class="mb-2 font-semibold text-white">{cache.reference}</div>
+							<div class="grid grid-cols-2 gap-2 text-sm">
+								<div>
+									<div class="text-gray-400">Cache Miss</div>
+									<div class="font-bold text-red-400">{cache.miss}ms</div>
+								</div>
+								<div>
+									<div class="text-gray-400">Cache Hit</div>
+									<div class="font-bold text-green-400">{cache.hit}ms</div>
 								</div>
 							</div>
-						{/each}
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Cache Performance -->
-	<section class="bg-gradient-to-br from-green-50 to-emerald-100 py-16">
-		<div class="container mx-auto px-4">
-			<h2 class="mb-12 text-center text-3xl font-bold text-gray-900">Cache Performance Impact</h2>
-			<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-				{#each performanceData.cacheImprovements as cache}
-					<div class="rounded-lg bg-white p-6 shadow-lg">
-						<div class="mb-2 font-semibold">{cache.reference}</div>
-						<div class="grid grid-cols-2 gap-2 text-sm">
-							<div>
-								<div class="text-gray-600">Cache Miss</div>
-								<div class="font-bold text-red-600">{cache.miss}ms</div>
-							</div>
-							<div>
-								<div class="text-gray-600">Cache Hit</div>
-								<div class="font-bold text-green-600">{cache.hit}ms</div>
+							<div class="mt-2 text-center">
+								<div class="text-lg font-bold text-blue-400">{cache.improvement}%</div>
+								<div class="text-xs text-gray-400">Improvement</div>
 							</div>
 						</div>
-						<div class="mt-2 text-center">
-							<div class="text-lg font-bold text-blue-600">{cache.improvement}%</div>
-							<div class="text-xs text-gray-600">Improvement</div>
-						</div>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Cost Analysis -->
+			<div class="mb-16">
+				<h2 class="mb-12 text-center text-3xl font-bold text-white">Cost Efficiency Comparison</h2>
+
+				<div class="overflow-hidden rounded-3xl border border-blue-500/30 bg-white/5 shadow-xl backdrop-blur-2xl">
+					<div class="border-b border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10 px-8 py-6">
+						<h3 class="text-xl font-bold text-white">Monthly Cost Comparison</h3>
 					</div>
-				{/each}
-			</div>
-		</div>
-	</section>
-
-	<!-- Cost Analysis -->
-	<section class="bg-gradient-to-br from-blue-50 to-indigo-100 py-16">
-		<div class="container mx-auto px-4">
-			<h2 class="mb-12 text-center text-3xl font-bold text-gray-900">Cost Efficiency Comparison</h2>
-
-			<div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
-				<div class="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4">
-					<h3 class="text-xl font-bold text-gray-900">Monthly Cost Comparison</h3>
+					<div class="overflow-x-auto">
+						<table class="w-full">
+							<thead class="bg-gradient-to-r from-blue-500/5 to-purple-500/5">
+								<tr class="border-b border-blue-500/20">
+									<th class="px-6 py-4 text-left font-semibold text-gray-300">Usage Level</th>
+									<th class="px-6 py-4 text-right font-semibold text-gray-300">Cloudflare Workers</th>
+									<th class="px-6 py-4 text-right font-semibold text-gray-300">Netlify Functions</th>
+									<th class="px-6 py-4 text-right font-semibold text-gray-300">Winner</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-blue-500/20">
+								<tr class="transition-colors hover:bg-blue-500/5">
+									<td class="px-6 py-4 font-semibold text-white">Low (10k req/month)</td>
+									<td class="px-6 py-4 text-right font-bold text-blue-400">$0.00</td>
+									<td class="px-6 py-4 text-right font-medium text-orange-400">$0.04</td>
+									<td class="px-6 py-4 text-right font-bold text-blue-400">Cloudflare ✨</td>
+								</tr>
+								<tr class="bg-blue-500/5 transition-colors hover:bg-blue-500/10">
+									<td class="px-6 py-4 font-semibold text-white">Medium (100k req/month)</td>
+									<td class="px-6 py-4 text-right font-bold text-blue-400">$0.00</td>
+									<td class="px-6 py-4 text-right font-medium text-orange-400">$1.20</td>
+									<td class="px-6 py-4 text-right font-bold text-blue-400">Cloudflare ✨</td>
+								</tr>
+								<tr class="transition-colors hover:bg-blue-500/5">
+									<td class="px-6 py-4 font-semibold text-white">High (1M req/month)</td>
+									<td class="px-6 py-4 text-right font-bold text-blue-400">$6.75</td>
+									<td class="px-6 py-4 text-right font-medium text-orange-400">$13.40</td>
+									<td class="px-6 py-4 text-right font-bold text-blue-400">Cloudflare ✨</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
 				</div>
-				<div class="overflow-x-auto">
-					<table class="w-full">
-						<thead class="bg-gradient-to-r from-gray-50 to-gray-100">
-							<tr class="border-b border-gray-200">
-								<th class="px-4 py-3 text-left font-semibold text-gray-700">Usage Level</th>
-								<th class="px-4 py-3 text-right font-semibold text-gray-700">Cloudflare Workers</th>
-								<th class="px-4 py-3 text-right font-semibold text-gray-700">Netlify Functions</th>
-								<th class="px-4 py-3 text-right font-semibold text-gray-700">Winner</th>
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-gray-200 bg-white">
-							<tr class="transition-colors hover:bg-gray-50">
-								<td class="px-4 py-3 font-semibold text-gray-900">Low (10k req/month)</td>
-								<td class="px-4 py-3 text-right font-bold text-blue-600">$0.00</td>
-								<td class="px-4 py-3 text-right font-medium text-orange-600">$0.04</td>
-								<td class="px-4 py-3 text-right font-bold text-blue-600">Cloudflare ✨</td>
-							</tr>
-							<tr class="bg-gray-50 transition-colors hover:bg-gray-100">
-								<td class="px-4 py-3 font-semibold text-gray-900">Medium (100k req/month)</td>
-								<td class="px-4 py-3 text-right font-bold text-blue-600">$0.00</td>
-								<td class="px-4 py-3 text-right font-medium text-orange-600">$1.20</td>
-								<td class="px-4 py-3 text-right font-bold text-blue-600">Cloudflare ✨</td>
-							</tr>
-							<tr class="transition-colors hover:bg-gray-50">
-								<td class="px-4 py-3 font-semibold text-gray-900">High (1M req/month)</td>
-								<td class="px-4 py-3 text-right font-bold text-blue-600">$6.75</td>
-								<td class="px-4 py-3 text-right font-medium text-orange-600">$13.40</td>
-								<td class="px-4 py-3 text-right font-bold text-blue-600">Cloudflare ✨</td>
-							</tr>
-						</tbody>
-					</table>
+
+				<div class="mt-8 text-center">
+					<p class="text-lg text-gray-300">
+						💡 <strong class="text-blue-300">Key Insight:</strong> Cloudflare's daily free tier (100k requests) vs Netlify's
+						monthly tier (125k requests) makes Cloudflare virtually free for most use cases.
+					</p>
 				</div>
 			</div>
 
-			<div class="mt-8 text-center">
-				<p class="text-lg text-gray-700">
-					💡 <strong>Key Insight:</strong> Cloudflare's daily free tier (100k requests) vs Netlify's
-					monthly tier (125k requests) makes Cloudflare virtually free for most use cases.
+			<!-- Call to Action -->
+			<div class="text-center">
+				<h2 class="mb-6 text-3xl font-bold text-white">
+					Experience Multi-Platform Performance
+				</h2>
+				<p class="mx-auto mb-8 max-w-2xl text-xl text-gray-300">
+					Both platforms deliver exceptional performance. Cloudflare excels at high throughput and
+					cost efficiency, while Netlify provides consistent, predictable performance.
 				</p>
-			</div>
-		</div>
-	</section>
 
-	<!-- Technical Architecture -->
-	<section class="py-16">
-		<div class="container mx-auto px-4">
-			<h2 class="mb-12 text-center text-3xl font-bold">Technical Architecture</h2>
-
-			<div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-				<div class="rounded-lg bg-white p-6 shadow-lg">
-					<div class="mb-4 text-3xl">🧊</div>
-					<h3 class="mb-3 text-xl font-bold text-gray-800">Cold Start Performance</h3>
-					<p class="mb-2 text-gray-600">
-						<strong>Cloudflare:</strong> ~1ms (V8 isolates)<br />
-						<strong>Netlify:</strong> ~100ms (containers)
-					</p>
-					<div class="text-sm text-blue-600">6-10x faster cold starts</div>
+				<div class="flex flex-col justify-center gap-4 sm:flex-row">
+					<a
+						href="https://translation-helps-mcp.pages.dev/test"
+						class="inline-flex items-center rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-600/80 to-cyan-600/80 px-8 py-4 font-bold text-white shadow-lg backdrop-blur-xl transition-all hover:from-blue-500/90 hover:to-cyan-500/90 hover:shadow-xl"
+					>
+						🔷 Try Cloudflare API
+					</a>
+					<a
+						href="/test"
+						class="inline-flex items-center rounded-xl border border-orange-500/30 bg-gradient-to-r from-orange-600/80 to-red-600/80 px-8 py-4 font-bold text-white shadow-lg backdrop-blur-xl transition-all hover:from-orange-500/90 hover:to-red-500/90 hover:shadow-xl"
+					>
+						🔶 Netlify API (Legacy)
+					</a>
 				</div>
 
-				<div class="rounded-lg bg-white p-6 shadow-lg">
-					<div class="mb-4 text-3xl">🗄️</div>
-					<h3 class="mb-3 text-xl font-bold text-gray-800">Caching Strategy</h3>
-					<p class="mb-2 text-gray-600">
-						<strong>Cloudflare:</strong> Memory + planned KV<br />
-						<strong>Netlify:</strong> Netlify Blobs
+				<div class="mt-8 text-gray-300">
+					<p class="text-sm">
+						💡 <strong class="text-blue-300">Pro Tip:</strong> Both platforms use the same SvelteKit codebase with different
+						adapters. We can seamlessly switch between them or use both for redundancy!
 					</p>
-					<div class="text-sm text-orange-600">KV implementation needed</div>
 				</div>
-
-				<div class="rounded-lg bg-white p-6 shadow-lg">
-					<div class="mb-4 text-3xl">🌍</div>
-					<h3 class="mb-3 text-xl font-bold text-gray-800">Global Distribution</h3>
-					<p class="mb-2 text-gray-600">
-						<strong>Cloudflare:</strong> 300+ edge locations<br />
-						<strong>Netlify:</strong> AWS CloudFront
-					</p>
-					<div class="text-sm text-green-600">Both globally distributed</div>
-				</div>
-
-				<div class="rounded-lg bg-white p-6 shadow-lg">
-					<div class="mb-4 text-3xl">⚡</div>
-					<h3 class="mb-3 text-xl font-bold text-gray-800">Throughput</h3>
-					<p class="mb-2 text-gray-600">
-						<strong>Cloudflare:</strong> 38+ RPS<br />
-						<strong>Netlify:</strong> 6 RPS
-					</p>
-					<div class="text-sm text-blue-600">6x higher throughput</div>
-				</div>
-
-				<div class="rounded-lg bg-white p-6 shadow-lg">
-					<div class="mb-4 text-3xl">🔧</div>
-					<h3 class="mb-3 text-xl font-bold text-gray-800">Deployment</h3>
-					<p class="mb-2 text-gray-600">
-						<strong>Both:</strong> SvelteKit compatible<br />
-						<strong>Strategy:</strong> Multi-platform
-					</p>
-					<div class="text-sm text-green-600">Same codebase, different adapters</div>
-				</div>
-
-				<div class="rounded-lg bg-white p-6 shadow-lg">
-					<div class="mb-4 text-3xl">📊</div>
-					<h3 class="mb-3 text-xl font-bold text-gray-800">Monitoring</h3>
-					<p class="mb-2 text-gray-600">
-						<strong>Real-time:</strong> Performance tracking<br />
-						<strong>Status:</strong> Both platforms operational
-					</p>
-					<div class="text-sm text-green-600">Production ready</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Call to Action -->
-	<section class="bg-blue-600 py-16">
-		<div class="container mx-auto px-4 text-center">
-			<h2 class="mb-6 text-3xl font-bold text-white">
-				Experience Multi-Platform Bible Translation API
-			</h2>
-			<p class="mx-auto mb-8 max-w-2xl text-xl text-blue-100">
-				Both platforms deliver exceptional performance. Cloudflare excels at high throughput and
-				cost efficiency, while Netlify provides consistent, predictable performance.
-			</p>
-
-			<div class="flex flex-col justify-center gap-4 sm:flex-row">
-				<a
-					href="https://translation-helps-mcp.pages.dev/api"
-					class="rounded-lg bg-white px-8 py-3 font-bold text-blue-600 transition-colors hover:bg-gray-100"
-				>
-					🔷 Try Cloudflare API
-				</a>
-				<a
-					href="/api"
-					class="rounded-lg bg-blue-700 px-8 py-3 font-bold text-white transition-colors hover:bg-blue-800"
-				>
-					🔶 Netlify API (Legacy)
-				</a>
-			</div>
-
-			<div class="mt-8 text-blue-100">
-				<p class="text-sm">
-					💡 <strong>Pro Tip:</strong> Both platforms use the same SvelteKit codebase with different
-					adapters. We can seamlessly switch between them or use both for redundancy!
-				</p>
 			</div>
 		</div>
 	</div>
 </section>
-
-<style>
-	.performance-showcase {
-		min-height: 100vh;
-	}
-
-	.hero {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
-	}
-
-	.hero h1 {
-		color: white;
-	}
-
-	.hero p {
-		color: rgba(255, 255, 255, 0.9);
-	}
-</style>
