@@ -151,8 +151,8 @@
 				💡 This is still RAG - just done right. Stateless, real-time, always fresh.
 			</div>
 			<div class="mt-2 text-center text-xs text-gray-500">
-				* Runs on Netlify/Cloudflare serverless. Yes, you could self-host for free, but why have
-				your $200k/yr developer
+				* Runs on Cloudflare Workers. Yes, you could self-host for free, but why have your $200k/yr
+				developer
 				<br />spend weeks figuring that out to save $10/month?
 			</div>
 		</div>

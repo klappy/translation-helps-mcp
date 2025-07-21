@@ -9,7 +9,7 @@
 
 	// Infrastructure costs (monthly)
 	const ragInfrastructureCost = 400; // Average of range
-	const apiServiceCost = 10; // Netlify/Cloudflare serverless functions
+	const apiServiceCost = 8; // Cloudflare Workers (even cheaper than Netlify)
 
 	// Token costs per lookup (using GPT-4o-mini pricing: $0.15/1M input, $0.60/1M output)
 	const inputPricePerMillion = 0.15;
@@ -164,7 +164,7 @@
 					<div class="mb-2 font-medium text-green-400">Our Stateless RAG + Your LLM</div>
 					<div class="space-y-1 text-sm">
 						<div class="flex justify-between">
-							<span>Serverless Functions (Netlify/Cloudflare)</span>
+							<span>Serverless Functions (Cloudflare Workers)</span>
 							<span class="font-mono">${apiServiceCost.toFixed(2)}</span>
 						</div>
 						<div class="flex justify-between">

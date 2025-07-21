@@ -90,7 +90,9 @@
 					</div>
 					<div class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
 						<h3 class="mb-2 font-semibold text-blue-300">Multi-Platform</h3>
-						<p class="text-sm text-gray-400">Deploy on Cloudflare Workers or Netlify Functions</p>
+						<p class="text-sm text-gray-400">
+							Deployed on Cloudflare Workers for maximum performance
+						</p>
 					</div>
 				</div>
 			</div>

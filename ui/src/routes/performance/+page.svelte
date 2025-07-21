@@ -13,7 +13,7 @@
 	let isLiveDemo = false;
 	let demoResults: any[] = [];
 	let loading = false;
-	let platform = 'cloudflare'; // Default to showing Cloudflare
+	let platform = 'cloudflare'; // Always use Cloudflare - it's our primary platform
 
 	// ⚡ UPDATED performance data with Cloudflare vs Netlify comparison (July 2025)
 	const performanceData = {
@@ -257,7 +257,7 @@
 	<title>Performance - The Aqueduct</title>
 	<meta
 		name="description"
-		content="Real-world performance comparison between Cloudflare Workers and Netlify Functions for our Bible translation API. See the power of The Aqueduct in action."
+		content="Real-world performance analysis of Cloudflare Workers for our Bible translation API. See The Aqueduct's speed and efficiency in action, with cost comparisons to other platforms."
 	/>
 </svelte:head>
 
@@ -330,39 +330,19 @@
 					Performance
 				</h1>
 				<p class="mx-auto max-w-4xl text-xl leading-relaxed text-gray-300 md:text-2xl">
-					<strong class="text-blue-300">Real-world comparison</strong> between Cloudflare Workers and
-					Netlify Functions. Both platforms deliver exceptional performance with different strengths.
+					<strong class="text-blue-300">Lightning-fast performance</strong> powered by Cloudflare Workers.
+					See our real-world speed benchmarks and cost efficiency analysis.
 				</p>
 
-				<!-- Platform Selector -->
+				<!-- Cloudflare Badge -->
 				<div class="mt-12 mb-8 flex justify-center">
-					<div class="rounded-xl border border-blue-500/30 bg-white/5 p-1 backdrop-blur-xl">
-						<button
-							class="rounded-lg px-6 py-3 font-medium transition-all"
-							class:bg-gradient-to-r={platform === 'cloudflare'}
-							class:from-blue-600={platform === 'cloudflare'}
-							class:to-cyan-600={platform === 'cloudflare'}
-							class:text-white={platform === 'cloudflare'}
-							class:shadow-lg={platform === 'cloudflare'}
-							class:text-gray-300={platform !== 'cloudflare'}
-							class:hover:text-white={platform !== 'cloudflare'}
-							on:click={() => (platform = 'cloudflare')}
-						>
-							🔷 Cloudflare Workers
-						</button>
-						<button
-							class="rounded-lg px-6 py-3 font-medium transition-all"
-							class:bg-gradient-to-r={platform === 'netlify'}
-							class:from-orange-600={platform === 'netlify'}
-							class:to-red-600={platform === 'netlify'}
-							class:text-white={platform === 'netlify'}
-							class:shadow-lg={platform === 'netlify'}
-							class:text-gray-300={platform !== 'netlify'}
-							class:hover:text-white={platform !== 'netlify'}
-							on:click={() => (platform = 'netlify')}
-						>
-							🔶 Netlify Functions
-						</button>
+					<div
+						class="rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 text-white shadow-lg backdrop-blur-xl"
+					>
+						<div class="flex items-center space-x-2">
+							<span class="text-lg">🔷</span>
+							<span class="font-bold">Powered by Cloudflare Workers</span>
+						</div>
 					</div>
 				</div>
 
@@ -427,10 +407,10 @@
 				</button>
 			</div>
 
-			<!-- Platform Comparison Section -->
+			<!-- Platform Analysis Section -->
 			<div class="mb-16">
 				<h2 class="mb-12 text-center text-3xl font-bold text-white">
-					Platform Strengths & Trade-offs
+					Cloudflare Performance & Historical Comparison
 				</h2>
 
 				<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -719,31 +699,32 @@
 
 			<!-- Call to Action -->
 			<div class="text-center">
-				<h2 class="mb-6 text-3xl font-bold text-white">Experience Multi-Platform Performance</h2>
+				<h2 class="mb-6 text-3xl font-bold text-white">Experience Lightning-Fast Performance</h2>
 				<p class="mx-auto mb-8 max-w-2xl text-xl text-gray-300">
-					Both platforms deliver exceptional performance. Cloudflare excels at high throughput and
-					cost efficiency, while Netlify provides consistent, predictable performance.
+					Powered by Cloudflare Workers for unmatched speed, global distribution, and cost
+					efficiency. Try our API and see the difference for yourself.
 				</p>
 
 				<div class="flex flex-col justify-center gap-4 sm:flex-row">
 					<a
-						href="https://translation-helps-mcp.pages.dev/test"
+						href="/test"
 						class="inline-flex items-center rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-600/80 to-cyan-600/80 px-8 py-4 font-bold text-white shadow-lg backdrop-blur-xl transition-all hover:from-blue-500/90 hover:to-cyan-500/90 hover:shadow-xl"
 					>
-						🔷 Try Cloudflare API
+						🚀 Try The Aqueduct API
 					</a>
 					<a
-						href="/test"
-						class="inline-flex items-center rounded-xl border border-orange-500/30 bg-gradient-to-r from-orange-600/80 to-red-600/80 px-8 py-4 font-bold text-white shadow-lg backdrop-blur-xl transition-all hover:from-orange-500/90 hover:to-red-500/90 hover:shadow-xl"
+						href="/chat"
+						class="inline-flex items-center rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-600/80 to-pink-600/80 px-8 py-4 font-bold text-white shadow-lg backdrop-blur-xl transition-all hover:from-purple-500/90 hover:to-pink-500/90 hover:shadow-xl"
 					>
-						🔶 Netlify API (Legacy)
+						💬 Chat with AI
 					</a>
 				</div>
 
 				<div class="mt-8 text-gray-300">
 					<p class="text-sm">
-						💡 <strong class="text-blue-300">Pro Tip:</strong> Both platforms use the same SvelteKit
-						codebase with different adapters. We can seamlessly switch between them or use both for redundancy!
+						💡 <strong class="text-blue-300">Migration Success:</strong> We moved from Netlify to Cloudflare
+						for better performance, lower costs, and more reliable deployments. The results speak for
+						themselves!
 					</p>
 				</div>
 			</div>
