@@ -55,12 +55,12 @@
 		core: {
 			name: 'Core Endpoints',
 			icon: Database,
-			description: 'Direct mappings to DCS/Door43 resources'
+			description: 'Fetch files and filter data to smaller, relevant chunks for specific use cases'
 		},
 		linked: {
-			name: 'Linked Endpoints',
+			name: 'Extended Endpoints',
 			icon: Link,
-			description: 'Combine multiple endpoints for enhanced functionality'
+			description: 'Bring multiple sources together, handle complex chained events, or merge data'
 		},
 		experimental: {
 			name: 'Experimental',
@@ -175,17 +175,17 @@
 				}
 			},
 			{
-				name: 'Fetch Translation Words',
-				tool: 'translation_helps_fetch_translation_words',
+				name: 'Get Translation Word',
+				tool: 'translation_helps_get_translation_word',
 				description: 'Get specific translation word article content',
-				apiEndpoint: '/api/fetch-translation-words',
+				apiEndpoint: '/api/get-translation-word',
 				icon: Book,
 				parameters: [
 					{
-						name: 'words',
+						name: 'term',
 						type: 'string',
 						required: true,
-						description: 'Comma-separated word terms (e.g., "grace,mercy")'
+						description: 'Single word term to look up (e.g., "grace")'
 					},
 					{
 						name: 'language',
@@ -203,7 +203,7 @@
 					}
 				],
 				exampleRequest: {
-					words: 'grace,mercy',
+					reference: 'Genesis 1:1',
 					language: 'en',
 					organization: 'unfoldingWord'
 				}
@@ -243,9 +243,43 @@
 				}
 			},
 			{
+				name: 'Fetch Translation Words (Content)',
+				tool: 'translation_helps_fetch_translation_words',
+				description: 'Get translation word article content for Bible references',
+				apiEndpoint: '/api/fetch-translation-words',
+				icon: FileText,
+				parameters: [
+					{
+						name: 'reference',
+						type: 'string',
+						required: true,
+						description: 'Bible reference (e.g., "Genesis 1:1")'
+					},
+					{
+						name: 'language',
+						type: 'string',
+						required: false,
+						default: 'en',
+						description: 'Language code'
+					},
+					{
+						name: 'organization',
+						type: 'string',
+						required: false,
+						default: 'unfoldingWord',
+						description: 'Content organization'
+					}
+				],
+				exampleRequest: {
+					reference: 'Genesis 1:1',
+					language: 'en',
+					organization: 'unfoldingWord'
+				}
+			},
+			{
 				name: 'Fetch Translation Word Links',
 				tool: 'translation_helps_fetch_translation_word_links',
-				description: 'Get translation word links for specific Bible references',
+				description: 'Get translation word link metadata for specific Bible references',
 				apiEndpoint: '/api/fetch-translation-word-links',
 				icon: Link,
 				parameters: [
@@ -361,9 +395,9 @@
 			{
 				name: 'Get Words for Reference',
 				tool: 'translation_helps_get_words_for_reference',
-				description: 'Get translation words that apply to specific Bible references',
+				description: 'Get full paginated listing of translation words for Bible references',
 				apiEndpoint: '/api/get-words-for-reference',
-				icon: Link,
+				icon: List,
 				parameters: [
 					{
 						name: 'reference',
@@ -465,40 +499,6 @@
 				],
 				exampleRequest: {
 					reference: 'Genesis 1:1',
-					language: 'en',
-					organization: 'unfoldingWord'
-				}
-			},
-			{
-				name: 'Get Translation Word',
-				tool: 'translation_helps_get_translation_word',
-				description: 'Get detailed information about a specific translation word',
-				apiEndpoint: '/api/get-translation-word',
-				icon: Search,
-				parameters: [
-					{
-						name: 'term',
-						type: 'string',
-						required: true,
-						description: 'Translation word term (e.g., "grace")'
-					},
-					{
-						name: 'language',
-						type: 'string',
-						required: false,
-						default: 'en',
-						description: 'Language code'
-					},
-					{
-						name: 'organization',
-						type: 'string',
-						required: false,
-						default: 'unfoldingWord',
-						description: 'Content organization'
-					}
-				],
-				exampleRequest: {
-					term: 'grace',
 					language: 'en',
 					organization: 'unfoldingWord'
 				}
@@ -629,18 +629,28 @@
 			const response = await fetch(url.toString());
 			const data = await response.json();
 
+			// Store the actual API response as the main response
+			// Keep metadata separate for debugging
 			responses[endpointKey] = {
-				success: response.ok,
-				status: response.status,
-				data: data,
-				url: url.toString()
+				// The actual API response data (what developers need to see)
+				...data,
+				// Metadata about the request (for debugging)
+				_metadata: {
+					success: response.ok,
+					status: response.status,
+					url: url.toString(),
+					note: 'The data above is the actual API response. This _metadata section is for debugging only.'
+				}
 			};
 		} catch (error) {
 			responses[endpointKey] = {
-				success: false,
-				status: 0,
-				data: { error: error.message },
-				url: 'Error occurred'
+				error: error.message,
+				_metadata: {
+					success: false,
+					status: 0,
+					url: 'Error occurred',
+					note: 'The error above is the actual API response. This _metadata section is for debugging only.'
+				}
 			};
 		} finally {
 			loadingStates[endpointKey] = false;
