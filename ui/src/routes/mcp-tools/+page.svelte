@@ -510,11 +510,25 @@
 	async function loadHealthCheck() {
 		healthLoading = true;
 		try {
-			const response = await fetch('/api/health');
-			if (!response.ok) {
+			// Add cache-busting to get fresh health data
+			const response = await fetch(
+				'/api/health?' +
+					new URLSearchParams({
+						_t: Date.now().toString()
+					}),
+				{
+					headers: {
+						'Cache-Control': 'no-cache',
+						'X-Cache-Bypass': 'true'
+					}
+				}
+			);
+			const data = await response.json();
+
+			// Accept both 200 (healthy) and 503 (degraded but with valid data)
+			if (!response.ok && response.status !== 503) {
 				throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
 			}
-			const data = await response.json();
 
 			// Validate the response structure
 			if (!data || typeof data !== 'object') {
