@@ -36,6 +36,10 @@
 	let selectedCategory = 'overview';
 	let selectedTool = null;
 
+	// API testing state
+	let responses = {}; // Track responses per endpoint
+	let loadingStates = {}; // Track loading per endpoint
+
 	// Categories with organized endpoints
 	const categories = {
 		overview: {
@@ -552,6 +556,47 @@
 		}
 	}
 
+	// Handle API endpoint testing
+	async function handleTest(event) {
+		const { endpoint, formData } = event.detail;
+		const endpointKey = endpoint.path || endpoint;
+
+		loadingStates[endpointKey] = true;
+		responses[endpointKey] = null;
+
+		try {
+			// Build URL with parameters
+			const functionName = endpointKey.replace('/api/', '');
+			const url = new URL(`/api/${functionName}`, window.location.origin);
+
+			// Add parameters to URL
+			Object.entries(formData || {}).forEach(([key, value]) => {
+				if (value) {
+					url.searchParams.append(key, value);
+				}
+			});
+
+			const response = await fetch(url.toString());
+			const data = await response.json();
+
+			responses[endpointKey] = {
+				success: response.ok,
+				status: response.status,
+				data: data,
+				url: url.toString()
+			};
+		} catch (error) {
+			responses[endpointKey] = {
+				success: false,
+				status: 0,
+				data: { error: error.message },
+				url: 'Error occurred'
+			};
+		} finally {
+			loadingStates[endpointKey] = false;
+		}
+	}
+
 	onMount(() => {
 		loadHealthCheck();
 	});
@@ -753,28 +798,95 @@
 								<!-- Endpoint Details -->
 								<div class="space-y-3">
 									{#each healthData.endpoints as endpoint}
-										<div class="flex items-center justify-between rounded-lg bg-gray-700/30 p-4">
-											<div class="flex items-center gap-3">
-												{#if endpoint.status === 'healthy'}
-													<CheckCircle class="h-5 w-5 text-green-500" />
-												{:else if endpoint.status === 'warning'}
-													<AlertCircle class="h-5 w-5 text-yellow-500" />
-												{:else}
-													<AlertCircle class="h-5 w-5 text-red-500" />
-												{/if}
-												<div>
-													<div class="font-medium text-white">{endpoint.name}</div>
-													<div class="text-sm text-gray-400">/api/{endpoint.name}</div>
+										<div class="rounded-lg bg-gray-700/30 p-4">
+											<!-- Main endpoint status -->
+											<div class="mb-3 flex items-center justify-between">
+												<div class="flex items-center gap-3">
+													{#if endpoint.status === 'healthy'}
+														<CheckCircle class="h-5 w-5 text-green-500" />
+													{:else if endpoint.status === 'warning'}
+														<AlertCircle class="h-5 w-5 text-yellow-500" />
+													{:else}
+														<AlertCircle class="h-5 w-5 text-red-500" />
+													{/if}
+													<div>
+														<div class="font-medium text-white">{endpoint.name}</div>
+														<div class="text-sm text-gray-400">/api/{endpoint.name}</div>
+													</div>
+												</div>
+												<div class="text-right">
+													<div class="text-sm font-medium {getStatusClass(endpoint.status)}">
+														{endpoint.status.toUpperCase()}
+													</div>
+													<div class="text-xs text-gray-400">
+														avg {endpoint.responseTime}ms
+													</div>
 												</div>
 											</div>
-											<div class="text-right">
-												<div class="text-sm font-medium {getStatusClass(endpoint.status)}">
-													{endpoint.status.toUpperCase()}
+
+											<!-- Cache vs Bypass Details -->
+											{#if endpoint.cached && endpoint.bypassed}
+												<div class="grid grid-cols-2 gap-3 border-t border-gray-600 pt-3">
+													<!-- Cached Result -->
+													<div class="rounded bg-gray-800/50 p-3">
+														<div class="mb-2 flex items-center justify-between">
+															<div class="flex items-center gap-2">
+																<div
+																	class="h-2 w-2 rounded-full {endpoint.cached.status === 'healthy'
+																		? 'bg-green-500'
+																		: endpoint.cached.status === 'warning'
+																			? 'bg-yellow-500'
+																			: 'bg-red-500'}"
+																></div>
+																<span class="text-sm font-medium text-gray-300">Cached</span>
+															</div>
+															<span class="text-xs text-gray-400"
+																>{endpoint.cached.responseTime}ms</span
+															>
+														</div>
+														{#if endpoint.cached.cacheStatus}
+															<div class="text-xs text-gray-500">
+																{endpoint.cached.cacheStatus}
+															</div>
+														{/if}
+														{#if endpoint.cached.error}
+															<div class="mt-1 text-xs text-red-400">
+																{endpoint.cached.error}
+															</div>
+														{/if}
+													</div>
+
+													<!-- Bypassed Result -->
+													<div class="rounded bg-gray-800/50 p-3">
+														<div class="mb-2 flex items-center justify-between">
+															<div class="flex items-center gap-2">
+																<div
+																	class="h-2 w-2 rounded-full {endpoint.bypassed.status ===
+																	'healthy'
+																		? 'bg-green-500'
+																		: endpoint.bypassed.status === 'warning'
+																			? 'bg-yellow-500'
+																			: 'bg-red-500'}"
+																></div>
+																<span class="text-sm font-medium text-gray-300">Bypassed</span>
+															</div>
+															<span class="text-xs text-gray-400"
+																>{endpoint.bypassed.responseTime}ms</span
+															>
+														</div>
+														{#if endpoint.bypassed.cacheStatus}
+															<div class="text-xs text-gray-500">
+																{endpoint.bypassed.cacheStatus}
+															</div>
+														{/if}
+														{#if endpoint.bypassed.error}
+															<div class="mt-1 text-xs text-red-400">
+																{endpoint.bypassed.error}
+															</div>
+														{/if}
+													</div>
 												</div>
-												<div class="text-xs text-gray-400">
-													{endpoint.responseTime}ms
-												</div>
-											</div>
+											{/if}
 										</div>
 									{/each}
 								</div>
@@ -928,10 +1040,21 @@
 									Try It Out
 								</h3>
 								<ApiTester
-									endpoint={selectedTool.apiEndpoint}
-									exampleParams={selectedTool.exampleRequest}
-									parameters={selectedTool.parameters || []}
+									endpoint={{
+										name: selectedTool.name,
+										path: selectedTool.apiEndpoint,
+										parameters: selectedTool.parameters || [],
+										example: { request: selectedTool.exampleRequest }
+									}}
+									loading={loadingStates[selectedTool.apiEndpoint]}
+									on:test={handleTest}
 								/>
+
+								{#if responses[selectedTool.apiEndpoint]}
+									<div class="mt-6">
+										<ResponseDisplay response={responses[selectedTool.apiEndpoint]} />
+									</div>
+								{/if}
 							</div>
 						</div>
 					{/if}
