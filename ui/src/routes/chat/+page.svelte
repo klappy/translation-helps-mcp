@@ -872,274 +872,366 @@
 </script>
 
 <svelte:head>
-	<title>AI Chat - Translation Helps MCP Server</title>
+	<title>AI Chat - The Aqueduct</title>
+	<meta
+		name="description"
+		content="Chat with our AI-powered Bible assistant. Reference implementation of Translation Helps MCP Server."
+	/>
 </svelte:head>
 
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<!-- Header -->
-	<div class="mb-12 text-center">
-		<div
-			class="mb-6 inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300"
-		>
-			<Code class="mr-2 h-4 w-4" />
-			Reference Implementation
-		</div>
-		<h1 class="mb-6 text-4xl font-bold text-white md:text-5xl">
-			API Demo:
-			<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"
-				>Bible Resource Assistant</span
-			>
-		</h1>
-		<p class="mx-auto max-w-3xl text-xl text-gray-300">
-			This is a <strong>reference implementation</strong> showing how to integrate our Translation Helps
-			MCP Server with OpenAI's GPT-4o-mini model. It can fetch and display Bible resources based on your
-			queries, providing intelligent analysis and context for Bible study and translation work.
-		</p>
-		<div class="mx-auto mt-4 max-w-2xl rounded-lg border border-green-500/20 bg-green-500/10 p-4">
-			<div class="mb-2 flex items-center space-x-2">
-				<Zap class="h-4 w-4 text-green-400" />
-				<span class="text-sm font-medium text-green-300">Powered by OpenAI GPT-4o-mini</span>
-			</div>
-			<p class="text-sm text-green-200">
-				We use OpenAI's GPT-4o-mini model for optimal balance of performance and cost. Your
-				questions are processed securely through our backend, with fast and reliable responses for
-				Bible study and translation work.
-			</p>
-		</div>
-		<div class="mx-auto mt-4 max-w-2xl rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-			<div class="mb-2 flex items-center space-x-2">
-				<Bot class="h-4 w-4 text-blue-400" />
-				<span class="text-sm font-medium text-blue-300">Intelligent Bible Assistant</span>
-			</div>
-			<p class="text-sm text-blue-200">
-				This AI assistant can search and display relevant Bible resources, provide intelligent
-				analysis, and help with translation work. It's designed to enhance Bible study through MCP
-				integration.
-			</p>
-		</div>
-	</div>
-
-	<div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
-		<!-- Chat Interface -->
-		<div class="lg:col-span-3">
+<!-- Page Content -->
+<section class="relative px-4 py-16 sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-7xl">
+		<!-- Header -->
+		<div class="mb-16 text-center">
 			<div
-				class="flex h-[600px] flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl"
+				class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl"
 			>
-				<!-- Chat Header -->
-				<div class="flex items-center justify-between border-b border-white/10 p-6">
-					<div class="flex items-center space-x-3">
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
-						>
-							<Bot class="h-5 w-5 text-white" />
+				<MessageSquare class="mr-2 h-4 w-4" />
+				Reference Implementation • Live Demo
+			</div>
+			<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
+				Talk to
+				<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+					The Aqueduct
+				</span>
+			</h1>
+			<p class="mx-auto max-w-4xl text-xl leading-relaxed text-gray-300 md:text-2xl">
+				Ask questions about the Bible and get
+				<strong class="text-blue-300">intelligent, contextualized answers</strong>
+				powered by our MCP server and canonical resources.
+			</p>
+
+			<!-- Feature Cards -->
+			<div class="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2">
+				<div
+					class="rounded-2xl border border-green-500/30 bg-green-500/10 p-6 backdrop-blur-xl transition-all duration-300 hover:scale-105"
+				>
+					<div class="mb-4 flex items-center space-x-3">
+						<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/20">
+							<Zap class="h-5 w-5 text-green-400" />
 						</div>
-						<div>
-							<h2 class="text-lg font-semibold text-white">Bible Resource Assistant</h2>
-							<div class="flex items-center space-x-2">
-								<p class="text-sm text-gray-400">
-									Reference Implementation • Translation Helps MCP Server
-								</p>
-								{#if llmStatus === 'initializing'}
-									<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1">
-										<Loader2 class="h-3 w-3 animate-spin text-yellow-400" />
-										<span class="text-xs text-yellow-400">Initializing...</span>
-									</div>
-								{:else if llmStatus === 'ready'}
-									<div class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1">
-										<CheckCircle2 class="h-3 w-3 text-green-400" />
-										<span class="text-xs text-green-400">Ready</span>
-									</div>
-								{:else if llmStatus === 'error'}
-									<div class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1">
-										<AlertCircle class="h-3 w-3 text-red-400" />
-										<span class="text-xs text-red-400">Error</span>
-									</div>
-								{/if}
-							</div>
-						</div>
+						<span class="text-lg font-semibold text-green-300">Powered by GPT-4o-mini</span>
 					</div>
-					<div class="flex items-center space-x-2">
-						<button
-							on:click={clearChat}
-							class="rounded-lg bg-white/5 p-2 transition-colors hover:bg-white/10"
-							title="Clear chat"
-						>
-							<RefreshCw class="h-4 w-4 text-gray-400" />
-						</button>
-						<button
-							on:click={() => (showApiDetails = !showApiDetails)}
-							class="rounded-lg bg-white/5 p-2 transition-colors hover:bg-white/10"
-							title="Toggle API details"
-						>
-							<Code class="h-4 w-4 text-gray-400" />
-						</button>
-						<button
-							on:click={() => (showSuggestions = !showSuggestions)}
-							class="rounded-lg bg-white/5 p-2 transition-colors hover:bg-white/10"
-							title="Toggle suggestions"
-						>
-							<Lightbulb class="h-4 w-4 text-gray-400" />
-						</button>
-					</div>
+					<p class="text-green-200">
+						Optimal balance of performance and cost. Secure processing with fast, reliable responses
+						for Bible study and translation work.
+					</p>
 				</div>
 
-				<!-- Messages Container -->
-				<div id="chat-container" class="flex-1 space-y-6 overflow-y-auto p-6">
-					{#each messages as message (message.id)}
-						<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
-							<div class="max-w-3xl {message.role === 'user' ? 'order-2' : 'order-1'}">
-								<!-- Message Bubble -->
-								<div
-									class="rounded-2xl p-4 {message.role === 'user'
-										? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-										: 'border border-white/10 bg-white/10 backdrop-blur-xl'}"
-								>
-									<!-- Message Header -->
-									<div class="mb-3 flex items-center justify-between">
-										<div class="flex items-center space-x-2">
-											{#if message.role === 'user'}
-												<User class="h-4 w-4" />
-												<span class="text-sm font-medium">You</span>
-											{:else}
-												<Bot class="h-4 w-4" />
-												<div class="flex items-center space-x-2">
-													<span class="text-sm font-medium">Bible AI</span>
-													{#if message.isFallback}
-														<span
-															class="inline-flex items-center rounded-full border border-yellow-500/30 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300"
-														>
-															🎭 Mock
-														</span>
-													{/if}
-												</div>
-											{/if}
-										</div>
-										<div class="flex items-center space-x-2">
-											{#if message.responseTime}
-												<div class="flex items-center space-x-1 text-xs opacity-70">
-													<Timer class="h-3 w-3" />
-													<span>{message.responseTime.toFixed(0)}ms</span>
-												</div>
-											{/if}
-											{#if message.overallStatus}
-												<div class="flex items-center space-x-1">
-													{#if message.overallStatus === 'success'}
-														<div
-															class="h-3 w-3 rounded-full bg-green-500"
-															title="All systems working perfectly"
-														></div>
-													{:else if message.overallStatus === 'warning'}
-														<div
-															class="h-3 w-3 rounded-full bg-yellow-500"
-															title="Tool calls worked but AI response was mocked"
-														></div>
-													{:else if message.overallStatus === 'error'}
-														<div
-															class="h-3 w-3 rounded-full bg-red-500"
-															title="Some tool calls failed"
-														></div>
-													{/if}
-												</div>
-											{/if}
-											{#if message.status}
-												<svelte:component
-													this={getStatusIcon(message.status)}
-													class="h-4 w-4 {getStatusColor(message.status)}"
-												/>
-											{/if}
-											<button
-												on:click={() => copyMessage(message.id)}
-												class="rounded p-1 transition-colors hover:bg-white/10"
-												title="Copy message"
-											>
-												<Copy class="h-3 w-3" />
-											</button>
-											{#if message.apiCalls && message.apiCalls.length > 0}
-												<button
-													on:click={() => toggleMessageExpansion(message.id)}
-													class="rounded p-1 transition-colors hover:bg-white/10"
-													title="Toggle API details"
-												>
-													{#if expandedMessages.has(message.id)}
-														<ChevronUp class="h-3 w-3" />
-													{:else}
-														<ChevronDown class="h-3 w-3" />
-													{/if}
-												</button>
-											{/if}
-										</div>
-									</div>
+				<div
+					class="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-6 backdrop-blur-xl transition-all duration-300 hover:scale-105"
+				>
+					<div class="mb-4 flex items-center space-x-3">
+						<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20">
+							<Bot class="h-5 w-5 text-blue-400" />
+						</div>
+						<span class="text-lg font-semibold text-blue-300">Intelligent Bible Assistant</span>
+					</div>
+					<p class="text-blue-200">
+						Search and display relevant Bible resources with intelligent analysis. Built for Bible
+						study through MCP integration.
+					</p>
+				</div>
+			</div>
+		</div>
 
-									<!-- Message Content -->
-									{#if message.isTyping}
-										<!-- Simple typing indicator -->
-										<div class="flex items-center space-x-3 p-4">
-											<span class="text-sm text-blue-300">AI is thinking</span>
-											<div class="flex space-x-1">
-												<div class="h-2 w-2 animate-bounce rounded-full bg-blue-400"></div>
-												<div
-													class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
-													style="animation-delay: 0.1s"
-												></div>
-												<div
-													class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
-													style="animation-delay: 0.2s"
-												></div>
+		<div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
+			<!-- Chat Interface -->
+			<div class="lg:col-span-3">
+				<div
+					class="flex h-[600px] flex-col rounded-3xl border border-blue-500/30 bg-white/5 shadow-2xl backdrop-blur-2xl transition-all duration-300 hover:border-blue-500/40"
+				>
+					<!-- Chat Header -->
+					<div
+						class="flex items-center justify-between border-b border-blue-500/30 p-6 backdrop-blur-xl"
+					>
+						<div class="flex items-center space-x-4">
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 transition-transform duration-300 hover:scale-110 hover:rotate-12"
+							>
+								<Bot class="h-6 w-6 text-white" />
+							</div>
+							<div>
+								<h2 class="text-xl font-bold text-white">The Aqueduct Assistant</h2>
+								<div class="flex items-center space-x-2">
+									<p class="text-sm text-blue-200">Live Demo • Translation Helps MCP Server</p>
+									{#if llmStatus === 'initializing'}
+										<div
+											class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1"
+										>
+											<Loader2 class="h-3 w-3 animate-spin text-yellow-400" />
+											<span class="text-xs text-yellow-400">Initializing...</span>
+										</div>
+									{:else if llmStatus === 'ready'}
+										<div class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1">
+											<CheckCircle2 class="h-3 w-3 text-green-400" />
+											<span class="text-xs text-green-400">Ready</span>
+										</div>
+									{:else if llmStatus === 'error'}
+										<div class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1">
+											<AlertCircle class="h-3 w-3 text-red-400" />
+											<span class="text-xs text-red-400">Error</span>
+										</div>
+									{/if}
+								</div>
+							</div>
+						</div>
+						<div class="flex items-center space-x-2">
+							<button
+								on:click={clearChat}
+								class="rounded-lg bg-white/5 p-2 transition-colors hover:bg-white/10"
+								title="Clear chat"
+							>
+								<RefreshCw class="h-4 w-4 text-gray-400" />
+							</button>
+							<button
+								on:click={() => (showApiDetails = !showApiDetails)}
+								class="rounded-lg bg-white/5 p-2 transition-colors hover:bg-white/10"
+								title="Toggle API details"
+							>
+								<Code class="h-4 w-4 text-gray-400" />
+							</button>
+							<button
+								on:click={() => (showSuggestions = !showSuggestions)}
+								class="rounded-lg bg-white/5 p-2 transition-colors hover:bg-white/10"
+								title="Toggle suggestions"
+							>
+								<Lightbulb class="h-4 w-4 text-gray-400" />
+							</button>
+						</div>
+					</div>
+
+					<!-- Messages Container -->
+					<div id="chat-container" class="flex-1 space-y-6 overflow-y-auto p-6">
+						{#each messages as message (message.id)}
+							<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
+								<div class="max-w-3xl {message.role === 'user' ? 'order-2' : 'order-1'}">
+									<!-- Message Bubble -->
+									<div
+										class="rounded-2xl p-4 {message.role === 'user'
+											? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
+											: 'border border-white/10 bg-white/10 backdrop-blur-xl'}"
+									>
+										<!-- Message Header -->
+										<div class="mb-3 flex items-center justify-between">
+											<div class="flex items-center space-x-2">
+												{#if message.role === 'user'}
+													<User class="h-4 w-4" />
+													<span class="text-sm font-medium">You</span>
+												{:else}
+													<Bot class="h-4 w-4" />
+													<div class="flex items-center space-x-2">
+														<span class="text-sm font-medium">Bible AI</span>
+														{#if message.isFallback}
+															<span
+																class="inline-flex items-center rounded-full border border-yellow-500/30 bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300"
+															>
+																🎭 Mock
+															</span>
+														{/if}
+													</div>
+												{/if}
+											</div>
+											<div class="flex items-center space-x-2">
+												{#if message.responseTime}
+													<div class="flex items-center space-x-1 text-xs opacity-70">
+														<Timer class="h-3 w-3" />
+														<span>{message.responseTime.toFixed(0)}ms</span>
+													</div>
+												{/if}
+												{#if message.overallStatus}
+													<div class="flex items-center space-x-1">
+														{#if message.overallStatus === 'success'}
+															<div
+																class="h-3 w-3 rounded-full bg-green-500"
+																title="All systems working perfectly"
+															></div>
+														{:else if message.overallStatus === 'warning'}
+															<div
+																class="h-3 w-3 rounded-full bg-yellow-500"
+																title="Tool calls worked but AI response was mocked"
+															></div>
+														{:else if message.overallStatus === 'error'}
+															<div
+																class="h-3 w-3 rounded-full bg-red-500"
+																title="Some tool calls failed"
+															></div>
+														{/if}
+													</div>
+												{/if}
+												{#if message.status}
+													<svelte:component
+														this={getStatusIcon(message.status)}
+														class="h-4 w-4 {getStatusColor(message.status)}"
+													/>
+												{/if}
+												<button
+													on:click={() => copyMessage(message.id)}
+													class="rounded p-1 transition-colors hover:bg-white/10"
+													title="Copy message"
+												>
+													<Copy class="h-3 w-3" />
+												</button>
+												{#if message.apiCalls && message.apiCalls.length > 0}
+													<button
+														on:click={() => toggleMessageExpansion(message.id)}
+														class="rounded p-1 transition-colors hover:bg-white/10"
+														title="Toggle API details"
+													>
+														{#if expandedMessages.has(message.id)}
+															<ChevronUp class="h-3 w-3" />
+														{:else}
+															<ChevronDown class="h-3 w-3" />
+														{/if}
+													</button>
+												{/if}
 											</div>
 										</div>
 
-										<!-- Thinking Trace during typing -->
-										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
-											<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-												<div class="mb-3 flex items-center justify-between">
-													<div class="flex items-center space-x-2">
-														<Lightbulb class="h-4 w-4 text-blue-400" />
-														<span class="text-sm font-medium text-blue-300"
-															>AI Thinking Process</span
-														>
-														{#if message.overallStatus && !message.isTyping}
-															{#if message.overallStatus === 'success'}
-																<div
-																	class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1"
-																>
-																	<div class="h-2 w-2 rounded-full bg-green-500"></div>
-																	<span class="text-xs font-medium text-green-300"
-																		>All Systems OK</span
+										<!-- Message Content -->
+										{#if message.isTyping}
+											<!-- Simple typing indicator -->
+											<div class="flex items-center space-x-3 p-4">
+												<span class="text-sm text-blue-300">AI is thinking</span>
+												<div class="flex space-x-1">
+													<div class="h-2 w-2 animate-bounce rounded-full bg-blue-400"></div>
+													<div
+														class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+														style="animation-delay: 0.1s"
+													></div>
+													<div
+														class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+														style="animation-delay: 0.2s"
+													></div>
+												</div>
+											</div>
+
+											<!-- Thinking Trace during typing -->
+											{#if message.thinkingTrace && message.thinkingTrace.length > 0}
+												<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+													<div class="mb-3 flex items-center justify-between">
+														<div class="flex items-center space-x-2">
+															<Lightbulb class="h-4 w-4 text-blue-400" />
+															<span class="text-sm font-medium text-blue-300"
+																>AI Thinking Process</span
+															>
+															{#if message.overallStatus && !message.isTyping}
+																{#if message.overallStatus === 'success'}
+																	<div
+																		class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1"
 																	>
-																</div>
-															{:else if message.overallStatus === 'warning'}
-																<div
-																	class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1"
-																>
-																	<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
-																	<span class="text-xs font-medium text-yellow-300"
-																		>Mock Response</span
+																		<div class="h-2 w-2 rounded-full bg-green-500"></div>
+																		<span class="text-xs font-medium text-green-300"
+																			>All Systems OK</span
+																		>
+																	</div>
+																{:else if message.overallStatus === 'warning'}
+																	<div
+																		class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1"
 																	>
-																</div>
-															{:else if message.overallStatus === 'error'}
-																<div
-																	class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1"
-																>
-																	<div class="h-2 w-2 rounded-full bg-red-500"></div>
-																	<span class="text-xs font-medium text-red-300">API Errors</span>
+																		<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
+																		<span class="text-xs font-medium text-yellow-300"
+																			>Mock Response</span
+																		>
+																	</div>
+																{:else if message.overallStatus === 'error'}
+																	<div
+																		class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1"
+																	>
+																		<div class="h-2 w-2 rounded-full bg-red-500"></div>
+																		<span class="text-xs font-medium text-red-300">API Errors</span>
+																	</div>
+																{/if}
+															{/if}
+															{#if message.isTyping}
+																<div class="flex space-x-1">
+																	<div
+																		class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+																	></div>
+																	<div
+																		class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+																		style="animation-delay: 0.1s"
+																	></div>
+																	<div
+																		class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
+																		style="animation-delay: 0.2s"
+																	></div>
 																</div>
 															{/if}
-														{/if}
-														{#if message.isTyping}
-															<div class="flex space-x-1">
-																<div class="h-2 w-2 animate-bounce rounded-full bg-blue-400"></div>
-																<div
-																	class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
-																	style="animation-delay: 0.1s"
-																></div>
-																<div
-																	class="h-2 w-2 animate-bounce rounded-full bg-blue-400"
-																	style="animation-delay: 0.2s"
-																></div>
-															</div>
+														</div>
+														{#if !message.isTyping}
+															<button
+																on:click={() => toggleThinkingTrace(message.id)}
+																class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-blue-500/20"
+															>
+																{#if collapsedThinkingTraces.has(message.id)}
+																	<ChevronDown class="h-3 w-3 text-blue-400" />
+																	<span class="text-blue-400">Show</span>
+																{:else}
+																	<ChevronUp class="h-3 w-3 text-blue-400" />
+																	<span class="text-blue-400">Hide</span>
+																{/if}
+															</button>
 														{/if}
 													</div>
-													{#if !message.isTyping}
+													{#if !collapsedThinkingTraces.has(message.id) || message.isTyping}
+														<div class="space-y-2">
+															{#each message.thinkingTrace as step, index}
+																<div class="flex items-start space-x-3">
+																	<div
+																		class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300"
+																	>
+																		{index + 1}
+																	</div>
+																	<div class="flex-1 text-sm text-blue-200">
+																		{@html marked(step)}
+																	</div>
+																</div>
+															{/each}
+														</div>
+													{/if}
+												</div>
+											{/if}
+										{:else}
+											<!-- Thinking Trace for Completed Messages (at the beginning) -->
+											{#if message.thinkingTrace && message.thinkingTrace.length > 0}
+												<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+													<div class="mb-3 flex items-center justify-between">
+														<div class="flex items-center space-x-2">
+															<Lightbulb class="h-4 w-4 text-blue-400" />
+															<span class="text-sm font-medium text-blue-300"
+																>AI Thinking Process</span
+															>
+															{#if message.overallStatus}
+																{#if message.overallStatus === 'success'}
+																	<div
+																		class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1"
+																	>
+																		<div class="h-2 w-2 rounded-full bg-green-500"></div>
+																		<span class="text-xs font-medium text-green-300"
+																			>All Systems OK</span
+																		>
+																	</div>
+																{:else if message.overallStatus === 'warning'}
+																	<div
+																		class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1"
+																	>
+																		<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
+																		<span class="text-xs font-medium text-yellow-300"
+																			>Mock Response</span
+																		>
+																	</div>
+																{:else if message.overallStatus === 'error'}
+																	<div
+																		class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1"
+																	>
+																		<div class="h-2 w-2 rounded-full bg-red-500"></div>
+																		<span class="text-xs font-medium text-red-300">API Errors</span>
+																	</div>
+																{/if}
+															{/if}
+														</div>
 														<button
 															on:click={() => toggleThinkingTrace(message.id)}
 															class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-blue-500/20"
@@ -1152,375 +1244,309 @@
 																<span class="text-blue-400">Hide</span>
 															{/if}
 														</button>
+													</div>
+													{#if !collapsedThinkingTraces.has(message.id)}
+														<div class="space-y-2">
+															{#each message.thinkingTrace as step, index}
+																<div class="flex items-start space-x-3">
+																	<div
+																		class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300"
+																	>
+																		{index + 1}
+																	</div>
+																	<div class="flex-1 text-sm text-blue-200">
+																		{@html marked(step)}
+																	</div>
+																</div>
+															{/each}
+														</div>
 													{/if}
 												</div>
-												{#if !collapsedThinkingTraces.has(message.id) || message.isTyping}
-													<div class="space-y-2">
-														{#each message.thinkingTrace as step, index}
-															<div class="flex items-start space-x-3">
-																<div
-																	class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300"
-																>
-																	{index + 1}
-																</div>
-																<div class="flex-1 text-sm text-blue-200">
-																	{@html marked(step)}
-																</div>
-															</div>
-														{/each}
-													</div>
-												{/if}
-											</div>
-										{/if}
-									{:else}
-										<!-- Thinking Trace for Completed Messages (at the beginning) -->
-										{#if message.thinkingTrace && message.thinkingTrace.length > 0}
-											<div class="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-												<div class="mb-3 flex items-center justify-between">
-													<div class="flex items-center space-x-2">
-														<Lightbulb class="h-4 w-4 text-blue-400" />
-														<span class="text-sm font-medium text-blue-300"
-															>AI Thinking Process</span
-														>
-														{#if message.overallStatus}
-															{#if message.overallStatus === 'success'}
-																<div
-																	class="flex items-center space-x-1 rounded-full bg-green-500/20 px-2 py-1"
-																>
-																	<div class="h-2 w-2 rounded-full bg-green-500"></div>
-																	<span class="text-xs font-medium text-green-300"
-																		>All Systems OK</span
-																	>
-																</div>
-															{:else if message.overallStatus === 'warning'}
-																<div
-																	class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-2 py-1"
-																>
-																	<div class="h-2 w-2 rounded-full bg-yellow-500"></div>
-																	<span class="text-xs font-medium text-yellow-300"
-																		>Mock Response</span
-																	>
-																</div>
-															{:else if message.overallStatus === 'error'}
-																<div
-																	class="flex items-center space-x-1 rounded-full bg-red-500/20 px-2 py-1"
-																>
-																	<div class="h-2 w-2 rounded-full bg-red-500"></div>
-																	<span class="text-xs font-medium text-red-300">API Errors</span>
-																</div>
-															{/if}
-														{/if}
-													</div>
-													<button
-														on:click={() => toggleThinkingTrace(message.id)}
-														class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-blue-500/20"
-													>
-														{#if collapsedThinkingTraces.has(message.id)}
-															<ChevronDown class="h-3 w-3 text-blue-400" />
-															<span class="text-blue-400">Show</span>
-														{:else}
-															<ChevronUp class="h-3 w-3 text-blue-400" />
-															<span class="text-blue-400">Hide</span>
-														{/if}
-													</button>
-												</div>
-												{#if !collapsedThinkingTraces.has(message.id)}
-													<div class="space-y-2">
-														{#each message.thinkingTrace as step, index}
-															<div class="flex items-start space-x-3">
-																<div
-																	class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs font-medium text-blue-300"
-																>
-																	{index + 1}
-																</div>
-																<div class="flex-1 text-sm text-blue-200">
-																	{@html marked(step)}
-																</div>
-															</div>
-														{/each}
-													</div>
-												{/if}
-											</div>
-										{/if}
-
-										<!-- AI Response Content -->
-										<div class="ai-response-content max-w-none">
-											{@html marked(message.content)}
-										</div>
-									{/if}
-
-									<!-- Rich Data Display -->
-									{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
-										{#each message.apiCalls as call}
-											{#if call.status === 'success' && call.response}
-												{#if call.endpoint === '/api/fetch-scripture' && call.response.verses}
-													<div class="mt-4 space-y-3">
-														{#each call.response.verses as verse}
-															<BibleVerse {verse} theme="highlight" />
-														{/each}
-													</div>
-												{/if}
-												{#if call.endpoint === '/api/fetch-translation-words' && call.response.words}
-													<div class="mt-4 space-y-3">
-														{#each call.response.words as word}
-															<TranslationWord {word} theme="expanded" />
-														{/each}
-													</div>
-												{/if}
 											{/if}
-										{/each}
-									{/if}
 
-									<!-- Clean Debug Panel -->
-									{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
-										<!-- Debug Toggle Bar -->
-										<div
-											class="mt-4 flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2"
-										>
-											<div class="flex items-center space-x-2">
-												<Code class="h-3 w-3 text-gray-400" />
-												<span class="text-xs text-gray-300">Debug Info</span>
-												<span class="rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-300">
-													{message.apiCalls.length} API calls
-												</span>
-												{#if message.responseTime}
-													<span class="text-xs text-gray-400">
-														• {message.responseTime.toFixed(0)}ms total
-													</span>
-												{/if}
+											<!-- AI Response Content -->
+											<div class="ai-response-content max-w-none">
+												{@html marked(message.content)}
 											</div>
-											<button
-												on:click={() => toggleMessageExpansion(message.id)}
-												class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-gray-700"
-											>
-												{#if expandedMessages.has(message.id)}
-													<ChevronUp class="h-3 w-3 text-gray-400" />
-													<span class="text-gray-400">Hide</span>
-												{:else}
-													<ChevronDown class="h-3 w-3 text-gray-400" />
-													<span class="text-gray-400">Show</span>
+										{/if}
+
+										<!-- Rich Data Display -->
+										{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
+											{#each message.apiCalls as call}
+												{#if call.status === 'success' && call.response}
+													{#if call.endpoint === '/api/fetch-scripture' && call.response.verses}
+														<div class="mt-4 space-y-3">
+															{#each call.response.verses as verse}
+																<BibleVerse {verse} theme="highlight" />
+															{/each}
+														</div>
+													{/if}
+													{#if call.endpoint === '/api/fetch-translation-words' && call.response.words}
+														<div class="mt-4 space-y-3">
+															{#each call.response.words as word}
+																<TranslationWord {word} theme="expanded" />
+															{/each}
+														</div>
+													{/if}
 												{/if}
-											</button>
-										</div>
+											{/each}
+										{/if}
 
-										<!-- Expanded Debug Panel -->
-										{#if expandedMessages.has(message.id)}
-											<div class="mt-2 space-y-4 rounded-lg bg-gray-900/50 p-4">
-												<!-- Raw Response Content -->
-												<div>
-													<h4 class="mb-2 text-xs font-semibold text-gray-200">Raw AI Response</h4>
-													<pre
-														class="max-h-32 overflow-auto rounded bg-black/50 p-3 text-xs text-gray-300">{message.content}</pre>
+										<!-- Clean Debug Panel -->
+										{#if message.apiCalls && message.apiCalls.length > 0 && !message.isTyping}
+											<!-- Debug Toggle Bar -->
+											<div
+												class="mt-4 flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2"
+											>
+												<div class="flex items-center space-x-2">
+													<Code class="h-3 w-3 text-gray-400" />
+													<span class="text-xs text-gray-300">Debug Info</span>
+													<span class="rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-300">
+														{message.apiCalls.length} API calls
+													</span>
+													{#if message.responseTime}
+														<span class="text-xs text-gray-400">
+															• {message.responseTime.toFixed(0)}ms total
+														</span>
+													{/if}
 												</div>
+												<button
+													on:click={() => toggleMessageExpansion(message.id)}
+													class="flex items-center space-x-1 rounded px-2 py-1 text-xs transition-colors hover:bg-gray-700"
+												>
+													{#if expandedMessages.has(message.id)}
+														<ChevronUp class="h-3 w-3 text-gray-400" />
+														<span class="text-gray-400">Hide</span>
+													{:else}
+														<ChevronDown class="h-3 w-3 text-gray-400" />
+														<span class="text-gray-400">Show</span>
+													{/if}
+												</button>
+											</div>
 
-												<!-- API Calls Summary -->
-												<div>
-													<h4 class="mb-2 text-xs font-semibold text-gray-200">
-														API Calls Summary
-													</h4>
-													<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-														{#each message.apiCalls as call}
-															<div class="flex items-center space-x-2 rounded bg-gray-800/50 p-2">
-																<svelte:component
-																	this={call.status === 'success' ? CheckCircle2 : AlertCircle}
-																	class="h-3 w-3 {call.status === 'success'
-																		? 'text-green-400'
-																		: 'text-red-400'}"
-																/>
-																<div class="min-w-0 flex-1">
-																	<div class="truncate font-mono text-xs text-purple-300">
-																		{call.endpoint.split('/').pop()}
-																	</div>
-																	<div class="flex items-center space-x-2 text-xs text-gray-400">
-																		<Timer class="h-2 w-2" />
-																		<span>{call.responseTime.toFixed(0)}ms</span>
-																		{#if call.endpoint === '/api/fetch-translation-notes' && call.response?.translationNotes}
-																			<span class="text-yellow-300"
-																				>• {call.response.translationNotes.length} notes</span
-																			>
-																		{/if}
-																		{#if call.endpoint === '/api/fetch-scripture'}
-																			{#if call.response?.scriptures}
+											<!-- Expanded Debug Panel -->
+											{#if expandedMessages.has(message.id)}
+												<div class="mt-2 space-y-4 rounded-lg bg-gray-900/50 p-4">
+													<!-- Raw Response Content -->
+													<div>
+														<h4 class="mb-2 text-xs font-semibold text-gray-200">
+															Raw AI Response
+														</h4>
+														<pre
+															class="max-h-32 overflow-auto rounded bg-black/50 p-3 text-xs text-gray-300">{message.content}</pre>
+													</div>
+
+													<!-- API Calls Summary -->
+													<div>
+														<h4 class="mb-2 text-xs font-semibold text-gray-200">
+															API Calls Summary
+														</h4>
+														<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+															{#each message.apiCalls as call}
+																<div class="flex items-center space-x-2 rounded bg-gray-800/50 p-2">
+																	<svelte:component
+																		this={call.status === 'success' ? CheckCircle2 : AlertCircle}
+																		class="h-3 w-3 {call.status === 'success'
+																			? 'text-green-400'
+																			: 'text-red-400'}"
+																	/>
+																	<div class="min-w-0 flex-1">
+																		<div class="truncate font-mono text-xs text-purple-300">
+																			{call.endpoint.split('/').pop()}
+																		</div>
+																		<div class="flex items-center space-x-2 text-xs text-gray-400">
+																			<Timer class="h-2 w-2" />
+																			<span>{call.responseTime.toFixed(0)}ms</span>
+																			{#if call.endpoint === '/api/fetch-translation-notes' && call.response?.translationNotes}
 																				<span class="text-yellow-300"
-																					>• {call.response.scriptures.length} translations</span
-																				>
-																			{:else if call.response?.scripture}
-																				<span class="text-yellow-300"
-																					>• {call.response.scripture.text?.length} chars</span
+																					>• {call.response.translationNotes.length} notes</span
 																				>
 																			{/if}
-																		{/if}
-																		{#if call.endpoint === '/api/fetch-translation-words' && call.response?.translationWords}
-																			<span class="text-yellow-300"
-																				>• {call.response.translationWords.length} words</span
-																			>
-																		{/if}
+																			{#if call.endpoint === '/api/fetch-scripture'}
+																				{#if call.response?.scriptures}
+																					<span class="text-yellow-300"
+																						>• {call.response.scriptures.length} translations</span
+																					>
+																				{:else if call.response?.scripture}
+																					<span class="text-yellow-300"
+																						>• {call.response.scripture.text?.length} chars</span
+																					>
+																				{/if}
+																			{/if}
+																			{#if call.endpoint === '/api/fetch-translation-words' && call.response?.translationWords}
+																				<span class="text-yellow-300"
+																					>• {call.response.translationWords.length} words</span
+																				>
+																			{/if}
+																		</div>
 																	</div>
 																</div>
-															</div>
-														{/each}
+															{/each}
+														</div>
 													</div>
-												</div>
 
-												<!-- Detailed API Call Data -->
-												<div>
-													<h4 class="mb-2 text-xs font-semibold text-gray-200">
-														Detailed API Data
-													</h4>
-													<div class="space-y-3">
-														{#each message.apiCalls as call, index}
-															<div class="rounded bg-gray-800/30 p-3">
-																<div class="mb-2 flex items-center justify-between">
-																	<div class="flex items-center space-x-2">
-																		<span class="font-mono text-sm text-purple-300"
-																			>{call.endpoint}</span
-																		>
-																		<span class="text-gray-400">—</span>
-																		<span
-																			class={call.status === 'success'
-																				? 'text-green-400'
-																				: 'text-red-400'}>{call.status}</span
-																		>
-																		<span class="text-gray-400"
-																			>({call.responseTime.toFixed(0)}ms)</span
-																		>
+													<!-- Detailed API Call Data -->
+													<div>
+														<h4 class="mb-2 text-xs font-semibold text-gray-200">
+															Detailed API Data
+														</h4>
+														<div class="space-y-3">
+															{#each message.apiCalls as call, index}
+																<div class="rounded bg-gray-800/30 p-3">
+																	<div class="mb-2 flex items-center justify-between">
+																		<div class="flex items-center space-x-2">
+																			<span class="font-mono text-sm text-purple-300"
+																				>{call.endpoint}</span
+																			>
+																			<span class="text-gray-400">—</span>
+																			<span
+																				class={call.status === 'success'
+																					? 'text-green-400'
+																					: 'text-red-400'}>{call.status}</span
+																			>
+																			<span class="text-gray-400"
+																				>({call.responseTime.toFixed(0)}ms)</span
+																			>
+																		</div>
 																	</div>
-																</div>
 
-																<!-- Parameters -->
-																<div class="mb-2">
-																	<div class="text-xs text-gray-400">Parameters:</div>
-																	<pre
-																		class="mt-1 max-h-20 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
-																			call.params,
-																			null,
-																			2
-																		)}</pre>
-																</div>
-
-																<!-- Response Data -->
-																{#if call.response}
+																	<!-- Parameters -->
 																	<div class="mb-2">
-																		<div class="text-xs text-yellow-300">Response Data:</div>
+																		<div class="text-xs text-gray-400">Parameters:</div>
 																		<pre
-																			class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
-																				call.response,
+																			class="mt-1 max-h-20 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																				call.params,
 																				null,
 																				2
 																			)}</pre>
 																	</div>
-																{/if}
-															</div>
-														{/each}
+
+																	<!-- Response Data -->
+																	{#if call.response}
+																		<div class="mb-2">
+																			<div class="text-xs text-yellow-300">Response Data:</div>
+																			<pre
+																				class="mt-1 max-h-40 overflow-auto rounded bg-black/50 p-2 text-xs">{JSON.stringify(
+																					call.response,
+																					null,
+																					2
+																				)}</pre>
+																		</div>
+																	{/if}
+																</div>
+															{/each}
+														</div>
 													</div>
 												</div>
-											</div>
+											{/if}
 										{/if}
-									{/if}
-								</div>
-							</div>
-						</div>
-					{/each}
-				</div>
-
-				<!-- Input Area -->
-				<div class="border-t border-white/10 p-6">
-					<div class="flex items-end space-x-4">
-						<div class="flex-1">
-							<textarea
-								bind:value={currentMessage}
-								on:keydown={handleKeydown}
-								placeholder="Ask me anything about the Bible, translation, or specific verses..."
-								class="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-								rows="2"
-								disabled={isLoading}
-							></textarea>
-						</div>
-						<button
-							on:click={sendMessage}
-							disabled={!currentMessage.trim() || isLoading}
-							class="flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 font-semibold text-white transition-all duration-200 hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							{#if isLoading}
-								<Loader2 class="h-5 w-5 animate-spin" />
-							{:else}
-								<Send class="h-5 w-5" />
-							{/if}
-						</button>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Suggestions Sidebar -->
-		<div class="lg:col-span-1">
-			{#if showSuggestions}
-				<div class="space-y-6">
-					<!-- Quick Actions -->
-					<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-						<h3 class="mb-4 text-lg font-semibold text-white">Quick Actions</h3>
-						<div class="space-y-3">
-							<button
-								on:click={() => useSuggestion("What does John 3:16 say about God's love?")}
-								class="w-full rounded-lg border border-blue-500/30 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 p-3 text-left transition-all duration-200 hover:from-blue-600/30 hover:to-cyan-600/30"
-							>
-								<div class="mb-1 flex items-center space-x-2">
-									<BookOpen class="h-4 w-4 text-blue-400" />
-									<span class="text-sm font-medium text-white">Scripture Analysis</span>
-								</div>
-								<p class="text-xs text-gray-400">Ask about John 3:16</p>
-							</button>
-							<button
-								on:click={() => useSuggestion('What does the word "grace" mean in the Bible?')}
-								class="w-full rounded-lg border border-green-500/30 bg-gradient-to-r from-green-600/20 to-emerald-600/20 p-3 text-left transition-all duration-200 hover:from-green-600/30 hover:to-emerald-600/30"
-							>
-								<div class="mb-1 flex items-center space-x-2">
-									<Search class="h-4 w-4 text-green-400" />
-									<span class="text-sm font-medium text-white">Word Study</span>
-								</div>
-								<p class="text-xs text-gray-400">Study "grace"</p>
-							</button>
-							<button
-								on:click={() => useSuggestion('What are the translation notes for Titus 1:1?')}
-								class="w-full rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/20 to-pink-600/20 p-3 text-left transition-all duration-200 hover:from-purple-600/30 hover:to-pink-600/30"
-							>
-								<div class="mb-1 flex items-center space-x-2">
-									<MessageSquare class="h-4 w-4 text-purple-400" />
-									<span class="text-sm font-medium text-white">Translation Help</span>
-								</div>
-								<p class="text-xs text-gray-400">Get notes for Titus 1:1</p>
-							</button>
-						</div>
-					</div>
-
-					<!-- Example Conversations -->
-					<div class="space-y-4">
-						{#each exampleConversations as category}
-							<div class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
-								<div class="mb-3 flex items-center space-x-2">
-									<div
-										class="h-8 w-8 rounded-lg bg-gradient-to-r {category.color} flex items-center justify-center"
-									>
-										<svelte:component this={category.icon} class="h-4 w-4 text-white" />
 									</div>
-									<h4 class="text-sm font-semibold text-white">{category.title}</h4>
-								</div>
-								<p class="mb-3 text-xs text-gray-400">{category.description}</p>
-								<div class="space-y-2">
-									{#each category.examples as example}
-										<button
-											on:click={() => useSuggestion(example)}
-											class="w-full rounded-lg bg-black/20 p-2 text-left transition-colors hover:bg-black/30"
-										>
-											<p class="text-xs text-gray-300">{example}</p>
-										</button>
-									{/each}
 								</div>
 							</div>
 						{/each}
 					</div>
+
+					<!-- Input Area -->
+					<div class="border-t border-blue-500/30 p-6 backdrop-blur-xl">
+						<div class="flex items-end space-x-4">
+							<div class="flex-1">
+								<textarea
+									bind:value={currentMessage}
+									on:keydown={handleKeydown}
+									placeholder="Ask The Aqueduct anything about the Bible..."
+									class="w-full resize-none rounded-2xl border border-blue-500/30 bg-white/5 px-6 py-4 text-white placeholder-blue-300/70 backdrop-blur-xl transition-all duration-300 focus:border-blue-400 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
+									rows="2"
+									disabled={isLoading}
+								></textarea>
+							</div>
+							<button
+								on:click={sendMessage}
+								disabled={!currentMessage.trim() || isLoading}
+								class="flex items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:from-blue-700 hover:to-cyan-700 hover:shadow-blue-500/25 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+							>
+								{#if isLoading}
+									<Loader2 class="h-5 w-5 animate-spin" />
+								{:else}
+									<Send class="h-5 w-5" />
+								{/if}
+							</button>
+						</div>
+					</div>
 				</div>
-			{/if}
+			</div>
+
+			<!-- Suggestions Sidebar -->
+			<div class="lg:col-span-1">
+				{#if showSuggestions}
+					<div class="space-y-6">
+						<!-- Quick Actions -->
+						<div
+							class="rounded-3xl border border-blue-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl transition-all duration-300 hover:border-blue-500/40"
+						>
+							<h3 class="mb-4 text-lg font-semibold text-white">Quick Actions</h3>
+							<div class="space-y-3">
+								<button
+									on:click={() => useSuggestion("What does John 3:16 say about God's love?")}
+									class="w-full rounded-lg border border-blue-500/30 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 p-3 text-left transition-all duration-200 hover:from-blue-600/30 hover:to-cyan-600/30"
+								>
+									<div class="mb-1 flex items-center space-x-2">
+										<BookOpen class="h-4 w-4 text-blue-400" />
+										<span class="text-sm font-medium text-white">Scripture Analysis</span>
+									</div>
+									<p class="text-xs text-gray-400">Ask about John 3:16</p>
+								</button>
+								<button
+									on:click={() => useSuggestion('What does the word "grace" mean in the Bible?')}
+									class="w-full rounded-lg border border-green-500/30 bg-gradient-to-r from-green-600/20 to-emerald-600/20 p-3 text-left transition-all duration-200 hover:from-green-600/30 hover:to-emerald-600/30"
+								>
+									<div class="mb-1 flex items-center space-x-2">
+										<Search class="h-4 w-4 text-green-400" />
+										<span class="text-sm font-medium text-white">Word Study</span>
+									</div>
+									<p class="text-xs text-gray-400">Study "grace"</p>
+								</button>
+								<button
+									on:click={() => useSuggestion('What are the translation notes for Titus 1:1?')}
+									class="w-full rounded-lg border border-purple-500/30 bg-gradient-to-r from-purple-600/20 to-pink-600/20 p-3 text-left transition-all duration-200 hover:from-purple-600/30 hover:to-pink-600/30"
+								>
+									<div class="mb-1 flex items-center space-x-2">
+										<MessageSquare class="h-4 w-4 text-purple-400" />
+										<span class="text-sm font-medium text-white">Translation Help</span>
+									</div>
+									<p class="text-xs text-gray-400">Get notes for Titus 1:1</p>
+								</button>
+							</div>
+						</div>
+
+						<!-- Example Conversations -->
+						<div class="space-y-4">
+							{#each exampleConversations as category}
+								<div class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
+									<div class="mb-3 flex items-center space-x-2">
+										<div
+											class="h-8 w-8 rounded-lg bg-gradient-to-r {category.color} flex items-center justify-center"
+										>
+											<svelte:component this={category.icon} class="h-4 w-4 text-white" />
+										</div>
+										<h4 class="text-sm font-semibold text-white">{category.title}</h4>
+									</div>
+									<p class="mb-3 text-xs text-gray-400">{category.description}</p>
+									<div class="space-y-2">
+										{#each category.examples as example}
+											<button
+												on:click={() => useSuggestion(example)}
+												class="w-full rounded-lg bg-black/20 p-2 text-left transition-colors hover:bg-black/30"
+											>
+												<p class="text-xs text-gray-300">{example}</p>
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
-</div>
+</section>

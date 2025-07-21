@@ -653,21 +653,45 @@
 </script>
 
 <svelte:head>
-	<title>MCP via HTTP/Web API - Translation Helps</title>
+	<title>MCP Tools API - The Aqueduct</title>
 	<meta
 		name="description"
-		content="Complete documentation for Translation Helps MCP over HTTP/Web API endpoints"
+		content="Complete documentation for Translation Helps MCP over HTTP/Web API endpoints. Test and explore our Model Context Protocol tools."
 	/>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900">
-	<div class="container mx-auto px-4 py-8">
+<!-- Page Content -->
+<section class="relative min-h-screen px-4 py-16 sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-7xl">
+		<!-- Header -->
+		<div class="mb-16 text-center">
+			<div
+				class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl"
+			>
+				<Code class="mr-2 h-4 w-4" />
+				Model Context Protocol • HTTP/Web API
+			</div>
+			<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
+				<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+					MCP Tools API
+				</span>
+			</h1>
+			<p class="mx-auto max-w-4xl text-xl leading-relaxed text-gray-300 md:text-2xl">
+				<strong class="text-blue-300">Complete documentation and testing interface</strong>
+				for our Translation Helps MCP server endpoints. Explore tools, test responses, and integrate
+				with ease.
+			</p>
+		</div>
 		<div class="flex flex-col gap-8 lg:flex-row">
 			<!-- Sidebar Navigation -->
 			<div class="lg:w-1/4">
-				<div class="sticky top-8 rounded-xl bg-gray-800/50 p-6 backdrop-blur-sm">
-					<h2 class="mb-4 flex items-center gap-2 text-xl font-bold text-white">
-						<Terminal class="h-5 w-5" />
+				<div
+					class="sticky top-8 rounded-3xl border border-blue-500/30 bg-white/5 p-6 shadow-xl backdrop-blur-2xl transition-all duration-300 hover:border-blue-500/40"
+				>
+					<h2 class="mb-6 flex items-center gap-3 text-xl font-bold text-white">
+						<div class="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/20">
+							<Terminal class="h-4 w-4 text-blue-400" />
+						</div>
 						Documentation
 					</h2>
 
@@ -711,7 +735,9 @@
 
 			<!-- Main Content -->
 			<div class="lg:w-3/4">
-				<div class="rounded-xl bg-gray-800/50 p-8 backdrop-blur-sm">
+				<div
+					class="rounded-3xl border border-blue-500/30 bg-white/5 p-8 shadow-xl backdrop-blur-2xl transition-all duration-300 hover:border-blue-500/40"
+				>
 					<!-- Overview -->
 					{#if selectedCategory === 'overview'}
 						<div class="space-y-6">
@@ -1112,4 +1138,4 @@
 			</div>
 		</div>
 	</div>
-</div>
+</section>
