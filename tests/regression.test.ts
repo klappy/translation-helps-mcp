@@ -4,10 +4,7 @@ const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8888";
 const TIMEOUT = 30000;
 
 async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
-  // Remove 'mcp-' prefix if present (legacy test compatibility)
-  const cleanEndpoint = endpoint.replace(/^mcp-/, "");
-
-  const url = new URL(`${BASE_URL}/api/${cleanEndpoint}`);
+  const url = new URL(`${BASE_URL}/api/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
       url.searchParams.set(key, value);
@@ -28,7 +25,7 @@ describe("Regression Tests", () => {
     it(
       "should not double-wrap JSON responses",
       async () => {
-        const response = await makeRequest("mcp-fetch-scripture", {
+        const response = await makeRequest("fetch-scripture", {
           reference: "John 3:16",
           language: "en",
           organization: "unfoldingWord",
@@ -50,7 +47,7 @@ describe("Regression Tests", () => {
     it(
       "should return actual scripture content for Titus 1:1",
       async () => {
-        const response = await makeRequest("mcp-fetch-scripture", {
+        const response = await makeRequest("fetch-scripture", {
           reference: "Titus 1:1",
           language: "en",
           organization: "unfoldingWord",
@@ -70,7 +67,7 @@ describe("Regression Tests", () => {
     it(
       "should return translation notes for Titus 1:1",
       async () => {
-        const response = await makeRequest("mcp-fetch-translation-notes", {
+        const response = await makeRequest("fetch-translation-notes", {
           reference: "Titus 1:1",
           language: "en",
           organization: "unfoldingWord",
@@ -88,7 +85,7 @@ describe("Regression Tests", () => {
     it(
       "should use ingredient metadata file paths, not hardcoded paths",
       async () => {
-        const response = await makeRequest("mcp-fetch-translation-notes", {
+        const response = await makeRequest("fetch-translation-notes", {
           reference: "John 3:16",
           language: "en",
           organization: "unfoldingWord",
@@ -107,7 +104,7 @@ describe("Regression Tests", () => {
     it(
       "should not return fake translation names in citations",
       async () => {
-        const response = await makeRequest("mcp-fetch-scripture", {
+        const response = await makeRequest("fetch-scripture", {
           reference: "John 3:16",
           language: "en",
           organization: "unfoldingWord",
@@ -134,7 +131,7 @@ describe("Regression Tests", () => {
     it(
       "should return actual resources, not empty shells",
       async () => {
-        const response = await makeRequest("mcp-fetch-resources", {
+        const response = await makeRequest("fetch-resources", {
           reference: "John 3:16", // v4.0.0: reference is required
           language: "en",
           organization: "unfoldingWord",
@@ -166,7 +163,7 @@ describe("Regression Tests", () => {
         ];
 
         for (const testCase of testCases) {
-          const response = await makeRequest("mcp-fetch-scripture", {
+          const response = await makeRequest("fetch-scripture", {
             reference: testCase.reference,
             language: "en",
             organization: "unfoldingWord",
@@ -196,7 +193,7 @@ describe("Regression Tests", () => {
           organization: "unfoldingWord",
         });
 
-        const mcpResponse = await makeRequest("mcp-fetch-scripture", {
+        const mcpResponse = await makeRequest("fetch-scripture", {
           reference: "John 3:16",
           language: "en",
           organization: "unfoldingWord",
@@ -249,7 +246,7 @@ describe("Regression Tests", () => {
 
           try {
             const apiResponse = await makeRequest(`fetch-${endpoint}`, apiParams);
-            const mcpResponse = await makeRequest(`mcp-fetch-${endpoint}`, apiParams);
+            const mcpResponse = await makeRequest(`fetch-${endpoint}`, apiParams);
 
             // Remove timestamps for comparison
             const normalizeTimestamps = (obj: any) => {
