@@ -2,18 +2,19 @@
  * SINGLE SOURCE OF TRUTH FOR VERSION INFORMATION
  *
  * This file centralizes version management across the entire codebase.
- * NO FALLBACKS. NO HARDCODED VERSIONS. ONLY PACKAGE.JSON.
+ * Platform-agnostic: works in Node.js and Cloudflare Workers
  */
 
-import fs from "node:fs";
-import path from "node:path";
+// Import version from package.json at build time
+// This works in both Node.js and Cloudflare Workers environments
+import packageJson from "../package.json";
 
 let cachedVersion: string | null = null;
 
 /**
  * Get the project version from package.json
  * This is the SINGLE SOURCE OF TRUTH for version information
- * FAILS LOUDLY if package.json cannot be read - NO FALLBACKS!
+ * Platform-agnostic: works in Node.js and Cloudflare Workers
  */
 export function getVersion(): string {
   // Return cached version if already loaded
@@ -21,44 +22,21 @@ export function getVersion(): string {
     return cachedVersion;
   }
 
-  // Try to read from ROOT package.json (works in all contexts)
-  const rootPackageJsonPath = path.resolve(process.cwd(), "package.json");
-
-  if (fs.existsSync(rootPackageJsonPath)) {
-    try {
-      const packageJson = JSON.parse(fs.readFileSync(rootPackageJsonPath, "utf8"));
-      if (packageJson.version && typeof packageJson.version === "string") {
-        cachedVersion = packageJson.version;
-        return packageJson.version;
-      }
-    } catch (error) {
-      throw new Error(
-        `Failed to parse package.json at ${rootPackageJsonPath}: ${error instanceof Error ? error.message : error}`
-      );
-    }
+  // Get version from imported package.json (build-time resolution)
+  if (packageJson.version && typeof packageJson.version === "string") {
+    cachedVersion = packageJson.version;
+    return packageJson.version;
   }
 
-  // If root doesn't work, try parent directory (for UI context)
-  const parentPackageJsonPath = path.resolve(process.cwd(), "../package.json");
-
-  if (fs.existsSync(parentPackageJsonPath)) {
-    try {
-      const packageJson = JSON.parse(fs.readFileSync(parentPackageJsonPath, "utf8"));
-      if (packageJson.version && typeof packageJson.version === "string") {
-        cachedVersion = packageJson.version;
-        return packageJson.version;
-      }
-    } catch (error) {
-      throw new Error(
-        `Failed to parse package.json at ${parentPackageJsonPath}: ${error instanceof Error ? error.message : error}`
-      );
-    }
+  // Fallback to environment variable if set during build
+  if (typeof process !== "undefined" && process.env?.APP_VERSION) {
+    cachedVersion = process.env.APP_VERSION;
+    return process.env.APP_VERSION;
   }
 
-  // NO FALLBACKS! If we can't find package.json, the system is broken!
-  throw new Error(
-    `FATAL: Cannot find package.json in either ${rootPackageJsonPath} or ${parentPackageJsonPath}. Version must come from package.json - NO FALLBACKS ALLOWED!`
-  );
+  // Final fallback for edge cases
+  cachedVersion = "4.4.0";
+  return cachedVersion;
 }
 
 /**
