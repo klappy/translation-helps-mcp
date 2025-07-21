@@ -4,7 +4,7 @@ const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8888";
 const TIMEOUT = 30000;
 
 async function fetchScripture(reference: string, language = "en", organization = "unfoldingWord") {
-  const url = new URL(`${BASE_URL}/.netlify/functions/fetch-scripture`);
+  const url = new URL(`${BASE_URL}/api/fetch-scripture`);
   url.searchParams.set("reference", reference);
   url.searchParams.set("language", language);
   url.searchParams.set("organization", organization);

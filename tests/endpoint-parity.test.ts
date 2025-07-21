@@ -62,7 +62,10 @@ const TEST_CASES = {
 
 // Helper functions
 async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
-  const url = new URL(`${BASE_URL}/.netlify/functions/${endpoint}`);
+  // Remove 'mcp-' prefix if present (legacy test compatibility)
+  const cleanEndpoint = endpoint.replace(/^mcp-/, "");
+
+  const url = new URL(`${BASE_URL}/api/${cleanEndpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
       url.searchParams.set(key, value);
