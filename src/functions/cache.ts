@@ -3,24 +3,7 @@
  * No external dependencies - compatible with all platforms
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
-
-/**
- * Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
- */
-function getVersionFromPackageJson(): string {
-  try {
-    const packageJsonPath = join(process.cwd(), "package.json");
-    if (existsSync(packageJsonPath)) {
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-      return packageJson.version;
-    }
-  } catch (error) {
-    console.warn("Failed to read version from ROOT package.json, using fallback");
-  }
-  return "4.3.0"; // Only as absolute fallback
-}
+import { getVersion } from "../version.js";
 
 interface CacheItem {
   value: any;
@@ -49,7 +32,7 @@ export class CacheManager {
   private appVersion: string;
 
   constructor() {
-    this.appVersion = getVersionFromPackageJson();
+    this.appVersion = getVersion();
     console.log(`📦 Simple memory cache initialized with app version: ${this.appVersion}`);
   }
 

@@ -1,11 +1,19 @@
+import { getVersion as getServerVersion } from '../../../src/version.js';
+
 /**
  * Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
  * This is a static value for browser environments
  */
 export function getVersion(): string {
-	// In browser environment, always use static version
-	// This prevents Node.js fs/path imports from running in browser
-	return '4.3.0';
+	// In browser environment, we need to use a static fallback
+	// since we can't read files dynamically in the browser
+	try {
+		// Try to use server version during build time
+		return getServerVersion();
+	} catch {
+		// Browser fallback - this should match the FALLBACK_VERSION in src/version.ts
+		return '4.3.0';
+	}
 }
 
 export const VERSION = getVersion();

@@ -5,24 +5,7 @@
  * unified system that supports cache bypass via headers and query params.
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
-
-/**
- * Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
- */
-function getVersionFromPackageJson(): string {
-  try {
-    const packageJsonPath = join(process.cwd(), "package.json");
-    if (existsSync(packageJsonPath)) {
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-      return packageJson.version;
-    }
-  } catch (error) {
-    console.warn("Failed to read version from ROOT package.json, using fallback");
-  }
-  return "4.3.0"; // Only as absolute fallback
-}
+import { getVersion } from "../version.js";
 
 // Cache bypass detection
 export interface CacheBypassOptions {
@@ -119,7 +102,7 @@ export class UnifiedCacheManager {
   };
 
   constructor() {
-    this.appVersion = getVersionFromPackageJson();
+    this.appVersion = getVersion();
     console.log(`🚀 Unified cache initialized with app version: ${this.appVersion}`);
   }
 
