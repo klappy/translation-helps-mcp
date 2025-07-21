@@ -132,7 +132,7 @@
 					class="mb-8 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-6 py-3 text-lg font-bold text-green-300 backdrop-blur-xl"
 				>
 					<span>🎉</span>
-					<span>Open Source • No API Keys • $7-15/mo on Netlify/Cloudflare</span>
+					<span>Open Source • No API Keys • $7-15/mo on Cloudflare</span>
 				</div>
 
 				<div class="mb-12">
@@ -480,7 +480,7 @@
 
 					<div class="rounded-xl bg-gray-800 p-6">
 						<div class="mb-2 text-3xl font-bold text-green-400">2</div>
-						<h3 class="mb-2 text-xl font-bold">Deploy to Netlify/Cloudflare</h3>
+						<h3 class="mb-2 text-xl font-bold">Deploy to Cloudflare</h3>
 						<p class="text-gray-400">Or run locally. Your choice.</p>
 					</div>
 
