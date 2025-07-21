@@ -728,8 +728,11 @@
 
 					<form class="space-y-6">
 						<div>
-							<label class="mb-2 block text-sm font-medium text-gray-300">Bible Reference</label>
+							<label for="bible-reference" class="mb-2 block text-sm font-medium text-gray-300"
+								>Bible Reference</label
+							>
 							<input
+								id="bible-reference"
 								type="text"
 								bind:value={formData.reference}
 								class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
@@ -739,8 +742,11 @@
 
 						<div class="grid grid-cols-2 gap-4">
 							<div>
-								<label class="mb-2 block text-sm font-medium text-gray-300">Language</label>
+								<label for="language-select" class="mb-2 block text-sm font-medium text-gray-300"
+									>Language</label
+								>
 								<select
+									id="language-select"
 									bind:value={formData.language}
 									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
 								>

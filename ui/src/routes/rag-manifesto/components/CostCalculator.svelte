@@ -81,10 +81,11 @@
 	<div class="space-y-6">
 		<!-- Lookups per day -->
 		<div>
-			<label class="mb-2 block text-sm font-medium">
+			<label for="lookups-per-day" class="mb-2 block text-sm font-medium">
 				Daily API Lookups: <span class="text-green-400">{lookupsPerDay.toLocaleString()}</span>
 			</label>
 			<input
+				id="lookups-per-day"
 				type="range"
 				bind:value={lookupsPerDay}
 				min="100"
@@ -96,7 +97,7 @@
 
 		<!-- Usage distribution -->
 		<div>
-			<label class="mb-2 block text-sm font-medium">Usage Distribution</label>
+			<h4 class="mb-2 block text-sm font-medium">Usage Distribution</h4>
 			<div class="space-y-3">
 				<div class="flex items-center justify-between">
 					<span class="text-sm">Verse lookups: {versePercent}%</span>
