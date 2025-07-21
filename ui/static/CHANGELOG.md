@@ -5,6 +5,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] - 2025-07-27
+
+### 🚀 Major Platform Migration
+
+- **Complete Netlify Deprecation**: Removed all Netlify-specific code and references across the entire codebase
+  - Deleted entire `netlify/` directory (43 files, 6,000+ lines of code)
+  - Updated all references to focus on Cloudflare Workers deployment
+  - Removed `@netlify/functions` dependency and Netlify-specific types
+  - Updated cost calculations and platform comparisons to emphasize Cloudflare efficiency
+
+### 📘 Technical Documentation
+
+- **Whitepaper Preview System**: Added comprehensive technical preview with dynamic markdown rendering
+  - Created `/whitepaper` route with full markdown-to-HTML conversion
+  - Added technical preview of "The Aqueduct: A Stateless RAG Architecture for Bible Translation"
+  - Included roadmap for full whitepaper release (August 2025)
+  - Added navigation integration and themed styling consistent with site design
+
+- **Dynamic Changelog Route**: Enhanced documentation accessibility
+  - Created `/changelog` route that renders live `CHANGELOG.md` file
+  - Implemented markdown-to-HTML conversion with custom styling
+  - Fixed date inconsistencies (corrected project start to July 16, 2025)
+  - Added themed container with proper navigation and error handling
+
+### 🎨 Homepage Strategic Enhancements
+
+- **Multimodal Architecture Showcase**: Major content and design overhaul
+  - Added "Multimodal Breakthrough" section highlighting IPFS-based permanence
+  - Introduced "Living Knowledge Flow" visual diagram showing data pipeline
+  - Enhanced demo section with real API integration using `LLMChatService`
+  - Added "Version 4.2 • Production Ready" badge with dynamic versioning
+
+- **Interactive Demo Upgrade**: Connected to real MCP services
+  - Demo now makes actual API calls to scripture, translation notes, and word services
+  - Real-time response streaming with typing animation effects
+  - API call tracking with detailed pipeline visualization
+  - Added example prompts and keyboard navigation support
+
+### 🌟 User Experience Improvements
+
+- **Complete Theme Integration**: Applied new Aqueduct theme across all pages
+  - Updated `/performance`, `/test`, `/chat`, `/about`, `/mcp-tools` pages
+  - Consistent animated backgrounds, glassmorphism effects, and gradient styling
+  - Enhanced mobile navigation and responsive design improvements
+  - Improved accessibility with better form labels and interactive elements
+
+- **Navigation Enhancements**: Streamlined site navigation
+  - Consolidated API testing and MCP documentation under unified "MCP Tools" section
+  - Added footer links for whitepaper and changelog
+  - Updated all internal links to use new route structure
+  - Fixed broken navigation paths and 404 errors
+
+### 🔧 Infrastructure & Performance
+
+- **API Endpoint Migration**: Updated all frontend calls to use Cloudflare-compatible endpoints
+  - Chat system migrated from `/api/mcp-*` to `/api/*` endpoints
+  - Homepage demo connected to production API pipeline
+  - Improved error handling and response time tracking
+  - Enhanced cache-busting for health check reliability
+
+- **Build & Deployment Optimization**: Streamlined for single platform
+  - Removed Netlify-specific build steps and configurations
+  - Updated TypeScript configurations to remove platform-specific dependencies
+  - Simplified deployment scripts for Cloudflare-only workflow
+  - Fixed production build errors and prerender issues
+
+### 🐛 Bug Fixes
+
+- **Production Stability**: Resolved multiple deployment and runtime issues
+  - Fixed malformed SVG paths causing build failures
+  - Corrected Tailwind CSS compilation errors with custom styles
+  - Resolved health endpoint crashes in production environment
+  - Fixed version synchronization between root and UI packages
+
+- **Code Quality**: Enhanced maintainability and reliability
+  - Updated import paths to use unified business logic from `src/functions`
+  - Removed deprecated Netlify-specific utilities and types
+  - Fixed accessibility warnings for better screen reader support
+  - Improved error boundaries and graceful failure handling
+
 ## [4.2.0] - 2025-07-21
 
 ### 🚀 Major New Features
