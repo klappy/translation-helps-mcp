@@ -8,8 +8,8 @@ Translation Helps MCP now supports **stateless HTTP-based MCP** that runs perfec
 
 ### ⚡ Live Demo
 
-- **HTTP MCP Endpoint**: `https://ab56217a.translation-helps-mcp.pages.dev/api/mcp`
-- **Interactive Test UI**: `https://ab56217a.translation-helps-mcp.pages.dev/mcp-http-test`
+- **HTTP MCP Endpoint**: `https://translation-helps-mcp.pages.dev/api/mcp`
+- **Interactive Test UI**: `https://translation-helps-mcp.pages.dev/mcp-http-test`
 
 ### 🚀 Quick Start (HTTP MCP)
 
@@ -17,7 +17,7 @@ Translation Helps MCP now supports **stateless HTTP-based MCP** that runs perfec
 
 ```bash
 # Test any of the 11 available tools
-curl -X POST https://ab56217a.translation-helps-mcp.pages.dev/api/mcp \
+curl -X POST https://translation-helps-mcp.pages.dev/api/mcp \
   -H "Content-Type: application/json" \
   -d '{"method":"tools/call","params":{"name":"fetch_scripture","arguments":{"reference":"John 3:16"}}}'
 ```
