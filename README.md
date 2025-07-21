@@ -2,35 +2,76 @@
 
 An MCP (Model Context Protocol) server that provides biblical translation resources from Door43 through simple, structured tools. Perfect for AI-powered Bible translation projects.
 
-## 🌟 NEW: HTTP-based MCP on Cloudflare Workers
+## 🌟 MCP via HTTP/Web API
 
-Translation Helps MCP now supports **stateless HTTP-based MCP** that runs perfectly on Cloudflare Workers! This revolutionary approach eliminates the need for WebSockets or long-lived connections.
+Translation Helps MCP supports both traditional MCP servers and modern **HTTP-based MCP** that runs perfectly on Cloudflare Workers without WebSockets or long-lived connections.
 
-### ⚡ Live Demo
+### ⚡ Live Production Deployment
 
 - **HTTP MCP Endpoint**: `https://translation-helps-mcp.pages.dev/api/mcp`
+- **Complete Documentation**: `https://translation-helps-mcp.pages.dev/mcp-tools`
 - **Interactive Test UI**: `https://translation-helps-mcp.pages.dev/mcp-http-test`
 
-### 🚀 Quick Start (HTTP MCP)
+### 🔌 MCP Setup for AI Assistants
 
-**For AI Applications:**
+Choose your preferred setup method:
 
-```bash
-# Test any of the 11 available tools
-curl -X POST https://translation-helps-mcp.pages.dev/api/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"method":"tools/call","params":{"name":"fetch_scripture","arguments":{"reference":"John 3:16"}}}'
+#### Option 1: HTTP MCP (Recommended)
+
+No installation required! Use the live HTTP endpoint directly.
+
+**For Cursor AI (`.cursor/mcp.json`):**
+
+```json
+{
+  "mcpServers": {
+    "translation-helps": {
+      "command": "node",
+      "args": [
+        "-e",
+        "console.log('HTTP MCP: Use direct API calls to https://translation-helps-mcp.pages.dev/api/mcp')"
+      ]
+    }
+  }
+}
 ```
 
-**For Web Applications:**
+**For Claude Desktop:**
 
-```javascript
-import { createMCPClient } from "$lib/mcp/http-client";
-const client = await createMCPClient("/api/mcp");
-const result = await client.callTool("fetch_scripture", { reference: "John 3:16" });
+- Use the web interface at `https://translation-helps-mcp.pages.dev/mcp-tools`
+- Or integrate via HTTP requests in your applications
+
+#### Option 2: Local MCP Server
+
+**For Cursor AI (`.cursor/mcp.json`):**
+
+```json
+{
+  "mcpServers": {
+    "translation-helps": {
+      "command": "node",
+      "args": ["src/index.ts"],
+      "cwd": "/absolute/path/to/translation-helps-mcp"
+    }
+  }
+}
 ```
 
-## 🚀 Quick Start (Traditional)
+**For Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):**
+
+```json
+{
+  "mcpServers": {
+    "translation-helps": {
+      "command": "node",
+      "args": ["src/index.ts"],
+      "cwd": "/absolute/path/to/translation-helps-mcp"
+    }
+  }
+}
+```
+
+### 🚀 Development Setup
 
 1. **Install dependencies:**
 
@@ -38,16 +79,46 @@ const result = await client.callTool("fetch_scripture", { reference: "John 3:16"
    npm install
    ```
 
-2. **Start the development server:**
+2. **Start local MCP server:**
+
+   ```bash
+   npm start
+   ```
+
+3. **Start development web server:**
 
    ```bash
    netlify dev
    ```
 
-3. **Test the API:**
+4. **Test the API:**
    ```bash
    curl "http://localhost:8888/.netlify/functions/fetch-scripture?reference=John%203:16&language=en&organization=unfoldingWord"
    ```
+
+### 🔗 HTTP MCP Usage
+
+**Direct HTTP Testing:**
+
+```bash
+# Test any of the 14 available tools organized in 3 categories:
+# Core: Direct DCS/Door43 resource access (10 tools)
+# Linked: Combined endpoint functionality (2 tools)
+# Experimental: Value-added features (2 tools)
+curl -X POST https://translation-helps-mcp.pages.dev/api/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"method":"tools/call","params":{"name":"translation_helps_fetch_scripture","arguments":{"reference":"John 3:16"}}}'
+```
+
+**JavaScript Integration:**
+
+```javascript
+import { createMCPClient } from "$lib/mcp/http-client";
+const client = await createMCPClient("/api/mcp");
+const result = await client.callTool("translation_helps_fetch_scripture", {
+  reference: "John 3:16",
+});
+```
 
 ## 🧪 Comprehensive Test Suite ⭐ NEW!
 
@@ -124,22 +195,36 @@ Translation Helps MCP uses a **unified architecture** that eliminates code dupli
 | `extract-references`           | `mcp-extract-references`           | Extract Bible references from text |
 | `browse-translation-words`     | `mcp-browse-translation-words`     | Browse word categories             |
 
-## 🎯 MCP Tools
+## 🎯 MCP Tools (14 Total)
 
-### Core Translation Tools
+### 🗂️ Core Endpoints (10 tools)
 
-- **`fetchScripture`** - Get Bible verses in multiple translations
-- **`fetchTranslationNotes`** - Get detailed translator notes
-- **`fetchTranslationQuestions`** - Get comprehension questions
-- **`fetchTranslationWords`** - Get word definitions and usage
-- **`fetchTranslationWordLinks`** - Get word connections and relationships
+_Direct mappings to DCS/Door43 resources_
 
-### Utility Tools
+- **`translation_helps_fetch_scripture`** - Get Bible text in USFM or plain text format
+- **`translation_helps_fetch_translation_notes`** - Get detailed translation notes for Bible passages
+- **`translation_helps_fetch_translation_questions`** - Get comprehension questions for Bible passages
+- **`translation_helps_fetch_translation_words`** - Get specific translation word article content
+- **`translation_helps_browse_translation_words`** - Browse available translation word articles by category
+- **`translation_helps_fetch_translation_word_links`** - Get translation word links for specific Bible references
+- **`translation_helps_get_languages`** - List all available languages for translation resources
+- **`translation_helps_extract_references`** - Extract and parse Bible references from text
+- **`translation_helps_list_available_resources`** - Search and list available translation resources
+- **`translation_helps_get_available_books`** - List available Bible books for translation resources
 
-- **`getLanguages`** - List available languages
-- **`extractReferences`** - Parse Bible references from text
-- **`browseTranslationWords`** - Browse by category
-- **`fetchResources`** - Get comprehensive resource data
+### 🔗 Linked Endpoints (2 tools)
+
+_Combine multiple endpoints for enhanced functionality_
+
+- **`translation_helps_get_words_for_reference`** - Get translation words that apply to specific Bible references
+- **`translation_helps_fetch_resources`** - Get comprehensive translation resources for a Bible reference
+
+### 🧪 Experimental Endpoints (2 tools)
+
+_Value-added endpoints that may change_
+
+- **`translation_helps_get_context`** - Get contextual information and cross-references for Bible passages
+- **`translation_helps_get_translation_word`** - Get detailed information about a specific translation word
 
 ## 📝 Usage Examples
 
