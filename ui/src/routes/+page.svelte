@@ -231,10 +231,8 @@
 						Version 4.2 • Production Ready
 					</div>
 					<a
-						href="https://github.com/klappy/translation-helps-mcp/releases"
+						href="/changelog"
 						class="text-xs text-gray-400 transition-colors hover:text-emerald-400"
-						target="_blank"
-						rel="noopener noreferrer"
 					>
 						View Changelog →
 					</a>
