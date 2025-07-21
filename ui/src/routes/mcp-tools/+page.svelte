@@ -26,7 +26,15 @@
 	} from 'lucide-svelte';
 	import ApiTester from '$lib/components/ApiTester.svelte';
 	import ResponseDisplay from '$lib/components/ResponseDisplay.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import {
+		startHealthMonitoring,
+		stopHealthMonitoring,
+		coreHealth,
+		extendedHealth,
+		experimentalHealth,
+		overallHealth
+	} from '$lib/services/healthService';
 
 	// Health check state
 	let healthData = null;
@@ -50,22 +58,26 @@
 		health: {
 			name: 'Health Status',
 			icon: Activity,
-			description: 'Real-time API endpoint monitoring'
+			description: 'Real-time API endpoint monitoring',
+			healthKey: 'overall'
 		},
 		core: {
 			name: 'Core Endpoints',
 			icon: Database,
-			description: 'Fetch files and filter data to smaller, relevant chunks for specific use cases'
+			description: 'Fetch files and filter data to smaller, relevant chunks for specific use cases',
+			healthKey: 'core'
 		},
 		linked: {
 			name: 'Extended Endpoints',
 			icon: Link,
-			description: 'Bring multiple sources together, handle complex chained events, or merge data'
+			description: 'Bring multiple sources together, handle complex chained events, or merge data',
+			healthKey: 'extended'
 		},
 		experimental: {
 			name: 'Experimental',
 			icon: Beaker,
-			description: 'Value-added endpoints that may change'
+			description: 'Value-added endpoints that may change',
+			healthKey: 'experimental'
 		}
 	};
 
@@ -659,6 +671,11 @@
 
 	onMount(() => {
 		loadHealthCheck();
+		startHealthMonitoring();
+	});
+
+	onDestroy(() => {
+		stopHealthMonitoring();
 	});
 </script>
 
@@ -717,6 +734,71 @@
 							>
 								<svelte:component this={category.icon} class="h-4 w-4" />
 								{category.name}
+								{#if category.healthKey}
+									{#if category.healthKey === 'overall'}
+										<span class="ml-auto flex items-center gap-1 text-xs">
+											{#if $overallHealth.status === 'healthy'}
+												<CheckCircle class="h-3 w-3 text-green-500" />
+											{:else if $overallHealth.status === 'warning'}
+												<AlertCircle class="h-3 w-3 text-yellow-500" />
+											{:else if $overallHealth.status === 'error'}
+												<AlertCircle class="h-3 w-3 text-red-500" />
+											{:else}
+												<div class="h-3 w-3 animate-pulse rounded-full bg-gray-400"></div>
+											{/if}
+											<span class="font-medium {$overallHealth.color}">
+												{$overallHealth.status === 'loading' ? '...' : $overallHealth.status}
+											</span>
+										</span>
+									{:else if category.healthKey === 'core'}
+										<span class="ml-auto flex items-center gap-1 text-xs">
+											{#if $coreHealth.status === 'healthy'}
+												<CheckCircle class="h-3 w-3 text-green-500" />
+											{:else if $coreHealth.status === 'warning'}
+												<AlertCircle class="h-3 w-3 text-yellow-500" />
+											{:else if $coreHealth.status === 'error'}
+												<AlertCircle class="h-3 w-3 text-red-500" />
+											{:else}
+												<div class="h-3 w-3 animate-pulse rounded-full bg-gray-400"></div>
+											{/if}
+											<span class="font-medium {$coreHealth.color}">
+												{$coreHealth.status === 'loading' ? '...' : $coreHealth.status}
+											</span>
+										</span>
+									{:else if category.healthKey === 'extended'}
+										<span class="ml-auto flex items-center gap-1 text-xs">
+											{#if $extendedHealth.status === 'healthy'}
+												<CheckCircle class="h-3 w-3 text-green-500" />
+											{:else if $extendedHealth.status === 'warning'}
+												<AlertCircle class="h-3 w-3 text-yellow-500" />
+											{:else if $extendedHealth.status === 'error'}
+												<AlertCircle class="h-3 w-3 text-red-500" />
+											{:else}
+												<div class="h-3 w-3 animate-pulse rounded-full bg-gray-400"></div>
+											{/if}
+											<span class="font-medium {$extendedHealth.color}">
+												{$extendedHealth.status === 'loading' ? '...' : $extendedHealth.status}
+											</span>
+										</span>
+									{:else if category.healthKey === 'experimental'}
+										<span class="ml-auto flex items-center gap-1 text-xs">
+											{#if $experimentalHealth.status === 'healthy'}
+												<CheckCircle class="h-3 w-3 text-green-500" />
+											{:else if $experimentalHealth.status === 'warning'}
+												<AlertCircle class="h-3 w-3 text-yellow-500" />
+											{:else if $experimentalHealth.status === 'error'}
+												<AlertCircle class="h-3 w-3 text-red-500" />
+											{:else}
+												<div class="h-3 w-3 animate-pulse rounded-full bg-gray-400"></div>
+											{/if}
+											<span class="font-medium {$experimentalHealth.color}">
+												{$experimentalHealth.status === 'loading'
+													? '...'
+													: $experimentalHealth.status}
+											</span>
+										</span>
+									{/if}
+								{/if}
 							</button>
 						{/each}
 
