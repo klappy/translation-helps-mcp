@@ -7,18 +7,22 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 
 // Define test cases for each endpoint
-const ENDPOINT_TESTS = [
+interface EndpointTest {
+	name: string;
+	url: string;
+	params: Record<string, string>;
+	expectedFields: string[];
+	method?: 'GET' | 'POST';
+	body?: Record<string, unknown>;
+}
+
+const ENDPOINT_TESTS: EndpointTest[] = [
+	// Core Bible content endpoints
 	{
 		name: 'fetch-scripture',
 		url: '/api/fetch-scripture',
 		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
 		expectedFields: ['scripture']
-	},
-	{
-		name: 'get-languages',
-		url: '/api/get-languages',
-		params: { organization: 'unfoldingWord' },
-		expectedFields: ['languages']
 	},
 	{
 		name: 'fetch-translation-notes',
@@ -27,23 +31,119 @@ const ENDPOINT_TESTS = [
 		expectedFields: ['translationNotes']
 	},
 	{
+		name: 'fetch-translation-questions',
+		url: '/api/fetch-translation-questions',
+		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['translationQuestions']
+	},
+	{
 		name: 'fetch-translation-words',
 		url: '/api/fetch-translation-words',
 		params: { reference: 'Titus 1:1', language: 'en', organization: 'unfoldingWord' },
 		expectedFields: ['translationWords']
+	},
+	{
+		name: 'fetch-translation-word-links',
+		url: '/api/fetch-translation-word-links',
+		params: { reference: 'Genesis 1:1', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['wordLinks']
+	},
+
+	// Comprehensive resource endpoints
+	{
+		name: 'fetch-resources',
+		url: '/api/fetch-resources',
+		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['resources']
+	},
+	{
+		name: 'get-context',
+		url: '/api/get-context',
+		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['context']
+	},
+
+	// Metadata and search endpoints
+	{
+		name: 'get-languages',
+		url: '/api/get-languages',
+		params: { organization: 'unfoldingWord' },
+		expectedFields: ['languages']
+	},
+	{
+		name: 'get-available-books',
+		url: '/api/get-available-books',
+		params: { language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['books']
+	},
+	{
+		name: 'list-available-resources',
+		url: '/api/list-available-resources',
+		params: { language: 'en', query: 'faith' },
+		expectedFields: ['resources']
+	},
+
+	// Translation words browsing
+	{
+		name: 'browse-translation-words',
+		url: '/api/browse-translation-words',
+		params: { language: 'en', category: 'kt', organization: 'unfoldingWord' },
+		expectedFields: ['words']
+	},
+	{
+		name: 'get-translation-word',
+		url: '/api/get-translation-word',
+		params: { term: 'grace', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['term']
+	},
+	{
+		name: 'get-words-for-reference',
+		url: '/api/get-words-for-reference',
+		params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' },
+		expectedFields: ['words']
+	},
+
+	// Parsing and utility endpoints
+	{
+		name: 'extract-references',
+		url: '/api/extract-references',
+		params: { text: 'See John 3:16 and Romans 1:1 for more details' },
+		expectedFields: ['references']
+	},
+
+	// MCP protocol endpoint
+	{
+		name: 'mcp-endpoint',
+		url: '/api/mcp',
+		params: {},
+		expectedFields: ['tools'],
+		method: 'POST',
+		body: { jsonrpc: '2.0', method: 'tools/list', id: 1 }
 	}
 ];
 
-async function testEndpoint(baseUrl: string, test: (typeof ENDPOINT_TESTS)[0]) {
+async function testEndpoint(baseUrl: string, test: EndpointTest) {
 	const startTime = Date.now();
 
 	try {
 		const url = new URL(test.url, baseUrl);
-		Object.entries(test.params).forEach(([key, value]) => {
-			url.searchParams.set(key, String(value));
-		});
 
-		const response = await fetch(url.toString());
+		// Handle different request methods
+		const method = test.method || 'GET';
+		const fetchOptions: RequestInit = { method };
+
+		if (method === 'POST' && test.body) {
+			// POST request with JSON body (for MCP)
+			fetchOptions.headers = { 'Content-Type': 'application/json' };
+			fetchOptions.body = JSON.stringify(test.body);
+		} else {
+			// GET request with query parameters
+			Object.entries(test.params).forEach(([key, value]) => {
+				url.searchParams.set(key, String(value));
+			});
+		}
+
+		const response = await fetch(url.toString(), fetchOptions);
 		const responseTime = Date.now() - startTime;
 
 		if (!response.ok) {

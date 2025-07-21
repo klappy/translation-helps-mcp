@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2025-07-21
+
+### 🚀 Major New Features
+
+- **Complete API Endpoint Coverage**: Added 9 missing SvelteKit API routes for comprehensive Cloudflare deployment
+  - `fetch-translation-questions` - Get comprehension questions for Bible passages
+  - `fetch-resources` - Get comprehensive translation resources for Bible references
+  - `browse-translation-words` - Browse available translation word articles by category
+  - `get-context` - Get contextual information and cross-references for Bible passages
+  - `extract-references` - Extract and parse Bible references from text
+  - `get-translation-word` - Get detailed information about specific translation words
+  - `get-available-books` - List available Bible books for translation resources
+  - `get-words-for-reference` - Get translation words that apply to specific Bible references
+  - `list-available-resources` - Search and list available translation resources
+
+### ✨ Enhanced Health Monitoring
+
+- **Comprehensive Health Checks**: Extended health endpoint to test all 15 API endpoints
+  - Real-time status monitoring for all documented MCP tools
+  - Response time tracking and error detection
+  - Cache hit/miss analytics and performance metrics
+  - Detailed error reporting with HTTP status codes
+
+### 🛠️ Infrastructure Improvements
+
+- **Unified Platform Architecture**: All Netlify functions now have corresponding SvelteKit routes
+  - Consistent API behavior across Netlify and Cloudflare platforms
+  - Shared handlers and services for maintainability
+  - Complete parity between deployment targets
+- **Enhanced Cache Management**: Improved caching with bypass detection and versioned keys
+  - Cache bypass support via query parameters and headers
+  - Performance optimizations for cold start scenarios
+  - Better debugging and monitoring capabilities
+
+### 🔧 Technical Enhancements
+
+- **Form Accessibility**: Fixed accessibility warnings for better user experience
+  - Associated form labels with controls
+  - Improved screen reader compatibility
+  - Cleaner development server logs
+
 ## [4.1.0] - 2025-07-21
 
 ### 🚀 Major New Features

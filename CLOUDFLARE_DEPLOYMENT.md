@@ -2,7 +2,7 @@
 
 ## 🌟 NEW: Stateless HTTP MCP on Cloudflare Workers
 
-Translation Helps MCP v4.1.0 introduces revolutionary **HTTP-based MCP** that runs perfectly on Cloudflare Workers without WebSockets or long-lived connections!
+Translation Helps MCP v4.2.0 introduces revolutionary **HTTP-based MCP** that runs perfectly on Cloudflare Workers without WebSockets or long-lived connections!
 
 ### ✨ Live Production Deployment
 

@@ -1,4 +1,6 @@
 // Platform-agnostic adapter for function handling
+import { unifiedCache, CacheBypassOptions, shouldBypassCache } from "./unified-cache";
+
 export interface PlatformRequest {
   method: string;
   url: string;
@@ -15,14 +17,26 @@ export interface PlatformResponse {
 
 export type PlatformHandler = (request: PlatformRequest) => Promise<PlatformResponse>;
 
-// Cache interface for platform wrappers
+// Cache interface for platform wrappers (deprecated - use unified cache)
 export interface CacheAdapter {
   get(key: string): Promise<any>;
   set(key: string, value: any, ttl?: number): Promise<void>;
 }
 
-// Netlify adapter with caching
-export function createNetlifyHandler(handler: PlatformHandler, cacheAdapter?: CacheAdapter) {
+// Generate cache key from request
+function generateRequestCacheKey(path: string, queryParams: Record<string, string>): string {
+  const sortedParams = Object.keys(queryParams)
+    .filter((key) => !["nocache", "bypass", "fresh", "_cache"].includes(key)) // Exclude cache control params
+    .sort()
+    .map((key) => `${key}=${queryParams[key]}`)
+    .join("&");
+
+  return `api:${path}${sortedParams ? ":" + sortedParams : ""}`;
+}
+
+// Netlify adapter with unified caching
+export function createNetlifyHandler(handler: PlatformHandler, _cacheAdapter?: CacheAdapter) {
+  // Note: cacheAdapter parameter is ignored in favor of unified cache
   return async (event: any, context: any) => {
     const request: PlatformRequest = {
       method: event.httpMethod,
@@ -32,42 +46,60 @@ export function createNetlifyHandler(handler: PlatformHandler, cacheAdapter?: Ca
       queryStringParameters: event.queryStringParameters || {},
     };
 
-    // Add caching logic if cache adapter provided
-    if (cacheAdapter) {
-      const cacheKey = `${event.path}:${JSON.stringify(event.queryStringParameters || {})}`;
-
-      // Try cache first
-      try {
-        const cached = await cacheAdapter.get(cacheKey);
-        if (cached) {
-          return {
-            statusCode: 200,
-            headers: {
-              "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Headers": "Content-Type",
-              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-              "X-Cache": "HIT",
-            },
-            body: JSON.stringify(cached),
-          };
-        }
-      } catch (error) {
-        console.warn("Cache read failed:", error);
-      }
+    // Handle OPTIONS requests immediately
+    if (request.method === "OPTIONS") {
+      return {
+        statusCode: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers":
+            "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        },
+        body: "",
+      };
     }
 
+    const cacheKey = generateRequestCacheKey(event.path, event.queryStringParameters || {});
+    const bypassOptions: CacheBypassOptions = {
+      queryParams: event.queryStringParameters || {},
+      headers: event.headers || {},
+    };
+
+    try {
+      // Try unified cache first (unless bypassed)
+      const cacheResult = await unifiedCache.get(cacheKey, "apiResponse", bypassOptions);
+
+      if (cacheResult.value) {
+        console.log(`🚀 Cache HIT for ${event.path}`);
+        return {
+          statusCode: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers":
+              "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            ...unifiedCache.generateCacheHeaders(cacheResult),
+          },
+          body: JSON.stringify(cacheResult.value),
+        };
+      }
+
+      console.log(`🔄 Cache MISS for ${event.path} - processing request`);
+    } catch (error) {
+      console.warn("Cache read failed:", error);
+    }
+
+    // Process the request
     const response = await handler(request);
 
-    // Cache successful responses
-    if (cacheAdapter && response.statusCode === 200) {
+    // Cache successful responses (unless bypassed)
+    if (response.statusCode === 200 && (!bypassOptions || !shouldBypassCache(bypassOptions))) {
       try {
         const responseData = JSON.parse(response.body);
-        await cacheAdapter.set(
-          `${event.path}:${JSON.stringify(event.queryStringParameters || {})}`,
-          responseData,
-          3600000
-        ); // 1 hour
+        await unifiedCache.set(cacheKey, responseData, "apiResponse");
+        console.log(`💾 Cached response for ${event.path}`);
       } catch (error) {
         console.warn("Cache write failed:", error);
       }
@@ -78,9 +110,11 @@ export function createNetlifyHandler(handler: PlatformHandler, cacheAdapter?: Ca
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "X-Cache": "MISS",
+        "X-Cache-Version": unifiedCache.getStats().appVersion,
         ...response.headers,
       },
       body: response.body,
@@ -88,8 +122,9 @@ export function createNetlifyHandler(handler: PlatformHandler, cacheAdapter?: Ca
   };
 }
 
-// SvelteKit adapter with caching
-export function createSvelteKitHandler(handler: PlatformHandler, cacheAdapter?: CacheAdapter) {
+// SvelteKit adapter with unified caching
+export function createSvelteKitHandler(handler: PlatformHandler, _cacheAdapter?: CacheAdapter) {
+  // Note: cacheAdapter parameter is ignored in favor of unified cache
   return async ({ request }: { request: Request }) => {
     const url = new URL(request.url);
     const queryStringParameters: Record<string, string> = {};
@@ -105,41 +140,58 @@ export function createSvelteKitHandler(handler: PlatformHandler, cacheAdapter?: 
       queryStringParameters,
     };
 
-    // Add caching logic if cache adapter provided
-    if (cacheAdapter) {
-      const cacheKey = `${url.pathname}:${JSON.stringify(queryStringParameters)}`;
-
-      // Try cache first
-      try {
-        const cached = await cacheAdapter.get(cacheKey);
-        if (cached) {
-          return new Response(JSON.stringify(cached), {
-            status: 200,
-            headers: {
-              "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Headers": "Content-Type",
-              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-              "X-Cache": "HIT",
-            },
-          });
-        }
-      } catch (error) {
-        console.warn("Cache read failed:", error);
-      }
+    // Handle OPTIONS requests immediately
+    if (request.method === "OPTIONS") {
+      return new Response("", {
+        status: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers":
+            "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        },
+      });
     }
 
+    const cacheKey = generateRequestCacheKey(url.pathname, queryStringParameters);
+    const bypassOptions: CacheBypassOptions = {
+      queryParams: queryStringParameters,
+      headers: Object.fromEntries(request.headers.entries()),
+    };
+
+    try {
+      // Try unified cache first (unless bypassed)
+      const cacheResult = await unifiedCache.get(cacheKey, "apiResponse", bypassOptions);
+
+      if (cacheResult.value) {
+        console.log(`🚀 Cache HIT for ${url.pathname}`);
+        return new Response(JSON.stringify(cacheResult.value), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers":
+              "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            ...unifiedCache.generateCacheHeaders(cacheResult),
+          },
+        });
+      }
+
+      console.log(`🔄 Cache MISS for ${url.pathname} - processing request`);
+    } catch (error) {
+      console.warn("Cache read failed:", error);
+    }
+
+    // Process the request
     const response = await handler(platformRequest);
 
-    // Cache successful responses
-    if (cacheAdapter && response.statusCode === 200) {
+    // Cache successful responses (unless bypassed)
+    if (response.statusCode === 200 && (!bypassOptions || !shouldBypassCache(bypassOptions))) {
       try {
         const responseData = JSON.parse(response.body);
-        await cacheAdapter.set(
-          `${url.pathname}:${JSON.stringify(queryStringParameters)}`,
-          responseData,
-          3600000
-        ); // 1 hour
+        await unifiedCache.set(cacheKey, responseData, "apiResponse");
+        console.log(`💾 Cached response for ${url.pathname}`);
       } catch (error) {
         console.warn("Cache write failed:", error);
       }
@@ -150,11 +202,16 @@ export function createSvelteKitHandler(handler: PlatformHandler, cacheAdapter?: 
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "X-Cache": "MISS",
+        "X-Cache-Version": unifiedCache.getStats().appVersion,
         ...response.headers,
       },
     });
   };
 }
+
+// Helper function for cache bypass detection (re-exported from unified-cache)
+export { shouldBypassCache } from "./unified-cache";

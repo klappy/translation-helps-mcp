@@ -5,7 +5,7 @@
  */
 
 import { parseReference } from "./reference-parser";
-import { cache } from "./cache";
+import { unifiedCache, CacheBypassOptions } from "./unified-cache";
 import {
   extractVerseText,
   extractVerseRange,
@@ -19,6 +19,7 @@ export interface ScriptureOptions {
   organization?: string;
   includeVerseNumbers?: boolean;
   format?: "text" | "usfm";
+  bypassCache?: CacheBypassOptions;
 }
 
 export interface ScriptureResult {
@@ -50,6 +51,8 @@ export interface ScriptureResult {
     timestamp: string;
     includeVerseNumbers: boolean;
     format: string;
+    cacheKey?: string;
+    cacheType?: string;
   };
 }
 
@@ -64,6 +67,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     organization = "unfoldingWord",
     includeVerseNumbers = true,
     format = "text",
+    bypassCache,
   } = options;
 
   console.log(`📖 Core scripture service called with:`, {
@@ -72,11 +76,13 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     organization,
     includeVerseNumbers,
     format,
+    bypassCache: bypassCache ? "enabled" : "disabled",
   });
 
   // Check for cached transformed response FIRST
   const responseKey = `scripture:${referenceParam}:${language}:${organization}:${includeVerseNumbers}:${format}`;
-  const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
+
+  const cachedResponse = await unifiedCache.get(responseKey, "transformedResponse", bypassCache);
 
   if (cachedResponse.value) {
     console.log(`🚀 FAST cache hit for processed scripture: ${responseKey}`);
@@ -88,11 +94,16 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
         timestamp: new Date().toISOString(),
         includeVerseNumbers,
         format,
+        cacheKey: cachedResponse.cacheKey,
+        cacheType: cachedResponse.cacheType,
       },
     };
   }
 
   console.log(`🔄 Processing fresh scripture request: ${responseKey}`);
+  if (cachedResponse.bypassReason) {
+    console.log(`🚫 Cache bypass reason: ${cachedResponse.bypassReason}`);
+  }
 
   // Parse the reference
   const reference = parseReference(referenceParam);
@@ -143,26 +154,33 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   const fileUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
   console.log(`🔗 Fetching from: ${fileUrl}`);
 
-  // Try to get from cache first
+  // Try to get USFM data from cache first
   const cacheKey = `usfm:${fileUrl}`;
-  let usfmData = await cache.getFileContent(cacheKey);
 
-  if (!usfmData) {
-    console.log(`🔄 Cache miss for USFM file, downloading...`);
-    const fileResponse = await fetch(fileUrl);
-    if (!fileResponse.ok) {
-      console.error(`❌ Failed to fetch USFM file: ${fileResponse.status}`);
-      throw new Error(`Failed to fetch scripture content: ${fileResponse.status}`);
-    }
+  const usfmCacheResult = await unifiedCache.getWithDeduplication(
+    cacheKey,
+    async () => {
+      console.log(`🔄 Cache miss for USFM file, downloading...`);
+      const fileResponse = await fetch(fileUrl);
+      if (!fileResponse.ok) {
+        console.error(`❌ Failed to fetch USFM file: ${fileResponse.status}`);
+        throw new Error(`Failed to fetch scripture content: ${fileResponse.status}`);
+      }
 
-    usfmData = await fileResponse.text();
-    console.log(`📄 Downloaded ${usfmData.length} characters of USFM data`);
+      const usfmData = await fileResponse.text();
+      console.log(`📄 Downloaded ${usfmData.length} characters of USFM data`);
+      return usfmData;
+    },
+    "fileContent",
+    bypassCache
+  );
 
-    // Cache the file content
-    await cache.setFileContent(cacheKey, usfmData);
-    console.log(`💾 Cached USFM file (${usfmData.length} chars)`);
-  } else {
+  const usfmData = usfmCacheResult.data;
+
+  if (usfmCacheResult.fromCache) {
     console.log(`✅ Cache hit for USFM file (${usfmData.length} chars)`);
+  } else {
+    console.log(`💾 Cached USFM file (${usfmData.length} chars)`);
   }
 
   // Extract scripture text based on reference type
@@ -209,10 +227,19 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     },
   };
 
-  // Cache the transformed response
-  await cache.setTransformedResponse(responseKey, {
-    scripture: result.scripture,
-  });
+  // Cache the transformed response (unless bypassed)
+  if (!bypassCache || !cachedResponse.bypassReason) {
+    await unifiedCache.set(
+      responseKey,
+      {
+        scripture: result.scripture,
+      },
+      "transformedResponse"
+    );
+    console.log(`💾 Cached transformed scripture response: ${responseKey}`);
+  } else {
+    console.log(`🚫 Skipping cache due to bypass: ${cachedResponse.bypassReason}`);
+  }
 
   return result;
 }
