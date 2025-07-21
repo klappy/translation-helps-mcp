@@ -1,7 +1,7 @@
 {
   "name": "translation-helps-mcp",
   "version": "4.4.0",
-  "description": "MCP Server for aggregating Bible translation resources from Door43",
+  "description": "MCP Server for aggregating Bible translation resources from Door43 with IPFS caching",
   "type": "module",
   "scripts": {
     "dev": "cd ui && npm run dev",
@@ -15,6 +15,7 @@
     "preview:cloudflare": "cd ui && npx wrangler pages dev build",
     "test": "vitest",
     "test:watch": "vitest watch",
+    "test:ipfs": "vitest run tests/ipfs.test.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
@@ -26,7 +27,10 @@
     "test:unit": "vitest run tests/DCSApiClient.test.ts",
     "test:scripture": "vitest run tests/scripture-comprehensive.test.ts",
     "test:coverage": "vitest run --coverage",
-    "sync-version": "node scripts/sync-version.js"
+    "sync-version": "node scripts/sync-version.js",
+    "ipfs:setup": "node scripts/setup-ipfs.js",
+    "ipfs:health": "node scripts/ipfs-health-check.js",
+    "ipfs:preload": "node scripts/preload-popular-content.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.0.6",
@@ -58,7 +62,12 @@
     "api",
     "serverless",
     "netlify-functions",
-    "door43"
+    "door43",
+    "ipfs",
+    "caching",
+    "archival",
+    "cloudflare",
+    "distributed"
   ],
   "author": "Christopher Klapp",
   "license": "MIT"
