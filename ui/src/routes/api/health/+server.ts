@@ -16,6 +16,31 @@ interface EndpointTest {
 	body?: Record<string, unknown>;
 }
 
+interface EndpointResult {
+	name: string;
+	status: 'healthy' | 'warning' | 'error';
+	responseTime: number;
+	cached?: {
+		status: 'healthy' | 'warning' | 'error';
+		responseTime: number;
+		error?: string;
+		missingFields?: string[];
+		hasData?: boolean;
+		cacheStatus?: string;
+	};
+	bypassed?: {
+		status: 'healthy' | 'warning' | 'error';
+		responseTime: number;
+		error?: string;
+		missingFields?: string[];
+		hasData?: boolean;
+		cacheStatus?: string;
+	};
+	error?: string;
+	missingFields?: string[];
+	hasData?: boolean;
+}
+
 const ENDPOINT_TESTS: EndpointTest[] = [
 	// Core Bible content endpoints
 	{
@@ -122,7 +147,7 @@ const ENDPOINT_TESTS: EndpointTest[] = [
 	}
 ];
 
-async function testEndpoint(baseUrl: string, test: EndpointTest) {
+async function testSingleEndpoint(baseUrl: string, test: EndpointTest, bypassCache = false) {
 	const startTime = Date.now();
 
 	try {
@@ -134,24 +159,37 @@ async function testEndpoint(baseUrl: string, test: EndpointTest) {
 
 		if (method === 'POST' && test.body) {
 			// POST request with JSON body (for MCP)
-			fetchOptions.headers = { 'Content-Type': 'application/json' };
+			fetchOptions.headers = {
+				'Content-Type': 'application/json',
+				...(bypassCache && { 'X-Cache-Bypass': 'true' })
+			};
 			fetchOptions.body = JSON.stringify(test.body);
 		} else {
 			// GET request with query parameters
 			Object.entries(test.params).forEach(([key, value]) => {
 				url.searchParams.set(key, String(value));
 			});
+
+			// Add cache bypass parameter if needed
+			if (bypassCache) {
+				url.searchParams.set('bypass', 'true');
+			}
+
+			if (bypassCache) {
+				fetchOptions.headers = { 'X-Cache-Bypass': 'true' };
+			}
 		}
 
 		const response = await fetch(url.toString(), fetchOptions);
 		const responseTime = Date.now() - startTime;
+		const cacheStatus = response.headers.get('X-Cache-Status') || 'unknown';
 
 		if (!response.ok) {
 			return {
-				name: test.name,
-				status: 'error',
+				status: 'error' as const,
 				error: `HTTP ${response.status}: ${response.statusText}`,
-				responseTime
+				responseTime,
+				cacheStatus
 			};
 		}
 
@@ -161,8 +199,7 @@ async function testEndpoint(baseUrl: string, test: EndpointTest) {
 		const missingFields = test.expectedFields.filter((field) => !data[field]);
 
 		return {
-			name: test.name,
-			status: missingFields.length === 0 ? 'healthy' : 'warning',
+			status: missingFields.length === 0 ? ('healthy' as const) : ('warning' as const),
 			responseTime,
 			missingFields: missingFields.length > 0 ? missingFields : undefined,
 			hasData: test.expectedFields.some(
@@ -173,16 +210,51 @@ async function testEndpoint(baseUrl: string, test: EndpointTest) {
 						: typeof data[field] === 'object'
 							? Object.keys(data[field]).length > 0
 							: !!data[field])
-			)
+			),
+			cacheStatus
 		};
 	} catch (error) {
 		return {
-			name: test.name,
-			status: 'error',
+			status: 'error' as const,
 			error: error instanceof Error ? error.message : 'Unknown error',
-			responseTime: Date.now() - startTime
+			responseTime: Date.now() - startTime,
+			cacheStatus: 'unknown'
 		};
 	}
+}
+
+async function testEndpointDual(baseUrl: string, test: EndpointTest): Promise<EndpointResult> {
+	// Test with cache
+	const cachedResult = await testSingleEndpoint(baseUrl, test, false);
+
+	// Test with cache bypass
+	const bypassedResult = await testSingleEndpoint(baseUrl, test, true);
+
+	// Determine overall status (error > warning > healthy)
+	let overallStatus: 'healthy' | 'warning' | 'error' = 'healthy';
+	if (cachedResult.status === 'error' || bypassedResult.status === 'error') {
+		overallStatus = 'error';
+	} else if (cachedResult.status === 'warning' || bypassedResult.status === 'warning') {
+		overallStatus = 'warning';
+	}
+
+	// Calculate average response time
+	const avgResponseTime = Math.round((cachedResult.responseTime + bypassedResult.responseTime) / 2);
+
+	return {
+		name: test.name,
+		status: overallStatus,
+		responseTime: avgResponseTime,
+		cached: cachedResult,
+		bypassed: bypassedResult,
+		// Include legacy fields for backward compatibility
+		error: overallStatus === 'error' ? cachedResult.error || bypassedResult.error : undefined,
+		missingFields: [
+			...(cachedResult.missingFields || []),
+			...(bypassedResult.missingFields || [])
+		].filter((field, index, arr) => arr.indexOf(field) === index),
+		hasData: cachedResult.hasData || bypassedResult.hasData
+	};
 }
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -190,14 +262,15 @@ export const GET: RequestHandler = async ({ url }) => {
 	const baseUrl = url.origin;
 
 	// Test all endpoints in parallel
-	const results = await Promise.all(ENDPOINT_TESTS.map((test) => testEndpoint(baseUrl, test)));
+	const results = await Promise.all(ENDPOINT_TESTS.map((test) => testEndpointDual(baseUrl, test)));
 
 	// Summary stats
 	const totalEndpoints = results.length;
-	const healthyEndpoints = results.filter((r) => r.status === 'healthy').length;
-	const warningEndpoints = results.filter((r) => r.status === 'warning').length;
-	const errorEndpoints = results.filter((r) => r.status === 'error').length;
-	const avgResponseTime = results.reduce((sum, r) => sum + r.responseTime, 0) / totalEndpoints;
+	const healthyEndpoints = results.filter((r: EndpointResult) => r.status === 'healthy').length;
+	const warningEndpoints = results.filter((r: EndpointResult) => r.status === 'warning').length;
+	const errorEndpoints = results.filter((r: EndpointResult) => r.status === 'error').length;
+	const avgResponseTime =
+		results.reduce((sum: number, r: EndpointResult) => sum + r.responseTime, 0) / totalEndpoints;
 
 	// Overall health status
 	let overallStatus = 'healthy';
