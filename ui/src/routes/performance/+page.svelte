@@ -254,22 +254,47 @@
 </script>
 
 <svelte:head>
-	<title>Cloudflare vs Netlify Performance - Translation Helps MCP</title>
+	<title>Performance - The Aqueduct</title>
 	<meta
 		name="description"
-		content="Real-world performance comparison between Cloudflare Workers and Netlify Functions for our Bible translation API"
+		content="Real-world performance comparison between Cloudflare Workers and Netlify Functions for our Bible translation API. See the power of The Aqueduct in action."
 	/>
 </svelte:head>
 
-<div class="performance-showcase" in:fade={{ duration: 300 }}>
+<!-- Page Content -->
+<section class="relative min-h-screen" in:fade={{ duration: 300 }}>
+	<!-- Animated Background -->
+	<div class="fixed inset-0 overflow-hidden">
+		<div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900"></div>
+		<div
+			class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_70%)]"
+		></div>
+		<div
+			class="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(168,85,247,0.1),transparent_70%)]"
+		></div>
+	</div>
+
 	<!-- Hero Section -->
-	<section class="hero">
-		<div class="container mx-auto px-4 py-16">
-			<div class="text-center">
-				<h1 class="mb-6 text-5xl font-bold text-white">Multi-Platform Performance Analysis</h1>
-				<p class="mx-auto mb-8 max-w-3xl text-xl text-blue-100">
-					Real-world comparison between Cloudflare Workers and Netlify Functions. Both platforms
-					deliver exceptional performance with different strengths for various use cases.
+	<div class="relative z-10 px-4 py-16 sm:px-6 lg:px-8">
+		<div class="mx-auto max-w-7xl">
+			<div class="mb-16 text-center">
+				<div
+					class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl"
+				>
+					<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+					</svg>
+					Multi-Platform Performance • Real-world Data
+				</div>
+				<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
+					<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+						The Aqueduct
+					</span>
+					Performance
+				</h1>
+				<p class="mx-auto max-w-4xl text-xl leading-relaxed text-gray-300 md:text-2xl">
+					<strong class="text-blue-300">Real-world comparison</strong> between Cloudflare Workers and Netlify Functions.
+					Both platforms deliver exceptional performance with different strengths.
 				</p>
 
 				<!-- Platform Selector -->
@@ -707,8 +732,8 @@
 				</p>
 			</div>
 		</div>
-	</section>
-</div>
+	</div>
+</section>
 
 <style>
 	.performance-showcase {

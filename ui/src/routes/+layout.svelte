@@ -13,7 +13,8 @@
 		Settings,
 		HelpCircle,
 		TrendingUp,
-		Wrench
+		Wrench,
+		Droplets
 	} from 'lucide-svelte';
 	import '../app.css';
 	import { VERSION } from '$lib/version';
@@ -80,13 +81,65 @@
 </script>
 
 <svelte:head>
-	<title>Translation Helps MCP - {VERSION}</title>
-	<meta name="description" content="Bible translation resources API and MCP server" />
+	<title>The Aqueduct - {VERSION}</title>
+	<meta
+		name="description"
+		content="Stateless RAG for Bible Translation. Cache-first. LLM-native. Order without control."
+	/>
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900" role="main">
+<div class="relative min-h-screen overflow-hidden">
+	<!-- Animated Background -->
+	<div class="fixed inset-0 overflow-hidden">
+		<div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900"></div>
+		<div
+			class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_70%)]"
+		></div>
+		<div
+			class="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(168,85,247,0.1),transparent_70%)]"
+		></div>
+		<!-- Flowing lines animation -->
+		<div class="absolute inset-0 opacity-20">
+			<svg class="h-full w-full" viewBox="0 0 1200 800">
+				<defs>
+					<linearGradient id="flow1" x1="0%" y1="0%" x2="100%" y2="0%">
+						<stop offset="0%" style="stop-color:rgb(59,130,246);stop-opacity:0" />
+						<stop offset="50%" style="stop-color:rgb(59,130,246);stop-opacity:1" />
+						<stop offset="100%" style="stop-color:rgb(168,85,247);stop-opacity:0" />
+					</linearGradient>
+				</defs>
+				<path
+					d="M-100,200 Q300,100 600,200 T1300,200"
+					stroke="url(#flow1)"
+					stroke-width="2"
+					fill="none"
+				>
+					<animate
+						attributeName="d"
+						values="M-100,200 Q300,100 600,200 T1300,200;M-100,200 Q300,300 600,200 T1300,200;M-100,200 Q300,100 600,200 T1300,200"
+						dur="8s"
+						repeatCount="indefinite"
+					/>
+				</path>
+				<path
+					d="M-100,400 Q300,500 600,400 T1300,400"
+					stroke="url(#flow1)"
+					stroke-width="2"
+					fill="none"
+				>
+					<animate
+						attributeName="d"
+						values="M-100,400 Q300,500 600,400 T1300,400;M-100,400 Q300,300 600,400 T1300,400;M-100,400 Q300,500 600,400 T1300,400"
+						dur="10s"
+						repeatCount="indefinite"
+					/>
+				</path>
+			</svg>
+		</div>
+	</div>
+
 	<!-- Navigation -->
 	<nav class="relative z-50">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -95,13 +148,17 @@
 				<div class="flex items-center space-x-3">
 					<a href="/" class="group flex items-center space-x-3">
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 transition-transform duration-200 group-hover:scale-110"
+							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12"
 						>
-							<BookOpen class="h-6 w-6 text-white" />
+							<Droplets class="h-6 w-6 text-white" />
 						</div>
 						<div class="hidden sm:block">
-							<div class="text-lg font-bold text-white">Translation Helps</div>
-							<div class="text-xs text-gray-400">MCP Server v{VERSION}</div>
+							<div
+								class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-lg font-bold text-transparent"
+							>
+								The Aqueduct
+							</div>
+							<div class="text-xs text-blue-200">Stateless RAG • v{VERSION}</div>
 						</div>
 					</a>
 				</div>
@@ -111,10 +168,10 @@
 					{#each navItems as item}
 						<a
 							href={item.href}
-							class="group relative rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 {$page
+							class="group relative rounded-xl px-4 py-2 text-sm font-medium transition-all duration-300 {$page
 								.url.pathname === item.href
-								? 'bg-white/10 text-white'
-								: 'text-gray-300 hover:bg-white/5 hover:text-white'}"
+								? 'border border-white/20 bg-white/20 text-white shadow-lg backdrop-blur-xl'
+								: 'border border-transparent text-blue-200 backdrop-blur-xl hover:border-white/10 hover:bg-white/10 hover:text-white'}"
 						>
 							<div class="flex items-center space-x-2">
 								<svelte:component this={item.icon} class="h-4 w-4" />
@@ -123,7 +180,7 @@
 
 							<!-- Tooltip -->
 							<div
-								class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 transform rounded-lg border border-white/10 bg-black/90 px-3 py-2 text-xs whitespace-nowrap text-gray-300 opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover:opacity-100"
+								class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 transform rounded-lg border border-blue-500/30 bg-black/90 px-3 py-2 text-xs whitespace-nowrap text-blue-200 opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover:opacity-100"
 							>
 								{item.description}
 								<div
@@ -139,7 +196,7 @@
 					<!-- Version Badge -->
 					<div class="hidden sm:block">
 						<div
-							class="rounded-full bg-emerald-600/20 px-3 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-600/30"
+							class="rounded-full bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-3 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/30 backdrop-blur-xl"
 						>
 							v{VERSION}
 						</div>
@@ -150,7 +207,7 @@
 						href="https://github.com/klappy/translation-helps-mcp"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="hidden items-center space-x-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-gray-300 transition-all duration-200 hover:bg-white/10 hover:text-white sm:flex"
+						class="hidden items-center space-x-2 rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-blue-200 backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:border-white/30 hover:bg-white/10 hover:text-white sm:flex"
 					>
 						<Github class="h-4 w-4" />
 						<span class="text-sm font-medium">GitHub</span>
@@ -163,9 +220,9 @@
 						type="button"
 						aria-label="Toggle mobile menu"
 						aria-expanded={mobileMenuOpen}
-						class="rounded-lg border border-white/10 p-3 text-gray-300 transition-all duration-200 md:hidden {mobileMenuOpen
-							? 'bg-white/10 text-white'
-							: 'bg-white/5 hover:bg-white/10 hover:text-white'}"
+						class="rounded-xl border border-white/20 p-3 text-blue-200 backdrop-blur-xl transition-all duration-300 md:hidden {mobileMenuOpen
+							? 'border-white/30 bg-white/20 text-white'
+							: 'bg-white/5 hover:border-white/30 hover:bg-white/10 hover:text-white'}"
 					>
 						{#if mobileMenuOpen}
 							<X class="h-5 w-5" />
@@ -181,36 +238,36 @@
 		{#if mobileMenuOpen}
 			<div
 				data-testid="mobile-menu"
-				class="absolute top-full right-0 left-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-xl md:hidden"
+				class="absolute top-full right-0 left-0 z-50 border-b border-blue-500/30 bg-black/95 backdrop-blur-2xl md:hidden"
 			>
-				<div class="space-y-4 px-4 py-6">
+				<div class="space-y-2 px-4 py-6">
 					{#each navItems as item}
 						<a
 							href={item.href}
-							class="flex items-center space-x-3 rounded-lg p-3 transition-all duration-200 {$page
+							class="flex items-center space-x-3 rounded-xl p-3 transition-all duration-300 {$page
 								.url.pathname === item.href
-								? 'bg-white/10 text-white'
-								: 'text-gray-300 hover:bg-white/5 hover:text-white'}"
+								? 'border border-white/20 bg-white/20 text-white'
+								: 'border border-transparent text-blue-200 hover:border-white/10 hover:bg-white/10 hover:text-white'} backdrop-blur-xl"
 						>
 							<svelte:component this={item.icon} class="h-5 w-5" />
 							<div>
 								<div class="font-medium">{item.label}</div>
-								<div class="text-sm text-gray-400">{item.description}</div>
+								<div class="text-sm text-blue-300/70">{item.description}</div>
 							</div>
 						</a>
 					{/each}
 
-					<div class="border-t border-white/10 pt-4">
+					<div class="border-t border-blue-500/30 pt-4">
 						<a
 							href="https://github.com/klappy/translation-helps-mcp"
 							target="_blank"
 							rel="noopener noreferrer"
-							class="flex items-center space-x-3 rounded-lg p-3 text-gray-300 transition-all duration-200 hover:bg-white/5 hover:text-white"
+							class="flex items-center space-x-3 rounded-xl border border-transparent p-3 text-blue-200 backdrop-blur-xl transition-all duration-300 hover:border-white/10 hover:bg-white/10 hover:text-white"
 						>
 							<Github class="h-5 w-5" />
 							<div>
 								<div class="font-medium">GitHub</div>
-								<div class="text-sm text-gray-400">View source code</div>
+								<div class="text-sm text-blue-300/70">View source code</div>
 							</div>
 							<ExternalLink class="ml-auto h-4 w-4" />
 						</a>
@@ -221,54 +278,63 @@
 	</nav>
 
 	<!-- Page Content -->
-	<main>
+	<main class="relative">
 		<slot />
 	</main>
 
 	<!-- Footer -->
-	<footer class="relative mt-20 border-t border-white/10">
-		<div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-			<div class="grid grid-cols-1 gap-8 md:grid-cols-4">
+	<footer class="relative mt-20 border-t border-blue-500/30">
+		<div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+			<div class="grid grid-cols-1 gap-12 md:grid-cols-4">
 				<!-- Brand -->
 				<div class="md:col-span-2">
-					<div class="mb-4 flex items-center space-x-3">
+					<div class="mb-6 flex items-center space-x-3">
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-blue-500"
+							class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 transition-transform duration-300 hover:scale-110"
 						>
-							<BookOpen class="h-6 w-6 text-white" />
+							<Droplets class="h-7 w-7 text-white" />
 						</div>
 						<div>
-							<div class="text-lg font-bold text-white">Translation Helps</div>
-							<div class="text-sm text-gray-400">MCP Server</div>
+							<div
+								class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-xl font-bold text-transparent"
+							>
+								The Aqueduct
+							</div>
+							<div class="text-sm text-blue-200">Stateless RAG • MCP Server</div>
 						</div>
 					</div>
-					<p class="mb-6 max-w-md text-gray-300">
-						AI-powered Bible translation assistance through the Model Context Protocol. Supercharge
-						your LLM with comprehensive Bible resources.
+					<p class="mb-8 max-w-md text-lg leading-relaxed text-gray-300">
+						AI-powered Bible translation assistance through the Model Context Protocol.
+						<strong class="text-blue-300"
+							>Supercharge your LLM with canonical Bible resources.</strong
+						>
 					</p>
 					<div class="flex items-center space-x-4">
 						<a
 							href="https://github.com/klappy/translation-helps-mcp"
 							target="_blank"
 							rel="noopener noreferrer"
-							class="flex items-center space-x-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-gray-300 transition-all duration-200 hover:bg-white/10 hover:text-white"
+							class="inline-flex items-center space-x-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-blue-200 backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:border-white/30 hover:bg-white/10 hover:text-white"
 						>
-							<Github class="h-4 w-4" />
-							<span class="text-sm font-medium">GitHub</span>
+							<Github class="h-5 w-5" />
+							<span class="font-medium">GitHub</span>
 						</a>
 					</div>
 				</div>
 
 				<!-- Quick Links -->
 				<div>
-					<h3 class="mb-4 text-lg font-semibold text-white">Quick Links</h3>
-					<div class="space-y-3">
+					<h3 class="mb-6 text-lg font-semibold text-white">Quick Links</h3>
+					<div class="space-y-4">
 						{#each navItems as item}
 							<a
 								href={item.href}
-								class="flex items-center space-x-2 text-gray-300 transition-colors hover:text-white"
+								class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
 							>
-								<svelte:component this={item.icon} class="h-4 w-4" />
+								<svelte:component
+									this={item.icon}
+									class="h-4 w-4 transition-transform group-hover:scale-110"
+								/>
 								<span class="text-sm">{item.label}</span>
 							</a>
 						{/each}
@@ -277,45 +343,61 @@
 
 				<!-- Resources -->
 				<div>
-					<h3 class="mb-4 text-lg font-semibold text-white">Resources</h3>
-					<div class="space-y-3">
+					<h3 class="mb-6 text-lg font-semibold text-white">Resources</h3>
+					<div class="space-y-4">
 						<a
 							href="/mcp-tools"
-							class="flex items-center space-x-2 text-gray-300 transition-colors hover:text-white"
+							class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
 						>
-							<Code class="h-4 w-4" />
+							<Code class="h-4 w-4 transition-transform group-hover:scale-110" />
 							<span class="text-sm">MCP Tools API</span>
 						</a>
 						<a
 							href="/test"
-							class="flex items-center space-x-2 text-gray-300 transition-colors hover:text-white"
+							class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
 						>
-							<TestTube class="h-4 w-4" />
+							<TestTube class="h-4 w-4 transition-transform group-hover:scale-110" />
 							<span class="text-sm">Test API</span>
+						</a>
+						<a
+							href="/rag-manifesto"
+							class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
+						>
+							<BookOpen class="h-4 w-4 transition-transform group-hover:scale-110" />
+							<span class="text-sm">RAG Guide</span>
 						</a>
 					</div>
 				</div>
 			</div>
 
-			<div class="mt-12 border-t border-white/10 pt-8">
-				<div class="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
-					<div class="text-sm text-gray-400">
-						© 2025 Translation Helps MCP Server. Built with ❤️ for the Bible translation community.
+			<div class="mt-16 border-t border-blue-500/30 pt-8">
+				<div class="flex flex-col items-center justify-between space-y-6 md:flex-row md:space-y-0">
+					<div class="text-center md:text-left">
+						<div class="text-gray-300">
+							© 2025 Christopher Klapp • Built with ❤️ for the Bible translation community
+						</div>
+						<div class="mt-1 text-sm text-blue-300">
+							<span class="font-medium">The age of stateless RAG has arrived</span>
+						</div>
 					</div>
-					<div class="flex items-center space-x-6 text-sm text-gray-400">
+					<div class="flex items-center space-x-6">
 						<div
-							class="rounded-full bg-purple-600/20 px-3 py-1 text-xs font-medium text-purple-300 ring-1 ring-purple-600/30"
+							class="rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 px-4 py-2 text-sm font-medium text-purple-300 ring-1 ring-purple-500/30 backdrop-blur-xl"
 						>
 							v{VERSION}
 						</div>
-						<a
-							href="https://github.com/klappy/translation-helps-mcp"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="transition-colors hover:text-white">GitHub</a
-						>
-						<a href="/mcp-tools" class="transition-colors hover:text-white">MCP Tools API</a>
-						<a href="/test" class="transition-colors hover:text-white">Test</a>
+						<div class="flex items-center space-x-4 text-sm">
+							<a
+								href="https://github.com/klappy/translation-helps-mcp"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="text-gray-400 transition-colors hover:text-blue-300">GitHub</a
+							>
+							<a href="/mcp-tools" class="text-gray-400 transition-colors hover:text-blue-300"
+								>API</a
+							>
+							<a href="/test" class="text-gray-400 transition-colors hover:text-blue-300">Test</a>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -324,34 +406,44 @@
 </div>
 
 <style>
-	/* Custom scrollbar */
+	/* Enhanced scrollbar */
 	::-webkit-scrollbar {
-		width: 8px;
+		width: 10px;
 	}
 
 	::-webkit-scrollbar-track {
-		background: rgba(255, 255, 255, 0.1);
-		border-radius: 4px;
+		background: rgba(59, 130, 246, 0.1);
+		border-radius: 5px;
 	}
 
 	::-webkit-scrollbar-thumb {
-		background: rgba(255, 255, 255, 0.2);
-		border-radius: 4px;
+		background: rgba(59, 130, 246, 0.3);
+		border-radius: 5px;
+		transition: background 0.3s ease;
 	}
 
 	::-webkit-scrollbar-thumb:hover {
-		background: rgba(255, 255, 255, 0.3);
+		background: rgba(59, 130, 246, 0.5);
 	}
 
-	/* Focus styles */
+	/* Enhanced focus styles */
 	*:focus {
-		outline: 2px solid rgba(168, 85, 247, 0.5);
+		outline: 2px solid rgba(59, 130, 246, 0.6);
 		outline-offset: 2px;
+		border-radius: 4px;
 	}
 
-	/* Selection styles */
+	/* Enhanced selection styles */
 	::selection {
-		background: rgba(168, 85, 247, 0.3);
+		background: rgba(59, 130, 246, 0.4);
 		color: white;
+	}
+
+	/* Smooth animations */
+	* {
+		transition-property:
+			background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+		transition-duration: 300ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
 </style>

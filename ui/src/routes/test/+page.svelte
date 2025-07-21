@@ -665,578 +665,592 @@
 </script>
 
 <svelte:head>
-	<title>Test Interface - Translation Helps MCP Server</title>
+	<title>Test Interface - The Aqueduct</title>
+	<meta
+		name="description"
+		content="Test and debug Translation Helps MCP Server endpoints with real-time analytics and comprehensive debugging tools."
+	/>
 </svelte:head>
 
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<!-- Header -->
-	<div class="mb-12 text-center">
-		<div
-			class="mb-6 inline-flex items-center rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-2 text-sm font-medium text-purple-300"
-		>
-			<TestTube class="mr-2 h-4 w-4" />
-			Advanced Testing Interface
-		</div>
-		<h1 class="mb-6 text-4xl font-bold text-white md:text-5xl">
-			Test & Debug
-			<span class="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent"
-				>Translation Helps API</span
+<!-- Page Content -->
+<section class="relative px-4 py-16 sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-7xl">
+		<!-- Header -->
+		<div class="mb-16 text-center">
+			<div
+				class="mb-8 inline-flex animate-pulse items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-300 backdrop-blur-xl"
 			>
-		</h1>
-		<p class="mx-auto max-w-3xl text-xl text-gray-300">
-			Comprehensive testing interface with real-time progress, detailed debug information, and
-			performance analytics.
-		</p>
-	</div>
-
-	<!-- Tab Navigation -->
-	<div class="mb-8 flex space-x-1 rounded-xl bg-white/5 p-1 backdrop-blur-xl">
-		<button
-			class="flex-1 rounded-lg px-6 py-3 font-medium transition-all duration-200 {activeTab ===
-			'individual'
-				? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
-				: 'text-gray-300 hover:text-white'}"
-			on:click={() => (activeTab = 'individual')}
-		>
-			<TestTube class="mr-2 inline h-4 w-4" />
-			Individual Tests
-		</button>
-		<button
-			class="flex-1 rounded-lg px-6 py-3 font-medium transition-all duration-200 {activeTab ===
-			'bulk'
-				? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
-				: 'text-gray-300 hover:text-white'}"
-			on:click={() => (activeTab = 'bulk')}
-		>
-			<BarChart3 class="mr-2 inline h-4 w-4" />
-			Bulk Testing
-		</button>
-	</div>
-
-	<!-- Individual Testing -->
-	{#if activeTab === 'individual'}
-		<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-			<!-- Test Configuration -->
-			<div class="lg:col-span-1">
-				<div
-					class="sticky top-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
-				>
-					<div class="mb-6 flex items-center justify-between">
-						<h2 class="text-xl font-semibold text-white">Test Configuration</h2>
-						<Settings class="h-5 w-5 text-gray-400" />
-					</div>
-
-					<form class="space-y-6">
-						<div>
-							<label for="bible-reference" class="mb-2 block text-sm font-medium text-gray-300"
-								>Bible Reference</label
-							>
-							<input
-								id="bible-reference"
-								type="text"
-								bind:value={formData.reference}
-								class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-								placeholder="e.g., Titus 1:1"
-							/>
-						</div>
-
-						<div class="grid grid-cols-2 gap-4">
-							<div>
-								<label for="language-select" class="mb-2 block text-sm font-medium text-gray-300"
-									>Language</label
-								>
-								<select
-									id="language-select"
-									bind:value={formData.language}
-									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-								>
-									<option value="en">English</option>
-									<option value="es">Spanish</option>
-									<option value="fr">French</option>
-									<option value="de">German</option>
-								</select>
-							</div>
-							<div>
-								<label class="mb-2 block text-sm font-medium text-gray-300">Organization</label>
-								<select
-									bind:value={formData.organization}
-									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-								>
-									<option value="unfoldingWord">unfoldingWord</option>
-									<option value="bible">Bible</option>
-								</select>
-							</div>
-						</div>
-
-						<div class="space-y-3">
-							<label class="block text-sm font-medium text-gray-300">Include Options</label>
-							<div class="space-y-2">
-								<label class="flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={formData.includeTitle}
-										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
-									/>
-									<span class="ml-2 text-sm text-gray-300">Include Title</span>
-								</label>
-								<label class="flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={formData.includeSubtitle}
-										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
-									/>
-									<span class="ml-2 text-sm text-gray-300">Include Subtitle</span>
-								</label>
-								<label class="flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={formData.includeContent}
-										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
-									/>
-									<span class="ml-2 text-sm text-gray-300">Include Content</span>
-								</label>
-							</div>
-						</div>
-
-						<div class="space-y-3">
-							<label class="block text-sm font-medium text-gray-300">Display Options</label>
-							<div class="space-y-2">
-								<label class="flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={showDebugInfo}
-										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
-									/>
-									<span class="ml-2 text-sm text-gray-300">Show Debug Info</span>
-								</label>
-								<label class="flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={autoScroll}
-										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
-									/>
-									<span class="ml-2 text-sm text-gray-300">Auto-scroll</span>
-								</label>
-							</div>
-						</div>
-
-						<div class="border-t border-white/10 pt-4">
-							<button
-								type="button"
-								on:click={testAllEndpoints}
-								disabled={isRunning}
-								class="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 font-semibold text-white transition-all duration-200 hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								{#if isRunning}
-									<Loader2 class="mr-2 h-5 w-5 animate-spin" />
-									Running Tests...
-								{:else}
-									<Play class="mr-2 h-5 w-5" />
-									Test All Endpoints
-								{/if}
-							</button>
-						</div>
-					</form>
-				</div>
+				<TestTube class="mr-2 h-4 w-4" />
+				Advanced Testing Interface • Real-time Analytics
 			</div>
+			<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
+				Test & Debug
+				<span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+					The Aqueduct
+				</span>
+			</h1>
+			<p class="mx-auto max-w-4xl text-xl leading-relaxed text-gray-300 md:text-2xl">
+				<strong class="text-blue-300">Comprehensive testing interface</strong> with real-time progress,
+				detailed debug information, and performance analytics for our MCP server.
+			</p>
+		</div>
 
-			<!-- Test Results -->
-			<div class="lg:col-span-2">
-				<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-					<div class="mb-6 flex items-center justify-between">
-						<h2 class="text-xl font-semibold text-white">Test Results</h2>
-						<div class="flex items-center space-x-2">
-							<button
-								on:click={clearResults}
-								class="rounded-lg bg-red-500/20 px-3 py-1 text-sm text-red-400 transition-colors hover:bg-red-500/30"
-							>
-								Clear All
-							</button>
-							<span class="text-sm text-gray-400">
-								{testResults.length} results
-							</span>
-						</div>
-					</div>
+		<!-- Tab Navigation -->
+		<div class="mb-8 flex space-x-1 rounded-xl bg-white/5 p-1 backdrop-blur-xl">
+			<button
+				class="flex-1 rounded-lg px-6 py-3 font-medium transition-all duration-200 {activeTab ===
+				'individual'
+					? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
+					: 'text-gray-300 hover:text-white'}"
+				on:click={() => (activeTab = 'individual')}
+			>
+				<TestTube class="mr-2 inline h-4 w-4" />
+				Individual Tests
+			</button>
+			<button
+				class="flex-1 rounded-lg px-6 py-3 font-medium transition-all duration-200 {activeTab ===
+				'bulk'
+					? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
+					: 'text-gray-300 hover:text-white'}"
+				on:click={() => (activeTab = 'bulk')}
+			>
+				<BarChart3 class="mr-2 inline h-4 w-4" />
+				Bulk Testing
+			</button>
+		</div>
 
-					{#if testResults.length === 0}
-						<div class="py-12 text-center">
-							<TestTube class="mx-auto mb-4 h-16 w-16 text-gray-400" />
-							<p class="text-gray-400">No test results yet. Run some tests to see results here.</p>
+		<!-- Individual Testing -->
+		{#if activeTab === 'individual'}
+			<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+				<!-- Test Configuration -->
+				<div class="lg:col-span-1">
+					<div
+						class="sticky top-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
+					>
+						<div class="mb-6 flex items-center justify-between">
+							<h2 class="text-xl font-semibold text-white">Test Configuration</h2>
+							<Settings class="h-5 w-5 text-gray-400" />
 						</div>
-					{:else}
-						<div id="results-container" class="max-h-96 space-y-4 overflow-y-auto">
-							{#each testResults as result (result.id)}
-								<div
-									id="result-{result.id}"
-									class="rounded-xl border border-white/5 bg-black/20 p-4 transition-colors hover:border-white/10"
+
+						<form class="space-y-6">
+							<div>
+								<label for="bible-reference" class="mb-2 block text-sm font-medium text-gray-300"
+									>Bible Reference</label
 								>
-									<!-- Result Header -->
-									<div class="mb-3 flex items-center justify-between">
-										<div class="flex items-center space-x-3">
-											<svelte:component
-												this={getStatusIcon(result.status)}
-												class="h-5 w-5 {getStatusColor(result.status)}"
-											/>
-											<div>
-												<h3 class="text-lg font-semibold text-white">
-													{result.endpoint.split('/').pop()}
-												</h3>
-												<p class="text-sm text-gray-400">{result.timestamp.toLocaleTimeString()}</p>
-											</div>
-										</div>
-										<div class="flex items-center space-x-4">
-											<div class="text-right">
-												<div class="text-sm text-gray-400">Response Time</div>
-												<div class="text-lg font-semibold text-white">
-													{result.responseTime.toFixed(0)}ms
-												</div>
-											</div>
-											<button
-												on:click={() => toggleResultExpansion(result.id)}
-												class="rounded-lg bg-white/5 p-2 transition-colors hover:bg-white/10"
-											>
-												{#if expandedResults.has(result.id)}
-													<ChevronUp class="h-4 w-4 text-gray-400" />
-												{:else}
-													<ChevronDown class="h-4 w-4 text-gray-400" />
-												{/if}
-											</button>
-										</div>
-									</div>
+								<input
+									id="bible-reference"
+									type="text"
+									bind:value={formData.reference}
+									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white placeholder-gray-400 transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+									placeholder="e.g., Titus 1:1"
+								/>
+							</div>
 
-									<!-- Debug Info (if enabled) -->
-									{#if showDebugInfo && result.debugInfo}
-										<div
-											class="mb-3 grid grid-cols-2 gap-4 rounded-lg bg-black/20 p-3 md:grid-cols-4"
-										>
-											<div class="text-center">
-												<div class="text-xs text-gray-400">Request Size</div>
-												<div class="text-sm font-semibold text-blue-400">
-													{formatBytes(result.debugInfo.requestSize)}
-												</div>
-											</div>
-											<div class="text-center">
-												<div class="text-xs text-gray-400">Response Size</div>
-												<div class="text-sm font-semibold text-green-400">
-													{formatBytes(result.debugInfo.responseSize)}
-												</div>
-											</div>
-											<div class="text-center">
-												<div class="text-xs text-gray-400">Network Latency</div>
-												<div class="text-sm font-semibold text-yellow-400">
-													{result.debugInfo.networkLatency.toFixed(0)}ms
-												</div>
-											</div>
-											<div class="text-center">
-												<div class="text-xs text-gray-400">Processing</div>
-												<div class="text-sm font-semibold text-purple-400">
-													{result.debugInfo.processingTime.toFixed(0)}ms
-												</div>
-											</div>
-										</div>
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<label for="language-select" class="mb-2 block text-sm font-medium text-gray-300"
+										>Language</label
+									>
+									<select
+										id="language-select"
+										bind:value={formData.language}
+										class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+									>
+										<option value="en">English</option>
+										<option value="es">Spanish</option>
+										<option value="fr">French</option>
+										<option value="de">German</option>
+									</select>
+								</div>
+								<div>
+									<label class="mb-2 block text-sm font-medium text-gray-300">Organization</label>
+									<select
+										bind:value={formData.organization}
+										class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+									>
+										<option value="unfoldingWord">unfoldingWord</option>
+										<option value="bible">Bible</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="space-y-3">
+								<label class="block text-sm font-medium text-gray-300">Include Options</label>
+								<div class="space-y-2">
+									<label class="flex items-center">
+										<input
+											type="checkbox"
+											bind:checked={formData.includeTitle}
+											class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+										/>
+										<span class="ml-2 text-sm text-gray-300">Include Title</span>
+									</label>
+									<label class="flex items-center">
+										<input
+											type="checkbox"
+											bind:checked={formData.includeSubtitle}
+											class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+										/>
+										<span class="ml-2 text-sm text-gray-300">Include Subtitle</span>
+									</label>
+									<label class="flex items-center">
+										<input
+											type="checkbox"
+											bind:checked={formData.includeContent}
+											class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+										/>
+										<span class="ml-2 text-sm text-gray-300">Include Content</span>
+									</label>
+								</div>
+							</div>
+
+							<div class="space-y-3">
+								<label class="block text-sm font-medium text-gray-300">Display Options</label>
+								<div class="space-y-2">
+									<label class="flex items-center">
+										<input
+											type="checkbox"
+											bind:checked={showDebugInfo}
+											class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+										/>
+										<span class="ml-2 text-sm text-gray-300">Show Debug Info</span>
+									</label>
+									<label class="flex items-center">
+										<input
+											type="checkbox"
+											bind:checked={autoScroll}
+											class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+										/>
+										<span class="ml-2 text-sm text-gray-300">Auto-scroll</span>
+									</label>
+								</div>
+							</div>
+
+							<div class="border-t border-white/10 pt-4">
+								<button
+									type="button"
+									on:click={testAllEndpoints}
+									disabled={isRunning}
+									class="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 font-semibold text-white transition-all duration-200 hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									{#if isRunning}
+										<Loader2 class="mr-2 h-5 w-5 animate-spin" />
+										Running Tests...
+									{:else}
+										<Play class="mr-2 h-5 w-5" />
+										Test All Endpoints
 									{/if}
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
 
-									<!-- Expanded Content -->
-									{#if expandedResults.has(result.id)}
-										<div class="space-y-4 border-t border-white/10 pt-4">
-											<!-- Parameters -->
-											<div>
-												<h4 class="mb-2 text-sm font-medium text-gray-400">Parameters</h4>
-												<div class="rounded-lg bg-black/20 p-3">
-													<pre class="overflow-x-auto text-sm text-gray-300">{JSON.stringify(
-															result.params,
-															null,
-															2
-														)}</pre>
+				<!-- Test Results -->
+				<div class="lg:col-span-2">
+					<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+						<div class="mb-6 flex items-center justify-between">
+							<h2 class="text-xl font-semibold text-white">Test Results</h2>
+							<div class="flex items-center space-x-2">
+								<button
+									on:click={clearResults}
+									class="rounded-lg bg-red-500/20 px-3 py-1 text-sm text-red-400 transition-colors hover:bg-red-500/30"
+								>
+									Clear All
+								</button>
+								<span class="text-sm text-gray-400">
+									{testResults.length} results
+								</span>
+							</div>
+						</div>
+
+						{#if testResults.length === 0}
+							<div class="py-12 text-center">
+								<TestTube class="mx-auto mb-4 h-16 w-16 text-gray-400" />
+								<p class="text-gray-400">
+									No test results yet. Run some tests to see results here.
+								</p>
+							</div>
+						{:else}
+							<div id="results-container" class="max-h-96 space-y-4 overflow-y-auto">
+								{#each testResults as result (result.id)}
+									<div
+										id="result-{result.id}"
+										class="rounded-xl border border-white/5 bg-black/20 p-4 transition-colors hover:border-white/10"
+									>
+										<!-- Result Header -->
+										<div class="mb-3 flex items-center justify-between">
+											<div class="flex items-center space-x-3">
+												<svelte:component
+													this={getStatusIcon(result.status)}
+													class="h-5 w-5 {getStatusColor(result.status)}"
+												/>
+												<div>
+													<h3 class="text-lg font-semibold text-white">
+														{result.endpoint.split('/').pop()}
+													</h3>
+													<p class="text-sm text-gray-400">
+														{result.timestamp.toLocaleTimeString()}
+													</p>
 												</div>
 											</div>
+											<div class="flex items-center space-x-4">
+												<div class="text-right">
+													<div class="text-sm text-gray-400">Response Time</div>
+													<div class="text-lg font-semibold text-white">
+														{result.responseTime.toFixed(0)}ms
+													</div>
+												</div>
+												<button
+													on:click={() => toggleResultExpansion(result.id)}
+													class="rounded-lg bg-white/5 p-2 transition-colors hover:bg-white/10"
+												>
+													{#if expandedResults.has(result.id)}
+														<ChevronUp class="h-4 w-4 text-gray-400" />
+													{:else}
+														<ChevronDown class="h-4 w-4 text-gray-400" />
+													{/if}
+												</button>
+											</div>
+										</div>
 
-											<!-- Response Data -->
-											{#if result.data}
+										<!-- Debug Info (if enabled) -->
+										{#if showDebugInfo && result.debugInfo}
+											<div
+												class="mb-3 grid grid-cols-2 gap-4 rounded-lg bg-black/20 p-3 md:grid-cols-4"
+											>
+												<div class="text-center">
+													<div class="text-xs text-gray-400">Request Size</div>
+													<div class="text-sm font-semibold text-blue-400">
+														{formatBytes(result.debugInfo.requestSize)}
+													</div>
+												</div>
+												<div class="text-center">
+													<div class="text-xs text-gray-400">Response Size</div>
+													<div class="text-sm font-semibold text-green-400">
+														{formatBytes(result.debugInfo.responseSize)}
+													</div>
+												</div>
+												<div class="text-center">
+													<div class="text-xs text-gray-400">Network Latency</div>
+													<div class="text-sm font-semibold text-yellow-400">
+														{result.debugInfo.networkLatency.toFixed(0)}ms
+													</div>
+												</div>
+												<div class="text-center">
+													<div class="text-xs text-gray-400">Processing</div>
+													<div class="text-sm font-semibold text-purple-400">
+														{result.debugInfo.processingTime.toFixed(0)}ms
+													</div>
+												</div>
+											</div>
+										{/if}
+
+										<!-- Expanded Content -->
+										{#if expandedResults.has(result.id)}
+											<div class="space-y-4 border-t border-white/10 pt-4">
+												<!-- Parameters -->
 												<div>
-													<h4 class="mb-2 text-sm font-medium text-gray-400">Response Data</h4>
-													<div class="max-h-64 overflow-y-auto rounded-lg bg-black/20 p-3">
-														<pre class="text-sm text-gray-300">{JSON.stringify(
-																result.data,
+													<h4 class="mb-2 text-sm font-medium text-gray-400">Parameters</h4>
+													<div class="rounded-lg bg-black/20 p-3">
+														<pre class="overflow-x-auto text-sm text-gray-300">{JSON.stringify(
+																result.params,
 																null,
 																2
 															)}</pre>
 													</div>
 												</div>
 
-												<!-- Rich Data Display -->
-												{#if result.data.scripture}
+												<!-- Response Data -->
+												{#if result.data}
 													<div>
-														<h4 class="mb-2 text-sm font-medium text-gray-400">
-															Scripture Display
-														</h4>
-														<BibleVerse verse={result.data.scripture} theme="highlight" />
+														<h4 class="mb-2 text-sm font-medium text-gray-400">Response Data</h4>
+														<div class="max-h-64 overflow-y-auto rounded-lg bg-black/20 p-3">
+															<pre class="text-sm text-gray-300">{JSON.stringify(
+																	result.data,
+																	null,
+																	2
+																)}</pre>
+														</div>
 													</div>
-												{/if}
 
-												{#if result.data.translationWords && result.data.translationWords.length > 0}
+													<!-- Rich Data Display -->
+													{#if result.data.scripture}
+														<div>
+															<h4 class="mb-2 text-sm font-medium text-gray-400">
+																Scripture Display
+															</h4>
+															<BibleVerse verse={result.data.scripture} theme="highlight" />
+														</div>
+													{/if}
+
+													{#if result.data.translationWords && result.data.translationWords.length > 0}
+														<div>
+															<h4 class="mb-2 text-sm font-medium text-gray-400">
+																Translation Words
+															</h4>
+															<div class="space-y-3">
+																{#each result.data.translationWords as word}
+																	<TranslationWord {word} theme="expanded" />
+																{/each}
+															</div>
+														</div>
+													{/if}
+												{:else if result.error}
 													<div>
-														<h4 class="mb-2 text-sm font-medium text-gray-400">
-															Translation Words
-														</h4>
-														<div class="space-y-3">
-															{#each result.data.translationWords as word}
-																<TranslationWord {word} theme="expanded" />
-															{/each}
+														<h4 class="mb-2 text-sm font-medium text-gray-400">Error</h4>
+														<div class="rounded-lg border border-red-500/20 bg-red-500/10 p-3">
+															<p class="text-sm text-red-400">{result.error}</p>
 														</div>
 													</div>
 												{/if}
-											{:else if result.error}
+											</div>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Bulk Testing -->
+		{#if activeTab === 'bulk'}
+			<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+				<!-- Bulk Configuration -->
+				<div class="lg:col-span-1">
+					<div
+						class="sticky top-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
+					>
+						<div class="mb-6 flex items-center justify-between">
+							<h2 class="text-xl font-semibold text-white">Bulk Test Configuration</h2>
+							<BarChart3 class="h-5 w-5 text-gray-400" />
+						</div>
+
+						<div class="space-y-6">
+							<div>
+								<label class="mb-2 block text-sm font-medium text-gray-300">Test Type</label>
+								<select
+									bind:value={bulkConfig.type}
+									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+								>
+									<option value="quick">Quick Test (5 requests)</option>
+									<option value="medium">Medium Test (10 requests)</option>
+									<option value="comprehensive">Comprehensive Test (20 requests)</option>
+									<option value="stress">Stress Test (50 requests)</option>
+								</select>
+							</div>
+
+							<div>
+								<label class="mb-2 block text-sm font-medium text-gray-300">Number of Tests</label>
+								<input
+									type="number"
+									bind:value={bulkConfig.count}
+									min="1"
+									max="100"
+									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+								/>
+							</div>
+
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<label class="mb-2 block text-sm font-medium text-gray-300"
+										>Delay Between Requests (ms)</label
+									>
+									<input
+										type="number"
+										bind:value={bulkConfig.delay}
+										min="0"
+										max="5000"
+										class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+									/>
+								</div>
+								<div>
+									<label class="mb-2 block text-sm font-medium text-gray-300">Batch Size</label>
+									<input
+										type="number"
+										bind:value={bulkConfig.batchSize}
+										min="1"
+										max="200"
+										class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+									/>
+								</div>
+							</div>
+
+							<div class="space-y-3">
+								<label class="block text-sm font-medium text-gray-300">Execution Options</label>
+								<div class="space-y-2">
+									<label class="flex items-center">
+										<input
+											type="checkbox"
+											bind:checked={bulkConfig.parallel}
+											class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+										/>
+										<span class="ml-2 text-sm text-gray-300">Parallel Execution</span>
+									</label>
+									<label class="flex items-center">
+										<input
+											type="checkbox"
+											bind:checked={bulkConfig.adaptiveThrottling}
+											class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+										/>
+										<span class="ml-2 text-sm text-gray-300"
+											>Adaptive Throttling (Auto-adjust delays)</span
+										>
+									</label>
+									<label class="flex items-center">
+										<input
+											type="checkbox"
+											bind:checked={bulkConfig.retryOnFailure}
+											class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
+										/>
+										<span class="ml-2 text-sm text-gray-300">Retry Failed Requests</span>
+									</label>
+								</div>
+							</div>
+
+							<div class="border-t border-white/10 pt-4">
+								<button
+									type="button"
+									on:click={runBulkTests}
+									disabled={isBulkRunning}
+									class="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 font-semibold text-white transition-all duration-200 hover:from-green-700 hover:to-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									{#if isBulkRunning}
+										<Loader2 class="mr-2 h-5 w-5 animate-spin" />
+										Running Bulk Tests...
+									{:else}
+										<Zap class="mr-2 h-5 w-5" />
+										Start Bulk Testing
+									{/if}
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Bulk Results -->
+				<div class="lg:col-span-2">
+					{#if bulkResults}
+						<div class="space-y-6">
+							<!-- Performance Summary -->
+							<div
+								class="rounded-2xl border border-green-500/30 bg-gradient-to-r from-green-600/20 to-emerald-600/20 p-6 backdrop-blur-xl"
+							>
+								<div class="mb-6 flex items-center justify-between">
+									<h2 class="text-xl font-semibold text-white">Performance Summary</h2>
+									<div class="flex items-center space-x-2">
+										<TrendingUp class="h-5 w-5 text-green-400" />
+										<span class="text-sm font-medium text-green-400">
+											{bulkResults.performanceMetrics.successRate.toFixed(1)}% Success Rate
+										</span>
+									</div>
+								</div>
+
+								<div class="grid grid-cols-2 gap-6 md:grid-cols-4">
+									<div class="text-center">
+										<div class="text-2xl font-bold text-white">{bulkResults.total}</div>
+										<div class="text-sm text-gray-400">Total Tests</div>
+									</div>
+									<div class="text-center">
+										<div class="text-2xl font-bold text-green-400">{bulkResults.passed}</div>
+										<div class="text-sm text-gray-400">Passed</div>
+									</div>
+									<div class="text-center">
+										<div class="text-2xl font-bold text-red-400">{bulkResults.failed}</div>
+										<div class="text-sm text-gray-400">Failed</div>
+									</div>
+									<div class="text-center">
+										<div class="text-2xl font-bold text-blue-400">
+											{bulkResults.totalTime.toFixed(0)}ms
+										</div>
+										<div class="text-sm text-gray-400">Total Time</div>
+									</div>
+								</div>
+
+								<div
+									class="mt-6 grid grid-cols-1 gap-6 border-t border-white/10 pt-6 md:grid-cols-3"
+								>
+									<div class="text-center">
+										<div class="text-lg font-semibold text-white">
+											{bulkResults.performanceMetrics.averageResponseTime.toFixed(0)}ms
+										</div>
+										<div class="text-sm text-gray-400">Average Response</div>
+									</div>
+									<div class="text-center">
+										<div class="text-lg font-semibold text-green-400">
+											{bulkResults.performanceMetrics.fastestResponse.toFixed(0)}ms
+										</div>
+										<div class="text-sm text-gray-400">Fastest</div>
+									</div>
+									<div class="text-center">
+										<div class="text-lg font-semibold text-red-400">
+											{bulkResults.performanceMetrics.slowestResponse.toFixed(0)}ms
+										</div>
+										<div class="text-sm text-gray-400">Slowest</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- Debug Logs -->
+							<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+								<h3 class="mb-4 text-lg font-semibold text-white">Debug Logs</h3>
+								<div class="max-h-64 overflow-y-auto rounded-lg bg-black/30 p-4">
+									{#each bulkResults.debugLogs as log}
+										<div class="mb-1 text-sm text-gray-300">{log}</div>
+									{/each}
+								</div>
+							</div>
+
+							<!-- Individual Results -->
+							<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+								<h3 class="mb-4 text-lg font-semibold text-white">Individual Results</h3>
+								<div class="max-h-96 space-y-3 overflow-y-auto">
+									{#each bulkResults.results as result (result.id)}
+										<div
+											class="flex items-center justify-between rounded-lg border border-white/5 bg-black/20 p-3"
+										>
+											<div class="flex items-center space-x-3">
+												<svelte:component
+													this={getStatusIcon(result.status)}
+													class="h-4 w-4 {getStatusColor(result.status)}"
+												/>
 												<div>
-													<h4 class="mb-2 text-sm font-medium text-gray-400">Error</h4>
-													<div class="rounded-lg border border-red-500/20 bg-red-500/10 p-3">
-														<p class="text-sm text-red-400">{result.error}</p>
+													<div class="text-sm font-medium text-white">
+														{result.endpoint.split('/').pop()}
+													</div>
+													<div class="text-xs text-gray-400">
+														{result.timestamp.toLocaleTimeString()}
 													</div>
 												</div>
-											{/if}
+											</div>
+											<div class="text-right">
+												<div class="text-sm font-semibold text-white">
+													{result.responseTime.toFixed(0)}ms
+												</div>
+												{#if result.error}
+													<div class="max-w-32 truncate text-xs text-red-400">{result.error}</div>
+												{/if}
+											</div>
 										</div>
-									{/if}
+									{/each}
 								</div>
-							{/each}
+							</div>
+						</div>
+					{:else}
+						<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+							<div class="py-12 text-center">
+								<BarChart3 class="mx-auto mb-4 h-16 w-16 text-gray-400" />
+								<p class="text-gray-400">
+									No bulk test results yet. Configure and run bulk tests to see performance
+									analytics.
+								</p>
+							</div>
 						</div>
 					{/if}
 				</div>
 			</div>
-		</div>
-	{/if}
-
-	<!-- Bulk Testing -->
-	{#if activeTab === 'bulk'}
-		<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-			<!-- Bulk Configuration -->
-			<div class="lg:col-span-1">
-				<div
-					class="sticky top-8 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
-				>
-					<div class="mb-6 flex items-center justify-between">
-						<h2 class="text-xl font-semibold text-white">Bulk Test Configuration</h2>
-						<BarChart3 class="h-5 w-5 text-gray-400" />
-					</div>
-
-					<div class="space-y-6">
-						<div>
-							<label class="mb-2 block text-sm font-medium text-gray-300">Test Type</label>
-							<select
-								bind:value={bulkConfig.type}
-								class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-							>
-								<option value="quick">Quick Test (5 requests)</option>
-								<option value="medium">Medium Test (10 requests)</option>
-								<option value="comprehensive">Comprehensive Test (20 requests)</option>
-								<option value="stress">Stress Test (50 requests)</option>
-							</select>
-						</div>
-
-						<div>
-							<label class="mb-2 block text-sm font-medium text-gray-300">Number of Tests</label>
-							<input
-								type="number"
-								bind:value={bulkConfig.count}
-								min="1"
-								max="100"
-								class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-							/>
-						</div>
-
-						<div class="grid grid-cols-2 gap-4">
-							<div>
-								<label class="mb-2 block text-sm font-medium text-gray-300"
-									>Delay Between Requests (ms)</label
-								>
-								<input
-									type="number"
-									bind:value={bulkConfig.delay}
-									min="0"
-									max="5000"
-									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-								/>
-							</div>
-							<div>
-								<label class="mb-2 block text-sm font-medium text-gray-300">Batch Size</label>
-								<input
-									type="number"
-									bind:value={bulkConfig.batchSize}
-									min="1"
-									max="200"
-									class="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-white transition-colors focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-								/>
-							</div>
-						</div>
-
-						<div class="space-y-3">
-							<label class="block text-sm font-medium text-gray-300">Execution Options</label>
-							<div class="space-y-2">
-								<label class="flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={bulkConfig.parallel}
-										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
-									/>
-									<span class="ml-2 text-sm text-gray-300">Parallel Execution</span>
-								</label>
-								<label class="flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={bulkConfig.adaptiveThrottling}
-										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
-									/>
-									<span class="ml-2 text-sm text-gray-300"
-										>Adaptive Throttling (Auto-adjust delays)</span
-									>
-								</label>
-								<label class="flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={bulkConfig.retryOnFailure}
-										class="h-4 w-4 rounded border-white/10 bg-black/30 text-purple-600 focus:ring-purple-500"
-									/>
-									<span class="ml-2 text-sm text-gray-300">Retry Failed Requests</span>
-								</label>
-							</div>
-						</div>
-
-						<div class="border-t border-white/10 pt-4">
-							<button
-								type="button"
-								on:click={runBulkTests}
-								disabled={isBulkRunning}
-								class="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 font-semibold text-white transition-all duration-200 hover:from-green-700 hover:to-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								{#if isBulkRunning}
-									<Loader2 class="mr-2 h-5 w-5 animate-spin" />
-									Running Bulk Tests...
-								{:else}
-									<Zap class="mr-2 h-5 w-5" />
-									Start Bulk Testing
-								{/if}
-							</button>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<!-- Bulk Results -->
-			<div class="lg:col-span-2">
-				{#if bulkResults}
-					<div class="space-y-6">
-						<!-- Performance Summary -->
-						<div
-							class="rounded-2xl border border-green-500/30 bg-gradient-to-r from-green-600/20 to-emerald-600/20 p-6 backdrop-blur-xl"
-						>
-							<div class="mb-6 flex items-center justify-between">
-								<h2 class="text-xl font-semibold text-white">Performance Summary</h2>
-								<div class="flex items-center space-x-2">
-									<TrendingUp class="h-5 w-5 text-green-400" />
-									<span class="text-sm font-medium text-green-400">
-										{bulkResults.performanceMetrics.successRate.toFixed(1)}% Success Rate
-									</span>
-								</div>
-							</div>
-
-							<div class="grid grid-cols-2 gap-6 md:grid-cols-4">
-								<div class="text-center">
-									<div class="text-2xl font-bold text-white">{bulkResults.total}</div>
-									<div class="text-sm text-gray-400">Total Tests</div>
-								</div>
-								<div class="text-center">
-									<div class="text-2xl font-bold text-green-400">{bulkResults.passed}</div>
-									<div class="text-sm text-gray-400">Passed</div>
-								</div>
-								<div class="text-center">
-									<div class="text-2xl font-bold text-red-400">{bulkResults.failed}</div>
-									<div class="text-sm text-gray-400">Failed</div>
-								</div>
-								<div class="text-center">
-									<div class="text-2xl font-bold text-blue-400">
-										{bulkResults.totalTime.toFixed(0)}ms
-									</div>
-									<div class="text-sm text-gray-400">Total Time</div>
-								</div>
-							</div>
-
-							<div class="mt-6 grid grid-cols-1 gap-6 border-t border-white/10 pt-6 md:grid-cols-3">
-								<div class="text-center">
-									<div class="text-lg font-semibold text-white">
-										{bulkResults.performanceMetrics.averageResponseTime.toFixed(0)}ms
-									</div>
-									<div class="text-sm text-gray-400">Average Response</div>
-								</div>
-								<div class="text-center">
-									<div class="text-lg font-semibold text-green-400">
-										{bulkResults.performanceMetrics.fastestResponse.toFixed(0)}ms
-									</div>
-									<div class="text-sm text-gray-400">Fastest</div>
-								</div>
-								<div class="text-center">
-									<div class="text-lg font-semibold text-red-400">
-										{bulkResults.performanceMetrics.slowestResponse.toFixed(0)}ms
-									</div>
-									<div class="text-sm text-gray-400">Slowest</div>
-								</div>
-							</div>
-						</div>
-
-						<!-- Debug Logs -->
-						<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-							<h3 class="mb-4 text-lg font-semibold text-white">Debug Logs</h3>
-							<div class="max-h-64 overflow-y-auto rounded-lg bg-black/30 p-4">
-								{#each bulkResults.debugLogs as log}
-									<div class="mb-1 text-sm text-gray-300">{log}</div>
-								{/each}
-							</div>
-						</div>
-
-						<!-- Individual Results -->
-						<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-							<h3 class="mb-4 text-lg font-semibold text-white">Individual Results</h3>
-							<div class="max-h-96 space-y-3 overflow-y-auto">
-								{#each bulkResults.results as result (result.id)}
-									<div
-										class="flex items-center justify-between rounded-lg border border-white/5 bg-black/20 p-3"
-									>
-										<div class="flex items-center space-x-3">
-											<svelte:component
-												this={getStatusIcon(result.status)}
-												class="h-4 w-4 {getStatusColor(result.status)}"
-											/>
-											<div>
-												<div class="text-sm font-medium text-white">
-													{result.endpoint.split('/').pop()}
-												</div>
-												<div class="text-xs text-gray-400">
-													{result.timestamp.toLocaleTimeString()}
-												</div>
-											</div>
-										</div>
-										<div class="text-right">
-											<div class="text-sm font-semibold text-white">
-												{result.responseTime.toFixed(0)}ms
-											</div>
-											{#if result.error}
-												<div class="max-w-32 truncate text-xs text-red-400">{result.error}</div>
-											{/if}
-										</div>
-									</div>
-								{/each}
-							</div>
-						</div>
-					</div>
-				{:else}
-					<div class="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-						<div class="py-12 text-center">
-							<BarChart3 class="mx-auto mb-4 h-16 w-16 text-gray-400" />
-							<p class="text-gray-400">
-								No bulk test results yet. Configure and run bulk tests to see performance analytics.
-							</p>
-						</div>
-					</div>
-				{/if}
-			</div>
-		</div>
-	{/if}
-</div>
+		{/if}
+	</div>
+</section>
