@@ -333,7 +333,9 @@ export const GET: RequestHandler = async ({ url }) => {
 	};
 
 	// Return appropriate HTTP status based on health
-	const httpStatus = overallStatus === 'healthy' ? 200 : overallStatus === 'warning' ? 200 : 503;
+	// Only return 503 if core endpoints are failing, not experimental ones
+	const coreFailures = coreResults.filter((r) => r.status === 'error').length;
+	const httpStatus = coreFailures > 0 ? 503 : 200;
 
 	return json(healthData, {
 		status: httpStatus,
