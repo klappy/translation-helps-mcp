@@ -2,18 +2,12 @@ import { getVersion as getServerVersion } from '../../../src/version.js';
 
 /**
  * Get version from ROOT package.json (SINGLE SOURCE OF TRUTH)
- * This is a static value for browser environments
+ * NO FALLBACKS - if this fails, the build should fail!
  */
 export function getVersion(): string {
-	// In browser environment, we need to use a static fallback
-	// since we can't read files dynamically in the browser
-	try {
-		// Try to use server version during build time
-		return getServerVersion();
-	} catch {
-		// Browser fallback - this should match the FALLBACK_VERSION in src/version.ts
-		return '4.3.0';
-	}
+	// During build time, this MUST work or the build fails
+	// NO browser fallbacks - the version is baked in at build time
+	return getServerVersion();
 }
 
 export const VERSION = getVersion();
