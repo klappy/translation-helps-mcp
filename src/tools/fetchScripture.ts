@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { fetchScripture } from "../../netlify/functions/_shared/scripture-service.js";
+import { fetchScripture } from "../functions/scripture-service.js";
 import { estimateTokens } from "../utils/tokenCounter.js";
 
 // Input schema

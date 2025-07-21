@@ -15,20 +15,12 @@
     "noEmit": false,
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["node", "@netlify/functions"],
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["netlify/functions/_shared/*"]
+      "@functions/*": ["src/functions/*"]
     }
   },
-  "include": [
-    "netlify/**/*.ts",
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts"
-  ]
-} 
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+}

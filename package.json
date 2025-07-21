@@ -8,7 +8,7 @@
     "build": "cd ui && npm install && npm run build",
     "build:netlify": "cd ui && npm install && npm run build",
     "build:cloudflare": "cd ui && npm install && npm run build:cloudflare",
-    "build:cloudflare-full": "npm install && node scripts/generate-platform-functions.js && cd ui && npm install && npm run build:cloudflare",
+    "build:cloudflare-full": "npm install && cd ui && npm install && npm run build:cloudflare",
     "generate:functions": "node scripts/generate-platform-functions.js",
     "preview": "cd ui && npm run preview",
     "preview:netlify": "cd ui && npm run preview",
@@ -30,7 +30,6 @@
   },
   "dependencies": {
     "@netlify/blobs": "^10.0.6",
-    "@netlify/functions": "^2.4.1",
     "@upstash/redis": "^1.28.0",
     "node-fetch": "^3.3.2",
     "zod": "^3.22.4"
