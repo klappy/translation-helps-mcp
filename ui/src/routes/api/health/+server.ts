@@ -182,7 +182,8 @@ async function testSingleEndpoint(baseUrl: string, test: EndpointTest, bypassCac
 
 		const response = await fetch(url.toString(), fetchOptions);
 		const responseTime = Date.now() - startTime;
-		const cacheStatus = response.headers.get('X-Cache-Status') || 'unknown';
+		const cacheStatus =
+			response.headers.get('X-Cache-Status') || response.headers.get('X-Cache') || 'unknown';
 
 		if (!response.ok) {
 			return {
