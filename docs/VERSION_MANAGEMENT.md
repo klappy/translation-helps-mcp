@@ -117,14 +117,14 @@ You can verify version consistency across all endpoints:
 
 ```bash
 # Test MCP HTTP Bridge
-curl -X POST https://your-app.pages.dev/api/mcp \
+curl -X POST https://translation-helps-mcp.pages.dev/api/mcp \
   -d '{"method":"initialize"}'
 
 # Test Health Endpoint
-curl https://your-app.pages.dev/api/health
+curl https://translation-helps-mcp.pages.dev/api/health
 
 # Test Languages Endpoint
-curl https://your-app.pages.dev/api/get-languages
+curl https://translation-helps-mcp.pages.dev/api/get-languages
 ```
 
 All should return the same version number from root `package.json`.

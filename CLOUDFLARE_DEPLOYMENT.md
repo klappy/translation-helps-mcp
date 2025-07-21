@@ -6,8 +6,8 @@ Translation Helps MCP v4.1.0 introduces revolutionary **HTTP-based MCP** that ru
 
 ### ✨ Live Production Deployment
 
-- **HTTP MCP Endpoint**: `https://ab56217a.translation-helps-mcp.pages.dev/api/mcp`
-- **Interactive Test UI**: `https://ab56217a.translation-helps-mcp.pages.dev/mcp-http-test`
+- **HTTP MCP Endpoint**: `https://translation-helps-mcp.pages.dev/api/mcp`
+- **Interactive Test UI**: `https://translation-helps-mcp.pages.dev/mcp-http-test`
 - **All 11 Tools Available**: Complete translation toolkit via HTTP
 
 ## Why Cloudflare?
