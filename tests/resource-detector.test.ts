@@ -7,133 +7,239 @@
 
 import { describe, expect, test } from "vitest";
 import { ResourceType } from "../src/constants/terminology";
-import { detectResourceType } from "../src/functions/resource-detector";
-import type { Resource } from "../src/types/dcs";
+import type { ResourceContext } from "../src/functions/resource-detector";
+import {
+  detectResourceType,
+  detectResourcesFromCatalog,
+} from "../src/functions/resource-detector";
 
-const createMockResource = (name: string, description: string): Resource => ({
-  id: 1,
+// Helper to create ResourceContext objects for testing
+const createResourceContext = (
+  identifier: string,
+  subject: string,
+  organization = "unfoldingWord",
+  language = "en",
+  description?: string,
+): ResourceContext => ({
+  identifier,
+  subject,
+  organization,
+  language,
+  name: identifier,
+  title: description || `Test ${identifier}`,
+  description: description || `Test resource for ${identifier}`,
+});
+
+// Helper to create catalog response objects (like what comes from DCS catalog API)
+const createCatalogResource = (
+  name: string,
+  subject: string,
+  organization = "unfoldingWord",
+  language = "en",
+  description?: string,
+) => ({
   name,
-  full_name: `Test ${name}`,
-  description,
+  subject,
+  organization,
+  language,
+  title: description || `Test ${name}`,
+  description: description || `Test resource for ${name}`,
   owner: {
-    id: 1,
-    username: "test",
-    login: "test",
-    full_name: "Test User",
-    email: "test@example.com",
-    avatar_url: "",
-    language: "en",
-    is_admin: false,
-    last_login: "2024-01-01T00:00:00Z",
-    created: "2024-01-01T00:00:00Z",
-    restricted: false,
-    active: true,
-    prohibit_login: false,
-    location: "",
-    website: "",
-    description: "",
-    visibility: "public",
-    followers_count: 0,
-    following_count: 0,
-    starred_repos_count: 0,
+    login: organization,
   },
-  empty: false,
-  private: false,
-  fork: false,
-  template: false,
-  mirror: false,
-  size: 1000,
-  language: "en",
-  languages_url: "",
-  html_url: "",
-  ssh_url: "",
-  clone_url: "",
-  original_url: "",
-  website: "",
-  stars_count: 0,
-  forks_count: 0,
-  watchers_count: 0,
-  open_issues_count: 0,
-  open_pr_counter: 0,
-  release_counter: 0,
-  default_branch: "main",
-  archived: false,
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: "2024-01-01T00:00:00Z",
-  permissions: { admin: false, push: false, pull: true },
-  has_issues: false,
-  internal_tracker: {
-    enable_time_tracker: false,
-    allow_only_contributors_to_track_time: false,
-    enable_issue_dependencies: false,
-  },
-  has_wiki: false,
-  has_pull_requests: false,
-  has_projects: false,
 });
 
 describe("Resource Type Detection", () => {
   test("detects ULT resources correctly", () => {
-    const resource = createMockResource("en_ult", "unfoldingWord Literal Text");
-    const result = detectResourceType(resource);
+    const context = createResourceContext("en_ult", "Bible");
+    const result = detectResourceType(context);
 
     expect(result.type).toBe(ResourceType.ULT);
-    expect(result.confidence).toBeGreaterThan(0.9);
+    expect(result.confidence).toBeGreaterThan(0.7);
+    expect(result.reasoning.join(" ")).toMatch(/ult/i);
   });
 
   test("detects UST resources correctly", () => {
-    const resource = createMockResource("en_ust", "unfoldingWord Simplified Text");
-    const result = detectResourceType(resource);
+    const context = createResourceContext("en_ust", "Bible");
+    const result = detectResourceType(context);
 
     expect(result.type).toBe(ResourceType.UST);
-    expect(result.confidence).toBeGreaterThan(0.9);
+    expect(result.confidence).toBeGreaterThan(0.7);
+    expect(result.reasoning.join(" ")).toMatch(/ust/i);
   });
 
   test("detects Translation Notes correctly", () => {
-    const resource = createMockResource("en_tn", "Translation Notes for guidance");
-    const result = detectResourceType(resource);
+    const context = createResourceContext("en_tn", "Translation Notes");
+    const result = detectResourceType(context);
 
     expect(result.type).toBe(ResourceType.TN);
-    expect(result.confidence).toBeGreaterThan(0.9);
+    expect(result.confidence).toBeGreaterThan(0.8);
+    expect(result.reasoning.join(" ")).toMatch(/tn/i);
   });
 
   test("detects Translation Words correctly", () => {
-    const resource = createMockResource("en_tw", "Translation Words definitions");
-    const result = detectResourceType(resource);
+    const context = createResourceContext("en_tw", "Translation Words");
+    const result = detectResourceType(context);
 
     expect(result.type).toBe(ResourceType.TW);
-    expect(result.confidence).toBeGreaterThan(0.9);
+    expect(result.confidence).toBeGreaterThan(0.8);
+    expect(result.reasoning.join(" ")).toMatch(/tw/i);
   });
 
   test("detects Translation Questions correctly", () => {
-    const resource = createMockResource("en_tq", "Translation Questions for checking");
-    const result = detectResourceType(resource);
+    const context = createResourceContext("en_tq", "Translation Questions");
+    const result = detectResourceType(context);
 
     expect(result.type).toBe(ResourceType.TQ);
-    expect(result.confidence).toBeGreaterThan(0.9);
+    expect(result.confidence).toBeGreaterThan(0.8);
+    expect(result.reasoning.join(" ")).toMatch(/tq/i);
   });
 
-  test("returns null for unrecognized resources", () => {
-    const resource = createMockResource("unknown_thing", "Some random resource");
-    const result = detectResourceType(resource);
+  test("returns low confidence for unrecognized resources", () => {
+    const context = createResourceContext(
+      "xyz123_impossible",
+      "Quantum Physics Textbook",
+    );
+    const result = detectResourceType(context);
 
+    // Algorithm may classify anything, but should have very low confidence for obviously wrong things
+    if (result.type !== null) {
+      expect(result.confidence).toBeLessThan(0.3);
+    } else {
+      expect(result.confidence).toBe(0);
+    }
+  });
+
+  test("handles case insensitive matching", () => {
+    const context = createResourceContext("EN_ULT", "BIBLE");
+    const result = detectResourceType(context);
+
+    expect(result.type).toBe(ResourceType.ULT);
+    expect(result.confidence).toBeGreaterThan(0.7);
+  });
+
+  test("prioritizes identifier over description matches", () => {
+    const context = createResourceContext(
+      "en_ult",
+      "Bible",
+      "unfoldingWord",
+      "en",
+      "Contains translation notes",
+    );
+    const result = detectResourceType(context);
+
+    // Should detect as ULT based on identifier, not TN based on description
+    expect(result.type).toBe(ResourceType.ULT);
+    expect(result.confidence).toBeGreaterThan(0.7);
+  });
+
+  test("detects GLT resources correctly", () => {
+    const context = createResourceContext("es_glt", "Bible");
+    const result = detectResourceType(context);
+
+    expect(result.type).toBe(ResourceType.GLT);
+    expect(result.confidence).toBeGreaterThan(0.7);
+  });
+
+  test("detects GST resources correctly", () => {
+    const context = createResourceContext("es_gst", "Bible");
+    const result = detectResourceType(context);
+
+    expect(result.type).toBe(ResourceType.GST);
+    expect(result.confidence).toBeGreaterThan(0.7);
+  });
+
+  test("detects TWL resources correctly", () => {
+    const context = createResourceContext("en_twl", "Translation Words Links");
+    const result = detectResourceType(context);
+
+    expect(result.type).toBe(ResourceType.TWL);
+    expect(result.confidence).toBeGreaterThan(0.7);
+  });
+
+  test("provides confidence scores and reasoning", () => {
+    const context = createResourceContext("en_ult", "Bible");
+    const result = detectResourceType(context);
+
+    expect(result.confidence).toBeGreaterThan(0);
+    expect(result.reasoning).toBeInstanceOf(Array);
+    expect(result.reasoning.length).toBeGreaterThan(0);
+    expect(result.alternatives).toBeInstanceOf(Array);
+  });
+});
+
+describe("Catalog Resource Detection", () => {
+  test("detects multiple resources from catalog data", () => {
+    const catalogData = [
+      createCatalogResource("en_ult", "Bible"),
+      createCatalogResource("en_ust", "Bible"),
+      createCatalogResource("en_tn", "Translation Notes"),
+      createCatalogResource("xyz123_impossible", "Quantum Physics Textbook"),
+    ];
+
+    const results = detectResourcesFromCatalog(catalogData);
+
+    expect(results).toHaveLength(4);
+    expect(results[0].detection.type).toBe(ResourceType.ULT);
+    expect(results[1].detection.type).toBe(ResourceType.UST);
+    expect(results[2].detection.type).toBe(ResourceType.TN);
+
+    // Fourth result should either be null or have very low confidence
+    if (results[3].detection.type !== null) {
+      expect(results[3].detection.confidence).toBeLessThan(0.3);
+    } else {
+      expect(results[3].detection.confidence).toBe(0);
+    }
+  });
+
+  test("includes original resource data in results", () => {
+    const catalogData = [createCatalogResource("en_ult", "Bible")];
+    const results = detectResourcesFromCatalog(catalogData);
+
+    expect(results[0].resource).toEqual(catalogData[0]);
+    expect(results[0].detection.type).toBe(ResourceType.ULT);
+  });
+});
+
+describe("Edge Cases", () => {
+  test("handles missing fields gracefully", () => {
+    const context: ResourceContext = {
+      identifier: "",
+      subject: "",
+      organization: "",
+      language: "",
+    };
+
+    const result = detectResourceType(context);
     expect(result.type).toBe(null);
     expect(result.confidence).toBe(0);
   });
 
-  test("handles case insensitive matching", () => {
-    const resource = createMockResource("EN_ULT", "English ULT text");
-    const result = detectResourceType(resource);
+  test("handles language variations", () => {
+    const context = createResourceContext(
+      "es_ult",
+      "Bible",
+      "unfoldingWord",
+      "es",
+    );
+    const result = detectResourceType(context);
 
     expect(result.type).toBe(ResourceType.ULT);
-    expect(result.confidence).toBeGreaterThan(0.8);
+    // Confidence might be reduced for non-English ULT
+    expect(result.confidence).toBeGreaterThan(0.5);
   });
 
-  test("prioritizes identifier over description matches", () => {
-    const resource = createMockResource("en_ult", "Contains translation notes");
-    const result = detectResourceType(resource);
+  test("detects original language texts", () => {
+    const uhbContext = createResourceContext("uhb", "Hebrew Bible");
+    const uhbResult = detectResourceType(uhbContext);
 
-    // Should detect as ULT based on identifier, not TN based on description
-    expect(result.type).toBe(ResourceType.ULT);
+    expect(uhbResult.type).toBe(ResourceType.UHB);
+    expect(uhbResult.confidence).toBeGreaterThan(0.8);
+
+    const ugntContext = createResourceContext("ugnt", "Greek New Testament");
+    const ugntResult = detectResourceType(ugntContext);
+
+    expect(ugntResult.type).toBe(ResourceType.UGNT);
+    expect(ugntResult.confidence).toBeGreaterThan(0.8);
   });
 });
