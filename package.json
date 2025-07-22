@@ -38,6 +38,12 @@
     "load-test:critical": "cd tests/load/k6 && RUN_MODE=critical node run-all-tests.js",
     "load-test:all": "cd tests/load/k6 && RUN_MODE=all node run-all-tests.js",
     "load-test:performance": "cd tests/load/k6 && RUN_MODE=performance node run-all-tests.js",
+    "chaos:upstream": "vitest run tests/chaos/upstream-failures.test.ts",
+    "chaos:cache": "vitest run tests/chaos/cache-failures.test.ts",
+    "chaos:network": "vitest run tests/chaos/network-partitions.test.ts",
+    "chaos:data": "vitest run tests/chaos/data-corruption.test.ts",
+    "chaos:safe": "cd tests/chaos && CHAOS_MODE=safe node run-all-chaos-tests.ts",
+    "chaos:all": "cd tests/chaos && CHAOS_MODE=aggressive node run-all-chaos-tests.ts",
     "sync-version": "node scripts/sync-version.js",
     "prepare": "husky"
   },
