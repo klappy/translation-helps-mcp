@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.1] - 2025-07-22
+
+### 🧹 Project Organization & Quality Improvements
+
+- **Fixed Failing Smoke Tests**: Resolved test configuration issues for reliable CI/CD
+  - Updated test port configuration from 8888 to 5173 (correct Vite dev server port)
+  - Fixed test expectations to match actual API response structures
+  - All 6 smoke tests now passing consistently
+  - Improved test reliability for development and deployment workflows
+
+- **Major Documentation Reorganization**: Transformed chaotic root directory into professional project structure
+  - Created organized documentation hierarchy: `docs/{deployment,guides,performance,testing,legacy}/`
+  - Moved 25+ scattered markdown files from root into logical topic-based folders
+  - Separated platform-specific docs (Cloudflare vs Netlify vs general deployment)
+  - Added README files to each documentation folder explaining contents and usage
+
+- **Script Organization**: Consolidated development and testing scripts
+  - Moved 7 load testing scripts to `scripts/load-tests/` with proper documentation
+  - Organized test utilities and build scripts for better maintainability
+  - Removed obsolete files and cleaned up project root directory
+
+- **Developer Experience**: Significantly improved project navigability and professionalism
+  - Root directory reduced from 40+ files to essential project files only
+  - Clear documentation structure makes onboarding and maintenance much easier
+  - Preserved all existing functionality while dramatically improving organization
+  - Enhanced project first impression for new contributors and collaborators
+
+### 🔧 Maintenance
+
+- **Cleaned Legacy Files**: Removed outdated log files and deployment trigger files
+- **Git History Preservation**: All file moves properly tracked as renames, preserving commit history
+- **Version Synchronization**: Updated version across all UI components and documentation
+
 ## [4.4.0] - 2025-07-21
 
 ### 🔧 Client-Side Infrastructure Fixes
