@@ -33,6 +33,8 @@ export const fetchScriptureHandler: PlatformHandler = async (
     const includeVerseNumbers = request.queryStringParameters.includeVerseNumbers !== "false";
     const formatParam = request.queryStringParameters.format || "text";
     const format = (formatParam === "usfm" ? "usfm" : "text") as "text" | "usfm";
+    const includeMultipleTranslations =
+      request.queryStringParameters.includeMultipleTranslations === "true";
 
     if (!referenceParam) {
       return {
@@ -57,12 +59,14 @@ export const fetchScriptureHandler: PlatformHandler = async (
       organization,
       includeVerseNumbers,
       format,
+      includeMultipleTranslations,
       bypassCache: bypassOptions,
     });
 
     // Clean, improved response structure (v4.0.0)
     const response = {
       scripture: result.scripture,
+      scriptures: result.scriptures,
       citation: result.scripture?.citation,
       language,
       organization,
@@ -70,7 +74,8 @@ export const fetchScriptureHandler: PlatformHandler = async (
         cached: result.metadata.cached,
         includeVerseNumbers: result.metadata.includeVerseNumbers,
         format: result.metadata.format,
-        filesFound: 1, // We found scripture data
+        translationsFound: result.metadata.translationsFound,
+        filesFound: result.metadata.translationsFound, // Backward compatibility
         cacheKey: result.metadata.cacheKey,
         cacheType: result.metadata.cacheType,
       },
