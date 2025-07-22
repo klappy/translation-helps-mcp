@@ -1,23 +1,40 @@
-# Load Testing Scripts
+# Load Tests
 
-This folder contains performance testing and load testing scripts.
+This directory contains performance and load testing scripts for the Translation Helps MCP server.
 
-## Scripts
+## Active Tests
 
-- `comprehensive-load-test.js` - Full system load testing
-- `cloudflare-only-load-test.js` - Cloudflare-specific load testing
-- `cloudflare-vs-netlify-load-test.js` - Platform comparison testing
-- `load-test.js` - Basic load testing script
-- `performance-analysis.js` - Performance analysis and reporting
-- `performance-comparison.js` - Performance comparison utilities
-- `local-cache-test.js` - Local caching performance testing
+**Essential load tests for current performance monitoring:**
+
+- `comprehensive-load-test.js` - Complete load test covering all endpoints
+- `cloudflare-only-load-test.js` - Cloudflare Workers specific testing
+- `load-test.js` - Basic load testing suite
+- `local-cache-test.js` - Local caching performance tests
+
+## Archived Tests
+
+**Historical comparison tests (see `archived/` folder):**
+
+- `cloudflare-vs-netlify-load-test.js` - Platform comparison (historical)
+- `performance-comparison.js` - Performance benchmarking (historical)
+- `performance-analysis.js` - Analysis tools (historical)
 
 ## Usage
 
-Run these scripts to test the performance and scalability of the translation-helps-mcp API.
+Run comprehensive load tests:
 
 ```bash
 node scripts/load-tests/comprehensive-load-test.js
 ```
 
-Make sure the development server is running before executing any load tests.
+Test current Cloudflare deployment:
+
+```bash
+node scripts/load-tests/cloudflare-only-load-test.js
+```
+
+## Notes
+
+- Tests target both local development and production endpoints
+- Cloudflare tests focus on edge performance and caching
+- Historical tests are preserved for reference but not actively maintained
