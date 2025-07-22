@@ -10,7 +10,7 @@
 export interface CoalescingOptions {
   maxPendingTime?: number; // Maximum time to keep request pending (ms)
   enableMetrics?: boolean; // Whether to track coalescing metrics
-  keyGenerator?: (args: any[]) => string; // Custom key generation function
+  keyGenerator?: (args: unknown[]) => string; // Custom key generation function
 }
 
 export interface CoalescingMetrics {
@@ -47,7 +47,7 @@ export interface CoalescingResult<T> {
  * Main Request Coalescer Class
  */
 export class RequestCoalescer {
-  private pendingRequests = new Map<string, PendingRequest<any>>();
+  private pendingRequests = new Map<string, PendingRequest<unknown>>();
   private metrics: CoalescingMetrics;
   private options: Required<CoalescingOptions>;
   private cleanupInterval: NodeJS.Timeout | null = null;
