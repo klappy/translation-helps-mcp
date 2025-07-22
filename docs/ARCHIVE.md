@@ -87,6 +87,51 @@ This file contains condensed summaries of completed migrations, deprecated platf
 
 ---
 
+## 🐛 Debugging Documentation (CONSOLIDATED → DEBUGGING_GUIDE.md)
+
+**Summary**: 3 debugging files consolidated into single comprehensive debugging guide.
+
+**What Was Consolidated**:
+
+- `DEBUGGING_MASTERCLASS_LEARNINGS.md` (250 lines) → TWL/TW pipeline fixes and modular testing strategy
+- `EPIC_DEBUGGING_SESSION_LEARNINGS.md` (387 lines) → Epic debugging session breakthroughs and UI development
+- `QUICK_DEBUGGING_REFERENCE.md` (185 lines) → Quick diagnostic commands and troubleshooting
+
+**Result**: Single `DEBUGGING_GUIDE.md` (368 lines) with essential debugging patterns, reduced by 55% while preserving all critical techniques.
+
+**Key Consolidated Knowledge**:
+
+- Modular testing methodology (test each step individually)
+- Quick diagnostic commands for common issues
+- Root cause analysis patterns (ingredients array, resource selection)
+- Performance debugging and optimization techniques
+- Epic debugging breakthroughs and proven solutions
+
+---
+
+## 🏗️ Architecture Documentation (CONSOLIDATED → ARCHITECTURE_GUIDE.md)
+
+**Summary**: 4 architecture files consolidated into single comprehensive architecture guide.
+
+**What Was Consolidated**:
+
+- `MCP_TRANSLATION_HELPS_ARCHITECTURE.md` (568 lines) → System overview and component architecture
+- `MCP_DATA_FETCHING_PATTERNS.md` (390 lines) → DCS API integration and resource fetching patterns
+- `CONSERVATIVE_CACHING_GUIDE.md` (113 lines) → Caching strategies and performance optimization
+- `CHAT_BOT_MCP_INTEGRATION.md` (228 lines) → Chatbot integration and MCP protocol patterns
+
+**Result**: Single `ARCHITECTURE_GUIDE.md` (578 lines) with complete system design, reduced by 55% while preserving all architectural wisdom.
+
+**Key Consolidated Knowledge**:
+
+- HTTP MCP architecture and platform-agnostic design
+- DCS catalog API integration patterns (the critical ingredients array pattern)
+- Multi-layer caching strategy and performance optimizations
+- Error handling and graceful degradation patterns
+- MCP tool definitions and integration examples
+
+---
+
 ## ✅ MCP Migration (COMPLETED)
 
 **Summary**: Successfully migrated from standalone API to Model Context Protocol (MCP) server architecture.
