@@ -1,0 +1,506 @@
+# Translation Helps Platform PRD
+Product Requirements Document v1.0
+Last Updated: December 2024
+
+## EXECUTIVE SUMMARY
+
+The Translation Helps Platform provides programmatic access to unfoldingWord's Bible translation resources through modern APIs and AI integration protocols. It serves as the technical bridge between comprehensive translation resources and the tools that Mother Tongue Translators (MTTs) use to translate Scripture into their heart languages.
+
+### KEY OBJECTIVES
+- Provide instant access to all unfoldingWord translation resources
+- Enable AI assistants to support Bible translation workflows  
+- Maintain version integrity across interconnected resources
+- Scale to support thousands of concurrent translation projects globally
+
+### TARGET USERS
+1. Mother Tongue Translators (MTTs) - Primary end users needing translation resources
+2. Translation Tool Developers - Building apps and platforms
+3. AI Assistant Developers - Integrating translation helps into LLMs
+4. Translation Consultants - Quality assurance and checking
+
+## PRODUCT VISION
+
+Create a high-performance, globally accessible API platform that democratizes access to Bible translation resources, enabling Mother Tongue Translators worldwide to produce accurate, natural translations in their heart languages without requiring knowledge of biblical languages.
+
+## USER PERSONAS & NEEDS
+
+### 1. Mother Tongue Translators (MTTs)
+**Context**: Native speakers translating Scripture into their heart language
+**Needs**: 
+- Access original language insights through Strategic Language resources
+- Side-by-side comparison of literal (ULT/GLT) and simplified (UST/GST) texts
+- Contextual notes for difficult passages
+- Definitions of biblical terms
+**Challenges**: 
+- Limited internet connectivity
+- No knowledge of Greek/Hebrew
+- Cultural translation barriers
+**Success Criteria**: Can translate accurately using Strategic Language bridges
+
+### 2. Translation Tool Developers  
+**Context**: Building desktop, web, and mobile translation applications
+**Needs**:
+- Reliable, well-documented APIs
+- Consistent resource versioning
+- Flexible query capabilities
+- Offline synchronization support
+**Challenges**:
+- Complex resource relationships
+- Multiple data formats
+- Performance requirements
+**Success Criteria**: Simple integration with comprehensive access
+
+### 3. AI Assistant Developers
+**Context**: Integrating translation resources into AI workflows
+**Needs**:
+- Structured data formats
+- Semantic relationships
+- Context-aware responses
+- Token-efficient access
+**Challenges**:
+- LLM context limits
+- Resource interconnections
+- Accuracy requirements
+**Success Criteria**: AI provides accurate, contextual guidance
+
+## FUNCTIONAL REQUIREMENTS
+
+### Core Resource Types
+
+#### Scripture Texts
+1. **ULT/GLT (unfoldingWord Literal Text / Gateway Literal Text)**
+   - Form-centric translation preserving original language structure
+   - Shows word order, idioms, and figures of speech from source
+   - Includes embedded word alignment data
+
+2. **UST/GST (unfoldingWord Simplified Text / Gateway Simplified Text)**  
+   - Meaning-based translation in clear, natural language
+   - Demonstrates how to express concepts clearly
+   - Includes embedded word alignment data
+
+3. **Word Alignment Data**
+   - Precise word-level connections between Strategic Language and original Hebrew/Greek
+   - Enables highlighting and cross-referencing
+   - Foundation for all other resource connections
+
+#### Translation Helps
+
+1. **Translation Notes (TN)**
+   - Verse-by-verse explanations for difficult passages
+   - Cultural background and alternative renderings
+   - Links to Translation Academy articles
+   - TSV format with structured data
+
+2. **Translation Words (TW)**  
+   - Comprehensive biblical term definitions
+   - Consistent terminology across Scripture
+   - Markdown articles by category (kt/names/other)
+   - Cross-references and biblical examples
+
+3. **Translation Words Links (TWL)**
+   - Maps word occurrences to TW articles
+   - Enables contextual term lookup
+   - TSV format with occurrence tracking
+
+4. **Translation Academy (TA)**
+   - Translation methodology and theory
+   - Best practices and guidelines
+   - Structured training modules
+   - Referenced by Translation Notes
+
+5. **Translation Questions (TQ)**
+   - Comprehension validation questions
+   - Community checking tools
+   - Expected answers included
+   - TSV format by book
+
+### API Endpoints
+
+#### Scripture Access
+```
+GET /api/fetch-scripture
+Parameters:
+  - reference: String (required) - "John 3:16", "Genesis 1:1-5", "Matthew 5"
+  - language: String (default: "en") - Strategic language code
+  - organization: String (default: "unfoldingWord") - Resource organization
+  - translation: String (default: "all") - "ult", "ust", or "all"
+  - includeAlignment: Boolean (default: true) - Include word alignment data
+  - includeVerseNumbers: Boolean (default: true) - Include verse markers
+  
+Response:
+  - scripture: Object containing requested text(s)
+  - alignment: Word-level alignment data
+  - metadata: Version, cache status, timing
+```
+
+#### Translation Notes  
+```
+GET /api/fetch-translation-notes
+Parameters:
+  - reference: String (required) - Scripture reference
+  - language: String (default: "en") - Strategic language code
+  - organization: String (default: "unfoldingWord")
+  - includeAcademyLinks: Boolean (default: true) - Resolve TA links
+  
+Response:
+  - notes: Array of note objects
+  - links: Related Translation Academy articles
+  - metadata: Source information
+```
+
+#### Translation Words
+```
+GET /api/get-translation-word
+Parameters:
+  - word: String (required) - Biblical term to lookup
+  - language: String (default: "en") - Strategic language code
+  - organization: String (default: "unfoldingWord")
+  - includeReferences: Boolean (default: false) - Include usage examples
+  
+Response:
+  - word: Complete word article
+  - references: Biblical usage examples
+  - relatedWords: Semantically connected terms
+```
+
+#### Translation Questions
+```
+GET /api/fetch-translation-questions  
+Parameters:
+  - reference: String (required) - Scripture reference
+  - language: String (default: "en") - Strategic language code
+  - organization: String (default: "unfoldingWord")
+  
+Response:
+  - questions: Array of Q&A pairs
+  - metadata: Coverage information
+```
+
+#### Resource Discovery
+```
+GET /api/list-available-resources
+Parameters:
+  - language: String (optional) - Filter by language
+  - subject: String (optional) - "Bible", "Translation Notes", etc.
+  - organization: String (optional) - Filter by organization
+  
+Response:
+  - resources: Available resource catalog
+  - languages: Supported language list
+  - organizations: Active organizations
+```
+
+#### Language Support
+```
+GET /api/get-languages
+Parameters:
+  - hasResources: Boolean (default: true) - Only languages with resources
+  
+Response:
+  - languages: Array of language objects with metadata
+  - coverage: Resource availability matrix
+```
+
+### MCP Server Tools
+
+The Model Context Protocol server exposes translation resources as tools for AI assistants:
+
+```yaml
+tools:
+  - name: fetchScripture
+    description: Fetch Bible scripture in literal and/or simplified translations
+    parameters:
+      reference: 
+        type: string
+        required: true
+        description: "Scripture reference (e.g. 'John 3:16', 'Genesis 1:1-5')"
+      language:
+        type: string  
+        default: "en"
+        description: "Strategic language code"
+      translation:
+        type: string
+        enum: ["ult", "ust", "all"]
+        default: "all"
+        
+  - name: fetchTranslationNotes
+    description: Get verse-by-verse translation guidance
+    parameters:
+      reference:
+        type: string
+        required: true
+      language:
+        type: string
+        default: "en"
+        
+  - name: getTranslationWord
+    description: Look up biblical term definitions
+    parameters:
+      word:
+        type: string
+        required: true
+      language:
+        type: string
+        default: "en"
+        
+  - name: fetchResources
+    description: Get multiple resource types for a reference
+    parameters:
+      reference:
+        type: string
+        required: true
+      resourceTypes:
+        type: array
+        items:
+          enum: ["scripture", "notes", "questions", "words"]
+        default: ["scripture", "notes"]
+```
+
+## TECHNICAL REQUIREMENTS
+
+### Performance Standards
+
+#### Response Time SLAs
+- Scripture lookup: < 500ms (95th percentile)
+- Translation helps: < 800ms (95th percentile)  
+- Resource discovery: < 1s (95th percentile)
+- Batch operations: < 2s (95th percentile)
+
+#### Scalability Targets
+- Concurrent users: 10,000+
+- Requests per second: 1,000+ 
+- Global edge locations: 100+
+- Cache hit ratio: > 90%
+
+#### Availability
+- Uptime SLA: 99.9%
+- Planned maintenance windows: < 4 hours/month
+- Graceful degradation during outages
+- Automatic failover
+
+### Data Requirements
+
+#### Resource Formats
+- Scripture: USFM 3.0 with embedded alignment
+- Translation helps: TSV (Tab-Separated Values)
+- Word articles: Markdown with YAML frontmatter
+- Manifest files: YAML following RC spec
+
+#### Caching Strategy
+- Edge caching: 1 hour TTL for stable resources
+- API responses: 5 minute TTL
+- Catalog data: 15 minute TTL
+- Version-specific resources: Permanent cache
+
+#### Data Integrity
+- Alignment verification: All words mapped correctly
+- Reference validation: All links resolve
+- Version consistency: Compatible resource versions
+- Format compliance: Automated validation
+
+### Security Requirements
+
+#### Access Control
+- Public resources: No authentication required
+- Rate limiting: 1000 requests/minute per IP
+- DDoS protection: Cloudflare shield
+- Input validation: Prevent injection attacks
+
+#### Transport Security  
+- HTTPS only: TLS 1.2 minimum
+- CORS headers: Configured for web apps
+- CSP headers: Prevent XSS attacks
+- HSTS enabled: Force secure connections
+
+### Integration Requirements
+
+#### Protocol Support
+- REST API: Primary interface
+- MCP: AI assistant integration
+- GraphQL: Future consideration
+- WebSockets: Real-time updates (future)
+
+#### Client Libraries
+- JavaScript/TypeScript: NPM package
+- Python: PyPI package
+- Go: Module support
+- Direct HTTP: Full documentation
+
+## NON-FUNCTIONAL REQUIREMENTS
+
+### Usability
+- Clear error messages with actionable fixes
+- Comprehensive API documentation
+- Interactive API explorer
+- Code examples in multiple languages
+
+### Reliability
+- Automated health checks every 30 seconds
+- Circuit breakers for upstream failures
+- Retry logic with exponential backoff
+- Graceful degradation patterns
+
+### Maintainability  
+- Modular architecture
+- Comprehensive logging
+- Performance monitoring
+- Automated testing pipeline
+
+### Compatibility
+- Backwards compatibility for 2 major versions
+- Deprecation notices 6 months in advance
+- Version negotiation support
+- Legacy endpoint maintenance
+
+## IMPLEMENTATION ROADMAP
+
+### Phase 1: Foundation (COMPLETE)
+- ✅ Core API endpoints operational
+- ✅ Basic caching implementation  
+- ✅ MCP server integration
+- ✅ Cloudflare Workers deployment
+- ✅ Essential test coverage
+
+### Phase 2: Terminology Alignment (CURRENT)
+- Update to Strategic Language terminology throughout
+- Standardize resource type names (ULT/GLT, UST/GST)
+- Enhance API response descriptions
+- Add terminology validation tests
+- Update all documentation
+
+### Phase 3: Enhanced Discovery (Q1 2025)
+- Advanced search capabilities
+- Language coverage matrix API
+- Organization catalog browser
+- Dependency graph resolution
+- Resource recommendation engine
+
+### Phase 4: Performance Optimization (Q2 2025)
+- Intelligent cache warming
+- Request coalescing  
+- Predictive prefetching
+- Bundle optimization
+- CDN integration
+
+### Phase 5: Advanced Features (Q3 2025)
+- GraphQL API layer
+- WebSocket subscriptions
+- Batch operation APIs
+- Offline sync support
+- PWA reference implementation
+
+## SUCCESS METRICS
+
+### Usage Metrics
+- Daily active users (target: 1,000+)
+- Monthly API calls (target: 10M+)
+- Average session duration
+- Resource coverage utilization
+
+### Performance Metrics  
+- P50 response time (target: < 200ms)
+- P95 response time (target: < 500ms)
+- P99 response time (target: < 1s)
+- Cache hit ratio (target: > 90%)
+
+### Quality Metrics
+- API error rate (target: < 0.1%)
+- Data accuracy (target: 99.9%)
+- User satisfaction (NPS > 40)
+- Developer satisfaction (NPS > 50)
+
+### Business Metrics
+- Translation projects supported
+- Languages actively used
+- Partner integrations
+- Cost per request served
+
+## DEPENDENCIES & CONSTRAINTS
+
+### Technical Dependencies
+- Door43 Content Service API
+- Git.door43.org repositories  
+- Cloudflare Workers platform
+- GitHub Actions CI/CD
+
+### Resource Constraints
+- Cloudflare Workers limits (50ms CPU time)
+- KV storage limitations (25MB values)
+- Bandwidth costs at scale
+- Development team capacity
+
+### External Constraints
+- unfoldingWord resource update cycles
+- Strategic Language availability
+- Internet connectivity in target regions
+- Mobile device capabilities
+
+## RISKS & MITIGATION
+
+### Technical Risks
+1. **API Rate Limits**
+   - Risk: DCS API throttling
+   - Mitigation: Aggressive caching, request coalescing
+
+2. **Data Freshness**
+   - Risk: Stale cache serving outdated resources
+   - Mitigation: Versioned caching, update webhooks
+
+3. **Scale Bottlenecks**
+   - Risk: Single points of failure
+   - Mitigation: Edge computing, horizontal scaling
+
+### Operational Risks
+1. **Resource Changes**
+   - Risk: Breaking changes in upstream formats
+   - Mitigation: Version detection, compatibility layer
+
+2. **Language Coverage**
+   - Risk: Incomplete Strategic Language resources
+   - Mitigation: Graceful degradation, clear messaging
+
+## APPENDIX: Technical Architecture
+
+### System Components
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Client Apps   │────▶│ Translation API │────▶│   DCS Backend   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │
+                               ▼
+                        ┌─────────────────┐
+                        │  Cache Layer    │
+                        │  (Global Edge)  │
+                        └─────────────────┘
+```
+
+### Resource Relationships
+```
+Hebrew/Greek Texts ──▶ Word Alignment ──▶ ULT/GLT & UST/GST
+                              │
+                              ▼
+                      Translation Notes ──▶ Translation Academy
+                              │
+                              ▼
+                    Translation Words Links ──▶ Translation Words
+                              │
+                              ▼
+                      Translation Questions
+```
+
+### API Flow Example
+```
+1. Client requests: GET /api/fetch-resources?reference=John 3:16
+2. API checks cache for all needed resources
+3. Cache miss triggers parallel fetches:
+   - Scripture from en_ult and en_ust repos
+   - Notes from en_tn repo  
+   - Word links from en_twl repo
+4. Results assembled with alignment data
+5. Response cached and returned to client
+6. Subsequent requests served from cache
+```
+
+---
+
+END OF PRD v1.0 
