@@ -397,6 +397,108 @@ curl http://localhost:5173/api/health | jq .cache
 - **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Production deployment instructions
 - **[Archive](ARCHIVE.md)** - Historical context and deprecated features
 
+## 📖 **Translation Words Lookup**
+
+### Two Lookup Modes
+
+**1. Word Lookup by Term:**
+
+```bash
+curl "http://localhost:5173/api/get-translation-word?word=grace&language=en&organization=unfoldingWord"
+```
+
+**2. Reference-based Lookup:**
+
+```bash
+curl "http://localhost:5173/api/fetch-translation-words?reference=John%203:16&language=en"
+```
+
+### Example Response
+
+```json
+{
+  "translationWords": [
+    {
+      "term": "grace",
+      "title": "grace, gracious",
+      "content": "The meaning of the Greek word translated as 'grace'...",
+      "definition": "Favor or kindness shown to someone who does not deserve it..."
+    }
+  ],
+  "citation": {
+    "resource": "en_tw",
+    "organization": "unfoldingWord",
+    "language": "en"
+  }
+}
+```
+
+### Use Cases
+
+- **Comparative Study** - Compare word meanings across different contexts
+- **Terminology Research** - Deep dive into biblical term definitions
+- **Contextual Understanding** - See what words are important in specific verses
+
+---
+
+## 🔄 **Version Management**
+
+### Single Source of Truth Approach
+
+**Problem Solved:** Version numbers were scattered across 14+ files, causing drift and inconsistency.
+
+**Solution:** Root `package.json` is now the ONLY place to update versions.
+
+```json
+{
+  "name": "translation-helps-mcp",
+  "version": "4.4.1", // ← SINGLE SOURCE OF TRUTH
+  "description": "MCP Server for aggregating Bible translation resources"
+}
+```
+
+### How It Works
+
+All system components dynamically read the version:
+
+```typescript
+// MCP Server, HTTP Bridge, Health Endpoint all use:
+function getVersion(): string {
+  try {
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch (error) {
+    return "4.4.1"; // Fallback only
+  }
+}
+```
+
+### Version Sync Script
+
+Keep UI `package.json` in sync:
+
+```bash
+npm run sync-version
+```
+
+### Simple Release Process
+
+**New Way (One Step):**
+
+1. Update root `package.json` version ✅
+2. Run `npm run sync-version` ✅
+3. All components automatically get new version ✅
+
+**Benefits:**
+
+- ✅ Zero version drift
+- ✅ Consistent version reporting
+- ✅ Single update point
+- ✅ Automated synchronization
+
+---
+
 ## 🎓 **Next Steps**
 
 ### For Developers
