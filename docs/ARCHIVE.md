@@ -132,6 +132,31 @@ This file contains condensed summaries of completed migrations, deprecated platf
 
 ---
 
+## 📖 Scripture & Feature Documentation (CONSOLIDATED → Multiple Guides)
+
+**Summary**: Final consolidation phase merging remaining feature-specific guides into comprehensive guides.
+
+**What Was Consolidated**:
+
+- `SCRIPTURE_EXTRACTION_GUIDE.md` (121 lines) + `USFM_LLM_PREPARATION_GUIDE.md` (421 lines) → `SCRIPTURE_USFM_GUIDE.md` (402 lines)
+- `WORD_LOOKUP_FEATURE.md` (225 lines) + `VERSION_MANAGEMENT.md` (178 lines) → Merged into `IMPLEMENTATION_GUIDE.md`
+
+**Result**:
+
+- New `SCRIPTURE_USFM_GUIDE.md` (402 lines) - Complete scripture extraction and USFM processing guide
+- Enhanced `IMPLEMENTATION_GUIDE.md` - Now includes translation words lookup and version management
+- **Total reduction**: 4 files → 2 guides, 945 lines → 600+ lines (35%+ reduction)
+
+**Key Consolidated Knowledge**:
+
+- Complete USFM processing pipeline with multiple fallback methods
+- Translation words lookup (both term-based and reference-based)
+- Single source of truth version management system
+- API usage patterns and examples for all features
+- LLM-optimized text extraction with validation
+
+---
+
 ## ✅ MCP Migration (COMPLETED)
 
 **Summary**: Successfully migrated from standalone API to Model Context Protocol (MCP) server architecture.
