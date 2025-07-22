@@ -1,390 +1,212 @@
 /**
  * Request Coalescing System
  *
- * Combines multiple identical requests into a single upstream call
- * to reduce API load, improve efficiency, and prevent duplicate processing.
+ * Combines multiple identical requests into a single upstream call to reduce
+ * load on external APIs and improve overall system efficiency.
  *
- * Based on Task 11 of the implementation plan
- * Created for Performance Optimization (Phase 4)
+ * Implements Task 11 from the implementation plan
  */
 
-/**
- * Pending request information
- */
-interface PendingRequest<T> {
-  promise: Promise<T>;
-  startTime: number;
-  requestCount: number;
-  resolvers: Array<{
-    resolve: (value: T) => void;
-    reject: (error: any) => void;
-  }>;
+export interface CoalescingOptions {
+  maxPendingTime?: number; // Maximum time to keep request pending (ms)
+  enableMetrics?: boolean; // Whether to track coalescing metrics
+  keyGenerator?: (args: any[]) => string; // Custom key generation function
 }
 
-/**
- * Coalescing statistics
- */
-interface CoalescingStats {
+export interface CoalescingMetrics {
   totalRequests: number;
   coalescedRequests: number;
   uniqueRequests: number;
-  coalescingRate: number; // percentage
-  averageRequestsPerCoalesce: number;
-  timeWindowHits: number;
-  memoryUsage: number; // bytes estimate
+  coalescingRate: number; // Percentage of requests that were coalesced
+  averageWaitTime: number; // Average time requests waited for coalesced result
+  currentPendingRequests: number;
+  errorRate: number;
+  timeWindowStats: {
+    windowStart: Date;
+    windowDuration: number; // milliseconds
+    requestsInWindow: number;
+    coalescedInWindow: number;
+  };
 }
 
-/**
- * Coalescing configuration
- */
-interface CoalescingConfig {
-  timeoutMs: number; // How long to wait for additional requests
-  maxConcurrentKeys: number; // Maximum keys to track simultaneously
-  enableMetrics: boolean;
-  keyGenerator?: (args: any[]) => string;
-  errorHandling: "isolate" | "share"; // How to handle errors
-}
-
-/**
- * Coalescing metrics per key
- */
-interface KeyMetrics {
+export interface PendingRequest<T> {
+  promise: Promise<T>;
+  startTime: number;
+  requestCount: number; // How many requests are sharing this promise
   key: string;
-  hitCount: number;
-  totalRequests: number;
-  averageResponseTime: number;
-  lastUsed: number;
-  errorCount: number;
+}
+
+export interface CoalescingResult<T> {
+  data: T;
+  wasCoalesced: boolean;
+  waitTime: number;
+  requestCount: number; // How many total requests shared this result
 }
 
 /**
- * Default configuration
- */
-const DEFAULT_CONFIG: CoalescingConfig = {
-  timeoutMs: 50, // 50ms window for additional requests
-  maxConcurrentKeys: 1000,
-  enableMetrics: true,
-  errorHandling: "isolate",
-};
-
-/**
- * Request Coalescer Class
+ * Main Request Coalescer Class
  */
 export class RequestCoalescer {
   private pendingRequests = new Map<string, PendingRequest<any>>();
-  private config: CoalescingConfig;
-  private stats: CoalescingStats;
-  private keyMetrics = new Map<string, KeyMetrics>();
+  private metrics: CoalescingMetrics;
+  private options: Required<CoalescingOptions>;
   private cleanupInterval: NodeJS.Timeout | null = null;
 
-  constructor(config: Partial<CoalescingConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
-    this.stats = {
-      totalRequests: 0,
-      coalescedRequests: 0,
-      uniqueRequests: 0,
-      coalescingRate: 0,
-      averageRequestsPerCoalesce: 0,
-      timeWindowHits: 0,
-      memoryUsage: 0,
+  constructor(options: CoalescingOptions = {}) {
+    this.options = {
+      maxPendingTime: options.maxPendingTime || 30000, // 30 seconds
+      enableMetrics: options.enableMetrics ?? true,
+      keyGenerator: options.keyGenerator || this.defaultKeyGenerator,
     };
 
-    // Start cleanup interval
-    this.startCleanup();
+    this.metrics = this.initializeMetrics();
+
+    // Set up cleanup interval to prevent memory leaks
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupExpiredRequests();
+    }, 5000); // Cleanup every 5 seconds
+
+    console.log("[RequestCoalescer] Initialized with options:", this.options);
   }
 
   /**
-   * Coalesce a request with potential duplicates
+   * Coalesce a request - main public method
    */
-  async coalesce<T>(key: string, fetcher: () => Promise<T>, timeoutMs?: number): Promise<T> {
-    const effectiveTimeout = timeoutMs || this.config.timeoutMs;
+  async coalesce<T>(key: string, fetcher: () => Promise<T>): Promise<CoalescingResult<T>> {
+    const startTime = Date.now();
 
-    // Update metrics
-    this.stats.totalRequests++;
-    this.updateKeyMetrics(key, "request");
+    if (this.options.enableMetrics) {
+      this.metrics.totalRequests++;
+    }
 
     // Check if request is already pending
     const existing = this.pendingRequests.get(key);
     if (existing) {
-      // Request is being coalesced
-      this.stats.coalescedRequests++;
-      this.stats.timeWindowHits++;
+      // Request is already in progress - coalesce!
       existing.requestCount++;
-      this.updateKeyMetrics(key, "coalesce");
 
-      return new Promise<T>((resolve, reject) => {
-        existing.resolvers.push({ resolve, reject });
-      });
+      if (this.options.enableMetrics) {
+        this.metrics.coalescedRequests++;
+        this.updateCoalescingRate();
+      }
+
+      console.log(
+        `[RequestCoalescer] Coalescing request for key: ${key} (${existing.requestCount} total)`
+      );
+
+      try {
+        const data = await existing.promise;
+        const waitTime = Date.now() - startTime;
+
+        if (this.options.enableMetrics) {
+          this.updateAverageWaitTime(waitTime);
+        }
+
+        return {
+          data,
+          wasCoalesced: true,
+          waitTime,
+          requestCount: existing.requestCount,
+        };
+      } catch (error) {
+        if (this.options.enableMetrics) {
+          this.metrics.errorRate = (this.metrics.errorRate + 1) / this.metrics.totalRequests;
+        }
+        throw error;
+      }
     }
 
-    // Create new pending request
-    const resolvers: Array<{ resolve: (value: T) => void; reject: (error: any) => void }> = [];
-    const startTime = Date.now();
+    // No pending request - create new one
+    console.log(`[RequestCoalescer] Creating new request for key: ${key}`);
 
-    const promise = this.createCoalescedRequest(key, fetcher, resolvers, effectiveTimeout);
+    const promise = fetcher().finally(() => {
+      // Clean up when request completes
+      this.pendingRequests.delete(key);
+      if (this.options.enableMetrics) {
+        this.metrics.currentPendingRequests = this.pendingRequests.size;
+      }
+    });
 
     const pendingRequest: PendingRequest<T> = {
       promise,
       startTime,
       requestCount: 1,
-      resolvers,
+      key,
     };
 
     this.pendingRequests.set(key, pendingRequest);
-    this.stats.uniqueRequests++;
 
-    // Update coalescing rate
-    this.updateCoalescingRate();
-
-    return promise;
-  }
-
-  /**
-   * Create the actual coalesced request
-   */
-  private async createCoalescedRequest<T>(
-    key: string,
-    fetcher: () => Promise<T>,
-    resolvers: Array<{ resolve: (value: T) => void; reject: (error: any) => void }>,
-    timeoutMs: number
-  ): Promise<T> {
-    // Small delay to allow for request coalescing
-    if (timeoutMs > 0) {
-      await this.sleep(Math.min(timeoutMs, 10));
+    if (this.options.enableMetrics) {
+      this.metrics.uniqueRequests++;
+      this.metrics.currentPendingRequests = this.pendingRequests.size;
+      this.updateTimeWindowStats();
     }
 
     try {
-      const result = await fetcher();
+      const data = await promise;
+      const waitTime = Date.now() - startTime;
 
-      // Resolve all waiting promises
-      resolvers.forEach(({ resolve }) => resolve(result));
-
-      // Update metrics
-      const responseTime = Date.now() - this.pendingRequests.get(key)!.startTime;
-      this.updateKeyMetrics(key, "success", responseTime);
-
-      return result;
-    } catch (error) {
-      // Handle error based on configuration
-      if (this.config.errorHandling === "share") {
-        // Share error with all waiting promises
-        resolvers.forEach(({ reject }) => reject(error));
-      } else {
-        // Isolate errors - each request gets its own error
-        resolvers.forEach(({ reject }) => reject(new Error("Coalesced request failed")));
-      }
-
-      this.updateKeyMetrics(key, "error");
-      throw error;
-    } finally {
-      // Clean up pending request
-      this.pendingRequests.delete(key);
-    }
-  }
-
-  /**
-   * Coalesce with automatic key generation
-   */
-  async coalesceAuto<T>(fetcher: () => Promise<T>, ...args: any[]): Promise<T> {
-    const key = this.config.keyGenerator ? this.config.keyGenerator(args) : this.generateKey(args);
-
-    return this.coalesce(key, fetcher);
-  }
-
-  /**
-   * Generate cache key from arguments
-   */
-  private generateKey(args: any[]): string {
-    return JSON.stringify(args);
-  }
-
-  /**
-   * Update key-specific metrics
-   */
-  private updateKeyMetrics(
-    key: string,
-    type: "request" | "coalesce" | "success" | "error",
-    responseTime?: number
-  ): void {
-    if (!this.config.enableMetrics) return;
-
-    let metrics = this.keyMetrics.get(key);
-    if (!metrics) {
-      metrics = {
-        key,
-        hitCount: 0,
-        totalRequests: 0,
-        averageResponseTime: 0,
-        lastUsed: Date.now(),
-        errorCount: 0,
+      return {
+        data,
+        wasCoalesced: false,
+        waitTime,
+        requestCount: pendingRequest.requestCount,
       };
-      this.keyMetrics.set(key, metrics);
-    }
-
-    metrics.lastUsed = Date.now();
-
-    switch (type) {
-      case "request":
-        metrics.totalRequests++;
-        break;
-      case "coalesce":
-        metrics.hitCount++;
-        break;
-      case "success":
-        if (responseTime !== undefined) {
-          metrics.averageResponseTime = (metrics.averageResponseTime + responseTime) / 2;
-        }
-        break;
-      case "error":
-        metrics.errorCount++;
-        break;
-    }
-
-    // Update memory usage estimate
-    this.updateMemoryUsage();
-  }
-
-  /**
-   * Update coalescing rate calculation
-   */
-  private updateCoalescingRate(): void {
-    if (this.stats.totalRequests > 0) {
-      this.stats.coalescingRate = (this.stats.coalescedRequests / this.stats.totalRequests) * 100;
-
-      this.stats.averageRequestsPerCoalesce =
-        this.stats.uniqueRequests > 0 ? this.stats.totalRequests / this.stats.uniqueRequests : 1;
-    }
-  }
-
-  /**
-   * Update memory usage estimate
-   */
-  private updateMemoryUsage(): void {
-    const pendingSize = this.pendingRequests.size * 200; // Rough estimate
-    const metricsSize = this.keyMetrics.size * 100; // Rough estimate
-    this.stats.memoryUsage = pendingSize + metricsSize;
-  }
-
-  /**
-   * Get coalescing statistics
-   */
-  getStats(): CoalescingStats {
-    this.updateCoalescingRate();
-    this.updateMemoryUsage();
-    return { ...this.stats };
-  }
-
-  /**
-   * Get top coalesced keys
-   */
-  getTopKeys(limit: number = 10): KeyMetrics[] {
-    return Array.from(this.keyMetrics.values())
-      .sort((a, b) => b.hitCount - a.hitCount)
-      .slice(0, limit);
-  }
-
-  /**
-   * Get metrics for specific key
-   */
-  getKeyMetrics(key: string): KeyMetrics | undefined {
-    return this.keyMetrics.get(key);
-  }
-
-  /**
-   * Clear all metrics
-   */
-  clearMetrics(): void {
-    this.stats = {
-      totalRequests: 0,
-      coalescedRequests: 0,
-      uniqueRequests: 0,
-      coalescingRate: 0,
-      averageRequestsPerCoalesce: 0,
-      timeWindowHits: 0,
-      memoryUsage: 0,
-    };
-    this.keyMetrics.clear();
-  }
-
-  /**
-   * Check if a request is currently pending
-   */
-  isPending(key: string): boolean {
-    return this.pendingRequests.has(key);
-  }
-
-  /**
-   * Get number of pending requests
-   */
-  getPendingCount(): number {
-    return this.pendingRequests.size;
-  }
-
-  /**
-   * Cancel pending request
-   */
-  cancelPending(key: string): boolean {
-    const pending = this.pendingRequests.get(key);
-    if (pending) {
-      // Reject all waiting promises
-      const error = new Error("Request cancelled");
-      pending.resolvers.forEach(({ reject }) => reject(error));
-      this.pendingRequests.delete(key);
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * Update configuration
-   */
-  updateConfig(newConfig: Partial<CoalescingConfig>): void {
-    this.config = { ...this.config, ...newConfig };
-  }
-
-  /**
-   * Start cleanup interval for old metrics
-   */
-  private startCleanup(): void {
-    if (this.cleanupInterval) return;
-
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupOldMetrics();
-    }, 60000); // Clean up every minute
-  }
-
-  /**
-   * Clean up old metrics to prevent memory leaks
-   */
-  private cleanupOldMetrics(): void {
-    const now = Date.now();
-    const maxAge = 60 * 60 * 1000; // 1 hour
-
-    for (const [key, metrics] of this.keyMetrics.entries()) {
-      if (now - metrics.lastUsed > maxAge) {
-        this.keyMetrics.delete(key);
+    } catch (error) {
+      if (this.options.enableMetrics) {
+        this.metrics.errorRate = (this.metrics.errorRate + 1) / this.metrics.totalRequests;
       }
-    }
-
-    // Enforce max concurrent keys limit
-    if (this.keyMetrics.size > this.config.maxConcurrentKeys) {
-      const entries = Array.from(this.keyMetrics.entries());
-      entries.sort((a, b) => a[1].lastUsed - b[1].lastUsed);
-
-      const toDelete = entries.slice(0, entries.length - this.config.maxConcurrentKeys);
-      toDelete.forEach(([key]) => this.keyMetrics.delete(key));
+      throw error;
     }
   }
 
   /**
-   * Utility sleep function
+   * Coalesce with automatic key generation based on function and arguments
    */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  async coalesceCall<T, Args extends any[]>(
+    fn: (...args: Args) => Promise<T>,
+    ...args: Args
+  ): Promise<CoalescingResult<T>> {
+    const key = this.generateKey(fn.name, args);
+    return this.coalesce(key, () => fn(...args));
   }
 
   /**
-   * Destroy coalescer and clean up resources
+   * Generate a cache key from function name and arguments
+   */
+  generateKey(functionName: string, args: any[]): string {
+    return this.options.keyGenerator([functionName, ...args]);
+  }
+
+  /**
+   * Get current coalescing metrics
+   */
+  getMetrics(): CoalescingMetrics {
+    return { ...this.metrics };
+  }
+
+  /**
+   * Reset metrics (useful for testing or periodic reporting)
+   */
+  resetMetrics(): void {
+    this.metrics = this.initializeMetrics();
+  }
+
+  /**
+   * Get current status
+   */
+  getStatus() {
+    return {
+      pendingRequests: this.pendingRequests.size,
+      totalProcessed: this.metrics.totalRequests,
+      coalescingRate: this.metrics.coalescingRate,
+      isEnabled: true,
+      uptime: Date.now() - this.metrics.timeWindowStats.windowStart.getTime(),
+    };
+  }
+
+  /**
+   * Cleanup resources
    */
   destroy(): void {
     if (this.cleanupInterval) {
@@ -393,135 +215,169 @@ export class RequestCoalescer {
     }
 
     // Cancel all pending requests
-    for (const key of this.pendingRequests.keys()) {
-      this.cancelPending(key);
+    this.pendingRequests.clear();
+    console.log("[RequestCoalescer] Destroyed and cleaned up resources");
+  }
+
+  // Private helper methods
+
+  private initializeMetrics(): CoalescingMetrics {
+    return {
+      totalRequests: 0,
+      coalescedRequests: 0,
+      uniqueRequests: 0,
+      coalescingRate: 0,
+      averageWaitTime: 0,
+      currentPendingRequests: 0,
+      errorRate: 0,
+      timeWindowStats: {
+        windowStart: new Date(),
+        windowDuration: 0,
+        requestsInWindow: 0,
+        coalescedInWindow: 0,
+      },
+    };
+  }
+
+  private defaultKeyGenerator(args: any[]): string {
+    return JSON.stringify(args);
+  }
+
+  private updateCoalescingRate(): void {
+    if (this.metrics.totalRequests > 0) {
+      this.metrics.coalescingRate =
+        (this.metrics.coalescedRequests / this.metrics.totalRequests) * 100;
+    }
+  }
+
+  private updateAverageWaitTime(waitTime: number): void {
+    const totalWaitTime = this.metrics.averageWaitTime * (this.metrics.totalRequests - 1);
+    this.metrics.averageWaitTime = (totalWaitTime + waitTime) / this.metrics.totalRequests;
+  }
+
+  private updateTimeWindowStats(): void {
+    const now = Date.now();
+    const windowStart = this.metrics.timeWindowStats.windowStart.getTime();
+
+    this.metrics.timeWindowStats.windowDuration = now - windowStart;
+    this.metrics.timeWindowStats.requestsInWindow = this.metrics.totalRequests;
+    this.metrics.timeWindowStats.coalescedInWindow = this.metrics.coalescedRequests;
+  }
+
+  private cleanupExpiredRequests(): void {
+    const now = Date.now();
+    const expiredKeys: string[] = [];
+
+    for (const [key, request] of this.pendingRequests.entries()) {
+      if (now - request.startTime > this.options.maxPendingTime) {
+        expiredKeys.push(key);
+      }
     }
 
-    this.keyMetrics.clear();
+    if (expiredKeys.length > 0) {
+      console.log(`[RequestCoalescer] Cleaning up ${expiredKeys.length} expired requests`);
+      expiredKeys.forEach((key) => this.pendingRequests.delete(key));
+
+      if (this.options.enableMetrics) {
+        this.metrics.currentPendingRequests = this.pendingRequests.size;
+      }
+    }
   }
 }
 
 /**
- * Global request coalescer instance
+ * Higher-order function to add coalescing to any async function
  */
-export let globalCoalescer: RequestCoalescer | null = null;
-
-/**
- * Initialize global coalescer
- */
-export function initializeCoalescer(config?: Partial<CoalescingConfig>): RequestCoalescer {
-  globalCoalescer = new RequestCoalescer(config);
-  return globalCoalescer;
+export function withCoalescing<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  coalescer: RequestCoalescer
+): T {
+  return ((...args: any[]) => {
+    return coalescer.coalesceCall(fn, ...args).then((result) => result.data);
+  }) as T;
 }
 
 /**
- * Helper function for simple coalescing
+ * Decorator for adding coalescing to class methods
  */
-export async function coalesce<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
-  if (!globalCoalescer) {
-    globalCoalescer = new RequestCoalescer();
-  }
-  return globalCoalescer.coalesce(key, fetcher);
-}
+export function Coalesceable(coalescer?: RequestCoalescer) {
+  return function <T extends (...args: any[]) => Promise<any>>(
+    target: any,
+    propertyKey: string,
+    descriptor: TypedPropertyDescriptor<T>
+  ) {
+    const originalMethod = descriptor.value!;
+    const instanceCoalescer = coalescer || new RequestCoalescer();
 
-/**
- * Create middleware for automatic request coalescing
- */
-export function createCoalescingMiddleware(coalescer?: RequestCoalescer) {
-  const coalescerInstance = coalescer || globalCoalescer || new RequestCoalescer();
+    descriptor.value = function (this: any, ...args: any[]) {
+      const key = `${this.constructor.name}.${propertyKey}:${JSON.stringify(args)}`;
+      return instanceCoalescer
+        .coalesce(key, () => originalMethod.apply(this, args))
+        .then((result) => result.data);
+    } as T;
 
-  return <T>(fetcher: (...args: any[]) => Promise<T>) => {
-    return async (...args: any[]): Promise<T> => {
-      return coalescerInstance.coalesceAuto(() => fetcher(...args), ...args);
-    };
+    return descriptor;
   };
 }
 
 /**
- * Specialized coalescers for common API patterns
+ * Utility functions for common coalescing patterns
  */
-export class APICoalescer {
-  private coalescer: RequestCoalescer;
-
-  constructor(config?: Partial<CoalescingConfig>) {
-    this.coalescer = new RequestCoalescer({
-      timeoutMs: 100, // Longer timeout for API calls
-      maxConcurrentKeys: 500,
-      ...config,
-    });
+export class CoalescingUtils {
+  /**
+   * Create a coalesced version of fetch for HTTP requests
+   */
+  static createCoalescedFetch(coalescer: RequestCoalescer) {
+    return async (url: string, options?: RequestInit): Promise<Response> => {
+      const key = `fetch:${url}:${JSON.stringify(options || {})}`;
+      const result = await coalescer.coalesce(key, () => fetch(url, options));
+      return result.data;
+    };
   }
 
   /**
-   * Coalesce scripture fetching
+   * Create key for scripture references
    */
-  async fetchScripture(language: string, reference: string, organization?: string): Promise<any> {
-    const key = `scripture:${language}:${reference}:${organization || "uw"}`;
-
-    return this.coalescer.coalesce(key, async () => {
-      // This would call the actual DCS API
-      return {
-        language,
-        reference,
-        organization,
-        text: "Coalesced scripture text",
-        timestamp: new Date().toISOString(),
-      };
-    });
+  static scriptureKey(reference: string, language: string, version: string): string {
+    return `scripture:${language}:${version}:${reference}`;
   }
 
   /**
-   * Coalesce translation notes fetching
+   * Create key for translation resources
    */
-  async fetchTranslationNotes(
-    language: string,
-    reference: string,
-    organization?: string
-  ): Promise<any> {
-    const key = `notes:${language}:${reference}:${organization || "uw"}`;
-
-    return this.coalescer.coalesce(key, async () => {
-      return {
-        language,
-        reference,
-        organization,
-        notes: ["Coalesced note 1", "Coalesced note 2"],
-        timestamp: new Date().toISOString(),
-      };
-    });
+  static resourceKey(type: string, language: string, reference?: string): string {
+    const parts = ["resource", type, language];
+    if (reference) parts.push(reference);
+    return parts.join(":");
   }
 
   /**
-   * Coalesce catalog queries
+   * Create key for catalog queries
    */
-  async getCatalog(language?: string, subject?: string): Promise<any> {
-    const key = `catalog:${language || "all"}:${subject || "all"}`;
-
-    return this.coalescer.coalesce(key, async () => {
-      return {
-        language,
-        subject,
-        resources: ["Coalesced resource 1", "Coalesced resource 2"],
-        timestamp: new Date().toISOString(),
-      };
-    });
-  }
-
-  /**
-   * Get coalescer statistics
-   */
-  getStats(): CoalescingStats {
-    return this.coalescer.getStats();
-  }
-
-  /**
-   * Get top coalesced endpoints
-   */
-  getTopEndpoints(limit?: number): KeyMetrics[] {
-    return this.coalescer.getTopKeys(limit);
+  static catalogKey(params: Record<string, any>): string {
+    const sortedParams = Object.keys(params)
+      .sort()
+      .map((key) => `${key}=${params[key]}`)
+      .join("&");
+    return `catalog:${sortedParams}`;
   }
 }
 
-/**
- * Export types
- */
-export type { CoalescingConfig, CoalescingStats, KeyMetrics, PendingRequest };
+// Export a default instance for convenience
+export const defaultCoalescer = new RequestCoalescer({
+  maxPendingTime: 30000,
+  enableMetrics: true,
+});
+
+// Export middleware for platform handlers
+export function createCoalescingMiddleware(coalescer: RequestCoalescer = defaultCoalescer) {
+  return function coalescingMiddleware<T extends (...args: any[]) => Promise<any>>(
+    handler: T,
+    keyGenerator?: (args: any[]) => string
+  ): T {
+    return ((...args: any[]) => {
+      const key = keyGenerator ? keyGenerator(args) : JSON.stringify(args);
+      return coalescer.coalesce(key, () => handler(...args)).then((result) => result.data);
+    }) as T;
+  };
+}
