@@ -2,8 +2,11 @@
  * Door43 Content Service (DCS) API Client
  * Handles all interactions with the DCS API including catalog endpoints,
  * resource fetching, and file content retrieval.
+ * 
+ * Uses unfoldingWord-compliant terminology (Strategic Languages, not Gateway Languages).
  */
 
+import { ResourceType, UserTypes } from "../constants/terminology";
 import {
   DCSResponse,
   DCSError,
@@ -293,7 +296,7 @@ export class DCSApiClient {
           homeCountry: lang.hc, // hc = home country
           countryCodes: lang.cc, // cc = country codes array
           alternativeNames: lang.alt, // alt = alternative names array
-          isGatewayLanguage: lang.gw, // gw = gateway language boolean
+          isStrategicLanguage: lang.gw, // gw = strategic language boolean
         });
       }
     });

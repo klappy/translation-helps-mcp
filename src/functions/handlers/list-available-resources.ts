@@ -1,8 +1,11 @@
 /**
  * Platform-agnostic List Available Resources Handler
  * Can be used by both Netlify and SvelteKit/Cloudflare
+ * 
+ * Returns unfoldingWord-compliant resource types with Strategic Language terminology.
  */
 
+import { ResourceDescriptions } from "../constants/terminology";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const listAvailableResourcesHandler: PlatformHandler = async (
@@ -29,39 +32,63 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
     const organization = request.queryStringParameters.organization;
     const query = request.queryStringParameters.query;
 
-    // For now, return a basic response with common resource types
+    // Resource types aligned with unfoldingWord standards
     // This should be enhanced to actually search the API catalog
     const result = {
       resources: [
         {
-          type: "scripture",
-          name: "Scripture Texts",
-          description: "Bible texts in various translations",
+          type: "ult",
+          name: "ULT/GLT (Literal Text)",
+          description: "Form-centric translation preserving original language structure, word order, and idioms",
           languages: language ? [language] : ["en", "es", "fr"],
         },
         {
-          type: "notes",
+          type: "ust", 
+          name: "UST/GST (Simplified Text)",
+          description: "Meaning-based translation in clear, natural language demonstrating clear expression",
+          languages: language ? [language] : ["en", "es", "fr"],
+        },
+        {
+          type: "tn",
           name: "Translation Notes",
-          description: "Cultural and linguistic translation notes",
+          description: "Verse-by-verse explanations for difficult passages with cultural background",
           languages: language ? [language] : ["en", "es", "fr"],
         },
         {
-          type: "questions",
+          type: "tw",
+          name: "Translation Words", 
+          description: "Comprehensive biblical term definitions with consistent terminology",
+          languages: language ? [language] : ["en", "es", "fr"],
+        },
+        {
+          type: "twl",
+          name: "Translation Words Links",
+          description: "Precise mapping of original language words to Translation Words definitions",
+          languages: language ? [language] : ["en", "es", "fr"],
+        },
+        {
+          type: "tq",
           name: "Translation Questions",
-          description: "Comprehension and translation questions",
+          description: "Comprehension validation questions for translation checking",
           languages: language ? [language] : ["en", "es", "fr"],
         },
         {
-          type: "words",
-          name: "Translation Words",
-          description: "Key biblical terms and concepts",
+          type: "ta",
+          name: "Translation Academy",
+          description: "Translation methodology and theory with best practices",
+          languages: language ? [language] : ["en", "es", "fr"],
+        },
+        {
+          type: "alignment",
+          name: "Word Alignment Data",
+          description: "Word-level connections between Strategic Language and original Hebrew/Greek",
           languages: language ? [language] : ["en", "es", "fr"],
         },
       ],
       metadata: {
         responseTime: Date.now() - startTime,
         timestamp: new Date().toISOString(),
-        resourcesFound: 4,
+        resourcesFound: 8,
         query,
         language,
         organization,

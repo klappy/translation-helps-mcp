@@ -50,7 +50,7 @@ export interface Language {
   homeCountry?: string;
   countryCodes?: string[];
   alternativeNames?: string[];
-  isGatewayLanguage?: boolean;
+  isStrategicLanguage?: boolean;
 }
 
 // Resource interfaces

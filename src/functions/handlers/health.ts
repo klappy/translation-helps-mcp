@@ -17,7 +17,7 @@ export const healthHandler: PlatformHandler = async (context, headers = {}) => {
         timestamp: new Date().toISOString(),
         version,
         service: "translation-helps-mcp",
-        description: "MCP Server for Bible translation resources",
+        description: "MCP Server for unfoldingWord Bible translation resources with Strategic Language support",
       }),
       headers: {
         "Content-Type": "application/json",
