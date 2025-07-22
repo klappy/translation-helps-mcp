@@ -45,3 +45,5 @@ coverage/
 # MCP related
 .mcp-cache/
 netlify/functions/_shared/version.json
+.netlify/
+.DS_Store
