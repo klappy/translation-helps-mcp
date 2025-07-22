@@ -280,6 +280,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
             includeVerseNumbers,
             format,
             translationsFound: scriptures.length,
+            cacheKey: responseKey,
           },
         }
       : {
@@ -291,6 +292,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
             includeVerseNumbers,
             format,
             translationsFound: scriptures.length,
+            cacheKey: responseKey,
           },
         };
 

@@ -9,7 +9,11 @@ async function fetchScripture(params: Record<string, string>) {
     url.searchParams.set(key, value);
   });
 
-  const response = await fetch(url.toString());
+  const response = await fetch(url.toString(), {
+    headers: {
+      "X-Cache-Bypass": "true",
+    },
+  });
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
@@ -206,10 +210,10 @@ describe("Scripture API Parameter Tests", () => {
         const baseParams = { reference: "John 3:16" };
 
         const responses = await Promise.all([
-          fetchScripture({ ...baseParams, format: "text" }),
+          fetchScripture({ ...baseParams, format: "text", includeVerseNumbers: "false" }),
           fetchScripture({ ...baseParams, format: "usfm" }),
           fetchScripture({ ...baseParams, includeVerseNumbers: "true" }),
-          fetchScripture({ ...baseParams, includeVerseNumbers: "false" }),
+          fetchScripture({ ...baseParams, includeVerseNumbers: "true", format: "usfm" }), // Different combo
           fetchScripture({ ...baseParams, includeMultipleTranslations: "true" }),
         ]);
 

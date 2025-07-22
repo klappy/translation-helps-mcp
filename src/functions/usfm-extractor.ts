@@ -56,8 +56,8 @@ export function extractVerseText(usfm: string, chapter: number, verse: number): 
       verseContent = verseContent.substring(0, nextVerseMatch.index);
     }
 
-    // Clean the text
-    return cleanUSFMText(verseContent);
+    // Clean the text without verse numbers
+    return cleanUSFMText(verseContent, false);
   } catch (error) {
     console.error(`Error extracting verse ${chapter}:${verse}:`, error);
     return "";
@@ -123,8 +123,8 @@ export function extractVerseRange(
       rangeContent = rangeContent.substring(0, endVerseMatch.index);
     }
 
-    // Clean the text
-    return cleanUSFMText(rangeContent);
+    // Clean the text without verse numbers
+    return cleanUSFMText(rangeContent, false);
   } catch (error) {
     console.error(`Error extracting verse range ${chapter}:${startVerse}-${endVerse}:`, error);
     return "";
@@ -182,8 +182,8 @@ export function extractChapterText(usfm: string, chapter: number): string {
       chapterContent = chapterContent.substring(0, nextChapterMatch.index);
     }
 
-    // Clean the text
-    return cleanUSFMText(chapterContent);
+    // Clean the text without verse numbers
+    return cleanUSFMText(chapterContent, false);
   } catch (error) {
     console.error(`Error extracting chapter ${chapter}:`, error);
     return "";
@@ -224,7 +224,7 @@ export function extractChapterTextWithNumbers(usfm: string, chapter: number): st
     for (const match of verseMatches) {
       const verseNumber = match[1];
       const verseContent = match[2];
-      const cleanText = cleanUSFMText(verseContent);
+      const cleanText = cleanUSFMText(verseContent, true); // Pass true for includeVerseNumbers
       if (cleanText.trim()) {
         verses.push(`${verseNumber} ${cleanText}`);
       }
@@ -284,47 +284,50 @@ export function extractChapterRangeWithNumbers(
 }
 
 /**
- * Clean USFM text by removing all markup
+ * Clean USFM text by removing all markup - COMPLETELY REWRITTEN for real-world complexity
  */
-function cleanUSFMText(text: string): string {
+function cleanUSFMText(text: string, includeVerseNumbers: boolean = true): string {
   if (!text) return "";
 
   let cleaned = text;
 
-  // Remove alignment data (zaln markers and content) - more comprehensive
-  cleaned = cleaned.replace(/\\zaln-s[^\\]*\\zaln-e\*/g, " ");
-  cleaned = cleaned.replace(/\\zaln-s[^\\]*$/g, " "); // Handle unclosed zaln-s at end
-  cleaned = cleaned.replace(/\\zaln-e\*/g, " "); // Handle orphaned zaln-e
+  // STEP 1: Remove alignment blocks completely: \zaln-s |...| \*...\zaln-e\*
+  // This handles the complex nested structures we found
+  cleaned = cleaned.replace(/\\zaln-s\s*\|[^|]*\|\s*\\?\*[^\\]*\\zaln-e\\\*/g, " ");
 
-  // Remove word alignment markers - these are the -s \ and -e\ patterns
-  cleaned = cleaned.replace(/-s\s*\\/g, "");
-  cleaned = cleaned.replace(/-e\\/g, "");
-  cleaned = cleaned.replace(/-s\s/g, "");
-  cleaned = cleaned.replace(/-e\s/g, "");
+  // STEP 2: Clean up any orphaned zaln markers
+  cleaned = cleaned.replace(/\\zaln-[se]\s*\|[^|]*\|\s*\\?\*/g, " ");
+  cleaned = cleaned.replace(/\\zaln-[se]\\\*/g, " ");
 
-  // Remove USFM markers with backslashes
-  cleaned = cleaned.replace(/\\[a-z]+[0-9]*\*?/g, " ");
-  cleaned = cleaned.replace(/\\[a-z]+[0-9]*\s*/g, " ");
+  // STEP 3: Extract words from \w word|data\w* patterns and keep only the word
+  cleaned = cleaned.replace(/\\w\s+([^|\\]+)\|[^\\]*\\w\*/g, "$1 ");
+  cleaned = cleaned.replace(/\\w\s+([^\\]+?)\\w\*/g, "$1 ");
 
-  // Remove word alignment data
-  cleaned = cleaned.replace(/\|x-[^|\\]+/g, "");
-  cleaned = cleaned.replace(/\|lemma="[^"]*"/g, "");
-  cleaned = cleaned.replace(/\|strong="[^"]*"/g, "");
-  cleaned = cleaned.replace(/\|x-morph="[^"]*"/g, "");
-  cleaned = cleaned.replace(/\|x-occurrence="[^"]*"/g, "");
-  cleaned = cleaned.replace(/\|x-occurrences="[^"]*"/g, "");
+  // STEP 4: Remove verse markers - preserve numbers only if requested
+  if (includeVerseNumbers) {
+    // Keep verse numbers: \v 16 -> 16
+    cleaned = cleaned.replace(/\\v\s+(\d+)\s*/g, "$1 ");
+  } else {
+    // Remove verse markers completely
+    cleaned = cleaned.replace(/\\v\s+\d+\s*/g, " ");
+  }
 
-  // Remove any remaining pipes and asterisks from alignment
-  cleaned = cleaned.replace(/\|/g, "");
-  cleaned = cleaned.replace(/\*/g, "");
+  // STEP 5: Remove any remaining USFM markers
+  cleaned = cleaned.replace(/\\[a-zA-Z][a-zA-Z0-9-]*\*?/g, " ");
+  cleaned = cleaned.replace(/\\[a-zA-Z-]+\s*/g, " ");
 
-  // Remove any remaining backslashes that got through
-  cleaned = cleaned.replace(/\\/g, "");
+  // STEP 6: Remove any attribute data that got through
+  cleaned = cleaned.replace(/\|[^|\\]*\|/g, " ");
+  cleaned = cleaned.replace(/\|[^\\]*(?=\\|\s|$)/g, " ");
 
-  // Clean up whitespace and punctuation artifacts
-  cleaned = cleaned.replace(/\s*,\s*-\s*/g, ", "); // Fix comma spacing
-  cleaned = cleaned.replace(/\s*\.\s*-\s*/g, ". "); // Fix period spacing
-  cleaned = cleaned.replace(/\s+/g, " "); // Normalize whitespace
+  // STEP 7: Remove any remaining special characters from markup
+  cleaned = cleaned.replace(/[|*\\]/g, " ");
+
+  // STEP 8: Fix spacing around punctuation
+  cleaned = cleaned.replace(/\s*([,.;:!?])\s*/g, "$1 ");
+
+  // STEP 9: Normalize whitespace
+  cleaned = cleaned.replace(/\s+/g, " ");
   cleaned = cleaned.trim();
 
   return cleaned;
