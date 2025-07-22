@@ -1,0 +1,665 @@
+openapi: 3.0.3
+info:
+  title: Translation Helps MCP API
+  description: |
+    **unfoldingWord-compliant Bible translation resources API**
+    
+    This API provides programmatic access to comprehensive Bible translation resources
+    using Strategic Languages (formerly Gateway Languages) to support Mother Tongue 
+    Translators (MTTs) worldwide.
+    
+    ## Key Features
+    
+    - **ULT/GLT**: Form-centric translations preserving original structure
+    - **UST/GST**: Meaning-based translations in clear, natural language  
+    - **Translation Helps**: Notes, Words, Questions, and Academy resources
+    - **Word Alignment**: Precise word-level connections to original languages
+    - **Smart Recommendations**: Context-aware resource suggestions
+    - **High Performance**: < 500ms response times, 1000+ RPS capability
+    
+    ## Strategic Languages
+    
+    Strategic Languages serve as bridges for Mother Tongue Translators to access
+    translation resources and translate Scripture into their heart languages.
+    
+    ## Workflows Supported
+    
+    - **Form-Centric**: Preserving original language structure (ULT/GLT)
+    - **Meaning-Based**: Emphasizing clear communication (UST/GST)
+    - **Translation Checking**: Using questions and validation tools
+    - **AI Integration**: MCP protocol for intelligent assistance
+    
+  version: 4.4.1
+  contact:
+    name: Translation Helps API Support
+    url: https://github.com/unfoldingword/translation-helps-mcp
+    email: support@translation.tools
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.translation.tools
+    description: Production server
+  - url: https://staging-api.translation.tools  
+    description: Staging server
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /api/health:
+    get:
+      summary: Health Check
+      description: Returns API health status and version information
+      operationId: getHealth
+      tags:
+        - System
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Healthy API response
+                  value:
+                    status: "healthy"
+                    timestamp: "2024-01-01T00:00:00.000Z"
+                    version: "4.4.1"
+                    service: "translation-helps-mcp"
+                    description: "MCP Server for unfoldingWord Bible translation resources with Strategic Language support"
+
+  /api/fetch-scripture:
+    get:
+      summary: Fetch Scripture Text
+      description: |
+        Retrieves Scripture text in ULT/GLT (literal) and/or UST/GST (simplified) 
+        translations with embedded word alignment data.
+        
+        **Optimized for:**
+        - Single verse lookups (fastest)
+        - Verse ranges within a chapter  
+        - Full chapter requests
+        
+        **Performance Target:** < 500ms (95th percentile)
+      operationId: fetchScripture
+      tags:
+        - Scripture
+      parameters:
+        - $ref: '#/components/parameters/ScriptureReference'
+        - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Organization'
+        - name: includeVerseNumbers
+          in: query
+          description: Include verse numbers in the response
+          schema:
+            type: boolean
+            default: true
+        - name: format
+          in: query
+          description: Response format
+          schema:
+            type: string
+            enum: [text, usfm]
+            default: text
+      responses:
+        '200':
+          description: Scripture text retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScriptureResponse'
+              examples:
+                john_3_16:
+                  summary: John 3:16 in English
+                  value:
+                    scripture:
+                      citation: "John 3:16"
+                      text: "For God so loved the world that he gave his one and only Son..."
+                    language: "en"
+                    organization: "unfoldingWord"
+                    metadata:
+                      cached: true
+                      includeVerseNumbers: true
+                      format: "text"
+                      filesFound: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/fetch-translation-notes:
+    get:
+      summary: Fetch Translation Notes
+      description: |
+        Retrieves verse-by-verse translation notes providing cultural context,
+        alternative renderings, and explanations for difficult passages.
+        
+        **Performance Target:** < 800ms (95th percentile)
+      operationId: fetchTranslationNotes
+      tags:
+        - Translation Helps
+      parameters:
+        - $ref: '#/components/parameters/ScriptureReference'
+        - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Organization'
+        - name: includeAcademyLinks
+          in: query
+          description: Include links to Translation Academy articles
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Translation notes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationNotesResponse'
+
+  /api/get-translation-word:
+    get:
+      summary: Get Translation Word Definition
+      description: |
+        Retrieves comprehensive definition and usage information for a biblical term.
+        
+        **Categories:**
+        - **kt**: Key theological terms
+        - **names**: Biblical names and places
+        - **other**: General biblical vocabulary
+      operationId: getTranslationWord
+      tags:
+        - Translation Helps
+      parameters:
+        - name: word
+          in: query
+          required: true
+          description: Biblical term to look up
+          schema:
+            type: string
+          example: "grace"
+        - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Organization'
+        - name: includeReferences
+          in: query
+          description: Include biblical usage examples
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Translation word retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationWordResponse'
+
+  /api/fetch-translation-questions:
+    get:
+      summary: Fetch Translation Questions
+      description: |
+        Retrieves comprehension and translation validation questions for quality checking.
+      operationId: fetchTranslationQuestions
+      tags:
+        - Translation Helps
+      parameters:
+        - $ref: '#/components/parameters/ScriptureReference'
+        - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Organization'
+      responses:
+        '200':
+          description: Translation questions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslationQuestionsResponse'
+
+  /api/list-available-resources:
+    get:
+      summary: List Available Resources
+      description: |
+        Returns available unfoldingWord translation resources by type.
+        
+        **Resource Types:**
+        - **ULT/GLT**: Form-centric (literal) Scripture texts
+        - **UST/GST**: Meaning-based (simplified) Scripture texts
+        - **TN**: Translation Notes with cultural context
+        - **TW**: Translation Words with definitions
+        - **TWL**: Translation Words Links for precise mapping
+        - **TQ**: Translation Questions for checking
+        - **TA**: Translation Academy methodology
+        - **Alignment**: Word-level alignment data
+      operationId: listAvailableResources
+      tags:
+        - Resource Discovery
+      parameters:
+        - $ref: '#/components/parameters/Language'
+        - $ref: '#/components/parameters/Organization'
+        - name: query
+          in: query
+          description: Search filter for resources
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Available resources listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceListResponse'
+
+  /api/get-languages:
+    get:
+      summary: Get Available Languages
+      description: |
+        Returns list of Strategic Languages with available translation resources.
+        
+        **Strategic Languages** serve as bridges for Mother Tongue Translators
+        to access translation resources and translate into their heart languages.
+      operationId: getLanguages
+      tags:
+        - Resource Discovery
+      parameters:
+        - $ref: '#/components/parameters/Organization'
+        - name: includeAlternateNames
+          in: query
+          description: Include alternate language names
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Languages retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LanguagesResponse'
+
+  /api/language-coverage:
+    get:
+      summary: Get Language Coverage Matrix
+      description: |
+        Returns matrix showing resource availability for each Strategic Language.
+        Helps users choose appropriate Strategic Languages with complete resource sets.
+      operationId: getLanguageCoverage
+      tags:
+        - Resource Discovery
+      parameters:
+        - name: minCompleteness
+          in: query
+          description: Minimum completeness percentage (0-100)
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+        - name: recommended
+          in: query
+          description: Include only recommended languages
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Language coverage matrix retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LanguageCoverageResponse'
+
+components:
+  parameters:
+    ScriptureReference:
+      name: reference
+      in: query
+      required: true
+      description: |
+        Scripture reference in natural format.
+        
+        **Examples:**
+        - `John 3:16` - Single verse
+        - `Genesis 1:1-5` - Verse range
+        - `Matthew 5` - Full chapter
+        - `Psalm 23:1-3` - Multiple verses
+      schema:
+        type: string
+      examples:
+        single_verse:
+          summary: Single verse
+          value: "John 3:16"
+        verse_range:
+          summary: Verse range
+          value: "Genesis 1:1-5"
+        full_chapter:
+          summary: Full chapter
+          value: "Matthew 5"
+
+    Language:
+      name: language
+      in: query
+      description: |
+        Strategic Language code (ISO 639-1/639-3).
+        
+        **Popular Strategic Languages:**
+        - `en` - English
+        - `es` - Spanish  
+        - `fr` - French
+        - `pt` - Portuguese
+        - `ar` - Arabic
+        - `zh` - Chinese
+      schema:
+        type: string
+        default: "en"
+      example: "en"
+
+    Organization:
+      name: organization
+      in: query
+      description: Resource organization/publisher
+      schema:
+        type: string
+        default: "unfoldingWord"
+      example: "unfoldingWord"
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        service:
+          type: string
+        description:
+          type: string
+
+    ScriptureResponse:
+      type: object
+      properties:
+        scripture:
+          type: object
+          properties:
+            citation:
+              type: string
+              description: Formatted scripture citation
+            text:
+              type: string
+              description: Scripture text content
+            ult:
+              type: object
+              description: Literal text (form-centric)
+            ust:
+              type: object  
+              description: Simplified text (meaning-based)
+        language:
+          type: string
+        organization:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+
+    TranslationNotesResponse:
+      type: object
+      properties:
+        notes:
+          type: array
+          items:
+            type: object
+            properties:
+              reference:
+                type: string
+              note:
+                type: string
+              links:
+                type: array
+                items:
+                  type: string
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+
+    TranslationWordResponse:
+      type: object
+      properties:
+        word:
+          type: object
+          properties:
+            term:
+              type: string
+            definition:
+              type: string
+            content:
+              type: string
+            category:
+              type: string
+              enum: [kt, names, other]
+        references:
+          type: array
+          items:
+            type: string
+        relatedWords:
+          type: array
+          items:
+            type: string
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+
+    TranslationQuestionsResponse:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            type: object
+            properties:
+              question:
+                type: string
+              answer:
+                type: string
+              reference:
+                type: string
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+
+    ResourceListResponse:
+      type: object
+      properties:
+        resources:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [ult, glt, ust, gst, tn, tw, twl, tq, ta, alignment]
+              name:
+                type: string
+              description:
+                type: string
+              languages:
+                type: array
+                items:
+                  type: string
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+
+    LanguagesResponse:
+      type: object
+      properties:
+        languages:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              name:
+                type: string
+              direction:
+                type: string
+                enum: [ltr, rtl]
+              isStrategicLanguage:
+                type: boolean
+                description: Whether this is a Strategic Language
+        metadata:
+          $ref: '#/components/schemas/ResponseMetadata'
+
+    LanguageCoverageResponse:
+      type: object
+      properties:
+        languages:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              name:
+                type: string
+              coverage:
+                type: object
+                properties:
+                  ult:
+                    $ref: '#/components/schemas/ResourceAvailability'
+                  ust:
+                    $ref: '#/components/schemas/ResourceAvailability'
+                  tn:
+                    $ref: '#/components/schemas/ResourceAvailability'
+                  tw:
+                    $ref: '#/components/schemas/ResourceAvailability'
+                  twl:
+                    $ref: '#/components/schemas/ResourceAvailability'
+                  tq:
+                    $ref: '#/components/schemas/ResourceAvailability'
+                  ta:
+                    $ref: '#/components/schemas/ResourceAvailability'
+                  alignment:
+                    $ref: '#/components/schemas/ResourceAvailability'
+              completeness:
+                type: integer
+                minimum: 0
+                maximum: 100
+              recommended:
+                type: boolean
+        metadata:
+          type: object
+          properties:
+            totalLanguages:
+              type: integer
+            completeLanguages:
+              type: integer
+            lastUpdated:
+              type: string
+              format: date-time
+
+    ResourceAvailability:
+      type: object
+      properties:
+        available:
+          type: boolean
+        version:
+          type: string
+        updated:
+          type: string
+          format: date
+        books:
+          type: integer
+        articles:
+          type: integer
+
+    ResponseMetadata:
+      type: object
+      properties:
+        responseTime:
+          type: number
+          description: Response time in milliseconds
+        cached:
+          type: boolean
+          description: Whether response was served from cache
+        timestamp:
+          type: string
+          format: date-time
+        cacheKey:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+        details:
+          type: object
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_reference:
+              summary: Invalid scripture reference
+              value:
+                error: "Invalid scripture reference format"
+                code: "INVALID_REFERENCE"
+                details:
+                  reference: "InvalidBook 999:999"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            resource_not_found:
+              summary: Resource not available
+              value:
+                error: "Translation resource not found"
+                code: "RESOURCE_NOT_FOUND"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            fetch_error:
+              summary: Upstream service error
+              value:
+                error: "Failed to fetch resource from upstream service"
+                code: "FETCH_ERROR"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Optional API key for higher rate limits
+
+tags:
+  - name: System
+    description: System health and status
+  - name: Scripture
+    description: Bible text retrieval (ULT/GLT, UST/GST)
+  - name: Translation Helps
+    description: Translation aids (Notes, Words, Questions)
+  - name: Resource Discovery
+    description: Available resources and languages
+
+externalDocs:
+  description: Complete Documentation
+  url: https://docs.translation.tools

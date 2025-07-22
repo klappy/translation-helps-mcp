@@ -1,0 +1,11 @@
+/* TranslationHelps Component Styles */
+.translation-helps { padding: 2rem; }
+.translation-helps.loading { display: flex; align-items: center; justify-content: center; min-height: 300px; }
+.tab-navigation { display: flex; background: #f7fafc; border-bottom: 1px solid #e2e8f0; }
+.tab-button { flex: 1; padding: 1rem; border: none; background: none; cursor: pointer; }
+.tab-button.active { background: white; border-bottom: 3px solid #667eea; color: #667eea; }
+.tab-content { padding: 2rem; }
+.notes-list, .words-list, .questions-list { margin-top: 1rem; }
+.note-item, .word-item, .question-item { margin: 1rem 0; padding: 1rem; background: #f7fafc; border-radius: 8px; }
+.word-term { font-weight: 600; color: #2d3748; }
+.expand-button, .collapse-button { color: #667eea; background: none; border: none; cursor: pointer; }

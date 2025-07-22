@@ -1,0 +1,282 @@
+# Prometheus Alert Rules for Translation Helps MCP
+# Monitors SLA compliance, performance, and critical system health
+
+groups:
+  # API Performance and Availability Alerts
+  - name: translation_api_performance
+    interval: 30s
+    rules:
+      # High-severity: API completely down
+      - alert: TranslationAPIDown
+        expr: up{job="translation-helps-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: translation-api
+          impact: complete_outage
+        annotations:
+          summary: "Translation Helps API is completely down"
+          description: "The Translation Helps API has been down for more than 1 minute. This affects all Mother Tongue Translator tools."
+          runbook_url: "https://docs.translation.tools/runbooks/api-down"
+          dashboard_url: "https://grafana.translation.tools/d/api-overview"
+
+      # High-severity: Response time SLA breach
+      - alert: TranslationAPISlowResponse
+        expr: |
+          (
+            histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="translation-helps-api"}[5m])) > 0.5
+          ) or (
+            histogram_quantile(0.95, rate(translation_helps_request_duration_seconds_bucket{endpoint=~"fetch-scripture|health"}[5m])) > 0.5
+          )
+        for: 2m
+        labels:
+          severity: warning
+          service: translation-api
+          impact: performance_degradation
+        annotations:
+          summary: "Translation API response times exceed SLA (>500ms p95)"
+          description: "95th percentile response time is {{ $value }}s, exceeding the 500ms SLA for {{ $labels.endpoint }}"
+          runbook_url: "https://docs.translation.tools/runbooks/slow-response"
+
+      # Medium-severity: Translation helps slow
+      - alert: TranslationHelpsSlowResponse
+        expr: |
+          histogram_quantile(0.95, rate(translation_helps_request_duration_seconds_bucket{endpoint=~"fetch-translation-notes|get-translation-word|fetch-translation-questions"}[5m])) > 0.8
+        for: 3m
+        labels:
+          severity: warning
+          service: translation-api
+          impact: user_experience
+        annotations:
+          summary: "Translation Helps endpoints slower than expected (>800ms p95)"
+          description: "Translation helps response time is {{ $value }}s for {{ $labels.endpoint }}"
+          runbook_url: "https://docs.translation.tools/runbooks/slow-helps"
+
+      # High error rate
+      - alert: TranslationAPIHighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="translation-helps-api",code=~"5.."}[5m]) / 
+            rate(http_requests_total{job="translation-helps-api"}[5m])
+          ) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          service: translation-api
+          impact: error_spike
+        annotations:
+          summary: "High error rate detected in Translation API"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+          runbook_url: "https://docs.translation.tools/runbooks/high-errors"
+
+  # DCS (Door43 Content Service) Monitoring
+  - name: dcs_dependency_health
+    interval: 60s
+    rules:
+      # DCS unavailable
+      - alert: DCSUnavailable
+        expr: up{job="dcs-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: dcs
+          impact: data_source_failure
+        annotations:
+          summary: "Door43 Content Service (DCS) is unavailable"
+          description: "DCS has been unreachable for more than 2 minutes. This will impact Scripture and translation resource fetching."
+          runbook_url: "https://docs.translation.tools/runbooks/dcs-down"
+
+      # DCS slow response
+      - alert: DCSSlowResponse
+        expr: |
+          histogram_quantile(0.95, rate(dcs_api_request_duration_seconds_bucket[5m])) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          service: dcs
+          impact: upstream_slow
+        annotations:
+          summary: "DCS API responses are slow"
+          description: "DCS 95th percentile response time is {{ $value }}s"
+          runbook_url: "https://docs.translation.tools/runbooks/dcs-slow"
+
+  # Cache Performance Alerts
+  - name: cache_performance
+    interval: 30s
+    rules:
+      # Low cache hit rate
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            rate(translation_cache_hits_total[10m]) / 
+            (rate(translation_cache_hits_total[10m]) + rate(translation_cache_misses_total[10m]))
+          ) < 0.7
+        for: 5m
+        labels:
+          severity: warning
+          service: cache
+          impact: performance_degradation
+        annotations:
+          summary: "Translation API cache hit rate is low"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}, below the 70% target"
+          runbook_url: "https://docs.translation.tools/runbooks/low-cache-hit"
+
+      # Cache memory usage high
+      - alert: CacheMemoryHigh
+        expr: |
+          translation_cache_memory_usage_bytes / translation_cache_memory_limit_bytes > 0.9
+        for: 3m
+        labels:
+          severity: warning
+          service: cache
+          impact: resource_exhaustion
+        annotations:
+          summary: "Translation API cache memory usage is high"
+          description: "Cache memory usage is {{ $value | humanizePercentage }} of limit"
+          runbook_url: "https://docs.translation.tools/runbooks/cache-memory"
+
+  # Resource Utilization Alerts
+  - name: resource_utilization
+    interval: 60s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+          impact: resource_constraint
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+          runbook_url: "https://docs.translation.tools/runbooks/high-cpu"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+          impact: resource_constraint
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.translation.tools/runbooks/high-memory"
+
+  # Business Logic Alerts
+  - name: business_metrics
+    interval: 60s
+    rules:
+      # Unusual traffic patterns
+      - alert: UnusualTrafficSpike
+        expr: |
+          rate(http_requests_total{job="translation-helps-api"}[5m]) > 
+          (avg_over_time(rate(http_requests_total{job="translation-helps-api"}[5m])[1d:1h]) * 3)
+        for: 3m
+        labels:
+          severity: info
+          service: translation-api
+          impact: traffic_anomaly
+        annotations:
+          summary: "Unusual traffic spike detected"
+          description: "Request rate is {{ $value }} req/sec, significantly higher than normal"
+          runbook_url: "https://docs.translation.tools/runbooks/traffic-spike"
+
+      # Low usage might indicate service issues
+      - alert: UnusuallyLowTraffic
+        expr: |
+          rate(http_requests_total{job="translation-helps-api"}[10m]) < 
+          (avg_over_time(rate(http_requests_total{job="translation-helps-api"}[10m])[1d:1h]) * 0.1)
+        for: 10m
+        labels:
+          severity: info
+          service: translation-api
+          impact: traffic_anomaly
+        annotations:
+          summary: "Unusually low traffic detected"
+          description: "Request rate is {{ $value }} req/sec, much lower than normal"
+          runbook_url: "https://docs.translation.tools/runbooks/low-traffic"
+
+      # Strategic Language usage monitoring
+      - alert: StrategicLanguageErrors
+        expr: |
+          increase(translation_api_errors_total{language=~"en|es|fr|pt"}[1h]) > 10
+        for: 0s
+        labels:
+          severity: warning
+          service: translation-api
+          impact: strategic_language_issues
+        annotations:
+          summary: "High error rate for Strategic Language {{ $labels.language }}"
+          description: "{{ $value }} errors in the last hour for {{ $labels.language }}"
+          runbook_url: "https://docs.translation.tools/runbooks/language-errors"
+
+  # Data Quality Alerts
+  - name: data_quality
+    interval: 300s
+    rules:
+      # Missing translation resources
+      - alert: MissingTranslationResources
+        expr: |
+          translation_resources_missing_total > 5
+        for: 1m
+        labels:
+          severity: warning
+          service: data-quality
+          impact: content_gaps
+        annotations:
+          summary: "Missing translation resources detected"
+          description: "{{ $value }} translation resources are reported as missing"
+          runbook_url: "https://docs.translation.tools/runbooks/missing-resources"
+
+      # Stale data detection
+      - alert: StaleTranslationData
+        expr: |
+          (time() - translation_data_last_updated_timestamp) > (7 * 24 * 3600)  # 7 days
+        for: 0s
+        labels:
+          severity: info
+          service: data-quality
+          impact: content_freshness
+        annotations:
+          summary: "Translation data appears stale"
+          description: "Translation data was last updated {{ $value | humanizeDuration }} ago"
+          runbook_url: "https://docs.translation.tools/runbooks/stale-data"
+
+  # Security and Compliance Alerts
+  - name: security_monitoring
+    interval: 60s
+    rules:
+      # Rate limiting triggers
+      - alert: RateLimitingActive
+        expr: |
+          increase(translation_api_rate_limited_total[5m]) > 10
+        for: 0s
+        labels:
+          severity: info
+          service: security
+          impact: rate_limiting
+        annotations:
+          summary: "Rate limiting is actively blocking requests"
+          description: "{{ $value }} requests were rate limited in the last 5 minutes"
+          runbook_url: "https://docs.translation.tools/runbooks/rate-limiting"
+
+      # Suspicious request patterns
+      - alert: SuspiciousRequestPattern
+        expr: |
+          rate(http_requests_total{code="404"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: security
+          impact: potential_attack
+        annotations:
+          summary: "High rate of 404 errors - possible scanning"
+          description: "{{ $value }} 404 errors per second in the last 5 minutes"
+          runbook_url: "https://docs.translation.tools/runbooks/404-spike"

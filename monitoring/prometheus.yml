@@ -1,0 +1,114 @@
+# Prometheus Configuration for Translation Helps MCP
+# Monitors API performance, health, and resource usage
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+rule_files:
+  - "alert_rules.yml"
+  - "recording_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Translation Helps API Monitoring
+  - job_name: 'translation-helps-api'
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api.translation.tools:443']
+    scheme: https
+    tls_config:
+      insecure_skip_verify: false
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: api.translation.tools:443
+
+  # Health Check Endpoint
+  - job_name: 'translation-api-health'
+    scrape_interval: 10s
+    metrics_path: '/api/health'
+    static_configs:
+      - targets: ['api.translation.tools:443']
+    scheme: https
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'up|probe_success|probe_duration_seconds'
+        action: keep
+
+  # DCS (Door43 Content Service) Monitoring
+  - job_name: 'dcs-api'
+    scrape_interval: 60s
+    metrics_path: '/api/v1/health'
+    static_configs:
+      - targets: ['git.door43.org:443']
+    scheme: https
+    params:
+      format: ['prometheus']
+
+  # Cloudflare/Netlify Edge Monitoring
+  - job_name: 'edge-locations'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+        - 'api.translation.tools'  # Main domain
+        labels:
+          service: 'translation-api'
+          environment: 'production'
+          location: 'global'
+
+  # Node Exporter (if using dedicated servers)
+  - job_name: 'node-exporter'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.*):(.*)'
+        replacement: '${1}'
+
+  # Application-specific metrics
+  - job_name: 'translation-app-metrics'
+    scrape_interval: 15s
+    metrics_path: '/internal/metrics'
+    static_configs:
+      - targets: ['api.translation.tools:443']
+    scheme: https
+    params:
+      component: ['api', 'cache', 'dcs-client']
+
+  # Performance monitoring for critical endpoints
+  - job_name: 'critical-endpoints'
+    scrape_interval: 10s
+    metrics_path: '/api/health'
+    static_configs:
+      - targets: ['api.translation.tools:443']
+    scheme: https
+    params:
+      check: ['database', 'dcs', 'cache', 'memory']
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: "https://prometheus-remote-write.example.com/api/v1/write"
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 200
+      capacity: 2500
+
+# Remote read configuration for federated queries
+remote_read:
+  - url: "https://prometheus-remote-read.example.com/api/v1/read"
+    read_recent: true

@@ -1,0 +1,397 @@
+# AlertManager Configuration for Translation Helps MCP
+# Routes alerts to appropriate channels based on severity and service
+
+global:
+  # Default SMTP configuration
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@translation.tools'
+  smtp_auth_username: 'alerts@translation.tools'
+  smtp_auth_password: 'smtp_password_here'
+  
+  # Slack configuration
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+# Templates for custom alert formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert routing
+route:
+  group_by: ['alertname', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 24h
+  receiver: 'default'
+  
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 1h
+      routes:
+        # API Down - highest priority
+        - match:
+            alertname: TranslationAPIDown
+          receiver: 'api-down-emergency'
+          group_wait: 0s
+          repeat_interval: 30m
+        
+        # DCS unavailable
+        - match:
+            alertname: DCSUnavailable
+          receiver: 'dcs-alerts'
+          group_wait: 1m
+          repeat_interval: 2h
+    
+    # Warning alerts - normal business hours
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 2m
+      group_interval: 10m
+      repeat_interval: 6h
+      # Only during business hours for warnings
+      active_time_intervals:
+        - 'business-hours'
+    
+    # Info alerts - low priority
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_wait: 10m
+      group_interval: 30m
+      repeat_interval: 24h
+    
+    # Performance alerts
+    - match:
+        service: translation-api
+        impact: performance_degradation
+      receiver: 'performance-alerts'
+      group_wait: 5m
+      repeat_interval: 4h
+    
+    # Security alerts
+    - match:
+        service: security
+      receiver: 'security-alerts'
+      group_wait: 30s
+      repeat_interval: 1h
+    
+    # Data quality alerts
+    - match:
+        service: data-quality
+      receiver: 'data-quality-alerts'
+      group_wait: 10m
+      repeat_interval: 12h
+
+# Time intervals for alert scheduling
+time_intervals:
+  - name: 'business-hours'
+    time_intervals:
+      - times:
+        - start_time: '09:00'
+          end_time: '17:00'
+        weekdays: ['monday:friday']
+        location: 'America/New_York'
+
+# Alert receivers and notification methods
+receivers:
+  # Default catch-all receiver
+  - name: 'default'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#translation-alerts'
+        title: 'Translation Helps Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          {{ end }}
+        fallback: 'Translation Helps alert notification'
+
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'ops-team@translation.tools'
+        subject: '[CRITICAL] Translation Helps Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Critical alert in Translation Helps platform:
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          
+          Runbook: {{ .Annotations.runbook_url }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          {{ end }}
+          
+          Please investigate immediately.
+        headers:
+          X-Priority: '1'
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/CRITICAL/WEBHOOK'
+        channel: '#critical-alerts'
+        username: 'Translation Alerts'
+        icon_emoji: ':rotating_light:'
+        title: ':rotating_light: CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          
+          {{ .Annotations.description }}
+          
+          *Service:* {{ .Labels.service }}
+          *Impact:* {{ .Labels.impact }}
+          *Started:* {{ .StartsAt.Format "15:04:05 UTC" }}
+          
+          :book: <{{ .Annotations.runbook_url }}|Runbook> | :chart_with_upwards_trend: <{{ .Annotations.dashboard_url }}|Dashboard>
+          {{ end }}
+        fallback: 'CRITICAL: Translation Helps platform alert'
+        color: 'danger'
+
+  # API Down Emergency - immediate escalation
+  - name: 'api-down-emergency'
+    email_configs:
+      - to: 'ops-team@translation.tools,leadership@translation.tools'
+        subject: '[EMERGENCY] Translation Helps API is DOWN'
+        body: |
+          🚨 EMERGENCY: Translation Helps API is completely down!
+          
+          This affects all Mother Tongue Translator tools and services.
+          
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          Duration: {{ .StartsAt }}
+          
+          Immediate action required.
+          
+          Runbook: https://docs.translation.tools/runbooks/api-down
+          Status Page: https://status.translation.tools
+        headers:
+          X-Priority: '1'
+          X-MSMail-Priority: 'High'
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/EMERGENCY/WEBHOOK'
+        channel: '#incidents'
+        username: 'Translation Emergency'
+        icon_emoji: ':fire:'
+        title: ':fire: EMERGENCY: Translation Helps API DOWN'
+        text: |
+          🚨 **EMERGENCY ALERT** 🚨
+          
+          The Translation Helps API is completely down!
+          
+          *Impact:* Complete service outage
+          *Started:* {{ .StartsAt.Format "15:04:05 UTC" }}
+          *Affects:* All Mother Tongue Translator tools
+          
+          :point_right: <https://docs.translation.tools/runbooks/api-down|Emergency Runbook>
+          :point_right: <https://status.translation.tools|Status Page>
+          
+          @channel Please investigate immediately!
+        fallback: 'EMERGENCY: Translation Helps API is down'
+        color: '#FF0000'
+    
+    # SMS for ultimate escalation (using email-to-SMS)
+    email_configs:
+      - to: '5551234567@txt.att.net'
+        subject: 'EMERGENCY: Translation API DOWN'
+        body: 'Translation Helps API is down. Check Slack/email for details.'
+
+  # Warning alerts
+  - name: 'warning-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/WARNING/WEBHOOK'
+        channel: '#translation-alerts'
+        username: 'Translation Alerts'
+        icon_emoji: ':warning:'
+        title: ':warning: Warning: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          
+          {{ .Annotations.description }}
+          
+          *Service:* {{ .Labels.service }}
+          *Started:* {{ .StartsAt.Format "15:04:05 UTC" }}
+          
+          {{ if .Annotations.runbook_url }}:book: <{{ .Annotations.runbook_url }}|Runbook>{{ end }}
+          {{ end }}
+        fallback: 'Translation Helps warning alert'
+        color: 'warning'
+
+  # Info alerts - minimal noise
+  - name: 'info-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/INFO/WEBHOOK'
+        channel: '#translation-info'
+        username: 'Translation Info'
+        icon_emoji: ':information_source:'
+        title: 'ℹ️ Info: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ if .Annotations.description }}
+          {{ .Annotations.description }}
+          {{ end }}
+          {{ end }}
+        fallback: 'Translation Helps info notification'
+        color: 'good'
+
+  # Performance alerts
+  - name: 'performance-alerts'
+    email_configs:
+      - to: 'performance-team@translation.tools'
+        subject: '[PERFORMANCE] Translation Helps: {{ .GroupLabels.alertname }}'
+        body: |
+          Performance alert in Translation Helps platform:
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          
+          {{ if .Annotations.runbook_url }}Runbook: {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/PERFORMANCE/WEBHOOK'
+        channel: '#performance'
+        title: ':chart_with_downwards_trend: Performance Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          
+          {{ .Annotations.description }}
+          
+          *Service:* {{ .Labels.service }}
+          {{ end }}
+        color: '#FFA500'
+
+  # Security alerts
+  - name: 'security-alerts'
+    email_configs:
+      - to: 'security-team@translation.tools'
+        subject: '[SECURITY] Translation Helps: {{ .GroupLabels.alertname }}'
+        body: |
+          Security alert in Translation Helps platform:
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          
+          Please review immediately.
+          {{ end }}
+        headers:
+          X-Priority: '1'
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SECURITY/WEBHOOK'
+        channel: '#security-alerts'
+        username: 'Security Alerts'
+        icon_emoji: ':shield:'
+        title: ':shield: Security Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          
+          {{ .Annotations.description }}
+          
+          *Service:* {{ .Labels.service }}
+          *Impact:* {{ .Labels.impact }}
+          
+          Please investigate immediately.
+          {{ end }}
+        fallback: 'Translation Helps security alert'
+        color: '#8B0000'
+
+  # DCS-specific alerts
+  - name: 'dcs-alerts'
+    email_configs:
+      - to: 'infrastructure@translation.tools'
+        subject: '[DCS] Door43 Content Service Alert'
+        body: |
+          Door43 Content Service (DCS) alert:
+          
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          
+          This may impact Scripture and translation resource retrieval.
+          Started: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/DCS/WEBHOOK'
+        channel: '#infrastructure'
+        title: ':door: DCS Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Door43 Content Service Alert*
+          
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          
+          *Impact:* May affect Scripture/resource retrieval
+          {{ end }}
+        color: '#FF6347'
+
+  # Data quality alerts
+  - name: 'data-quality-alerts'
+    email_configs:
+      - to: 'content-team@translation.tools'
+        subject: '[DATA QUALITY] Translation Content Alert'
+        body: |
+          Data quality alert for Translation Helps:
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Started: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          
+          Please review content quality and availability.
+          {{ end }}
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/CONTENT/WEBHOOK'
+        channel: '#content-quality'
+        title: ':page_with_curl: Data Quality Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          {{ end }}
+        color: '#DAA520'
+
+# Inhibition rules to prevent alert spam
+inhibit_rules:
+  # Don't alert on individual service issues if the entire API is down
+  - source_match:
+      alertname: TranslationAPIDown
+    target_match_re:
+      alertname: '^(TranslationAPISlowResponse|LowCacheHitRate|.*SlowResponse)$'
+    equal: ['service']
+
+  # Don't alert on cache issues if DCS is down
+  - source_match:
+      alertname: DCSUnavailable
+    target_match:
+      alertname: LowCacheHitRate
+    equal: ['service']
+
+  # Don't alert on performance if there are critical errors
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ['service', 'alertname']

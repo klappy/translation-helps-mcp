@@ -1,0 +1,179 @@
+# Translation Helps MCP - Deployment Configuration
+# Centralized configuration for all deployment environments
+
+environments:
+  development:
+    url: "http://localhost:5173"
+    api_base: "http://localhost:5173/api"
+    database: "local"
+    cache_ttl: 60
+    rate_limits:
+      default: 1000
+      burst: 50
+    monitoring:
+      enabled: false
+    security:
+      cors_origins: ["*"]
+      csp_enabled: false
+      hsts_enabled: false
+
+  staging:
+    url: "https://staging-translation-helps-mcp.pages.dev"
+    api_base: "https://staging-translation-helps-mcp.pages.dev/api"
+    database: "staging"
+    cache_ttl: 300
+    rate_limits:
+      default: 500
+      burst: 25
+    monitoring:
+      enabled: true
+      prometheus_endpoint: "https://prometheus-staging.translation.tools"
+    security:
+      cors_origins: ["https://staging-translation-helps-mcp.pages.dev", "http://localhost:*"]
+      csp_enabled: true
+      hsts_enabled: true
+    
+  production:
+    url: "https://translation-helps-mcp.pages.dev"
+    api_base: "https://translation-helps-mcp.pages.dev/api"
+    database: "production"
+    cache_ttl: 900
+    rate_limits:
+      default: 100
+      burst: 10
+    monitoring:
+      enabled: true
+      prometheus_endpoint: "https://prometheus.translation.tools"
+      grafana_dashboard: "https://grafana.translation.tools/d/translation-api"
+      alertmanager: "https://alertmanager.translation.tools"
+    security:
+      cors_origins: ["https://translation-helps-mcp.pages.dev", "https://unfoldingword.org", "https://door43.org"]
+      csp_enabled: true
+      hsts_enabled: true
+      frame_options: "DENY"
+
+# Deployment strategies
+deployment:
+  strategy: "blue_green"
+  health_check:
+    path: "/api/health"
+    timeout: 30
+    retries: 3
+    expected_status: 200
+    expected_content: '"healthy"'
+  
+  rollback:
+    automatic: true
+    conditions:
+      - health_check_failure
+      - error_rate_above_5_percent
+      - response_time_above_2_seconds
+    
+  canary:
+    enabled: false  # Not supported by Cloudflare Pages yet
+    traffic_percentage: 10
+    duration: "10m"
+
+# Performance targets (SLA)
+performance:
+  response_times:
+    health: 100   # ms
+    scripture: 500   # ms
+    translation_helps: 800   # ms
+    search: 1000   # ms
+  
+  availability:
+    target: 99.9   # percent
+    measurement_window: "30d"
+  
+  throughput:
+    max_rps: 1000
+    sustained_rps: 500
+  
+  cache:
+    hit_ratio_target: 90   # percent
+    ttl_default: 300   # seconds
+
+# Monitoring and alerting
+monitoring:
+  metrics:
+    - name: "api_response_time"
+      type: "histogram"
+      labels: ["endpoint", "status"]
+    
+    - name: "api_requests_total"
+      type: "counter"
+      labels: ["endpoint", "status", "method"]
+    
+    - name: "cache_hit_ratio"
+      type: "gauge"
+      labels: ["cache_type"]
+    
+    - name: "dcs_api_response_time"
+      type: "histogram"
+      labels: ["operation"]
+  
+  alerts:
+    - name: "API_DOWN"
+      condition: 'up{job="translation-helps-api"} == 0'
+      for: "1m"
+      severity: "critical"
+    
+    - name: "HIGH_RESPONSE_TIME"
+      condition: 'histogram_quantile(0.95, rate(api_response_time_bucket[5m])) > 0.5'
+      for: "2m"
+      severity: "warning"
+    
+    - name: "HIGH_ERROR_RATE"
+      condition: 'rate(api_requests_total{status=~"5.."}[5m]) / rate(api_requests_total[5m]) > 0.05'
+      for: "2m"
+      severity: "critical"
+
+# Security configuration
+security:
+  input_validation:
+    max_reference_length: 50
+    max_query_length: 200
+    allowed_languages: ["en", "es", "fr", "pt", "ar", "zh", "hi", "ru", "sw", "am"]
+    allowed_organizations: ["unfoldingWord", "door43", "wycliffeassociates"]
+  
+  rate_limiting:
+    default_rpm: 100
+    authenticated_rpm: 1000
+    burst_limit: 10
+  
+  headers:
+    content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' https://git.door43.org https://api.door43.org; font-src 'self' https:; object-src 'none'; frame-ancestors 'none'"
+    strict_transport_security: "max-age=31536000; includeSubDomains; preload"
+    x_frame_options: "DENY"
+    x_content_type_options: "nosniff"
+    x_xss_protection: "1; mode=block"
+    referrer_policy: "strict-origin-when-cross-origin"
+
+# Integration settings
+integrations:
+  dcs_api:
+    base_url: "https://git.door43.org/api/v1"
+    timeout: 10000
+    retry_attempts: 3
+    retry_delay: 1000
+  
+  prometheus:
+    push_gateway: "https://pushgateway.translation.tools"
+    job_name: "translation-helps-api"
+  
+  sentry:
+    enabled: true
+    environment: "${ENVIRONMENT}"
+    sample_rate: 0.1
+
+# Feature flags
+features:
+  cache_warming: true
+  request_coalescing: true
+  response_optimization: true
+  smart_recommendations: true
+  language_coverage_api: true
+  resource_detection: true
+  chaos_engineering: false  # Only in staging
+  debug_mode: false

@@ -1,0 +1,366 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Translation Helps API - Overview Dashboard",
+    "tags": ["translation", "api", "unfoldingword", "strategic-languages"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🚀 API Health Overview",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "up{job=\"translation-helps-api\"}",
+            "legendFormat": "API Status",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            },
+            "mappings": [
+              {"type": "value", "value": "0", "text": "DOWN"},
+              {"type": "value", "value": "1", "text": "UP"}
+            ]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "📊 Request Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"translation-helps-api\"}[5m])",
+            "legendFormat": "Requests/sec",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "color": {"mode": "continuous-GrYlRd"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 100},
+                {"color": "red", "value": 1000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "⚡ Response Time (P95)",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"translation-helps-api\"}[5m]))",
+            "legendFormat": "P95 Latency",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 0.5},
+                {"color": "red", "value": 1.0}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "❌ Error Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"translation-helps-api\",code=~\"5..\"}[5m]) / rate(http_requests_total{job=\"translation-helps-api\"}[5m])",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 0.01},
+                {"color": "red", "value": 0.05}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "📈 Request Rate Over Time",
+        "type": "graph",
+        "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"translation-helps-api\"}[5m])",
+            "legendFormat": "Total Requests/sec",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(http_requests_total{job=\"translation-helps-api\",endpoint=\"/api/fetch-scripture\"}[5m])",
+            "legendFormat": "Scripture Requests/sec",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(http_requests_total{job=\"translation-helps-api\",endpoint=~\"/api/fetch-translation-.*\"}[5m])",
+            "legendFormat": "Translation Helps/sec",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {"label": "Requests per second", "min": 0},
+          {"show": false}
+        ],
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true,
+          "avg": true
+        }
+      },
+      {
+        "id": 6,
+        "title": "⏱️ Response Time Percentiles",
+        "type": "graph",
+        "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"translation-helps-api\"}[5m]))",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"translation-helps-api\"}[5m]))",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=\"translation-helps-api\"}[5m]))",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {"label": "Response Time (seconds)", "min": 0},
+          {"show": false}
+        ],
+        "thresholds": [
+          {"value": 0.5, "colorMode": "critical", "op": "gt"},
+          {"value": 0.8, "colorMode": "critical", "op": "gt"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "🌍 Strategic Language Usage",
+        "type": "piechart",
+        "gridPos": {"h": 9, "w": 8, "x": 0, "y": 17},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (language) (rate(translation_api_requests_total[1h])))",
+            "legendFormat": "{{language}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "pieType": "donut",
+          "tooltip": {"mode": "single"},
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["value", "percent"]
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "💾 Cache Performance",
+        "type": "graph",
+        "gridPos": {"h": 9, "w": 8, "x": 8, "y": 17},
+        "targets": [
+          {
+            "expr": "rate(translation_cache_hits_total[5m]) / (rate(translation_cache_hits_total[5m]) + rate(translation_cache_misses_total[5m]))",
+            "legendFormat": "Hit Rate",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(translation_cache_hits_total[5m])",
+            "legendFormat": "Hits/sec",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(translation_cache_misses_total[5m])",
+            "legendFormat": "Misses/sec",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {"label": "Cache Operations", "min": 0},
+          {"show": false}
+        ],
+        "thresholds": [
+          {"value": 0.7, "colorMode": "critical", "op": "lt"}
+        ]
+      },
+      {
+        "id": 9,
+        "title": "🚪 DCS (Door43) Health",
+        "type": "graph",
+        "gridPos": {"h": 9, "w": 8, "x": 16, "y": 17},
+        "targets": [
+          {
+            "expr": "up{job=\"dcs-api\"}",
+            "legendFormat": "DCS Status",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(dcs_api_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "DCS P95 Latency",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {"label": "Status / Latency (s)", "min": 0},
+          {"show": false}
+        ]
+      },
+      {
+        "id": 10,
+        "title": "📋 Top Requested Scripture References",
+        "type": "table",
+        "gridPos": {"h": 9, "w": 12, "x": 0, "y": 26},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (reference) (increase(translation_api_scripture_requests_total[1h])))",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "renameByName": {
+                "reference": "Scripture Reference",
+                "Value": "Requests (1h)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "🔍 Popular Translation Words",
+        "type": "table",
+        "gridPos": {"h": 9, "w": 12, "x": 12, "y": 26},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (word) (increase(translation_api_word_lookups_total[1h])))",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "renameByName": {
+                "word": "Translation Word",
+                "Value": "Lookups (1h)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "⚠️ Active Alerts",
+        "type": "alertlist",
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 35},
+        "options": {
+          "showOptions": "current",
+          "sortOrder": 1,
+          "dashboardAlerts": false,
+          "alertInstanceLabelFilter": "service=translation-api"
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "prometheus",
+          "expr": "increase(translation_api_deployments_total[1m])",
+          "iconColor": "blue",
+          "enable": true
+        },
+        {
+          "name": "Incidents",
+          "datasource": "prometheus", 
+          "expr": "increase(translation_api_incidents_total[1m])",
+          "iconColor": "red",
+          "enable": true
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "environment",
+          "type": "constant",
+          "current": {
+            "value": "production",
+            "text": "production"
+          }
+        },
+        {
+          "name": "language",
+          "type": "query",
+          "query": "label_values(translation_api_requests_total, language)",
+          "current": {
+            "value": "all",
+            "text": "All Languages"
+          },
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}

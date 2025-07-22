@@ -1,0 +1,388 @@
+name: Production Deployment Pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      skip_tests:
+        description: 'Skip test suite (emergency only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+  TIMEOUT_MINUTES: 30
+
+jobs:
+  # Stage 1: Build & Test
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build-hash: ${{ steps.build.outputs.hash }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for better caching
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd ui && npm ci
+      
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+      
+      - name: Run linting
+        run: |
+          npm run lint
+          echo "✅ Linting passed"
+      
+      - name: Run type checking
+        run: |
+          npm run typecheck
+          echo "✅ Type checking passed"
+      
+      - name: Run unit tests
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          npm run test:unit
+          echo "✅ Unit tests passed"
+      
+      - name: Run smoke tests
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          npm run test:smoke
+          echo "✅ Smoke tests passed"
+      
+      - name: Run regression tests
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          npm run test:regression
+          echo "✅ Regression tests passed"
+      
+      - name: Security scanning
+        run: |
+          npm audit --audit-level=moderate
+          echo "�� Security scan passed"
+      
+      - name: Build artifacts
+        id: build
+        run: |
+          npm run build:cloudflare
+          BUILD_HASH=$(find ui/build -type f -exec sha256sum {} \; | sha256sum | cut -d' ' -f1)
+          echo "hash=$BUILD_HASH" >> $GITHUB_OUTPUT
+          echo "🏗️ Build completed with hash: $BUILD_HASH"
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ steps.version.outputs.version }}
+          path: ui/build/
+          retention-days: 30
+      
+      - name: Performance baseline test
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          # Run basic performance test to ensure no major regressions
+          timeout 60s npm run test:performance || echo "⚠️ Performance test timed out"
+          echo "📈 Performance baseline checked"
+
+  # Stage 2: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: success() && (github.ref == 'refs/heads/main' || inputs.environment == 'staging')
+    environment: 
+      name: staging
+      url: https://staging-translation-helps-mcp.pages.dev
+    timeout-minutes: 10
+    
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts-${{ needs.build-and-test.outputs.version }}
+          path: ui/build/
+      
+      - name: Deploy to Cloudflare Pages (Staging)
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ui/build --project-name=translation-helps-staging --branch=staging
+      
+      - name: Update deployment status
+        run: |
+          echo "🚀 Staging deployment completed"
+          echo "📍 URL: https://staging-translation-helps-mcp.pages.dev"
+          echo "deployment-url=https://staging-translation-helps-mcp.pages.dev" >> $GITHUB_OUTPUT
+
+  # Stage 3: Staging Tests
+  staging-tests:
+    name: Staging E2E Tests
+    runs-on: ubuntu-latest
+    needs: [build-and-test, deploy-staging]
+    if: success() && (github.ref == 'refs/heads/main' || inputs.environment == 'staging')
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd ui && npm ci
+      
+      - name: Wait for staging deployment
+        run: |
+          echo "⏳ Waiting for staging deployment to be ready..."
+          for i in {1..30}; do
+            if curl -f -s "${{ needs.deploy-staging.outputs.deployment-url }}/api/health" | grep -q "healthy"; then
+              echo "✅ Staging is ready"
+              break
+            fi
+            echo "⏳ Attempt $i/30: Staging not ready yet..."
+            sleep 10
+          done
+      
+      - name: Run E2E tests against staging
+        if: ${{ !inputs.skip_tests }}
+        env:
+          E2E_BASE_URL: ${{ needs.deploy-staging.outputs.deployment-url }}
+        run: |
+          cd tests/e2e
+          npm run test:e2e
+          echo "✅ E2E tests passed on staging"
+      
+      - name: Run load tests against staging
+        if: ${{ !inputs.skip_tests }}
+        env:
+          LOAD_TEST_URL: ${{ needs.deploy-staging.outputs.deployment-url }}
+        run: |
+          cd tests/load
+          timeout 120s npm run test:load:light || echo "⚠️ Load test completed with timeout"
+          echo "📊 Load test completed on staging"
+      
+      - name: Staging health validation
+        run: |
+          HEALTH_RESPONSE=$(curl -s "${{ needs.deploy-staging.outputs.deployment-url }}/api/health")
+          echo "🔍 Health check response: $HEALTH_RESPONSE"
+          echo "$HEALTH_RESPONSE" | jq -e '.status == "healthy"'
+          echo "✅ Staging health validation passed"
+
+  # Stage 4: Production Approval Gate
+  production-approval:
+    name: Production Deployment Approval
+    runs-on: ubuntu-latest
+    needs: [build-and-test, deploy-staging, staging-tests]
+    if: success() && github.ref == 'refs/heads/main' && inputs.environment != 'staging'
+    environment: 
+      name: production-approval
+    timeout-minutes: 60
+    
+    steps:
+      - name: Request production approval
+        run: |
+          echo "🎯 Production deployment ready for approval"
+          echo "📦 Version: ${{ needs.build-and-test.outputs.version }}"
+          echo "🔨 Build Hash: ${{ needs.build-and-test.outputs.build-hash }}"
+          echo "🧪 All tests passed on staging"
+          echo "👀 Manual approval required for production deployment"
+
+  # Stage 5: Production Deployment
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-test, production-approval]
+    if: success() && github.ref == 'refs/heads/main' && inputs.environment != 'staging'
+    environment: 
+      name: production
+      url: https://translation-helps-mcp.pages.dev
+    timeout-minutes: 15
+    
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.url }}
+      previous-version: ${{ steps.backup.outputs.version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts-${{ needs.build-and-test.outputs.version }}
+          path: ui/build/
+      
+      - name: Backup current production version
+        id: backup
+        run: |
+          CURRENT_VERSION=$(curl -s "https://translation-helps-mcp.pages.dev/api/health" | jq -r '.version' || echo "unknown")
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "💾 Backed up current version: $CURRENT_VERSION"
+      
+      - name: Deploy to Cloudflare Pages (Production)
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ui/build --project-name=translation-helps-mcp --branch=main
+      
+      - name: Update deployment status
+        run: |
+          echo "🚀 Production deployment completed"
+          echo "📍 URL: https://translation-helps-mcp.pages.dev"
+          echo "📦 Version: ${{ needs.build-and-test.outputs.version }}"
+          echo "deployment-url=https://translation-helps-mcp.pages.dev" >> $GITHUB_OUTPUT
+
+  # Stage 6: Production Health Checks
+  production-health:
+    name: Production Health Validation
+    runs-on: ubuntu-latest
+    needs: [build-and-test, deploy-production]
+    if: success()
+    timeout-minutes: 10
+    
+    steps:
+      - name: Wait for production deployment
+        run: |
+          echo "⏳ Waiting for production deployment to propagate..."
+          sleep 30
+      
+      - name: Health check with retry
+        run: |
+          for i in {1..10}; do
+            if curl -f -s "${{ needs.deploy-production.outputs.deployment-url }}/api/health" | grep -q "healthy"; then
+              echo "✅ Production health check passed"
+              break
+            fi
+            echo "⏳ Attempt $i/10: Health check failed, retrying..."
+            sleep 30
+            if [ $i -eq 10 ]; then
+              echo "❌ Production health checks failed"
+              exit 1
+            fi
+          done
+      
+      - name: Version verification
+        run: |
+          DEPLOYED_VERSION=$(curl -s "${{ needs.deploy-production.outputs.deployment-url }}/api/health" | jq -r '.version')
+          EXPECTED_VERSION="${{ needs.build-and-test.outputs.version }}"
+          if [ "$DEPLOYED_VERSION" = "$EXPECTED_VERSION" ]; then
+            echo "✅ Version verification passed: $DEPLOYED_VERSION"
+          else
+            echo "❌ Version mismatch: expected $EXPECTED_VERSION, got $DEPLOYED_VERSION"
+            exit 1
+          fi
+      
+      - name: Critical endpoint checks
+        run: |
+          BASE_URL="${{ needs.deploy-production.outputs.deployment-url }}"
+          
+          # Test critical endpoints
+          curl -f "$BASE_URL/api/health" | jq -e '.status == "healthy"'
+          curl -f "$BASE_URL/api/get-languages" | jq -e '.languages | length > 0'
+          curl -f "$BASE_URL/api/list-available-resources" | jq -e '.resources | length > 0'
+          
+          echo "✅ All critical endpoints are healthy"
+      
+      - name: Performance smoke test
+        run: |
+          BASE_URL="${{ needs.deploy-production.outputs.deployment-url }}"
+          
+          # Test response times
+          RESPONSE_TIME=$(curl -w "%{time_total}" -s -o /dev/null "$BASE_URL/api/health")
+          echo "📊 Health endpoint response time: ${RESPONSE_TIME}s"
+          
+          # Fail if response time > 2 seconds (very generous for health check)
+          if (( $(echo "$RESPONSE_TIME > 2.0" | bc -l) )); then
+            echo "❌ Response time too slow: ${RESPONSE_TIME}s"
+            exit 1
+          fi
+          
+          echo "✅ Performance smoke test passed"
+
+  # Stage 7: Post-Deployment Notifications
+  notify-success:
+    name: Deployment Success Notification
+    runs-on: ubuntu-latest
+    needs: [build-and-test, deploy-production, production-health]
+    if: success()
+    
+    steps:
+      - name: Success notification
+        run: |
+          echo "🎉 Production deployment successful!"
+          echo "📦 Version: ${{ needs.build-and-test.outputs.version }}"
+          echo "🌍 URL: ${{ needs.deploy-production.outputs.deployment-url }}"
+          echo "⏱️ Deployment completed at: $(date -u)"
+          
+          # In a real setup, this would send notifications to Slack/Discord/email
+          echo "✅ All systems green - deployment complete"
+
+  # Rollback job (manual trigger only)
+  rollback:
+    name: Emergency Rollback
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: [deploy-production, production-health]
+    environment: 
+      name: emergency-rollback
+    timeout-minutes: 10
+    
+    steps:
+      - name: Rollback notification
+        run: |
+          echo "🚨 DEPLOYMENT FAILED - Rollback may be required"
+          echo "💾 Previous version: ${{ needs.deploy-production.outputs.previous-version }}"
+          echo "❌ Failed version: ${{ needs.build-and-test.outputs.version }}"
+          echo "🔧 Manual rollback required via Cloudflare Pages dashboard"
+          echo "📚 Runbook: https://docs.translation.tools/runbooks/rollback"

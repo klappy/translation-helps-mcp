@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation Helps API - Interactive Documentation</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 0.5rem 0 0 0;
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        .nav-tabs {
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 0;
+            margin: 0;
+        }
+        .nav-tabs ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .nav-tabs li {
+            margin: 0;
+        }
+        .nav-tabs a {
+            display: block;
+            padding: 1rem 2rem;
+            text-decoration: none;
+            color: #495057;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .nav-tabs a:hover, .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+            background: white;
+        }
+        .tab-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .tab-pane {
+            display: none;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        .code-examples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        .code-example {
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .code-example-header {
+            background: #343a40;
+            color: white;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+        }
+        .code-example-body {
+            padding: 1rem;
+        }
+        .code-example pre {
+            margin: 0;
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.9rem;
+        }
+        .workflow-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        .workflow-section h3 {
+            color: #495057;
+            margin-top: 0;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        .feature-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #007bff;
+        }
+        .feature-card h4 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        #swagger-ui {
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📖 Translation Helps API</h1>
+        <p>unfoldingWord Bible Translation Resources with Strategic Language Support</p>
+    </div>
+
+    <nav class="nav-tabs">
+        <ul>
+            <li><a href="#overview" class="nav-link active" onclick="showTab('overview')">Overview</a></li>
+            <li><a href="#quickstart" class="nav-link" onclick="showTab('quickstart')">Quick Start</a></li>
+            <li><a href="#examples" class="nav-link" onclick="showTab('examples')">Code Examples</a></li>
+            <li><a href="#workflows" class="nav-link" onclick="showTab('workflows')">Workflows</a></li>
+            <li><a href="#api-reference" class="nav-link" onclick="showTab('api-reference')">API Reference</a></li>
+        </ul>
+    </nav>
+
+    <div class="tab-content">
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-pane active">
+            <h2>🚀 Welcome to the Translation Helps API</h2>
+            <p>This API provides programmatic access to unfoldingWord's comprehensive Bible translation resources, designed specifically to support Mother Tongue Translators (MTTs) using Strategic Languages as bridges to translate Scripture into their heart languages.</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>📜 Scripture Texts</h4>
+                    <p><strong>ULT/GLT:</strong> Form-centric translations preserving original language structure<br>
+                    <strong>UST/GST:</strong> Meaning-based translations in clear, natural language</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📝 Translation Helps</h4>
+                    <p><strong>Notes:</strong> Cultural context and explanations<br>
+                    <strong>Words:</strong> Biblical term definitions<br>
+                    <strong>Questions:</strong> Comprehension validation</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔗 Word Alignment</h4>
+                    <p>Precise word-level connections between Strategic Languages and original Hebrew/Greek texts for accurate translation decisions.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🎯 Smart Recommendations</h4>
+                    <p>Context-aware resource suggestions based on passage difficulty, genre, and user role to optimize translation workflows.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>⚡ High Performance</h4>
+                    <p>< 500ms response times, 1000+ RPS capability, intelligent caching, and request optimization for global accessibility.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🤖 AI Integration</h4>
+                    <p>Model Context Protocol (MCP) support for seamless integration with AI assistants and translation tools.</p>
+                </div>
+            </div>
+
+            <div class="workflow-section">
+                <h3>🌍 Strategic Languages</h3>
+                <p>Strategic Languages (formerly known as Gateway Languages) serve as bridges that enable Mother Tongue Translators to access high-quality translation resources and translate Scripture into their heart languages. Our API supports major Strategic Languages including English, Spanish, French, Portuguese, Arabic, Chinese, and many others.</p>
+            </div>
+        </div>
+
+        <!-- Quick Start Tab -->
+        <div id="quickstart" class="tab-pane">
+            <h2>⚡ Quick Start Guide</h2>
+            
+            <h3>1. Make Your First API Call</h3>
+            <div class="code-example">
+                <div class="code-example-header">Basic Scripture Lookup</div>
+                <div class="code-example-body">
+                    <pre><code>curl "https://api.translation.tools/api/fetch-scripture?reference=John 3:16&language=en"</code></pre>
+                </div>
+            </div>
+
+            <h3>2. Get Translation Helps</h3>
+            <div class="code-example">
+                <div class="code-example-header">Translation Notes for Context</div>
+                <div class="code-example-body">
+                    <pre><code>curl "https://api.translation.tools/api/fetch-translation-notes?reference=John 3:16&language=en"</code></pre>
+                </div>
+            </div>
+
+            <h3>3. Explore Available Resources</h3>
+            <div class="code-example">
+                <div class="code-example-header">List All Resource Types</div>
+                <div class="code-example-body">
+                    <pre><code>curl "https://api.translation.tools/api/list-available-resources?language=en"</code></pre>
+                </div>
+            </div>
+
+            <h3>📚 Response Format</h3>
+            <p>All API responses follow a consistent structure:</p>
+            <div class="code-example">
+                <div class="code-example-header">Standard Response Structure</div>
+                <div class="code-example-body">
+                    <pre><code>{
+  "data": { /* Resource content */ },
+  "metadata": {
+    "responseTime": 150,
+    "cached": true,
+    "timestamp": "2024-01-01T00:00:00.000Z"
+  }
+}</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Code Examples Tab -->
+        <div id="examples" class="tab-pane">
+            <h2>💻 Code Examples</h2>
+            <p>Complete examples in multiple programming languages showing common integration patterns.</p>
+
+            <div class="code-examples">
+                <!-- JavaScript Example -->
+                <div class="code-example">
+                    <div class="code-example-header">JavaScript / Node.js</div>
+                    <div class="code-example-body">
+                        <pre><code>// Translation Helpers API Client
+class TranslationAPI {
+  constructor(baseUrl = 'https://api.translation.tools') {
+    this.baseUrl = baseUrl;
+  }
+
+  async fetchScripture(reference, language = 'en') {
+    const response = await fetch(
+      `${this.baseUrl}/api/fetch-scripture?` +
+      `reference=${encodeURIComponent(reference)}&` +
+      `language=${language}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+    
+    return response.json();
+  }
+
+  async getTranslationHelps(reference, language = 'en') {
+    const [scripture, notes, words] = await Promise.all([
+      this.fetchScripture(reference, language),
+      this.fetchTranslationNotes(reference, language),
+      this.getWordsForReference(reference, language)
+    ]);
+
+    return { scripture, notes, words };
+  }
+
+  async fetchTranslationNotes(reference, language = 'en') {
+    const response = await fetch(
+      `${this.baseUrl}/api/fetch-translation-notes?` +
+      `reference=${encodeURIComponent(reference)}&` +
+      `language=${language}`
+    );
+    return response.json();
+  }
+}
+
+// Usage Example
+const api = new TranslationAPI();
+
+async function translatePassage() {
+  try {
+    const helps = await api.getTranslationHelps('Romans 1:1');
+    
+    console.log('Scripture:', helps.scripture.scripture.text);
+    console.log('Notes:', helps.notes.notes.length, 'available');
+    console.log('Words:', helps.words.words?.length || 0, 'key terms');
+  } catch (error) {
+    console.error('Translation help failed:', error);
+  }
+}
+
+translatePassage();</code></pre>
+                    </div>
+                </div>
+
+                <!-- Python Example -->
+                <div class="code-example">
+                    <div class="code-example-header">Python</div>
+                    <div class="code-example-body">
+                        <pre><code>import requests
+import json
+from typing import Dict, List, Optional
+
+class TranslationAPI:
+    def __init__(self, base_url: str = "https://api.translation.tools"):
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def fetch_scripture(self, reference: str, language: str = "en") -> Dict:
+        """Fetch scripture text with alignment data."""
+        response = self.session.get(
+            f"{self.base_url}/api/fetch-scripture",
+            params={
+                "reference": reference,
+                "language": language
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def fetch_translation_notes(self, reference: str, language: str = "en") -> Dict:
+        """Fetch translation notes for cultural context."""
+        response = self.session.get(
+            f"{self.base_url}/api/fetch-translation-notes",
+            params={
+                "reference": reference, 
+                "language": language
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_translation_word(self, word: str, language: str = "en") -> Dict:
+        """Get definition for a biblical term."""
+        response = self.session.get(
+            f"{self.base_url}/api/get-translation-word",
+            params={
+                "word": word,
+                "language": language,
+                "includeReferences": True
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+
+# Usage Example
+def translation_workflow():
+    api = TranslationAPI()
+    
+    # Get comprehensive helps for a passage
+    reference = "Ephesians 2:8-9"
+    
+    try:
+        # Fetch all resources
+        scripture = api.fetch_scripture(reference)
+        notes = api.fetch_translation_notes(reference)
+        
+        print(f"Scripture: {scripture['scripture']['text']}")
+        print(f"Translation Notes: {len(notes['notes'])} available")
+        
+        # Look up key theological term
+        grace_word = api.get_translation_word("grace")
+        print(f"Grace definition: {grace_word['word']['definition']}")
+        
+    except requests.RequestException as e:
+        print(f"API request failed: {e}")
+
+if __name__ == "__main__":
+    translation_workflow()</code></pre>
+                    </div>
+                </div>
+
+                <!-- PHP Example -->
+                <div class="code-example">
+                    <div class="code-example-header">PHP</div>
+                    <div class="code-example-body">
+                        <pre><code><?php
+
+class TranslationAPI {
+    private $baseUrl;
+    
+    public function __construct($baseUrl = 'https://api.translation.tools') {
+        $this->baseUrl = $baseUrl;
+    }
+    
+    public function fetchScripture($reference, $language = 'en') {
+        $url = $this->baseUrl . '/api/fetch-scripture?' . http_build_query([
+            'reference' => $reference,
+            'language' => $language
+        ]);
+        
+        $response = file_get_contents($url);
+        if ($response === false) {
+            throw new Exception('Failed to fetch scripture');
+        }
+        
+        return json_decode($response, true);
+    }
+    
+    public function fetchTranslationNotes($reference, $language = 'en') {
+        $url = $this->baseUrl . '/api/fetch-translation-notes?' . http_build_query([
+            'reference' => $reference,
+            'language' => $language
+        ]);
+        
+        $response = file_get_contents($url);
+        if ($response === false) {
+            throw new Exception('Failed to fetch translation notes');
+        }
+        
+        return json_decode($response, true);
+    }
+    
+    public function getLanguageCoverage($minCompleteness = 70) {
+        $url = $this->baseUrl . '/api/language-coverage?' . http_build_query([
+            'minCompleteness' => $minCompleteness,
+            'recommended' => true
+        ]);
+        
+        $response = file_get_contents($url);
+        if ($response === false) {
+            throw new Exception('Failed to fetch language coverage');
+        }
+        
+        return json_decode($response, true);
+    }
+}
+
+// Usage Example
+$api = new TranslationAPI();
+
+try {
+    // Get translation resources for John 3:16
+    $scripture = $api->fetchScripture('John 3:16');
+    $notes = $api->fetchTranslationNotes('John 3:16');
+    
+    echo "Scripture: " . $scripture['scripture']['text'] . "\n";
+    echo "Notes available: " . count($notes['notes']) . "\n";
+    
+    // Check Strategic Language coverage
+    $coverage = $api->getLanguageCoverage(80);
+    echo "Languages with 80%+ coverage: " . count($coverage['languages']) . "\n";
+    
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+}
+
+?></code></pre>
+                    </div>
+                </div>
+
+                <!-- Go Example -->
+                <div class="code-example">
+                    <div class="code-example-header">Go</div>
+                    <div class="code-example-body">
+                        <pre><code>package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "io/ioutil"
+    "net/http"
+    "net/url"
+)
+
+type TranslationAPI struct {
+    BaseURL string
+    Client  *http.Client
+}
+
+type ScriptureResponse struct {
+    Scripture struct {
+        Text     string `json:"text"`
+        Citation string `json:"citation"`
+    } `json:"scripture"`
+    Language string `json:"language"`
+    Metadata struct {
+        ResponseTime int  `json:"responseTime"`
+        Cached       bool `json:"cached"`
+    } `json:"metadata"`
+}
+
+func NewTranslationAPI(baseURL string) *TranslationAPI {
+    return &TranslationAPI{
+        BaseURL: baseURL,
+        Client:  &http.Client{},
+    }
+}
+
+func (api *TranslationAPI) FetchScripture(reference, language string) (*ScriptureResponse, error) {
+    params := url.Values{}
+    params.Add("reference", reference)
+    params.Add("language", language)
+    
+    resp, err := api.Client.Get(api.BaseURL + "/api/fetch-scripture?" + params.Encode())
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return nil, err
+    }
+    
+    var scripture ScriptureResponse
+    err = json.Unmarshal(body, &scripture)
+    if err != nil {
+        return nil, err
+    }
+    
+    return &scripture, nil
+}
+
+func main() {
+    api := NewTranslationAPI("https://api.translation.tools")
+    
+    // Fetch John 3:16
+    scripture, err := api.FetchScripture("John 3:16", "en")
+    if err != nil {
+        fmt.Printf("Error: %v\n", err)
+        return
+    }
+    
+    fmt.Printf("Scripture: %s\n", scripture.Scripture.Text)
+    fmt.Printf("Response time: %d ms\n", scripture.Metadata.ResponseTime)
+    fmt.Printf("Cached: %t\n", scripture.Metadata.Cached)
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Rust Example -->
+                <div class="code-example">
+                    <div class="code-example-header">Rust</div>
+                    <div class="code-example-body">
+                        <pre><code>use reqwest;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Deserialize)]
+struct ScriptureResponse {
+    scripture: Scripture,
+    language: String,
+    metadata: ResponseMetadata,
+}
+
+#[derive(Debug, Deserialize)]
+struct Scripture {
+    text: String,
+    citation: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ResponseMetadata {
+    #[serde(rename = "responseTime")]
+    response_time: u32,
+    cached: bool,
+}
+
+struct TranslationAPI {
+    base_url: String,
+    client: reqwest::Client,
+}
+
+impl TranslationAPI {
+    fn new(base_url: String) -> Self {
+        Self {
+            base_url,
+            client: reqwest::Client::new(),
+        }
+    }
+    
+    async fn fetch_scripture(&self, reference: &str, language: &str) -> Result<ScriptureResponse, reqwest::Error> {
+        let url = format!("{}/api/fetch-scripture", self.base_url);
+        
+        let response = self.client
+            .get(&url)
+            .query(&[("reference", reference), ("language", language)])
+            .send()
+            .await?;
+            
+        response.json::<ScriptureResponse>().await
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let api = TranslationAPI::new("https://api.translation.tools".to_string());
+    
+    match api.fetch_scripture("Romans 8:28", "en").await {
+        Ok(scripture) => {
+            println!("Scripture: {}", scripture.scripture.text);
+            println!("Response time: {} ms", scripture.metadata.response_time);
+            println!("Cached: {}", scripture.metadata.cached);
+        }
+        Err(e) => {
+            eprintln!("Error fetching scripture: {}", e);
+        }
+    }
+    
+    Ok(())
+}</code></pre>
+                    </div>
+                </div>
+
+                <!-- Java Example -->
+                <div class="code-example">
+                    <div class="code-example-header">Java</div>
+                    <div class="code-example-body">
+                        <pre><code>import java.net.http.*;
+import java.net.URI;
+import java.time.Duration;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class TranslationAPI {
+    private final String baseUrl;
+    private final HttpClient client;
+    private final ObjectMapper mapper;
+    
+    public TranslationAPI(String baseUrl) {
+        this.baseUrl = baseUrl;
+        this.client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+        this.mapper = new ObjectMapper();
+    }
+    
+    public ScriptureResponse fetchScripture(String reference, String language) 
+            throws Exception {
+        String url = String.format("%s/api/fetch-scripture?reference=%s&language=%s",
+            baseUrl, 
+            java.net.URLEncoder.encode(reference, "UTF-8"),
+            language);
+            
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .build();
+            
+        HttpResponse<String> response = client.send(request, 
+            HttpResponse.BodyHandlers.ofString());
+            
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("API request failed: " + response.statusCode());
+        }
+        
+        return mapper.readValue(response.body(), ScriptureResponse.class);
+    }
+    
+    public static class ScriptureResponse {
+        public Scripture scripture;
+        public String language;
+        public ResponseMetadata metadata;
+    }
+    
+    public static class Scripture {
+        public String text;
+        public String citation;
+    }
+    
+    public static class ResponseMetadata {
+        @JsonProperty("responseTime")
+        public int responseTime;
+        public boolean cached;
+    }
+    
+    public static void main(String[] args) {
+        try {
+            TranslationAPI api = new TranslationAPI("https://api.translation.tools");
+            ScriptureResponse scripture = api.fetchScripture("Philippians 4:13", "en");
+            
+            System.out.println("Scripture: " + scripture.scripture.text);
+            System.out.println("Response time: " + scripture.metadata.responseTime + " ms");
+            System.out.println("Cached: " + scripture.metadata.cached);
+            
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflows Tab -->
+        <div id="workflows" class="tab-pane">
+            <h2>🔄 Translation Workflows</h2>
+            
+            <div class="workflow-section">
+                <h3>👨‍💻 Mother Tongue Translator (MTT) Workflow</h3>
+                <p>Complete workflow for translators working from Strategic Languages into their heart languages.</p>
+                <div class="code-example">
+                    <div class="code-example-header">MTT Translation Process</div>
+                    <div class="code-example-body">
+                        <pre><code>// Step 1: Load passage in Strategic Language
+const scripture = await api.fetchScripture('Romans 1:1', 'en');
+
+// Step 2: Get both form-centric (ULT) and meaning-based (UST) texts
+// ULT preserves original structure, UST demonstrates clear expression
+console.log('Literal text (ULT):', scripture.ult?.text);
+console.log('Simplified text (UST):', scripture.ust?.text);
+
+// Step 3: Get cultural context and explanations
+const notes = await api.fetchTranslationNotes('Romans 1:1', 'en');
+console.log('Translation notes:', notes.notes);
+
+// Step 4: Look up key theological terms
+const words = await api.getWordsForReference('Romans 1:1', 'en');
+words.words?.forEach(word => {
+    console.log(`Term: ${word.term} - Definition: ${word.definition}`);
+});
+
+// Step 5: Use translation questions for checking
+const questions = await api.fetchTranslationQuestions('Romans 1:1', 'en');
+console.log('Checking questions:', questions.questions);
+
+// Result: Comprehensive translation helps for accurate heart language translation</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workflow-section">
+                <h3>🤖 AI Assistant Integration</h3>
+                <p>Integrate translation resources into AI assistants using the Model Context Protocol (MCP).</p>
+                <div class="code-example">
+                    <div class="code-example-header">MCP Integration</div>
+                    <div class="code-example-body">
+                        <pre><code>// MCP Tool Call Structure
+const mcpRequest = {
+    method: 'tools/call',
+    params: {
+        name: 'fetchScripture',
+        arguments: {
+            reference: 'John 3:16',
+            language: 'en',
+            includeAlignment: true
+        }
+    }
+};
+
+// AI Assistant can now:
+// 1. Fetch scripture with precise word alignment
+// 2. Explain difficult passages using translation notes
+// 3. Define biblical terms with full context
+// 4. Suggest appropriate translation approaches
+// 5. Validate translations with comprehension questions
+
+// Example AI response:
+"Based on the word alignment data, the Greek word 'κόσμος' (kosmos) 
+in John 3:16 refers to the world of humanity, not just the physical 
+universe. The translation notes suggest emphasizing God's love for 
+people rather than creation in general."</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workflow-section">
+                <h3>📱 Mobile App Integration</h3>
+                <p>Optimize API usage for mobile translation apps with limited connectivity.</p>
+                <div class="code-example">
+                    <div class="code-example-header">Mobile Optimization</div>
+                    <div class="code-example-body">
+                        <pre><code>// Mobile-optimized requests with field filtering and pagination
+class MobileTranslationApp {
+    async loadPassageForOffline(reference) {
+        // Request only essential fields to reduce bandwidth
+        const scripture = await fetch(`/api/fetch-scripture?reference=${reference}&fields=text,citation`);
+        
+        // Get condensed notes for offline use
+        const notes = await fetch(`/api/fetch-translation-notes?reference=${reference}&fields=note&limit=5`);
+        
+        // Cache responses locally for offline access
+        await this.cacheManager.store(reference, { scripture, notes });
+        
+        return { scripture, notes };
+    }
+    
+    async syncWhenOnline() {
+        // Background sync of frequently accessed passages
+        const popularPassages = ['John 3:16', 'Romans 8:28', 'Psalm 23'];
+        
+        for (const passage of popularPassages) {
+            await this.loadPassageForOffline(passage);
+        }
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workflow-section">
+                <h3>🔍 Translation Checking Workflow</h3>
+                <p>Quality assurance workflow for translation teams and consultants.</p>
+                <div class="code-example">
+                    <div class="code-example-header">Translation Validation</div>
+                    <div class="code-example-body">
+                        <pre><code>async function validateTranslation(reference, heartLanguageText, strategicLanguage = 'en') {
+    // Get source texts for comparison
+    const source = await api.fetchScripture(reference, strategicLanguage);
+    
+    // Get validation questions
+    const questions = await api.fetchTranslationQuestions(reference, strategicLanguage);
+    
+    // Check key terms are handled correctly
+    const words = await api.getWordsForReference(reference, strategicLanguage);
+    
+    const validation = {
+        reference,
+        heartLanguageText,
+        checkingQuestions: questions.questions.map(q => ({
+            question: q.question,
+            expectedAnswer: q.answer,
+            // Translator answers these to verify comprehension
+            translatorAnswer: null
+        })),
+        keyTerms: words.words?.map(word => ({
+            term: word.term,
+            definition: word.definition,
+            // Check if term is appropriately handled in heart language
+            handledCorrectly: null
+        })),
+        sourceComparison: {
+            literal: source.ult?.text,
+            simplified: source.ust?.text,
+            // Compare for accuracy and naturalness
+        }
+    };
+    
+    return validation;
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Reference Tab -->
+        <div id="api-reference" class="tab-pane">
+            <div id="swagger-ui"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
+    <script>
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-pane').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all nav links
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked nav link
+            event.target.classList.add('active');
+            
+            // Initialize Swagger UI when API Reference tab is shown
+            if (tabName === 'api-reference') {
+                initializeSwaggerUI();
+            }
+        }
+        
+        function initializeSwaggerUI() {
+            // Only initialize once
+            if (document.querySelector('#swagger-ui .swagger-ui')) {
+                return;
+            }
+            
+            SwaggerUIBundle({
+                url: './openapi.yaml',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIBundle.presets.standalone
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout",
+                tryItOutEnabled: true,
+                supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+                onComplete: function() {
+                    console.log('Swagger UI loaded successfully');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
