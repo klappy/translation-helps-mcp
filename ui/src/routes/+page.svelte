@@ -64,10 +64,10 @@
 				Try Live Demo
 			</a>
 			<a
-				href="/api"
+				href="/api-docs"
 				class="rounded-lg border border-blue-600 px-6 py-3 text-blue-600 transition-colors hover:bg-blue-50"
 			>
-				API Documentation
+				Interactive API Docs
 			</a>
 		</div>
 	</section>
