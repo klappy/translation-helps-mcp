@@ -9,8 +9,10 @@
 ### For Immediate Use
 
 - **[Quick Wins Reference](QUICK_WINS_REFERENCE.md)** - Essential patterns that save hours ⚡
-- **[Implementation Summary](../IMPLEMENTATION_SUMMARY.md)** - Project overview and current status 📊
-- **[Testing Interface](http://localhost:8888/.netlify/functions/test-ui)** - Live API testing UI 🎨
+- **[Implementation Summary](guides/IMPLEMENTATION_SUMMARY.md)** - Project overview and current status 📊
+- **[Testing Interface](testing/test-api.html)** - Manual API testing page 🎨
+- **[Getting Started Guide](guides/GETTING_STARTED.md)** - Complete setup instructions
+- **[Quick Start Guide](guides/QUICK_START_GUIDE.md)** - Fast deployment guide
 
 ### For Deep Understanding
 
@@ -224,6 +226,47 @@ This system is **production-ready** with comprehensive resource support, profess
 - **MCP Architecture**: Modern tool server implementation patterns
 - **Netlify Functions**: Serverless deployment optimization
 - **Development Workflow**: Task-driven development with comprehensive logging
+
+---
+
+## 🗂️ **New Organized Structure**
+
+The following documentation has been reorganized into topic-based folders:
+
+### **[`/deployment/`](deployment/)**
+
+Platform-specific deployment guides:
+
+- **[`/cloudflare/`](deployment/cloudflare/)** - Cloudflare Pages, Workers, KV setup
+- **[`/netlify/`](deployment/netlify/)** - Netlify Functions and Blobs setup
+- **[`/general/`](deployment/general/)** - Platform-agnostic guides
+
+### **[`/guides/`](guides/)**
+
+Implementation and setup guides:
+
+- Getting Started, Quick Start, Implementation summaries
+- UI audit results and simplification documentation
+
+### **[`/performance/`](performance/)**
+
+Performance analysis and optimization:
+
+- Performance reports and caching strategies
+
+### **[`/testing/`](testing/)**
+
+Testing tools and documentation:
+
+- Manual API testing interfaces
+
+### **[`/legacy/`](legacy/)**
+
+Historical documentation and migration guides
+
+### **Related Scripts**
+
+- **[`/scripts/load-tests/`](../scripts/load-tests/)** - Performance and load testing scripts
 
 ---
 
