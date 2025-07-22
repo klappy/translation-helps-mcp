@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Run lint-staged for basic linting and formatting
+npx lint-staged
+
+# Custom terminology validation
+echo "📝 Checking for UW terminology compliance..."
+
+# Check for Gateway Language usage (should be Strategic Language)
+if git diff --cached --name-only --diff-filter=ACM | xargs grep -l "Gateway Language\|isGatewayLanguage" 2>/dev/null; then
+  echo "❌ ERROR: Found 'Gateway Language' terminology. Use 'Strategic Language' instead."
+  echo "Files with issues:"
+  git diff --cached --name-only --diff-filter=ACM | xargs grep -l "Gateway Language\|isGatewayLanguage" 2>/dev/null
+  echo ""
+  echo "Fix these before committing. See UW_TRANSLATION_RESOURCES_GUIDE.md for proper terminology."
+  exit 1
+fi
+
+# Check for generic "Bible texts" descriptions (should be UW-specific)
+if git diff --cached --name-only --diff-filter=ACM | xargs grep -l "Bible texts in various translations" 2>/dev/null; then
+  echo "⚠️  WARNING: Found generic 'Bible texts' description. Consider using UW-specific descriptions like:"
+  echo "   - 'ULT/GLT (Literal) Scripture texts with word alignment'"
+  echo "   - 'UST/GST (Simplified) Scripture texts with word alignment'"
+  echo ""
+fi
+
+# Check for missing UW resource types in new API handlers
+if git diff --cached --name-only --diff-filter=A | grep -q "src/functions/handlers/.*\.ts$"; then
+  echo "📋 New API handler detected. Ensure it uses proper UW terminology:"
+  echo "   - Use ResourceType enum from terminology constants"
+  echo "   - Include UW-specific descriptions"
+  echo "   - Reference UW_TRANSLATION_RESOURCES_GUIDE.md for specifications"
+  echo ""
+fi
+
+echo "✅ Pre-commit checks passed!"
