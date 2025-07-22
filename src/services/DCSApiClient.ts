@@ -5,16 +5,15 @@
  */
 
 import {
-  DCSResponse,
+  CatalogSearchParams,
   DCSError,
   DCSRequestOptions,
-  Owner,
-  Language,
-  Resource,
+  DCSResponse,
   FileContent,
-  SearchResponse,
-  CatalogSearchParams,
+  Language,
+  Owner,
   OwnerSearchParams,
+  Resource,
 } from "../types/dcs.js";
 import { logger } from "../utils/logger.js";
 
@@ -293,7 +292,7 @@ export class DCSApiClient {
           homeCountry: lang.hc, // hc = home country
           countryCodes: lang.cc, // cc = country codes array
           alternativeNames: lang.alt, // alt = alternative names array
-          isGatewayLanguage: lang.gw, // gw = gateway language boolean
+          isStrategicLanguage: lang.gw, // gw = strategic language boolean
         });
       }
     });
