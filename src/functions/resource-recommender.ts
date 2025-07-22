@@ -486,7 +486,7 @@ function getDifficultyBasedRecommendations(
  * Get recommendations based on passage genre
  */
 function getGenreSpecificRecommendations(
-  context: RecommendationContext,
+  _context: RecommendationContext,
   analysis: ReturnType<typeof analyzePassage>
 ): ResourceRecommendation[] {
   const recommendations: ResourceRecommendation[] = [];
@@ -503,6 +503,7 @@ function getGenreSpecificRecommendations(
         confidence: 0.8,
         context: {
           specificSections: ["Figurative language", "Cultural metaphors"],
+          relatedPassages: [_context.reference], // Use the context reference
         },
       });
       break;
@@ -518,6 +519,7 @@ function getGenreSpecificRecommendations(
         confidence: 0.9,
         context: {
           specificSections: ["Symbolic language", "Historical context", "Fulfillment"],
+          relatedPassages: [_context.reference], // Use the context reference
         },
       });
       break;
@@ -531,6 +533,7 @@ function getGenreSpecificRecommendations(
         confidence: 0.85,
         context: {
           searchTerms: ["law", "commandment", "statute", "ordinance", "covenant"],
+          relatedPassages: [_context.reference], // Use the context reference
         },
       });
       break;
