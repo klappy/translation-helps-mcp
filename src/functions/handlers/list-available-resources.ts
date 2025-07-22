@@ -3,10 +3,18 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import {
+  ResourceDescriptions,
+  ResourceType,
+} from "../../constants/terminology.js";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 export const listAvailableResourcesHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -29,92 +37,68 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
     const organization = request.queryStringParameters.organization;
     const query = request.queryStringParameters.query;
 
-    // For now, return a basic response with common resource types
-    // This should be enhanced to actually search the API catalog
-    const result = {
-      resources: [
-        {
-          type: "scripture",
-          name: "Scripture Texts",
-          description:
-            "ULT/GLT (Literal) and UST/GST (Simplified) Scripture texts with embedded word alignment data",
-          languages: language ? [language] : ["en", "es", "fr"],
-        },
-        {
-          type: "ult",
-          name: "unfoldingWord Literal Text",
-          description:
-            "Form-centric translation preserving original language structure and word order",
-          languages: language ? [language] : ["en"],
-        },
-        {
-          type: "ust",
-          name: "unfoldingWord Simplified Text",
-          description: "Meaning-based translation demonstrating clear, natural expression",
-          languages: language ? [language] : ["en"],
-        },
-        {
-          type: "glt",
-          name: "Gateway Literal Text",
-          description:
-            "Form-centric translation in Strategic Languages preserving source structure",
-          languages: language ? [language] : ["es", "fr", "pt", "ru"],
-        },
-        {
-          type: "gst",
-          name: "Gateway Simplified Text",
-          description: "Meaning-based translation in Strategic Languages emphasizing clarity",
-          languages: language ? [language] : ["es", "fr", "pt", "ru"],
-        },
-        {
-          type: "notes",
-          name: "Translation Notes",
-          description:
-            "Verse-by-verse explanations for difficult passages with cultural background",
-          languages: language ? [language] : ["en", "es", "fr"],
-        },
-        {
-          type: "questions",
-          name: "Translation Questions",
-          description: "Comprehension validation questions for translation checking",
-          languages: language ? [language] : ["en", "es", "fr"],
-        },
-        {
-          type: "words",
-          name: "Translation Words",
-          description: "Comprehensive biblical term definitions with cross-references",
-          languages: language ? [language] : ["en", "es", "fr"],
-        },
-        {
-          type: "words-links",
-          name: "Translation Words Links",
-          description: "Maps word occurrences to Translation Words articles",
-          languages: language ? [language] : ["en", "es", "fr"],
-        },
-        {
-          type: "academy",
-          name: "Translation Academy",
-          description: "Translation methodology and best practices training modules",
-          languages: language ? [language] : ["en", "es", "fr"],
-        },
-        {
-          type: "obs",
-          name: "Open Bible Stories",
-          description: "Chronological Scripture overview through 50 key Bible stories",
-          languages: language ? [language] : ["en", "es", "fr", "pt", "ru", "ar"],
-        },
-      ],
-      metadata: {
-        responseTime: Date.now() - startTime,
-        timestamp: new Date().toISOString(),
-        resourcesFound: 11,
-        query,
-        language,
-        organization,
-        terminology: "Strategic Language compliant",
-        translationApproaches: ["form-centric", "meaning-based"],
+    const resourceTypes = [
+      {
+        type: ResourceType.ULT,
+        name: "unfoldingWord Literal Text",
+        description: ResourceDescriptions[ResourceType.ULT],
+        languages: language ? [language] : ["en"],
       },
-    };
+      {
+        type: ResourceType.UST,
+        name: "unfoldingWord Simplified Text",
+        description: ResourceDescriptions[ResourceType.UST],
+        languages: language ? [language] : ["en"],
+      },
+      {
+        type: ResourceType.GLT,
+        name: "Gateway Literal Text",
+        description: ResourceDescriptions[ResourceType.GLT],
+        languages: language ? [language] : ["es", "fr", "pt", "ru"],
+      },
+      {
+        type: ResourceType.GST,
+        name: "Gateway Simplified Text",
+        description: ResourceDescriptions[ResourceType.GST],
+        languages: language ? [language] : ["es", "fr", "pt", "ru"],
+      },
+      {
+        type: ResourceType.TN,
+        name: "Translation Notes",
+        description: ResourceDescriptions[ResourceType.TN],
+        languages: language ? [language] : ["en", "es", "fr"],
+      },
+      {
+        type: ResourceType.TQ,
+        name: "Translation Questions",
+        description: ResourceDescriptions[ResourceType.TQ],
+        languages: language ? [language] : ["en", "es", "fr"],
+      },
+      {
+        type: ResourceType.TW,
+        name: "Translation Words",
+        description: ResourceDescriptions[ResourceType.TW],
+        languages: language ? [language] : ["en", "es", "fr"],
+      },
+      {
+        type: ResourceType.TWL,
+        name: "Translation Words Links",
+        description: ResourceDescriptions[ResourceType.TWL],
+        languages: language ? [language] : ["en", "es", "fr"],
+      },
+      {
+        type: ResourceType.TA,
+        name: "Translation Academy",
+        description: ResourceDescriptions[ResourceType.TA],
+        languages: language ? [language] : ["en", "es", "fr"],
+      },
+      {
+        type: ResourceType.OBS,
+        name: "Open Bible Stories",
+        description: ResourceDescriptions[ResourceType.OBS],
+        languages: language ? [language] : ["en", "es", "fr", "pt", "ru", "ar"],
+      },
+    ];
 
     const duration = Date.now() - startTime;
 
@@ -126,7 +110,19 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
         "Cache-Control": "public, max-age=3600",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify(result),
+      body: JSON.stringify({
+        resourceTypes,
+        metadata: {
+          responseTime: Date.now() - startTime,
+          timestamp: new Date().toISOString(),
+          resourcesFound: resourceTypes.length,
+          query,
+          language,
+          organization,
+          terminology: "Strategic Language compliant",
+          translationApproaches: ["form-centric", "meaning-based"],
+        },
+      }),
     };
   } catch (error) {
     console.error("List Available Resources API Error:", error);
