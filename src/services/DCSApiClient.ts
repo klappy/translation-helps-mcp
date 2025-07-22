@@ -553,4 +553,57 @@ export class DCSApiClient {
     const endpoint = `/users/${owner}/repos?${queryParams.toString()}`;
     return this.makeRequest<Resource[]>(endpoint);
   }
+
+  /**
+   * Check if a language code represents a Strategic Language
+   * Strategic Languages have comprehensive translation resources and serve as bridges
+   * for Mother Tongue Translators to access biblical content
+   */
+  public isStrategicLanguage(languageCode: string): boolean {
+    // Strategic Languages are well-resourced bridge languages
+    // English is the primary Strategic Language, followed by Spanish, French, etc.
+    const strategicLanguages = [
+      "en", // English - Primary Strategic Language with complete resources
+      "es", // Spanish - Major Strategic Language
+      "es-419", // Latin American Spanish
+      "fr", // French - Strategic Language for Francophone regions
+      "pt", // Portuguese
+      "pt-br", // Brazilian Portuguese
+      "ru", // Russian - Strategic Language for Eastern Europe/Central Asia
+      "zh", // Chinese (Simplified)
+      "ar", // Arabic - Strategic Language for MENA region
+      "hi", // Hindi - Strategic Language for South Asia
+      "sw", // Swahili - Strategic Language for East Africa
+      "am", // Amharic - Strategic Language for Ethiopia region
+      "ne", // Nepali - Strategic Language for Nepal/Himalayan region
+      "ur", // Urdu - Strategic Language for Pakistan/India region
+      "fa", // Farsi/Persian - Strategic Language for Iran/Afghanistan
+      "tr", // Turkish - Strategic Language for Turkey/Central Asia
+      "id", // Indonesian - Strategic Language for Southeast Asia
+      "th", // Thai - Strategic Language for Thailand/SE Asia
+      "ko", // Korean - Strategic Language for Korea
+      "ja", // Japanese - Strategic Language for Japan
+      "de", // German - Strategic Language for Germanic Europe
+      "it", // Italian - Strategic Language for Southern Europe
+      "nl", // Dutch - Strategic Language for Netherlands/Belgium
+      "pl", // Polish - Strategic Language for Eastern Europe
+      "uk", // Ukrainian - Strategic Language for Ukraine region
+      "cs", // Czech - Strategic Language for Central Europe
+      "ro", // Romanian - Strategic Language for Romania/Moldova
+      "bg", // Bulgarian - Strategic Language for Bulgaria region
+      "hr", // Croatian - Strategic Language for Balkans
+      "sk", // Slovak - Strategic Language for Slovakia
+      "sl", // Slovenian - Strategic Language for Slovenia
+      "et", // Estonian - Strategic Language for Baltic region
+      "lv", // Latvian - Strategic Language for Latvia
+      "lt", // Lithuanian - Strategic Language for Lithuania
+      "fi", // Finnish - Strategic Language for Finland
+      "sv", // Swedish - Strategic Language for Scandinavia
+      "no", // Norwegian - Strategic Language for Norway
+      "da", // Danish - Strategic Language for Denmark
+      "is", // Icelandic - Strategic Language for Iceland
+    ];
+
+    return strategicLanguages.includes(languageCode.toLowerCase());
+  }
 }
