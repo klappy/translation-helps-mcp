@@ -1,0 +1,1184 @@
+# Translation Helps Platform - Detailed Implementation Plan
+# For use with Taskmaster parse-prd functionality
+# Version: 1.0
+# Based on: prd.txt
+
+## PROJECT OVERVIEW
+
+This implementation plan breaks down the Translation Helps Platform PRD into actionable, highly detailed tasks with extensive context. Each task includes acceptance criteria, technical details, and dependencies to ensure successful implementation.
+
+## PHASE 1: FOUNDATION AUDIT & PREPARATION (Week 1-2)
+
+### Task 1: Conduct Comprehensive Codebase Audit
+**Priority**: High
+**Description**: Perform a complete audit of the existing codebase against the PRD requirements to identify gaps, misalignments, and required changes.
+
+**Context**: 
+The current implementation has core functionality but uses outdated terminology and lacks complete alignment with unfoldingWord standards. This audit will create a definitive list of all changes needed.
+
+**Implementation Details**:
+1. Review all source files for terminology usage
+2. Document all instances of "Gateway Language" that need updating  
+3. Identify missing resource type implementations
+4. Map current API endpoints to PRD specifications
+5. Analyze test coverage gaps
+6. Review documentation completeness
+
+**Acceptance Criteria**:
+- Audit report document created with all findings
+- Spreadsheet mapping current vs. required functionality
+- Priority ranking of all identified issues
+- Time estimates for each fix
+
+**Dependencies**: Access to PRD (prd.txt) and UW_TRANSLATION_RESOURCES_GUIDE.md
+
+### Task 2: Set Up Development Environment Standards
+**Priority**: High
+**Description**: Establish consistent development environment with proper tooling, linting, and code standards aligned with PRD requirements.
+
+**Context**:
+Standardized development environment ensures all team members can contribute effectively and maintain code quality throughout implementation.
+
+**Implementation Details**:
+1. Configure ESLint rules for terminology enforcement
+2. Set up pre-commit hooks for validation
+3. Create VS Code workspace settings
+4. Document environment setup process
+5. Configure automated formatting rules
+6. Set up branch protection rules
+
+**Acceptance Criteria**:
+- .eslintrc includes custom rules for terminology
+- Pre-commit hooks prevent outdated terms
+- README includes setup instructions
+- All team members have consistent environments
+
+**Dependencies**: Task 1 completion (audit results)
+
+### Task 3: Create Terminology Constants Module
+**Priority**: High  
+**Description**: Build a centralized module defining all approved terminology and resource type constants to ensure consistency across the codebase.
+
+**Context**:
+Having a single source of truth for terminology prevents drift and makes future updates easier. This module will be imported everywhere terminology is used.
+
+**Implementation Details**:
+1. Create src/constants/terminology.ts
+2. Define resource type enums (ULT, UST, TN, TW, TWL, TQ, TA)
+3. Create user type constants (MTT, STRATEGIC_LANGUAGE, HEART_LANGUAGE)
+4. Add resource descriptions matching PRD
+5. Include organization name mappings
+6. Export TypeScript types for strong typing
+
+**Code Structure**:
+```typescript
+// src/constants/terminology.ts
+export enum ResourceType {
+  ULT = 'ult', // unfoldingWord Literal Text
+  GLT = 'glt', // Gateway Literal Text
+  UST = 'ust', // unfoldingWord Simplified Text  
+  GST = 'gst', // Gateway Simplified Text
+  TN = 'tn',   // Translation Notes
+  TW = 'tw',   // Translation Words
+  TWL = 'twl', // Translation Words Links
+  TQ = 'tq',   // Translation Questions
+  TA = 'ta'    // Translation Academy
+}
+
+export const ResourceDescriptions = {
+  [ResourceType.ULT]: 'Form-centric translation preserving original language structure',
+  // ... etc
+}
+
+export const UserTypes = {
+  MTT: 'Mother Tongue Translator',
+  STRATEGIC_LANGUAGE: 'Strategic Language',
+  HEART_LANGUAGE: 'Heart Language'
+}
+```
+
+**Acceptance Criteria**:
+- Module exports all PRD terminology
+- TypeScript types provide autocomplete
+- JSDoc comments explain each term
+- Module is used in at least one component
+
+**Dependencies**: Task 1 (to know all terms needing definition)
+
+## PHASE 2: CORE TERMINOLOGY UPDATES (Week 2-3)
+
+### Task 4: Update DCSApiClient Terminology
+**Priority**: Critical
+**Description**: Replace all instances of outdated terminology in the DCSApiClient service, particularly "Gateway Language" references.
+
+**Context**:
+The DCSApiClient is the core service interacting with Door43. Using correct terminology here ensures all downstream components receive properly labeled data.
+
+**Target File**: src/services/DCSApiClient.ts
+
+**Required Changes**:
+1. Line 295: `isGatewayLanguage` → `isStrategicLanguage`
+2. Update interface definitions to use new terminology
+3. Add proper TypeScript types from terminology module
+4. Update method documentation
+5. Ensure backward compatibility where needed
+
+**Testing Requirements**:
+1. Unit tests for terminology mapping
+2. Integration tests with actual API responses  
+3. Verify no breaking changes for consumers
+
+**Acceptance Criteria**:
+- No instances of "Gateway Language" in file
+- All methods use terminology constants
+- Tests pass with updated terminology
+- API responses properly transformed
+
+**Dependencies**: Task 3 (terminology module)
+
+### Task 5: Update API Handler Descriptions
+**Priority**: High
+**Description**: Update all API endpoint handlers to use PRD-compliant resource descriptions and terminology.
+
+**Context**:
+API responses are what external consumers see. They must reflect the official terminology and provide accurate descriptions of each resource type.
+
+**Target Files**:
+- src/functions/handlers/list-available-resources.ts
+- src/functions/handlers/fetch-scripture.ts
+- src/functions/handlers/fetch-translation-notes.ts
+- All other handlers in src/functions/handlers/
+
+**Implementation for each handler**:
+1. Import terminology constants
+2. Update hardcoded descriptions
+3. Ensure response formats match PRD specs
+4. Add proper error messages
+5. Update TypeScript interfaces
+
+**Example Change**:
+```typescript
+// Before:
+description: "Bible texts in various translations"
+
+// After:
+description: "ULT/GLT (Literal) and UST/GST (Simplified) Scripture texts with word alignment"
+```
+
+**Acceptance Criteria**:
+- All handlers use terminology module
+- Descriptions match PRD exactly
+- API responses validated against PRD
+- Swagger/OpenAPI docs updated
+
+**Dependencies**: Task 3 (terminology module), Task 4 (DCSApiClient updates)
+
+### Task 6: Create Terminology Validation Tests
+**Priority**: High
+**Description**: Build comprehensive test suite to ensure terminology compliance across all API responses and user-facing content.
+
+**Context**:
+Automated tests prevent terminology regression and ensure consistency as the codebase evolves.
+
+**Test Categories**:
+1. Unit tests for terminology module
+2. Integration tests for API responses
+3. Snapshot tests for UI components
+4. E2E tests for full workflows
+
+**Implementation Details**:
+```typescript
+// tests/terminology-compliance.test.ts
+describe('Terminology Compliance', () => {
+  test('API responses use Strategic Language', async () => {
+    const response = await api.getLanguages();
+    expect(response).not.toContain('Gateway Language');
+    expect(response).toContain('Strategic Language');
+  });
+  
+  test('Resource types match PRD definitions', async () => {
+    const resources = await api.listResources();
+    resources.forEach(resource => {
+      expect(ResourceType[resource.type]).toBeDefined();
+    });
+  });
+});
+```
+
+**Acceptance Criteria**:
+- Test suite covers all API endpoints
+- Tests run in CI/CD pipeline
+- Failed tests block deployment
+- Coverage report shows 100% for terminology
+
+**Dependencies**: Tasks 4-5 (updated implementations to test)
+
+## PHASE 3: ENHANCED RESOURCE DISCOVERY (Week 3-4)
+
+### Task 7: Implement Resource Type Detection
+**Priority**: High
+**Description**: Build robust resource type detection that identifies ULT/GLT, UST/GST, and all help resources from catalog responses.
+
+**Context**:
+The catalog API returns resources with various naming patterns. We need intelligent detection to properly categorize resources regardless of organization or naming variations.
+
+**Implementation Details**:
+1. Create src/functions/resource-detector.ts
+2. Implement pattern matching for resource identifiers
+3. Handle organization-specific variations
+4. Support language code detection
+5. Provide confidence scores for matches
+
+**Algorithm**:
+```typescript
+function detectResourceType(identifier: string, subject: string): ResourceType | null {
+  // Check subject field first (most reliable)
+  if (subject === 'Bible' || subject === 'Aligned Bible') {
+    if (identifier.includes('ult') || identifier.includes('glt')) {
+      return ResourceType.ULT;
+    }
+    if (identifier.includes('ust') || identifier.includes('gst')) {
+      return ResourceType.UST;
+    }
+  }
+  
+  // Fall back to identifier patterns
+  const patterns = {
+    [ResourceType.TN]: /^[a-z]{2,3}[-_]tn$/,
+    [ResourceType.TW]: /^[a-z]{2,3}[-_]tw$/,
+    // ... etc
+  };
+  
+  // Return match with confidence
+}
+```
+
+**Acceptance Criteria**:
+- Correctly identifies all PRD resource types
+- Handles edge cases documented
+- Performance < 1ms per detection
+- 95%+ accuracy on test dataset
+
+**Dependencies**: Task 3 (terminology constants)
+
+### Task 8: Build Language Coverage Matrix API
+**Priority**: Medium
+**Description**: Create new API endpoint that returns a matrix showing which resources are available for each Strategic Language.
+
+**Context**:
+Users need to know which languages have complete resource sets before beginning translation projects. This helps them choose appropriate Strategic Languages.
+
+**New Endpoint**: GET /api/language-coverage
+
+**Response Format**:
+```json
+{
+  "languages": {
+    "en": {
+      "name": "English",
+      "coverage": {
+        "ult": { "available": true, "version": "85", "updated": "2024-01-01" },
+        "ust": { "available": true, "version": "85", "updated": "2024-01-01" },
+        "tn": { "available": true, "books": 66, "updated": "2024-01-01" },
+        "tw": { "available": true, "articles": 1000, "updated": "2024-01-01" },
+        "twl": { "available": true, "books": 66, "updated": "2024-01-01" },
+        "tq": { "available": true, "books": 66, "updated": "2024-01-01" },
+        "ta": { "available": true, "articles": 150, "updated": "2024-01-01" }
+      },
+      "completeness": 100,
+      "recommended": true
+    },
+    "es-419": {
+      "name": "Español (Latinoamérica)",
+      "coverage": {
+        // ... similar structure
+      },
+      "completeness": 85,
+      "recommended": true
+    }
+  },
+  "metadata": {
+    "totalLanguages": 15,
+    "completeLanguages": 5,
+    "lastUpdated": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+**Implementation Steps**:
+1. Query catalog for all resources
+2. Group by language code
+3. Calculate completeness scores
+4. Cache results aggressively (1 hour TTL)
+5. Provide filtering options
+
+**Acceptance Criteria**:
+- Returns accurate coverage data
+- Response time < 2s
+- Updates hourly via cron
+- Includes helpful metadata
+
+**Dependencies**: Task 7 (resource detection)
+
+### Task 9: Implement Smart Resource Recommendations
+**Priority**: Medium
+**Description**: Build recommendation engine that suggests appropriate resources based on user's context and needs.
+
+**Context**:
+Users may not know which resources they need. Smart recommendations guide them to the most helpful resources for their current translation task.
+
+**Recommendation Logic**:
+1. If translating narrative → recommend specific TN entries
+2. If theological terms → prioritize TW articles
+3. If checking quality → suggest TQ sets
+4. If methodology questions → point to TA modules
+
+**Implementation**:
+```typescript
+interface RecommendationContext {
+  reference: ScriptureReference;
+  userRole: 'translator' | 'checker' | 'consultant';
+  previousQueries: string[];
+  languageCapabilities: string[];
+}
+
+function recommendResources(context: RecommendationContext): ResourceRecommendation[] {
+  const recommendations = [];
+  
+  // Analyze passage genre
+  const genre = detectGenre(context.reference);
+  
+  // Check for difficult passages
+  const difficulty = assessDifficulty(context.reference);
+  
+  // Build recommendations
+  if (difficulty > 0.7) {
+    recommendations.push({
+      type: ResourceType.TN,
+      reason: 'This passage contains complex cultural concepts',
+      priority: 'high'
+    });
+  }
+  
+  return recommendations;
+}
+```
+
+**Acceptance Criteria**:
+- Provides relevant recommendations
+- Explains why each resource is suggested
+- Learns from usage patterns
+- Response time < 100ms
+
+**Dependencies**: Task 7 (resource detection), Task 8 (coverage data)
+
+## PHASE 4: PERFORMANCE OPTIMIZATION (Week 4-5)
+
+### Task 10: Implement Intelligent Cache Warming
+**Priority**: High
+**Description**: Build cache warming system that preloads frequently accessed resources during low-traffic periods.
+
+**Context**:
+Cold cache misses cause slow responses. Intelligent warming ensures popular resources are always ready, improving user experience.
+
+**Cache Warming Strategy**:
+1. Analyze access patterns from logs
+2. Identify top 100 resource combinations
+3. Warm caches during off-peak hours
+4. Use predictive algorithms for seasonal patterns
+5. Respect rate limits and quotas
+
+**Implementation Components**:
+```typescript
+// src/functions/cache-warmer.ts
+interface WarmingStrategy {
+  resources: ResourceIdentifier[];
+  schedule: CronExpression;
+  priority: 'high' | 'medium' | 'low';
+  conditions: WarmingCondition[];
+}
+
+class CacheWarmer {
+  async analyzePatterns(): Promise<AccessPattern[]> {
+    // Query logs for access patterns
+    // Identify frequently accessed combinations
+    // Return ranked list
+  }
+  
+  async warmCache(strategy: WarmingStrategy): Promise<WarmingResult> {
+    // Respect rate limits
+    // Load resources in priority order
+    // Report success/failure metrics
+  }
+}
+```
+
+**Scheduled Jobs**:
+1. Hourly: Warm top 20 resource combinations
+2. Daily: Full coverage for English resources
+3. Weekly: Refresh all Strategic Language core resources
+
+**Acceptance Criteria**:
+- Cache hit ratio improves to >95%
+- No impact on API rate limits
+- Warming completes within window
+- Metrics dashboard shows effectiveness
+
+**Dependencies**: Existing cache implementation
+
+### Task 11: Implement Request Coalescing
+**Priority**: High
+**Description**: Build request coalescing to combine multiple identical requests into a single upstream call.
+
+**Context**:
+When multiple users request the same resource simultaneously, we should only make one upstream request and share the response.
+
+**Coalescing Logic**:
+```typescript
+class RequestCoalescer {
+  private pendingRequests = new Map<string, Promise<any>>();
+  
+  async coalesce<T>(
+    key: string, 
+    fetcher: () => Promise<T>
+  ): Promise<T> {
+    // Check if request is already pending
+    if (this.pendingRequests.has(key)) {
+      return this.pendingRequests.get(key);
+    }
+    
+    // Create new request
+    const promise = fetcher().finally(() => {
+      this.pendingRequests.delete(key);
+    });
+    
+    this.pendingRequests.set(key, promise);
+    return promise;
+  }
+}
+```
+
+**Integration Points**:
+1. Scripture fetching
+2. Translation notes loading
+3. Catalog queries
+4. Language detection
+
+**Acceptance Criteria**:
+- Reduces upstream requests by >50%
+- No increase in response time
+- Handles errors gracefully
+- Metrics show coalescing rate
+
+**Dependencies**: None
+
+### Task 12: Optimize Response Payload Sizes
+**Priority**: Medium
+**Description**: Implement response optimization to reduce bandwidth usage and improve mobile performance.
+
+**Context**:
+Many users access the API from bandwidth-constrained environments. Optimizing payloads improves their experience and reduces costs.
+
+**Optimization Strategies**:
+1. Remove null/undefined fields
+2. Compress repeated structures
+3. Implement field filtering
+4. Support pagination
+5. Enable gzip compression
+
+**Implementation**:
+```typescript
+// Field filtering
+GET /api/fetch-scripture?reference=John3:16&fields=text,reference
+
+// Pagination  
+GET /api/browse-words?page=1&limit=20
+
+// Response compression
+interface OptimizedResponse {
+  data: any;
+  _meta: {
+    compression: 'gzip' | 'none';
+    originalSize: number;
+    compressedSize: number;
+  };
+}
+```
+
+**Size Targets**:
+- Scripture: <10KB per chapter
+- Translation Notes: <5KB per verse
+- Word articles: <2KB per article
+- List responses: <20KB per page
+
+**Acceptance Criteria**:
+- 50% reduction in average payload size
+- Mobile users see faster load times
+- API supports field filtering
+- Backward compatibility maintained
+
+**Dependencies**: None
+
+## PHASE 5: TESTING & QUALITY ASSURANCE (Week 5-6)
+
+### Task 13: Build Comprehensive E2E Test Suite
+**Priority**: Critical
+**Description**: Create end-to-end tests covering all user workflows defined in the PRD.
+
+**Context**:
+E2E tests ensure the complete system works as designed and catch integration issues that unit tests miss.
+
+**Test Scenarios**:
+1. MTT Translation Workflow
+   - Load scripture passage
+   - View ULT and UST side-by-side
+   - Access translation notes
+   - Look up unfamiliar words
+   - Check with questions
+
+2. AI Assistant Integration
+   - MCP tool calls
+   - Context building
+   - Error handling
+   - Rate limit respect
+
+3. Developer Integration
+   - API authentication
+   - Resource discovery
+   - Batch operations
+   - Error recovery
+
+**Implementation with Playwright**:
+```typescript
+// tests/e2e/mtt-workflow.test.ts
+test.describe('MTT Translation Workflow', () => {
+  test('translate Romans 1:1', async ({ page }) => {
+    // Load translation interface
+    await page.goto('/translate/rom/1/1');
+    
+    // Verify ULT/UST displayed
+    await expect(page.locator('[data-resource="ult"]')).toContainText('Paul, a servant');
+    await expect(page.locator('[data-resource="ust"]')).toContainText('Paul, who serves');
+    
+    // Click on difficult word
+    await page.click('[data-word="doulos"]');
+    
+    // Verify translation note appears
+    await expect(page.locator('.translation-note')).toContainText('slave');
+    
+    // Look up word definition
+    await page.click('[data-action="define-word"]');
+    await expect(page.locator('.word-definition')).toContainText('complete ownership');
+  });
+});
+```
+
+**Acceptance Criteria**:
+- All PRD workflows have tests
+- Tests run on every commit
+- Failures block deployment
+- Performance benchmarks included
+
+**Dependencies**: All previous implementation tasks
+
+### Task 14: Create Load Testing Infrastructure
+**Priority**: High
+**Description**: Build load testing to validate performance requirements from PRD (1000+ RPS, 10k concurrent users).
+
+**Context**:
+The PRD specifies ambitious performance targets. Load testing ensures we meet them before production traffic arrives.
+
+**Load Test Scenarios**:
+1. Baseline Load (100 RPS)
+2. Peak Load (1000 RPS)
+3. Stress Test (2000 RPS)
+4. Soak Test (500 RPS for 24 hours)
+5. Spike Test (0 to 1000 RPS in 30 seconds)
+
+**Implementation with k6**:
+```javascript
+// tests/load/baseline.js
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = {
+  stages: [
+    { duration: '2m', target: 100 }, // Ramp up
+    { duration: '5m', target: 100 }, // Stay at 100 RPS
+    { duration: '2m', target: 0 },   // Ramp down
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<500'], // 95% under 500ms
+    http_req_failed: ['rate<0.001'],  // Error rate under 0.1%
+  },
+};
+
+export default function() {
+  // Test scripture endpoint
+  const scriptureRes = http.get('https://api.example.com/fetch-scripture?reference=John3:16');
+  check(scriptureRes, {
+    'status is 200': (r) => r.status === 200,
+    'response time < 500ms': (r) => r.timings.duration < 500,
+  });
+  
+  sleep(1);
+}
+```
+
+**Infrastructure Requirements**:
+- Distributed load generation
+- Real-time metrics dashboard
+- Automatic report generation
+- Integration with CI/CD
+
+**Acceptance Criteria**:
+- Meets all PRD performance targets
+- No memory leaks under load
+- Graceful degradation verified
+- Reports generated automatically
+
+**Dependencies**: Deployed test environment
+
+### Task 15: Implement Chaos Engineering Tests
+**Priority**: Medium
+**Description**: Build chaos tests to verify system resilience under failure conditions.
+
+**Context**:
+Real-world systems face failures. Chaos testing ensures graceful degradation and recovery.
+
+**Chaos Scenarios**:
+1. DCS API unavailable
+2. Cache layer failure
+3. Network partitions
+4. Slow upstream responses
+5. Invalid data responses
+
+**Implementation**:
+```typescript
+// tests/chaos/upstream-failure.test.ts
+describe('Upstream Failures', () => {
+  test('handles DCS timeout gracefully', async () => {
+    // Inject 30s delay in DCS responses
+    await chaosMonkey.inject('dcs-delay', { duration: 30000 });
+    
+    // Make request
+    const response = await api.fetchScripture('John 3:16');
+    
+    // Should return cached data or graceful error
+    expect(response.status).toBe(200);
+    expect(response.source).toBe('cache');
+    expect(response.warning).toContain('Using cached data');
+  });
+});
+```
+
+**Acceptance Criteria**:
+- System stays available during failures
+- Users receive helpful error messages
+- Recovery is automatic
+- No data corruption occurs
+
+**Dependencies**: Task 14 (load testing setup)
+
+## PHASE 6: DOCUMENTATION & TRAINING (Week 6)
+
+### Task 16: Create Interactive API Documentation
+**Priority**: High
+**Description**: Build comprehensive, interactive API documentation that helps developers integrate quickly.
+
+**Context**:
+Good documentation reduces support burden and accelerates adoption. Interactive examples let developers experiment safely.
+
+**Documentation Components**:
+1. OpenAPI/Swagger specification
+2. Interactive API explorer
+3. Code examples in 5+ languages
+4. Video tutorials
+5. Architecture diagrams
+6. Troubleshooting guide
+
+**Swagger Enhancement**:
+```yaml
+paths:
+  /fetch-scripture:
+    get:
+      summary: Fetch Scripture with Alignment
+      description: |
+        Retrieves Scripture text in ULT/GLT and/or UST/GST translations
+        with embedded word alignment data for precise translation work.
+        
+        This endpoint is optimized for:
+        - Single verse lookups (fastest)
+        - Verse ranges within a chapter
+        - Full chapter requests
+        
+      x-code-samples:
+        - lang: JavaScript
+          source: |
+            const response = await fetch('/api/fetch-scripture?reference=John3:16');
+            const { scripture } = await response.json();
+            console.log(scripture.ult.text);
+        - lang: Python
+          source: |
+            import requests
+            response = requests.get('/api/fetch-scripture', 
+              params={'reference': 'John 3:16'})
+            data = response.json()
+            print(data['scripture']['ult']['text'])
+```
+
+**Interactive Features**:
+- Try-it-now functionality
+- Response schema validation
+- Example request builder
+- Performance metrics display
+- Rate limit visualization
+
+**Acceptance Criteria**:
+- All endpoints documented
+- Examples execute successfully
+- Search functionality works
+- Mobile-responsive design
+
+**Dependencies**: All API implementations complete
+
+### Task 17: Develop Integration Quickstart Guides
+**Priority**: Medium
+**Description**: Create step-by-step quickstart guides for common integration scenarios.
+
+**Context**:
+Developers need to achieve success quickly. Targeted quickstarts for their specific use case accelerate adoption.
+
+**Quickstart Guides**:
+1. "Build a Scripture Reader in 5 Minutes"
+2. "Add Translation Helps to Your App"
+3. "Integrate with Your AI Assistant"
+4. "Create a Translation Checking Tool"
+5. "Build Offline-First Mobile Apps"
+
+**Guide Structure**:
+```markdown
+# Build a Scripture Reader in 5 Minutes
+
+## What You'll Build
+A simple web app that displays Scripture with translation helps.
+
+## Prerequisites
+- Node.js 18+
+- Basic JavaScript knowledge
+- API key (optional for higher rate limits)
+
+## Step 1: Set Up Project
+\`\`\`bash
+mkdir my-scripture-reader
+cd my-scripture-reader
+npm init -y
+npm install axios express
+\`\`\`
+
+## Step 2: Create Server
+\`\`\`javascript
+// server.js
+const express = require('express');
+const axios = require('axios');
+
+const app = express();
+
+app.get('/scripture/:reference', async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://api.translation.tools/fetch-scripture`,
+      { params: { reference: req.params.reference } }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(3000);
+\`\`\`
+
+## Step 3: Run and Test
+[... continue with complete working example ...]
+```
+
+**Acceptance Criteria**:
+- Code examples run without modification
+- Complete in promised time
+- Cover 80% of use cases
+- Include troubleshooting
+
+**Dependencies**: Task 16 (API documentation)
+
+### Task 18: Create Developer Portal
+**Priority**: Medium
+**Description**: Build a developer portal that serves as the central hub for all integration resources.
+
+**Context**:
+A unified portal reduces confusion and provides clear pathways for different types of developers.
+
+**Portal Sections**:
+1. Getting Started
+   - Account setup
+   - First API call
+   - Understanding resources
+
+2. API Reference
+   - Interactive documentation
+   - SDKs and libraries
+   - Postman collections
+
+3. Guides & Tutorials
+   - Quickstarts
+   - Best practices
+   - Architecture patterns
+
+4. Tools & Resources
+   - API explorer
+   - Response validator
+   - Performance analyzer
+
+5. Community
+   - Support forums
+   - Feature requests
+   - Showcase
+
+**Implementation Features**:
+```typescript
+// Portal features
+interface DeveloperPortal {
+  auth: {
+    register(): Promise<ApiKey>;
+    manage(): KeyManagement;
+  };
+  
+  playground: {
+    explorer: InteractiveApiExplorer;
+    validator: ResponseValidator;
+    mockServer: MockEndpoints;
+  };
+  
+  analytics: {
+    usage: UsageMetrics;
+    performance: PerformanceStats;
+    limits: RateLimitStatus;
+  };
+}
+```
+
+**Acceptance Criteria**:
+- Single sign-on implemented
+- All resources accessible
+- Search returns relevant results
+- Mobile-friendly design
+
+**Dependencies**: Tasks 16-17 (documentation complete)
+
+## PHASE 7: PRODUCTION READINESS (Week 7)
+
+### Task 19: Implement Monitoring and Alerting
+**Priority**: Critical
+**Description**: Set up comprehensive monitoring to ensure system reliability and performance.
+
+**Context**:
+Production systems need proactive monitoring to catch issues before users notice them.
+
+**Monitoring Stack**:
+1. Metrics Collection
+   - Response times
+   - Error rates
+   - Cache hit ratios
+   - Resource usage
+
+2. Log Aggregation
+   - Structured logging
+   - Error tracking
+   - Audit trails
+   - Performance logs
+
+3. Alerting Rules
+   - API errors > 1%
+   - Response time > 1s
+   - Cache hit ratio < 80%
+   - Upstream failures
+
+**Implementation with Cloudflare Analytics**:
+```typescript
+// src/functions/monitoring.ts
+export function trackMetric(metric: Metric): void {
+  // Send to Cloudflare Analytics
+  analytics.track({
+    event: metric.name,
+    properties: {
+      value: metric.value,
+      unit: metric.unit,
+      tags: metric.tags,
+      timestamp: Date.now()
+    }
+  });
+}
+
+// Usage in handlers
+trackMetric({
+  name: 'api.response_time',
+  value: responseTime,
+  unit: 'ms',
+  tags: {
+    endpoint: 'fetch-scripture',
+    status: 'success',
+    cached: true
+  }
+});
+```
+
+**Alert Configuration**:
+```yaml
+alerts:
+  - name: high_error_rate
+    condition: rate(http_errors_total[5m]) > 0.01
+    severity: critical
+    notification:
+      - email: oncall@example.com
+      - slack: #alerts-production
+      
+  - name: slow_responses
+    condition: histogram_quantile(0.95, http_duration_seconds) > 1
+    severity: warning
+    notification:
+      - slack: #alerts-performance
+```
+
+**Acceptance Criteria**:
+- All PRD metrics tracked
+- Alerts fire within 2 minutes
+- Dashboard shows real-time status
+- Historical data retained 90 days
+
+**Dependencies**: Production environment access
+
+### Task 20: Security Hardening
+**Priority**: Critical
+**Description**: Implement security best practices to protect the API and its users.
+
+**Context**:
+While the API serves public data, security is still critical to prevent abuse and ensure availability.
+
+**Security Measures**:
+1. Input Validation
+   - Scripture reference format
+   - Language code validation
+   - Organization whitelist
+   - Query parameter limits
+
+2. Rate Limiting
+   - Per-IP limits
+   - Graduated limits by API key
+   - Burst allowances
+   - Graceful limit responses
+
+3. DDoS Protection
+   - Cloudflare shield
+   - Request fingerprinting
+   - Geographic restrictions
+   - Automatic blocking
+
+4. Security Headers
+   - CORS configuration
+   - CSP headers
+   - HSTS enforcement
+   - X-Frame-Options
+
+**Implementation**:
+```typescript
+// src/middleware/security.ts
+export const securityMiddleware = {
+  validateInput: (schema: Schema) => {
+    return (req: Request) => {
+      const result = schema.validate(req.params);
+      if (result.error) {
+        throw new ValidationError(result.error);
+      }
+    };
+  },
+  
+  rateLimit: (limits: RateLimits) => {
+    return async (req: Request) => {
+      const key = req.ip || req.headers['x-api-key'];
+      const current = await rateLimiter.check(key);
+      
+      if (current > limits.max) {
+        throw new RateLimitError({
+          limit: limits.max,
+          reset: limits.resetTime,
+          remaining: 0
+        });
+      }
+    };
+  }
+};
+```
+
+**Acceptance Criteria**:
+- Passes security audit
+- No OWASP Top 10 vulnerabilities  
+- Rate limits enforced correctly
+- Security headers present
+
+**Dependencies**: None
+
+### Task 21: Production Deployment Pipeline
+**Priority**: Critical
+**Description**: Set up automated deployment pipeline with proper staging and rollback capabilities.
+
+**Context**:
+Safe, repeatable deployments are essential for maintaining system reliability.
+
+**Pipeline Stages**:
+1. Build & Test
+   - Run all tests
+   - Build artifacts
+   - Security scanning
+   - Performance tests
+
+2. Staging Deployment
+   - Deploy to staging
+   - Run E2E tests
+   - Performance validation
+   - Manual approval gate
+
+3. Production Deployment
+   - Blue/green deployment
+   - Gradual rollout
+   - Health checks
+   - Auto-rollback triggers
+
+**GitHub Actions Configuration**:
+```yaml
+name: Production Deployment
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Tests
+        run: |
+          npm test
+          npm run test:e2e
+          npm run test:load
+          
+  deploy-staging:
+    needs: test
+    environment: staging
+    steps:
+      - name: Deploy to Staging
+        run: |
+          wrangler deploy --env staging
+      - name: Run Staging Tests
+        run: |
+          npm run test:staging
+          
+  deploy-production:
+    needs: deploy-staging
+    environment: production
+    steps:
+      - name: Deploy to Production
+        run: |
+          wrangler deploy --env production
+      - name: Verify Deployment
+        run: |
+          npm run test:production:smoke
+```
+
+**Rollback Strategy**:
+- Automatic on health check failure
+- Manual trigger available
+- Previous 5 versions retained
+- Database migration rollback
+
+**Acceptance Criteria**:
+- Deployments complete < 5 minutes
+- Zero-downtime deployments
+- Rollback tested successfully
+- Audit trail maintained
+
+**Dependencies**: Tasks 19-20 (monitoring and security)
+
+## PROJECT COMPLETION CHECKLIST
+
+### Technical Deliverables
+- [ ] All PRD endpoints implemented
+- [ ] Performance targets met
+- [ ] Security audit passed
+- [ ] Test coverage > 90%
+- [ ] Documentation complete
+
+### Operational Readiness
+- [ ] Monitoring configured
+- [ ] Alerts tested
+- [ ] Runbooks written
+- [ ] Team trained
+- [ ] Support process defined
+
+### Business Validation
+- [ ] Stakeholder sign-off
+- [ ] User acceptance testing
+- [ ] Performance benchmarks met
+- [ ] Cost projections validated
+- [ ] Launch plan approved
+
+---
+
+## APPENDIX: Task Dependencies Visualization
+
+```
+Phase 1: Foundation
+├── Task 1: Codebase Audit ──────────┐
+├── Task 2: Dev Environment ─────────┤
+└── Task 3: Terminology Module ───────┤
+                                      │
+Phase 2: Terminology Updates          │
+├── Task 4: Update DCSApiClient ◄─────┤
+├── Task 5: Update API Handlers ◄─────┤
+└── Task 6: Validation Tests ◄────────┘
+
+Phase 3: Resource Discovery
+├── Task 7: Resource Detection
+├── Task 8: Coverage Matrix ◄─────── Task 7
+└── Task 9: Recommendations ◄─────── Tasks 7,8
+
+Phase 4: Performance
+├── Task 10: Cache Warming
+├── Task 11: Request Coalescing
+└── Task 12: Payload Optimization
+
+Phase 5: Testing (depends on all implementation)
+├── Task 13: E2E Tests
+├── Task 14: Load Tests
+└── Task 15: Chaos Tests
+
+Phase 6: Documentation (depends on implementation)
+├── Task 16: API Documentation
+├── Task 17: Quickstart Guides
+└── Task 18: Developer Portal
+
+Phase 7: Production (final phase)
+├── Task 19: Monitoring
+├── Task 20: Security
+└── Task 21: Deployment
+```
+
+---
+
+This implementation plan provides the extreme detail and context needed to execute the Translation Helps Platform PRD. Each task includes specific implementation details, code examples, and clear acceptance criteria to ensure successful delivery.
+
+Total Estimated Timeline: 7 weeks
+Total Tasks: 21 major tasks (each with multiple subtasks)
+Critical Path: Tasks 1→3→4→5→13→19→21
+
+END OF IMPLEMENTATION PLAN 
