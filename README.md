@@ -298,15 +298,108 @@ The test suite follows these principles:
 - **unfoldingWord** - [https://www.unfoldingword.org](https://www.unfoldingword.org)
 - **MCP Protocol** - [https://modelcontextprotocol.io](https://modelcontextprotocol.io)
 
+## 🔧 Development Environment Setup
+
+This project follows strict development standards to ensure UW (unfoldingWord) terminology compliance and code quality.
+
+### Prerequisites
+
+- **Node.js** 18+
+- **Git** with hooks support
+- **VS Code** (recommended) with workspace extensions
+
+### Initial Setup
+
+1. **Clone and Install**:
+
+   ```bash
+   git clone <repository-url>
+   cd translation-helps-mcp
+   npm install
+   ```
+
+2. **Install Pre-commit Hooks**:
+
+   ```bash
+   # Hooks are automatically installed via husky during npm install
+   # Test the setup:
+   npm run terminology:check
+   ```
+
+3. **VS Code Setup** (recommended):
+   - Install workspace recommended extensions
+   - Settings are pre-configured for UW development standards
+   - ESLint will automatically enforce terminology compliance
+
+### Development Standards
+
+- **✅ Terminology Compliance**: Use "Strategic Language" not "Gateway Language"
+- **✅ UW Resource Types**: Use proper ULT/GLT, UST/GST terminology
+- **✅ Code Formatting**: Prettier + ESLint with custom UW rules
+- **✅ Pre-commit Validation**: Automatic terminology checking
+
+### Available Scripts
+
+```bash
+# Development and Testing
+npm run dev                    # Start development server
+npm test                      # Run all tests (non-watch mode)
+npm run test:watch            # Run tests in watch mode
+npm run test:coverage         # Run tests with coverage
+
+# Code Quality
+npm run lint                  # Check code style and terminology
+npm run lint:fix              # Auto-fix linting issues
+npm run format                # Format code with Prettier
+npm run terminology:check     # Validate UW terminology compliance
+npm run typecheck             # TypeScript type checking
+
+# Build and Deploy
+npm run build                 # Build for production
+npm run preview               # Preview production build
+```
+
+### Pre-commit Hooks
+
+The repository includes automatic pre-commit validation:
+
+- **Terminology Check**: Prevents commits with outdated "Gateway Language" terms
+- **Code Formatting**: Auto-formats code with Prettier
+- **Linting**: Enforces code quality and UW standards
+- **Type Checking**: Validates TypeScript types
+
+**Example pre-commit output**:
+
+```bash
+🔍 Running pre-commit checks...
+📝 Checking for UW terminology compliance...
+✅ Pre-commit checks passed!
+```
+
+### UW Terminology Guidelines
+
+When developing, always use:
+
+| ❌ Avoid             | ✅ Use Instead                               |
+| -------------------- | -------------------------------------------- |
+| Gateway Language     | Strategic Language                           |
+| Bible texts          | ULT/GLT (Literal) or UST/GST (Simplified)    |
+| Translation          | Specific resource type (TN, TW, TWL, TQ, TA) |
+| Generic descriptions | UW-specific resource descriptions            |
+
+See `docs/UW_TRANSLATION_RESOURCES_GUIDE.md` for complete terminology and technical specifications.
+
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Add comprehensive tests for new functionality
-4. Ensure all tests pass: `npm test`
-5. Submit a pull request
+3. **Follow development standards** (terminology, formatting, testing)
+4. Add comprehensive tests for new functionality
+5. Ensure all tests pass: `npm test`
+6. Verify terminology compliance: `npm run terminology:check`
+7. Submit a pull request
 
-**Remember: Good tests prevent bad deployments!** 🛡️
+**Remember: Good tests prevent bad deployments! And proper terminology ensures UW compliance!** 🛡️
 
 ## 📄 License
 
