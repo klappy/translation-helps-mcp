@@ -3,8 +3,8 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
-import type { PlatformHandler } from "../platform-adapter.js";
 import { getVersion } from "../../version.js";
+import type { PlatformHandler } from "../platform-adapter.js";
 
 export const healthHandler: PlatformHandler = async (context, headers = {}) => {
   try {
@@ -17,7 +17,8 @@ export const healthHandler: PlatformHandler = async (context, headers = {}) => {
         timestamp: new Date().toISOString(),
         version,
         service: "translation-helps-mcp",
-        description: "MCP Server for Bible translation resources",
+        description:
+          "MCP Server for unfoldingWord translation resources supporting Mother Tongue Translators",
       }),
       headers: {
         "Content-Type": "application/json",

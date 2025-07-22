@@ -36,19 +36,22 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
         {
           type: "scripture",
           name: "Scripture Texts",
-          description: "Bible texts in various translations",
+          description:
+            "ULT/GLT (Literal) and UST/GST (Simplified) Scripture texts with word alignment",
           languages: language ? [language] : ["en", "es", "fr"],
         },
         {
           type: "notes",
           name: "Translation Notes",
-          description: "Cultural and linguistic translation notes",
+          description:
+            "Verse-by-verse cultural and linguistic guidance for Mother Tongue Translators",
           languages: language ? [language] : ["en", "es", "fr"],
         },
         {
           type: "questions",
           name: "Translation Questions",
-          description: "Comprehension and translation questions",
+          description:
+            "Community checking and comprehension validation questions for quality assurance",
           languages: language ? [language] : ["en", "es", "fr"],
         },
         {
