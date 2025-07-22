@@ -1,10 +1,10 @@
 /**
- * ULT/GLT Scripture Endpoint Handler
- * Fetches literal (form-centric) Scripture texts with embedded alignment data
- * Implements the foundation of the unfoldingWord translation ecosystem
+ * UST/GST Scripture Endpoint Handler
+ * Fetches meaning-based (simplified) Scripture texts with embedded alignment data
+ * Complements ULT/GLT by showing natural, clear expressions of biblical meaning
  *
- * ULT = unfoldingWord Literal Text (English)
- * GLT = Gateway Literal Text (Strategic Languages)
+ * UST = unfoldingWord Simplified Text (English)
+ * GST = Gateway Simplified Text (Strategic Languages)
  */
 
 import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";
@@ -21,13 +21,13 @@ interface VerseMapping {
   endPosition: number;
 }
 
-interface ULTResponse {
+interface USTResponse {
   success: boolean;
   data?: {
     reference: string;
     language: string;
     organization: string;
-    resourceType: "ult" | "glt";
+    resourceType: "ust" | "gst";
     scripture: {
       text: string; // Clean text without USFM markers
       usfmText: string; // Original USFM with alignment markers
@@ -50,8 +50,14 @@ interface ULTResponse {
           low: number;
         };
       };
-      translationApproach: "form-centric";
+      translationApproach: "meaning-based";
       sourceLanguages: string[]; // Hebrew, Greek, Aramaic
+      targetLanguage: string; // Strategic/Heart language
+      clarity: {
+        readabilityScore: number; // 0-100, higher = more readable
+        sentenceComplexity: "simple" | "moderate" | "complex";
+        vocabularyLevel: "basic" | "intermediate" | "advanced";
+      };
       cacheStatus: "hit" | "miss" | "partial";
       responseTime: number;
     };
@@ -61,9 +67,9 @@ interface ULTResponse {
 }
 
 /**
- * Main handler for ULT/GLT Scripture requests
+ * Main handler for UST/GST Scripture requests
  */
-export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
+export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
   const startTime = Date.now();
   const url = new URL(request.url);
 
@@ -73,11 +79,12 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
   const organization = url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
   const includeAlignment = url.searchParams.get("includeAlignment") !== "false";
   const includeVerseMapping = url.searchParams.get("includeVerseMapping") !== "false";
+  const includeClarity = url.searchParams.get("includeClarity") !== "false";
   const bypassCache = url.searchParams.get("bypassCache") === "true";
 
   // Validate required parameters
   if (!reference) {
-    const errorResponse: ULTResponse = {
+    const errorResponse: USTResponse = {
       success: false,
       error: "Reference parameter is required",
       timestamp: new Date().toISOString(),
@@ -95,13 +102,13 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
 
   try {
     // Determine resource type based on language
-    const resourceType: "ult" | "glt" = language === "en" ? "ult" : "glt";
+    const resourceType: "ust" | "gst" = language === "en" ? "ust" : "gst";
 
     // Create cache key
-    const cacheKey = `ult:${language}:${organization}:${reference}:${includeAlignment}`;
+    const cacheKey = `ust:${language}:${organization}:${reference}:${includeAlignment}:${includeClarity}`;
 
     // Check cache first (unless bypassed)
-    const cacheStatus: "hit" | "miss" | "partial" = "miss";
+    let cacheStatus: "hit" | "miss" | "partial" = "miss";
     if (!bypassCache) {
       try {
         const cached = await unifiedCache.get(cacheKey);
@@ -135,8 +142,8 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
     // Initialize DCS client
     const dcsClient = new DCSApiClient();
 
-    // Fetch the ULT/GLT resource
-    const scriptureData = await fetchULTResource(
+    // Fetch the UST/GST resource
+    const scriptureData = await fetchUSTResource(
       dcsClient,
       language,
       organization,
@@ -145,9 +152,9 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
     );
 
     if (!scriptureData) {
-      const notFoundResponse: ULTResponse = {
+      const notFoundResponse: USTResponse = {
         success: false,
-        error: `ULT/GLT resource not found for ${language}:${reference}`,
+        error: `UST/GST resource not found for ${language}:${reference}`,
         timestamp: new Date().toISOString(),
       };
 
@@ -182,8 +189,17 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
           confidenceDistribution: { high: 0, medium: 0, low: 0 },
         };
 
+    // Calculate clarity metrics if requested
+    const clarity = includeClarity
+      ? calculateClarityMetrics(alignmentData?.text || scriptureData.cleanText)
+      : {
+          readabilityScore: 0,
+          sentenceComplexity: "moderate" as const,
+          vocabularyLevel: "intermediate" as const,
+        };
+
     // Build response
-    const response: ULTResponse = {
+    const response: USTResponse = {
       success: true,
       data: {
         reference,
@@ -204,8 +220,10 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
           verses: Object.keys(verseMapping).map(Number).filter(Boolean),
           hasAlignment: !!alignmentData && alignmentData.alignments.length > 0,
           alignmentStats,
-          translationApproach: "form-centric",
+          translationApproach: "meaning-based",
           sourceLanguages: ["Hebrew", "Greek", "Aramaic"],
+          targetLanguage: language,
+          clarity,
           cacheStatus,
           responseTime: Date.now() - startTime,
         },
@@ -213,7 +231,7 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
       timestamp: new Date().toISOString(),
     };
 
-    // Cache the response (5 minute TTL for ULT/GLT)
+    // Cache the response (5 minute TTL for UST/GST)
     try {
       await unifiedCache.set(cacheKey, response);
     } catch (error) {
@@ -229,9 +247,9 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
       },
     };
   } catch (error) {
-    console.error("Error fetching ULT/GLT scripture:", error);
+    console.error("Error fetching UST/GST scripture:", error);
 
-    const errorResponse: ULTResponse = {
+    const errorResponse: USTResponse = {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error occurred",
       timestamp: new Date().toISOString(),
@@ -249,13 +267,13 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
 };
 
 /**
- * Fetch ULT/GLT resource from DCS
+ * Fetch UST/GST resource from DCS
  */
-async function fetchULTResource(
+async function fetchUSTResource(
   dcsClient: DCSApiClient,
   language: string,
   organization: string,
-  resourceType: "ult" | "glt",
+  resourceType: "ust" | "gst",
   reference: string
 ): Promise<{
   usfmText: string;
@@ -273,7 +291,7 @@ async function fetchULTResource(
       throw new Error("Invalid reference format");
     }
 
-    // Get the file path for ULT/GLT resource
+    // Get the file path for UST/GST resource
     const fileName = `${book}.usfm`;
     const filePath = `content/${fileName}`;
 
@@ -464,4 +482,195 @@ function calculateAlignmentStats(alignments: WordAlignment[]) {
     averageConfidence,
     confidenceDistribution: { high, medium, low },
   };
+}
+
+/**
+ * Calculate clarity metrics for UST/GST meaning-based texts
+ */
+function calculateClarityMetrics(text: string) {
+  const words = text
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+  const totalWords = words.length;
+  const totalSentences = sentences.length;
+
+  // Basic readability calculation (simplified Flesch Reading Ease)
+  const avgWordsPerSentence = totalSentences > 0 ? totalWords / totalSentences : 0;
+  const avgSyllablesPerWord = calculateAverageSyllables(words);
+
+  // Flesch Reading Ease formula (simplified)
+  const fleschScore = 206.835 - 1.015 * avgWordsPerSentence - 84.6 * avgSyllablesPerWord;
+  const readabilityScore = Math.max(0, Math.min(100, fleschScore));
+
+  // Determine sentence complexity
+  let sentenceComplexity: "simple" | "moderate" | "complex" = "moderate";
+  if (avgWordsPerSentence < 10) {
+    sentenceComplexity = "simple";
+  } else if (avgWordsPerSentence > 20) {
+    sentenceComplexity = "complex";
+  }
+
+  // Determine vocabulary level (basic analysis)
+  const commonWords = countCommonWords(words);
+  const commonWordRatio = totalWords > 0 ? commonWords / totalWords : 0;
+
+  let vocabularyLevel: "basic" | "intermediate" | "advanced" = "intermediate";
+  if (commonWordRatio > 0.8) {
+    vocabularyLevel = "basic";
+  } else if (commonWordRatio < 0.6) {
+    vocabularyLevel = "advanced";
+  }
+
+  return {
+    readabilityScore: Math.round(readabilityScore),
+    sentenceComplexity,
+    vocabularyLevel,
+  };
+}
+
+/**
+ * Calculate average syllables per word (simplified estimation)
+ */
+function calculateAverageSyllables(words: string[]): number {
+  if (words.length === 0) return 0;
+
+  const totalSyllables = words.reduce((sum, word) => {
+    // Simplified syllable counting - count vowel groups
+    const vowelGroups = word.match(/[aeiouy]+/gi) || [];
+    const syllableCount = Math.max(1, vowelGroups.length);
+
+    // Adjust for silent 'e'
+    if (word.endsWith("e") && syllableCount > 1) {
+      return sum + syllableCount - 1;
+    }
+
+    return sum + syllableCount;
+  }, 0);
+
+  return totalSyllables / words.length;
+}
+
+/**
+ * Count common words (simplified analysis)
+ */
+function countCommonWords(words: string[]): number {
+  const commonWords = new Set([
+    "the",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+    "a",
+    "an",
+    "this",
+    "that",
+    "these",
+    "those",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "can",
+    "could",
+    "should",
+    "may",
+    "might",
+    "must",
+    "shall",
+    "he",
+    "she",
+    "it",
+    "they",
+    "we",
+    "you",
+    "i",
+    "me",
+    "him",
+    "her",
+    "them",
+    "us",
+    "my",
+    "your",
+    "his",
+    "its",
+    "our",
+    "their",
+    "who",
+    "what",
+    "when",
+    "where",
+    "why",
+    "how",
+    "all",
+    "some",
+    "any",
+    "many",
+    "much",
+    "most",
+    "more",
+    "less",
+    "few",
+    "little",
+    "big",
+    "small",
+    "good",
+    "bad",
+    "new",
+    "old",
+    "first",
+    "last",
+    "long",
+    "short",
+    "high",
+    "low",
+    "right",
+    "wrong",
+    "true",
+    "false",
+    "yes",
+    "no",
+    "not",
+    "very",
+    "too",
+    "so",
+    "just",
+    "only",
+    "also",
+    "even",
+    "still",
+    "yet",
+    "already",
+    "now",
+    "then",
+    "here",
+    "there",
+    "up",
+    "down",
+    "out",
+    "off",
+    "over",
+    "under",
+    "again",
+    "back",
+  ]);
+
+  return words.filter((word) => commonWords.has(word.replace(/[^\w]/g, ""))).length;
 }
