@@ -15,194 +15,245 @@
 		MessageSquare,
 		Users,
 		Activity,
-		ChevronDown,
-		ChevronUp,
 		AlertCircle,
 		CheckCircle2,
-		Star,
 		Sparkles
 	} from 'lucide-svelte';
 
-	// OpenAPI specification data
-	let openApiSpec: any = null;
-	let selectedEndpoint: any = null;
-	let selectedTag: string = 'core';
+		// Complete endpoints data
+	const endpoints = [
+		{
+			path: '/fetch-scripture',
+			method: 'GET',
+			summary: 'Fetch Scripture with Alignment',
+			description: 'Retrieves Scripture text in ULT/GLT and/or UST/GST translations with embedded word alignment data for precise translation work.',
+			category: 'core',
+			parameters: [
+				{ name: 'reference', required: true, type: 'string', example: 'John 3:16', description: 'Bible reference (e.g., "John 3:16", "Romans 1:1-5")' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code (ISO 639-1)' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization/publisher' },
+				{ name: 'includeVerseNumbers', required: false, type: 'boolean', example: 'true', description: 'Include verse numbers in response' },
+				{ name: 'format', required: false, type: 'string', example: 'text', description: 'Response format (text or usfm)' }
+			]
+		},
+		{
+			path: '/fetch-translation-notes',
+			method: 'GET',
+			summary: 'Fetch Translation Notes',
+			description: 'Retrieves detailed translation notes that provide context, cultural background, and translation guidance for specific Bible passages.',
+			category: 'translation',
+			parameters: [
+				{ name: 'reference', required: true, type: 'string', example: 'Titus 1:1', description: 'Bible reference for translation notes' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/fetch-translation-questions',
+			method: 'GET',
+			summary: 'Fetch Translation Questions',
+			description: 'Retrieves comprehension questions designed to help translators and checkers verify accurate understanding and translation of Bible passages.',
+			category: 'translation',
+			parameters: [
+				{ name: 'reference', required: true, type: 'string', example: 'Titus 1:1', description: 'Bible reference for translation questions' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/fetch-translation-words',
+			method: 'GET',
+			summary: 'Fetch Translation Words',
+			description: 'Retrieves definitions and detailed information for key biblical terms, including theological concepts, cultural references, and translation guidance.',
+			category: 'linguistics',
+			parameters: [
+				{ name: 'reference', required: true, type: 'string', example: 'Titus 1:1', description: 'Bible reference to get translation words for' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/fetch-translation-word-links',
+			method: 'GET',
+			summary: 'Fetch Translation Word Links',
+			description: 'Retrieves word links that connect specific terms in Bible passages to their corresponding translation word entries.',
+			category: 'linguistics',
+			parameters: [
+				{ name: 'reference', required: true, type: 'string', example: 'Titus 1:1', description: 'Bible reference for word links' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/get-translation-word',
+			method: 'GET',
+			summary: 'Get Specific Translation Word',
+			description: 'Retrieves detailed information for a specific translation word by its identifier.',
+			category: 'linguistics',
+			parameters: [
+				{ name: 'word', required: true, type: 'string', example: 'grace', description: 'Translation word identifier or term' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/browse-translation-words',
+			method: 'GET',
+			summary: 'Browse Translation Words',
+			description: 'Browse and search through translation words by category, enabling discovery of related terms and concepts.',
+			category: 'linguistics',
+			parameters: [
+				{ name: 'category', required: false, type: 'string', example: 'kt', description: 'Word category to browse (kt = Key Terms)' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/get-words-for-reference',
+			method: 'GET',
+			summary: 'Get Words for Reference',
+			description: 'Retrieves all translation words that are relevant for a specific Bible reference, with their associated links and definitions.',
+			category: 'linguistics',
+			parameters: [
+				{ name: 'reference', required: true, type: 'string', example: 'Titus 1:1', description: 'Bible reference to get words for' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/fetch-resources',
+			method: 'GET',
+			summary: 'Fetch All Resources (POWER ENDPOINT)',
+			description: '🚀 Retrieves all available translation resources for a Bible reference in a single optimized call. Includes scripture, notes, questions, words, and links.',
+			category: 'comprehensive',
+			parameters: [
+				{ name: 'reference', required: true, type: 'string', example: 'Titus 1:1', description: 'Bible reference for all resources' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/get-context',
+			method: 'GET',
+			summary: 'Get Context Information',
+			description: 'Retrieves contextual information for Bible references, including surrounding passages and cross-references.',
+			category: 'comprehensive',
+			parameters: [
+				{ name: 'reference', required: true, type: 'string', example: 'Titus 1:1', description: 'Bible reference for context' },
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Target language code' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/get-languages',
+			method: 'GET',
+			summary: 'Get Available Languages',
+			description: 'Retrieves the complete list of available languages with their coverage information and resource availability.',
+			category: 'metadata',
+			parameters: [
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization to filter by' }
+			]
+		},
+		{
+			path: '/get-available-books',
+			method: 'GET',
+			summary: 'Get Available Books',
+			description: 'Retrieves the list of available Bible books with their coverage information for a specific language.',
+			category: 'metadata',
+			parameters: [
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Language code to check book availability' },
+				{ name: 'organization', required: false, type: 'string', example: 'unfoldingWord', description: 'Content organization' }
+			]
+		},
+		{
+			path: '/list-available-resources',
+			method: 'GET',
+			summary: 'List Available Resources',
+			description: 'Retrieves a comprehensive list of all available translation resources and their metadata.',
+			category: 'metadata',
+			parameters: [
+				{ name: 'language', required: false, type: 'string', example: 'en', description: 'Language code to filter resources' },
+				{ name: 'query', required: false, type: 'string', example: 'faith', description: 'Search query to filter resources' }
+			]
+		},
+		{
+			path: '/extract-references',
+			method: 'GET',
+			summary: 'Extract Bible References',
+			description: 'Extracts and normalizes Bible references from text input, useful for parsing user input and content analysis.',
+			category: 'metadata',
+			parameters: [
+				{ name: 'text', required: true, type: 'string', example: 'See John 3:16 and Romans 1:1 for more details', description: 'Text containing Bible references to extract' }
+			]
+		},
+		{
+			path: '/health',
+			method: 'GET',
+			summary: 'Health Check',
+			description: 'System health check endpoint that returns the current status of the API and its dependencies with performance metrics.',
+			category: 'health',
+			parameters: []
+		}
+	];
+
+	let selectedEndpoint = endpoints[0];
+	let selectedCategory = 'core';
+	
+	// Category information with descriptions and icons
+	const categories = {
+		core: { 
+			name: 'Core Scripture', 
+			description: 'Essential scripture and translation endpoints',
+			icon: 'BookOpen',
+			color: 'from-blue-500 to-cyan-500'
+		},
+		translation: { 
+			name: 'Translation Resources', 
+			description: 'Translation notes, questions, and guidance',
+			icon: 'FileText',
+			color: 'from-green-500 to-emerald-500'
+		},
+		linguistics: { 
+			name: 'Linguistic Tools', 
+			description: 'Word definitions, links, and analysis',
+			icon: 'MessageSquare',
+			color: 'from-purple-500 to-pink-500'
+		},
+		metadata: { 
+			name: 'Discovery & Metadata', 
+			description: 'Available books, languages, and resource discovery',
+			icon: 'BarChart3',
+			color: 'from-orange-500 to-red-500'
+		},
+		comprehensive: { 
+			name: 'Power Endpoints', 
+			description: 'Multi-resource aggregated endpoints',
+			icon: 'Zap',
+			color: 'from-yellow-500 to-orange-500'
+		},
+		health: { 
+			name: 'System Health', 
+			description: 'System status and monitoring',
+			icon: 'Activity',
+			color: 'from-teal-500 to-cyan-500'
+		}
+	};
+	
+	// Filter endpoints by category
+	function getEndpointsByCategory(category) {
+		return endpoints.filter(endpoint => endpoint.category === category);
+	}
 	let testResults = new Map();
 	let isLoading = false;
 	let copiedEndpoint = '';
 
-	// Load OpenAPI spec on mount
-	onMount(async () => {
-		// Define the spec inline for now (later we can load from YAML)
-		openApiSpec = {
-			info: {
-				title: "Translation Helps MCP API",
-				version: "1.0.0",
-				description: "High-performance API platform providing instant access to unfoldingWord translation resources"
-			},
-			tags: [
-				{ name: 'core', description: 'Essential scripture and translation endpoints' },
-				{ name: 'translation', description: 'Translation notes, questions, and guidance' },
-				{ name: 'linguistics', description: 'Word definitions, links, and linguistic analysis' },
-				{ name: 'metadata', description: 'Available books, languages, and resource discovery' },
-				{ name: 'comprehensive', description: 'Multi-resource aggregated endpoints' },
-				{ name: 'health', description: 'System health and monitoring' }
-			],
-			paths: {
-				'/fetch-scripture': {
-					get: {
-						tags: ['core'],
-						summary: 'Fetch Scripture with Alignment',
-						description: 'Retrieves Scripture text in ULT/GLT and/or UST/GST translations with embedded word alignment data for precise translation work.',
-						parameters: [
-							{
-								name: 'reference',
-								in: 'query',
-								required: true,
-								description: 'Bible reference (e.g., "John 3:16", "Romans 1:1-5")',
-								schema: { type: 'string', example: 'John 3:16' }
-							},
-							{
-								name: 'language',
-								in: 'query',
-								required: false,
-								description: 'Target language code (ISO 639-1)',
-								schema: { type: 'string', default: 'en', example: 'en' }
-							},
-							{
-								name: 'organization',
-								in: 'query',
-								required: false,
-								description: 'Content organization/publisher',
-								schema: { type: 'string', default: 'unfoldingWord' }
-							}
-						]
-					}
-				},
-				'/fetch-translation-notes': {
-					get: {
-						tags: ['translation'],
-						summary: 'Fetch Translation Notes',
-						description: 'Retrieves detailed translation notes with context, cultural background, and translation guidance for specific Bible passages.',
-						parameters: [
-							{
-								name: 'reference',
-								in: 'query',
-								required: true,
-								description: 'Bible reference for translation notes',
-								schema: { type: 'string', example: 'Titus 1:1' }
-							},
-							{
-								name: 'language',
-								in: 'query',
-								required: false,
-								description: 'Target language code',
-								schema: { type: 'string', default: 'en' }
-							}
-						]
-					}
-				},
-				'/fetch-translation-questions': {
-					get: {
-						tags: ['translation'],
-						summary: 'Fetch Translation Questions',
-						description: 'Retrieves comprehension questions designed to help translators verify accurate understanding.',
-						parameters: [
-							{
-								name: 'reference',
-								in: 'query',
-								required: true,
-								description: 'Bible reference for questions',
-								schema: { type: 'string', example: 'Titus 1:1' }
-							}
-						]
-					}
-				},
-				'/fetch-translation-words': {
-					get: {
-						tags: ['linguistics'],
-						summary: 'Fetch Translation Words',
-						description: 'Retrieves definitions and detailed information for key biblical terms and concepts.',
-						parameters: [
-							{
-								name: 'reference',
-								in: 'query',
-								required: true,
-								description: 'Bible reference to get words for',
-								schema: { type: 'string', example: 'Titus 1:1' }
-							}
-						]
-					}
-				},
-				'/fetch-resources': {
-					get: {
-						tags: ['comprehensive'],
-						summary: 'Fetch All Resources (POWER ENDPOINT)',
-						description: '🚀 Retrieves all available translation resources for a Bible reference in a single optimized call. Includes scripture, notes, questions, words, and links.',
-						parameters: [
-							{
-								name: 'reference',
-								in: 'query',
-								required: true,
-								description: 'Bible reference for all resources',
-								schema: { type: 'string', example: 'Titus 1:1' }
-							}
-						]
-					}
-				},
-				'/get-languages': {
-					get: {
-						tags: ['metadata'],
-						summary: 'Get Available Languages',
-						description: 'Retrieves the complete list of available languages with coverage information.',
-						parameters: []
-					}
-				},
-				'/health': {
-					get: {
-						tags: ['health'],
-						summary: 'Health Check',
-						description: 'System health check endpoint with performance metrics and service status.',
-						parameters: []
-					}
-				}
-			}
-		};
-
-		// Select first endpoint by default
-		if (openApiSpec.paths) {
-			const firstPath = Object.keys(openApiSpec.paths)[0];
-			selectedEndpoint = {
-				path: firstPath,
-				...openApiSpec.paths[firstPath].get
-			};
-		}
-	});
-
-	// Get endpoints by tag
-	function getEndpointsByTag(tag: string) {
-		if (!openApiSpec?.paths) return [];
-		
-		return Object.entries(openApiSpec.paths)
-			.map(([path, methods]: [string, any]) => ({
-				path,
-				...methods.get
-			}))
-			.filter(endpoint => endpoint.tags?.includes(tag));
-	}
-
-	// Select endpoint
-	function selectEndpoint(endpoint: any) {
-		selectedEndpoint = endpoint;
-	}
-
 	// Test endpoint
-	async function testEndpoint(endpoint: any, params: Record<string, string> = {}) {
+	async function testEndpoint(endpoint, params = {}) {
 		isLoading = true;
 		const startTime = performance.now();
 		
 		try {
-			const url = new URL(endpoint.path, window.location.origin + '/api');
+			const url = new URL('/api' + endpoint.path, window.location.origin);
 			Object.entries(params).forEach(([key, value]) => {
 				if (value) url.searchParams.append(key, value);
 			});
@@ -219,7 +270,7 @@
 				timestamp: new Date()
 			});
 
-			testResults = testResults; // Trigger reactivity
+			testResults = testResults;
 		} catch (error) {
 			testResults.set(endpoint.path, {
 				status: 'error',
@@ -227,97 +278,46 @@
 				responseTime: 0,
 				timestamp: new Date()
 			});
-			testResults = testResults; // Trigger reactivity
+			testResults = testResults;
 		} finally {
 			isLoading = false;
 		}
 	}
 
 	// Copy code example
-	function copyCodeExample(code: string, endpoint: string) {
+	function copyCodeExample(code, endpointName) {
 		navigator.clipboard.writeText(code);
-		copiedEndpoint = endpoint;
+		copiedEndpoint = endpointName;
 		setTimeout(() => copiedEndpoint = '', 2000);
 	}
 
-	// Generate code examples
-	function generateJavaScriptExample(endpoint: any, params: Record<string, string>) {
-		const url = new URL(endpoint.path, 'https://translation-helps-mcp.pages.dev/api');
+	// Generate examples
+	function generateJavaScriptExample(endpoint, params) {
+		const url = new URL('/api' + endpoint.path, 'https://translation-helps-mcp.pages.dev');
 		Object.entries(params).forEach(([key, value]) => {
 			if (value) url.searchParams.append(key, value);
 		});
 
-		return `// Fetch ${endpoint.summary}
+		return `// ${endpoint.summary}
 const response = await fetch('${url.toString()}');
 const data = await response.json();
 console.log(data);`;
 	}
 
-	function generateCurlExample(endpoint: any, params: Record<string, string>) {
-		const url = new URL(endpoint.path, 'https://translation-helps-mcp.pages.dev/api');
-		Object.entries(params).forEach(([key, value]) => {
-			if (value) url.searchParams.append(key, value);
-		});
-
-		return `curl "${url.toString()}"`;
-	}
-
-	function generatePythonExample(endpoint: any, params: Record<string, string>) {
-		const paramsStr = Object.entries(params)
-			.filter(([_, value]) => value)
-			.map(([key, value]) => `'${key}': '${value}'`)
-			.join(', ');
-
-		return `import requests
-
-response = requests.get('https://translation-helps-mcp.pages.dev/api${endpoint.path}', 
-    params={${paramsStr}})
-data = response.json()
-print(data)`;
-	}
-
-	// Form data for testing
+	// Form data
 	let formData = {};
-
 	$: if (selectedEndpoint) {
-		// Initialize form data with default values
 		const newFormData = {};
-		selectedEndpoint.parameters?.forEach((param: any) => {
-			newFormData[param.name] = param.schema?.example || param.schema?.default || '';
+		selectedEndpoint.parameters?.forEach((param) => {
+			newFormData[param.name] = param.example || '';
 		});
 		formData = newFormData;
-	}
-
-	// Get tag icon
-	function getTagIcon(tag: string) {
-		switch (tag) {
-			case 'core': return BookOpen;
-			case 'translation': return FileText;
-			case 'linguistics': return MessageSquare;
-			case 'metadata': return BarChart3;
-			case 'comprehensive': return Zap;
-			case 'health': return Activity;
-			default: return Code;
-		}
-	}
-
-	// Get tag color
-	function getTagColor(tag: string) {
-		switch (tag) {
-			case 'core': return 'from-blue-500 to-cyan-500';
-			case 'translation': return 'from-green-500 to-emerald-500';
-			case 'linguistics': return 'from-purple-500 to-pink-500';
-			case 'metadata': return 'from-orange-500 to-red-500';
-			case 'comprehensive': return 'from-yellow-500 to-orange-500';
-			case 'health': return 'from-teal-500 to-cyan-500';
-			default: return 'from-gray-500 to-gray-600';
-		}
 	}
 </script>
 
 <svelte:head>
 	<title>API Documentation | Translation Helps Platform</title>
-	<meta name="description" content="Interactive API documentation for the Translation Helps Platform with live testing capabilities." />
+	<meta name="description" content="Interactive API documentation for the Translation Helps Platform" />
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -327,25 +327,13 @@ print(data)`;
 			<div class="flex items-center justify-between">
 				<div>
 					<h1 class="text-3xl font-bold text-white">Interactive API Documentation</h1>
-					<p class="mt-2 text-blue-200">Comprehensive documentation with live testing capabilities</p>
+					<p class="mt-2 text-blue-200">Comprehensive documentation with live testing</p>
 				</div>
 				<div class="flex items-center space-x-4">
-					<div class="rounded-lg bg-white/10 px-3 py-1 text-sm text-white">
-						v{VERSION}
-					</div>
-					<a 
-						href="/test" 
-						class="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-					>
+					<div class="rounded-lg bg-white/10 px-3 py-1 text-sm text-white">v{VERSION}</div>
+					<a href="/test" class="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
 						<Play class="h-4 w-4" />
 						<span>Live Demo</span>
-					</a>
-					<a 
-						href="https://github.com/translationhelps/translation-helps-mcp" 
-						class="flex items-center space-x-2 rounded-lg border border-white/20 px-4 py-2 text-white hover:bg-white/10"
-					>
-						<ExternalLink class="h-4 w-4" />
-						<span>GitHub</span>
 					</a>
 				</div>
 			</div>
@@ -354,113 +342,40 @@ print(data)`;
 
 	<!-- Main Content -->
 	<div class="container mx-auto px-4 py-8">
-		<!-- Features Overview -->
-		<div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-			<div class="rounded-lg bg-gradient-to-r from-blue-500/20 to-cyan-500/20 p-6">
-				<div class="mb-2 flex items-center space-x-2">
-					<BookOpen class="h-5 w-5 text-blue-400" />
-					<h3 class="font-semibold text-white">Scripture Access</h3>
-				</div>
-				<p class="text-sm text-blue-200">Word-level aligned ULT/UST translations with USFM 3.0 precision</p>
-			</div>
-			<div class="rounded-lg bg-gradient-to-r from-green-500/20 to-emerald-500/20 p-6">
-				<div class="mb-2 flex items-center space-x-2">
-					<Zap class="h-5 w-5 text-green-400" />
-					<h3 class="font-semibold text-white">High Performance</h3>
-				</div>
-				<p class="text-sm text-green-200">Sub-second response times with intelligent caching and optimization</p>
-			</div>
-			<div class="rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 p-6">
-				<div class="mb-2 flex items-center space-x-2">
-					<Users class="h-5 w-5 text-purple-400" />
-					<h3 class="font-semibold text-white">AI-Native</h3>
-				</div>
-				<p class="text-sm text-purple-200">MCP protocol integration for seamless AI assistant workflows</p>
-			</div>
-		</div>
-
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
-			<!-- Sidebar - API Navigation -->
+			<!-- Sidebar -->
 			<div class="lg:col-span-1">
 				<div class="sticky top-8 space-y-6">
-					<!-- Overview -->
 					<div class="rounded-lg border border-white/10 bg-white/5 p-6">
-						<h3 class="mb-4 text-lg font-semibold text-white">API Overview</h3>
-						<div class="space-y-3 text-sm text-gray-300">
-							<div class="flex items-center justify-between">
-								<span>Base URL:</span>
-								<code class="text-xs text-blue-300">translation-helps-mcp.pages.dev/api</code>
-							</div>
-							<div class="flex items-center justify-between">
-								<span>Protocol:</span>
-								<span class="text-green-300">HTTPS</span>
-							</div>
-							<div class="flex items-center justify-between">
-								<span>Rate Limit:</span>
-								<span class="text-yellow-300">1000/hour</span>
-							</div>
-							<div class="flex items-center justify-between">
-								<span>Format:</span>
-								<span class="text-blue-300">JSON</span>
-							</div>
-						</div>
-					</div>
-
-					<!-- Tag Navigation -->
-					<div class="rounded-lg border border-white/10 bg-white/5 p-6">
-						<h3 class="mb-4 text-lg font-semibold text-white">Endpoint Categories</h3>
+						<h3 class="mb-4 text-lg font-semibold text-white">Endpoints</h3>
 						<div class="space-y-2">
-							{#each openApiSpec?.tags || [] as tag}
-								{@const TagIcon = getTagIcon(tag.name)}
-								{@const endpoints = getEndpointsByTag(tag.name)}
-								{#if endpoints.length > 0}
-									<div class="space-y-1">
-										<button
-											on:click={() => selectedTag = tag.name}
-											class="flex w-full items-center justify-between rounded-lg p-2 text-left transition-colors hover:bg-white/10"
-											class:bg-white/10={selectedTag === tag.name}
-										>
-											<div class="flex items-center space-x-2">
-												<TagIcon class="h-4 w-4 text-blue-400" />
-												<span class="text-sm font-medium text-white capitalize">{tag.name}</span>
-											</div>
-											<span class="text-xs text-gray-400">{endpoints.length}</span>
-										</button>
-
-										{#if selectedTag === tag.name}
-											<div class="ml-6 space-y-1">
-												{#each endpoints as endpoint}
-													<button
-														on:click={() => selectEndpoint(endpoint)}
-														class="block w-full truncate rounded p-2 text-left text-xs text-gray-300 transition-colors hover:bg-white/5 hover:text-white"
-														class:bg-white/5={selectedEndpoint?.path === endpoint.path}
-														class:text-white={selectedEndpoint?.path === endpoint.path}
-													>
-														{endpoint.path}
-													</button>
-												{/each}
-											</div>
-										{/if}
+							{#each endpoints as endpoint}
+								<button
+									on:click={() => selectedEndpoint = endpoint}
+									class="block w-full rounded-lg p-3 text-left transition-colors hover:bg-white/10 {selectedEndpoint.path === endpoint.path ? 'bg-white/10' : ''}"
+								>
+									<div class="flex items-center space-x-2">
+										<span class="rounded bg-green-600 px-2 py-1 text-xs text-white">{endpoint.method}</span>
+										<code class="text-sm text-blue-300">{endpoint.path}</code>
 									</div>
-								{/if}
+									<p class="mt-1 text-xs text-gray-400">{endpoint.summary}</p>
+								</button>
 							{/each}
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<!-- Main Content - Endpoint Details -->
+			<!-- Main Content -->
 			<div class="lg:col-span-3">
 				{#if selectedEndpoint}
 					<div class="space-y-8">
 						<!-- Endpoint Header -->
 						<div class="rounded-lg border border-white/10 bg-white/5 p-6">
-							<div class="mb-4 flex items-center justify-between">
-								<div class="flex items-center space-x-3">
-									<span class="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white">GET</span>
-									<code class="text-lg text-blue-300">{selectedEndpoint.path}</code>
-								</div>
-								{#if selectedEndpoint.tags?.includes('comprehensive')}
+							<div class="mb-4 flex items-center space-x-3">
+								<span class="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white">{selectedEndpoint.method}</span>
+								<code class="text-lg text-blue-300">{selectedEndpoint.path}</code>
+								{#if selectedEndpoint.category === 'comprehensive'}
 									<div class="flex items-center space-x-1 rounded-full bg-yellow-500/20 px-3 py-1">
 										<Sparkles class="h-4 w-4 text-yellow-400" />
 										<span class="text-xs font-medium text-yellow-300">POWER ENDPOINT</span>
@@ -485,17 +400,12 @@ print(data)`;
 												{:else}
 													<span class="rounded bg-gray-600 px-2 py-1 text-xs text-white">optional</span>
 												{/if}
-												<span class="text-sm text-gray-400">{param.schema?.type}</span>
+												<span class="text-sm text-gray-400">{param.type}</span>
 											</div>
-											<p class="mb-2 text-sm text-gray-300">{param.description}</p>
-											{#if param.schema?.example}
-												<div class="rounded bg-black/30 px-2 py-1">
-													<code class="text-xs text-green-300">Example: {param.schema.example}</code>
-												</div>
-											{/if}
-											{#if param.schema?.default}
-												<div class="mt-1 rounded bg-black/30 px-2 py-1">
-													<code class="text-xs text-yellow-300">Default: {param.schema.default}</code>
+											<p class="text-sm text-gray-300">{param.description}</p>
+											{#if param.example}
+												<div class="mt-2 rounded bg-black/30 px-2 py-1">
+													<code class="text-xs text-green-300">Example: {param.example}</code>
 												</div>
 											{/if}
 										</div>
@@ -508,38 +418,29 @@ print(data)`;
 						<div class="rounded-lg border border-white/10 bg-white/5 p-6">
 							<h3 class="mb-4 text-lg font-semibold text-white">🧪 Try It Out</h3>
 							
-							<!-- Parameter Form -->
 							{#if selectedEndpoint.parameters?.length > 0}
 								<div class="mb-6 space-y-4">
 									{#each selectedEndpoint.parameters as param}
 										<div>
 											<label class="mb-1 block text-sm font-medium text-white">
 												{param.name}
-												{#if param.required}
-													<span class="text-red-400">*</span>
-												{/if}
+												{#if param.required}<span class="text-red-400">*</span>{/if}
 											</label>
 											<input
 												type="text"
 												bind:value={formData[param.name]}
-												placeholder={param.schema?.example || param.description}
-												class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none"
+												placeholder={param.example || param.description}
+												class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-gray-400"
 											/>
-											{#if param.schema?.default && !formData[param.name]}
-												<p class="mt-1 text-xs text-gray-400">
-													Will use default: <code class="text-yellow-300">{param.schema.default}</code>
-												</p>
-											{/if}
 										</div>
 									{/each}
 								</div>
 							{/if}
 
-							<!-- Test Button -->
 							<button
 								on:click={() => testEndpoint(selectedEndpoint, formData)}
 								disabled={isLoading}
-								class="flex items-center space-x-2 rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex items-center space-x-2 rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700 disabled:opacity-50"
 							>
 								{#if isLoading}
 									<div class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
@@ -550,7 +451,7 @@ print(data)`;
 								{/if}
 							</button>
 
-							<!-- Test Results -->
+							<!-- Results -->
 							{#if testResults.has(selectedEndpoint.path)}
 								{@const result = testResults.get(selectedEndpoint.path)}
 								<div class="mt-6 rounded-lg border border-white/10 bg-black/20 p-4">
@@ -579,85 +480,27 @@ print(data)`;
 							{/if}
 						</div>
 
-						<!-- Code Examples -->
+						<!-- Code Example -->
 						<div class="rounded-lg border border-white/10 bg-white/5 p-6">
-							<h3 class="mb-4 text-lg font-semibold text-white">💻 Code Examples</h3>
-							
-							<div class="space-y-4">
-								<!-- JavaScript -->
-								<div>
-									<div class="mb-2 flex items-center justify-between">
-										<h4 class="text-sm font-medium text-white">JavaScript</h4>
-										<button
-											on:click={() => copyCodeExample(generateJavaScriptExample(selectedEndpoint, formData), 'js')}
-											class="flex items-center space-x-1 rounded px-2 py-1 text-xs text-gray-400 hover:text-white transition-colors"
-										>
-											{#if copiedEndpoint === 'js'}
-												<Check class="h-3 w-3 text-green-400" />
-												<span class="text-green-400">Copied!</span>
-											{:else}
-												<Copy class="h-3 w-3" />
-												<span>Copy</span>
-											{/if}
-										</button>
-									</div>
-									<div class="rounded-lg bg-black/50 p-3">
-										<pre class="overflow-x-auto text-xs text-gray-300"><code>{generateJavaScriptExample(selectedEndpoint, formData)}</code></pre>
-									</div>
-								</div>
-
-								<!-- Python -->
-								<div>
-									<div class="mb-2 flex items-center justify-between">
-										<h4 class="text-sm font-medium text-white">Python</h4>
-										<button
-											on:click={() => copyCodeExample(generatePythonExample(selectedEndpoint, formData), 'python')}
-											class="flex items-center space-x-1 rounded px-2 py-1 text-xs text-gray-400 hover:text-white transition-colors"
-										>
-											{#if copiedEndpoint === 'python'}
-												<Check class="h-3 w-3 text-green-400" />
-												<span class="text-green-400">Copied!</span>
-											{:else}
-												<Copy class="h-3 w-3" />
-												<span>Copy</span>
-											{/if}
-										</button>
-									</div>
-									<div class="rounded-lg bg-black/50 p-3">
-										<pre class="overflow-x-auto text-xs text-gray-300"><code>{generatePythonExample(selectedEndpoint, formData)}</code></pre>
-									</div>
-								</div>
-
-								<!-- cURL -->
-								<div>
-									<div class="mb-2 flex items-center justify-between">
-										<h4 class="text-sm font-medium text-white">cURL</h4>
-										<button
-											on:click={() => copyCodeExample(generateCurlExample(selectedEndpoint, formData), 'curl')}
-											class="flex items-center space-x-1 rounded px-2 py-1 text-xs text-gray-400 hover:text-white transition-colors"
-										>
-											{#if copiedEndpoint === 'curl'}
-												<Check class="h-3 w-3 text-green-400" />
-												<span class="text-green-400">Copied!</span>
-											{:else}
-												<Copy class="h-3 w-3" />
-												<span>Copy</span>
-											{/if}
-										</button>
-									</div>
-									<div class="rounded-lg bg-black/50 p-3">
-										<pre class="overflow-x-auto text-xs text-gray-300"><code>{generateCurlExample(selectedEndpoint, formData)}</code></pre>
-									</div>
-								</div>
+							<h3 class="mb-4 text-lg font-semibold text-white">💻 Code Example</h3>
+							<div class="mb-2 flex items-center justify-between">
+								<h4 class="text-sm font-medium text-white">JavaScript</h4>
+								<button
+									on:click={() => copyCodeExample(generateJavaScriptExample(selectedEndpoint, formData), 'js')}
+									class="flex items-center space-x-1 rounded px-2 py-1 text-xs text-gray-400 hover:text-white"
+								>
+									{#if copiedEndpoint === 'js'}
+										<Check class="h-3 w-3 text-green-400" />
+										<span class="text-green-400">Copied!</span>
+									{:else}
+										<Copy class="h-3 w-3" />
+										<span>Copy</span>
+									{/if}
+								</button>
 							</div>
-						</div>
-					</div>
-				{:else}
-					<!-- Loading State -->
-					<div class="flex h-64 items-center justify-center rounded-lg border border-white/10 bg-white/5">
-						<div class="text-center">
-							<div class="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-							<p class="text-gray-400">Loading API documentation...</p>
+							<div class="rounded-lg bg-black/50 p-3">
+								<pre class="overflow-x-auto text-xs text-gray-300"><code>{generateJavaScriptExample(selectedEndpoint, formData)}</code></pre>
+							</div>
 						</div>
 					</div>
 				{/if}
