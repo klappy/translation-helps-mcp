@@ -1,532 +1,512 @@
 /**
- * Resource Type Detection Service
+ * Resource Type Detection System
+ * Intelligently identifies ULT/GLT, UST/GST, and all help resources from catalog responses
+ * Handles organization-specific variations and provides confidence scoring
  *
- * Provides intelligent detection of unfoldingWord resource types from catalog responses.
- * Handles various naming patterns, organization differences, and provides confidence scores.
- *
- * Based on: docs/UW_TRANSLATION_RESOURCES_GUIDE.md
- * Created for Task 7 of the implementation plan
+ * Implements Task 7 from the implementation plan
  */
 
 import { ResourceType } from "../constants/terminology.js";
-import type { Resource } from "../types/dcs.js";
 
-/**
- * Result of resource type detection with confidence score
- */
-export interface DetectionResult {
+export interface ResourceDetectionResult {
   type: ResourceType | null;
-  confidence: number; // 0.0 to 1.0
-  reason: string;
-  patterns: string[];
+  confidence: number; // 0-1, higher = more confident
+  reasoning: string[]; // Explanation of detection logic
+  alternatives: Array<{
+    type: ResourceType;
+    confidence: number;
+    reason: string;
+  }>;
 }
 
-/**
- * Detection patterns for each resource type
- * Each pattern includes regex, priority, and confidence boost
- */
-interface DetectionPattern {
-  regex: RegExp;
-  priority: number; // Higher number = higher priority
-  confidence: number; // Base confidence (0.0-1.0)
-  description: string;
+export interface ResourceContext {
+  identifier: string;
+  subject: string;
+  organization: string;
+  language: string;
+  name?: string;
+  title?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
 }
 
-/**
- * Comprehensive patterns for resource type detection
- */
-const DETECTION_PATTERNS: Record<ResourceType, DetectionPattern[]> = {
-  [ResourceType.ULT]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?ult$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct ULT identifier pattern",
-    },
-    {
-      regex: /unfoldingword.*literal/i,
-      priority: 8,
-      confidence: 0.9,
-      description: "unfoldingWord Literal Text description",
-    },
-    {
-      regex: /literal.*text.*align/i,
-      priority: 7,
-      confidence: 0.85,
-      description: "Literal text with alignment reference",
-    },
-    {
-      regex: /form.*centric.*translation/i,
-      priority: 6,
-      confidence: 0.8,
-      description: "Form-centric translation description",
-    },
-  ],
+interface ResourcePattern {
+  identifiers: readonly RegExp[];
+  subjects: readonly string[];
+  keywords: readonly string[];
+  organizationHints: readonly string[];
+  confidence: number;
+}
 
-  [ResourceType.GLT]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?glt$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct GLT identifier pattern",
-    },
-    {
-      regex: /(gateway|strategic).*literal/i,
-      priority: 8,
-      confidence: 0.9,
-      description: "Strategic/Gateway Literal Text description",
-    },
-    {
-      regex: /literal.*strategic/i,
-      priority: 7,
-      confidence: 0.85,
-      description: "Literal Strategic Language text",
-    },
-  ],
-
-  [ResourceType.UST]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?ust$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct UST identifier pattern",
-    },
-    {
-      regex: /unfoldingword.*simplified/i,
-      priority: 8,
-      confidence: 0.9,
-      description: "unfoldingWord Simplified Text description",
-    },
-    {
-      regex: /meaning.*based.*translation/i,
-      priority: 7,
-      confidence: 0.85,
-      description: "Meaning-based translation description",
-    },
-    {
-      regex: /clear.*natural.*language/i,
-      priority: 6,
-      confidence: 0.8,
-      description: "Clear natural language description",
-    },
-  ],
-
-  [ResourceType.GST]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?gst$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct GST identifier pattern",
-    },
-    {
-      regex: /(gateway|strategic).*simplified/i,
-      priority: 8,
-      confidence: 0.9,
-      description: "Strategic/Gateway Simplified Text description",
-    },
-    {
-      regex: /simplified.*strategic/i,
-      priority: 7,
-      confidence: 0.85,
-      description: "Simplified Strategic Language text",
-    },
-  ],
-
-  [ResourceType.TN]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?tn$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct TN identifier pattern",
-    },
-    {
-      regex: /translation.*notes?/i,
-      priority: 9,
-      confidence: 0.9,
-      description: "Translation Notes description",
-    },
-    {
-      regex: /cultural.*linguistic/i,
-      priority: 7,
-      confidence: 0.85,
-      description: "Cultural and linguistic content",
-    },
-    {
-      regex: /verse.*guidance/i,
-      priority: 6,
-      confidence: 0.8,
-      description: "Verse-by-verse guidance",
-    },
-  ],
-
-  [ResourceType.TW]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?tw$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct TW identifier pattern",
-    },
-    {
-      regex: /translation.*words?/i,
-      priority: 9,
-      confidence: 0.9,
-      description: "Translation Words description",
-    },
-    {
-      regex: /biblical.*terms?/i,
-      priority: 8,
-      confidence: 0.85,
-      description: "Biblical terms reference",
-    },
-    {
-      regex: /definitions.*cross.*references?/i,
-      priority: 7,
-      confidence: 0.8,
-      description: "Definitions with cross-references",
-    },
-  ],
-
-  [ResourceType.TWL]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?twl$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct TWL identifier pattern",
-    },
-    {
-      regex: /translation.*words?.*links?/i,
-      priority: 9,
-      confidence: 0.9,
-      description: "Translation Words Links description",
-    },
-    {
-      regex: /word.*level.*links?/i,
-      priority: 8,
-      confidence: 0.85,
-      description: "Word-level links reference",
-    },
-    {
-      regex: /occurrence.*mapping/i,
-      priority: 7,
-      confidence: 0.8,
-      description: "Word occurrence mapping",
-    },
-  ],
-
-  [ResourceType.TQ]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?tq$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct TQ identifier pattern",
-    },
-    {
-      regex: /translation.*questions?/i,
-      priority: 9,
-      confidence: 0.9,
-      description: "Translation Questions description",
-    },
-    {
-      regex: /comprehension.*validation/i,
-      priority: 8,
-      confidence: 0.85,
-      description: "Comprehension validation reference",
-    },
-    {
-      regex: /community.*checking/i,
-      priority: 7,
-      confidence: 0.8,
-      description: "Community checking reference",
-    },
-  ],
-
-  [ResourceType.TA]: [
-    {
-      regex: /^[a-z]{2,3}[-_]?ta$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct TA identifier pattern",
-    },
-    {
-      regex: /translation.*academy/i,
-      priority: 9,
-      confidence: 0.9,
-      description: "Translation Academy description",
-    },
-    {
-      regex: /methodology.*best.*practices/i,
-      priority: 8,
-      confidence: 0.85,
-      description: "Methodology and best practices",
-    },
-    {
-      regex: /training.*modules?/i,
-      priority: 7,
-      confidence: 0.8,
-      description: "Training modules reference",
-    },
-  ],
-
-  [ResourceType.UHB]: [
-    {
-      regex: /^uhb$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct UHB identifier",
-    },
-    {
-      regex: /hebrew.*bible/i,
-      priority: 9,
-      confidence: 0.9,
-      description: "Hebrew Bible description",
-    },
-    {
-      regex: /original.*hebrew/i,
-      priority: 8,
-      confidence: 0.85,
-      description: "Original Hebrew text",
-    },
-    {
-      regex: /morphological.*analysis/i,
-      priority: 7,
-      confidence: 0.8,
-      description: "Morphological analysis reference",
-    },
-  ],
-
-  [ResourceType.UGNT]: [
-    {
-      regex: /^ugnt$/i,
-      priority: 10,
-      confidence: 0.95,
-      description: "Direct UGNT identifier",
-    },
-    {
-      regex: /greek.*testament/i,
-      priority: 9,
-      confidence: 0.9,
-      description: "Greek New Testament description",
-    },
-    {
-      regex: /original.*greek/i,
-      priority: 8,
-      confidence: 0.85,
-      description: "Original Greek text",
-    },
-    {
-      regex: /grammatical.*details/i,
-      priority: 7,
-      confidence: 0.8,
-      description: "Grammatical details reference",
-    },
-  ],
-};
-
-/**
- * Subject field patterns for additional context
- */
-const SUBJECT_PATTERNS: Record<string, { types: ResourceType[]; confidence: number }> = {
-  Bible: {
-    types: [ResourceType.ULT, ResourceType.GLT, ResourceType.UST, ResourceType.GST],
+// Pattern definitions for resource detection
+const RESOURCE_PATTERNS: Record<ResourceType, ResourcePattern> = {
+  [ResourceType.ULT]: {
+    identifiers: [/^[a-z]{2,3}[-_]ult$/i, /^ult$/i, /unfoldingword.*literal/i],
+    subjects: ["Bible", "Aligned Bible", "Scripture"],
+    keywords: [
+      "literal",
+      "form-centric",
+      "unfoldingword",
+      "original structure",
+    ],
+    organizationHints: ["unfoldingWord"],
     confidence: 0.9,
   },
-  "Aligned Bible": { types: [ResourceType.ULT, ResourceType.UST], confidence: 0.95 },
-  "Translation Notes": { types: [ResourceType.TN], confidence: 0.95 },
-  "Translation Words": { types: [ResourceType.TW], confidence: 0.95 },
-  "Translation Questions": { types: [ResourceType.TQ], confidence: 0.95 },
-  "Translation Academy": { types: [ResourceType.TA], confidence: 0.95 },
-  "Hebrew Old Testament": { types: [ResourceType.UHB], confidence: 0.95 },
-  "Greek New Testament": { types: [ResourceType.UGNT], confidence: 0.95 },
+  [ResourceType.GLT]: {
+    identifiers: [/^[a-z]{2,3}[-_]glt$/i, /^glt$/i, /gateway.*literal/i],
+    subjects: ["Bible", "Aligned Bible", "Scripture"],
+    keywords: ["literal", "gateway", "form-centric", "strategic"],
+    organizationHints: ["unfoldingWord", "Door43-Catalog"],
+    confidence: 0.9,
+  },
+  [ResourceType.UST]: {
+    identifiers: [
+      /^[a-z]{2,3}[-_]ust$/i,
+      /^ust$/i,
+      /unfoldingword.*simplified/i,
+    ],
+    subjects: ["Bible", "Aligned Bible", "Scripture"],
+    keywords: ["simplified", "meaning-based", "unfoldingword", "clear"],
+    organizationHints: ["unfoldingWord"],
+    confidence: 0.9,
+  },
+  [ResourceType.GST]: {
+    identifiers: [/^[a-z]{2,3}[-_]gst$/i, /^gst$/i, /gateway.*simplified/i],
+    subjects: ["Bible", "Aligned Bible", "Scripture"],
+    keywords: ["simplified", "gateway", "meaning-based", "strategic"],
+    organizationHints: ["unfoldingWord", "Door43-Catalog"],
+    confidence: 0.9,
+  },
+  [ResourceType.TN]: {
+    identifiers: [/^[a-z]{2,3}[-_]tn$/i, /^tn$/i, /translation.*notes?$/i],
+    subjects: ["Translation Notes", "Notes", "Translation Academy"],
+    keywords: ["notes", "translation", "explanation", "commentary"],
+    organizationHints: ["unfoldingWord", "Door43-Catalog"],
+    confidence: 0.95,
+  },
+  [ResourceType.TW]: {
+    identifiers: [/^[a-z]{2,3}[-_]tw$/i, /^tw$/i, /translation.*words?$/i],
+    subjects: ["Translation Words", "Dictionary", "Lexicon"],
+    keywords: ["words", "dictionary", "terms", "lexicon", "definitions"],
+    organizationHints: ["unfoldingWord", "Door43-Catalog"],
+    confidence: 0.95,
+  },
+  [ResourceType.TWL]: {
+    identifiers: [
+      /^[a-z]{2,3}[-_]twl$/i,
+      /^twl$/i,
+      /translation.*words?.*links?$/i,
+    ],
+    subjects: ["Translation Words Links", "Translation Words"],
+    keywords: ["links", "words", "connections", "mappings"],
+    organizationHints: ["unfoldingWord", "Door43-Catalog"],
+    confidence: 0.9,
+  },
+  [ResourceType.TQ]: {
+    identifiers: [/^[a-z]{2,3}[-_]tq$/i, /^tq$/i, /translation.*questions?$/i],
+    subjects: ["Translation Questions", "Questions"],
+    keywords: ["questions", "checking", "comprehension", "validation"],
+    organizationHints: ["unfoldingWord", "Door43-Catalog"],
+    confidence: 0.95,
+  },
+  [ResourceType.TA]: {
+    identifiers: [/^[a-z]{2,3}[-_]ta$/i, /^ta$/i, /translation.*academy$/i],
+    subjects: ["Translation Academy", "Academy", "Manual"],
+    keywords: ["academy", "manual", "methodology", "training", "principles"],
+    organizationHints: ["unfoldingWord", "Door43-Catalog"],
+    confidence: 0.95,
+  },
+  [ResourceType.OBS]: {
+    identifiers: [/^[a-z]{2,3}[-_]obs$/i, /^obs$/i, /open.*bible.*stories$/i],
+    subjects: ["Open Bible Stories", "Stories", "Bible Stories"],
+    keywords: ["stories", "open", "narrative", "chronological"],
+    organizationHints: ["unfoldingWord", "Door43-Catalog"],
+    confidence: 0.9,
+  },
+  [ResourceType.UHB]: {
+    identifiers: [/^uhb$/i, /unfoldingword.*hebrew$/i, /hebrew.*bible$/i],
+    subjects: ["Hebrew Bible", "Original Language", "Hebrew"],
+    keywords: ["hebrew", "original", "uhb", "masoretic"],
+    organizationHints: ["unfoldingWord"],
+    confidence: 0.95,
+  },
+  [ResourceType.UGNT]: {
+    identifiers: [/^ugnt$/i, /unfoldingword.*greek$/i, /greek.*testament$/i],
+    subjects: ["Greek New Testament", "Original Language", "Greek"],
+    keywords: ["greek", "testament", "ugnt", "original"],
+    organizationHints: ["unfoldingWord"],
+    confidence: 0.95,
+  },
+  // Add missing resource types with default patterns
+  [ResourceType.SN]: {
+    identifiers: [/^[a-z]{2,3}[-_]sn$/i, /^sn$/i, /study.*notes?$/i],
+    subjects: ["Study Notes", "Notes"],
+    keywords: ["study", "notes", "commentary", "detailed"],
+    organizationHints: ["unfoldingWord"],
+    confidence: 0.9,
+  },
+  [ResourceType.SQ]: {
+    identifiers: [/^[a-z]{2,3}[-_]sq$/i, /^sq$/i, /study.*questions?$/i],
+    subjects: ["Study Questions", "Questions"],
+    keywords: ["study", "questions", "discussion", "reflection"],
+    organizationHints: ["unfoldingWord"],
+    confidence: 0.9,
+  },
 };
 
 /**
- * Main resource type detection function
- *
- * @param resource - DCS resource object
- * @returns Detection result with type, confidence, and reasoning
+ * Main resource detection function
  */
-export function detectResourceType(resource: Resource): DetectionResult {
-  const results: DetectionResult[] = [];
+export function detectResourceType(
+  context: ResourceContext,
+): ResourceDetectionResult {
+  const alternatives: ResourceDetectionResult["alternatives"] = [];
+  let bestMatch: ResourceType | null = null;
+  let bestConfidence = 0;
+  const reasoning: string[] = [];
 
-  // Prepare search text from all available fields
-  const searchFields = [resource.name || "", resource.full_name || "", resource.description || ""];
-
-  const searchText = searchFields.join(" ").toLowerCase();
-  const identifier = (resource.name || "").toLowerCase();
-
-  // Check description field for subject-like patterns
-  for (const [subjectPattern, subjectInfo] of Object.entries(SUBJECT_PATTERNS)) {
-    if (searchText.includes(subjectPattern.toLowerCase())) {
-      // For descriptions that match subject patterns, use identifier to disambiguate
-      for (const type of subjectInfo.types) {
-        const typePatterns = DETECTION_PATTERNS[type];
-        const identifierMatch = typePatterns.find((pattern) => pattern.regex.test(identifier));
-
-        if (identifierMatch) {
-          results.push({
-            type,
-            confidence: Math.min(subjectInfo.confidence + identifierMatch.confidence, 1.0),
-            reason: `Description contains '${subjectPattern}' + identifier '${identifier}' pattern: ${identifierMatch.description}`,
-            patterns: [subjectPattern, identifierMatch.description],
-          });
-        }
-      }
-    }
-  }
-
-  // Check all resource type patterns
-  for (const [resourceType, patterns] of Object.entries(DETECTION_PATTERNS)) {
+  // Check each resource type pattern
+  for (const [resourceType, pattern] of Object.entries(RESOURCE_PATTERNS)) {
     const type = resourceType as ResourceType;
+    const confidence = calculateConfidence(context, pattern);
 
-    for (const pattern of patterns) {
-      if (pattern.regex.test(identifier)) {
-        // Higher confidence for identifier matches
-        results.push({
-          type,
-          confidence: Math.min(pattern.confidence + 0.1, 1.0),
-          reason: `Identifier match: ${pattern.description}`,
-          patterns: [pattern.description],
-        });
-      } else if (pattern.regex.test(searchText)) {
-        // Lower confidence for description matches
-        results.push({
-          type,
-          confidence: pattern.confidence * 0.8,
-          reason: `Description match: ${pattern.description}`,
-          patterns: [pattern.description],
-        });
+    if (confidence > 0.1) {
+      // Only consider reasonable matches
+      alternatives.push({
+        type,
+        confidence,
+        reason: generateReason(context, pattern, confidence),
+      });
+
+      if (confidence > bestConfidence) {
+        bestMatch = type;
+        bestConfidence = confidence;
       }
     }
   }
 
-  // Return highest confidence result
-  if (results.length === 0) {
-    return {
-      type: null,
-      confidence: 0,
-      reason: "No matching patterns found",
-      patterns: [],
-    };
-  }
+  // Sort alternatives by confidence
+  alternatives.sort((a, b) => b.confidence - a.confidence);
 
-  // Sort by confidence (highest first), then by priority
-  results.sort((a, b) => {
-    if (Math.abs(a.confidence - b.confidence) < 0.01) {
-      // If confidence is very close, prefer results with more specific patterns
-      return b.patterns.length - a.patterns.length;
+  // Generate reasoning for best match
+  if (bestMatch) {
+    const pattern = RESOURCE_PATTERNS[bestMatch];
+    reasoning.push(
+      `Identified as ${bestMatch.toUpperCase()} with ${(bestConfidence * 100).toFixed(1)}% confidence`,
+    );
+
+    // Add specific reasons
+    if (matchesIdentifierPattern(context.identifier, pattern.identifiers)) {
+      reasoning.push(
+        `Identifier "${context.identifier}" matches ${bestMatch.toUpperCase()} pattern`,
+      );
     }
-    return b.confidence - a.confidence;
-  });
 
-  return results[0];
-}
-
-/**
- * Batch detection for multiple resources
- */
-export function detectResourceTypes(resources: Resource[]): Map<string, DetectionResult> {
-  const results = new Map<string, DetectionResult>();
-
-  for (const resource of resources) {
-    const key = `${resource.name}_${resource.owner?.username || "unknown"}`;
-    results.set(key, detectResourceType(resource));
-  }
-
-  return results;
-}
-
-/**
- * Get resources by detected type
- */
-export function getResourcesByType(
-  resources: Resource[],
-  targetType: ResourceType,
-  minConfidence: number = 0.7
-): Array<{ resource: Resource; detection: DetectionResult }> {
-  const results: Array<{ resource: Resource; detection: DetectionResult }> = [];
-
-  for (const resource of resources) {
-    const detection = detectResourceType(resource);
-
-    if (detection.type === targetType && detection.confidence >= minConfidence) {
-      results.push({ resource, detection });
+    if (matchesSubject(context.subject, pattern.subjects)) {
+      reasoning.push(
+        `Subject "${context.subject}" indicates ${bestMatch.toUpperCase()} resource`,
+      );
     }
-  }
 
-  // Sort by confidence (highest first)
-  return results.sort((a, b) => b.detection.confidence - a.detection.confidence);
-}
+    if (
+      context.organization &&
+      pattern.organizationHints.includes(context.organization)
+    ) {
+      reasoning.push(
+        `Organization "${context.organization}" commonly produces ${bestMatch.toUpperCase()}`,
+      );
+    }
 
-/**
- * Validate detected resource type against expected patterns
- */
-export function validateDetection(
-  resource: Resource,
-  expectedType: ResourceType
-): { valid: boolean; confidence: number; issues: string[] } {
-  const detection = detectResourceType(resource);
-  const issues: string[] = [];
-
-  if (detection.type !== expectedType) {
-    issues.push(`Expected ${expectedType}, detected ${detection.type || "unknown"}`);
-  }
-
-  if (detection.confidence < 0.8) {
-    issues.push(`Low confidence detection: ${detection.confidence.toFixed(2)}`);
-  }
-
-  if (!detection.type) {
-    issues.push("No resource type detected");
+    // Language-specific logic
+    if (bestMatch === ResourceType.ULT && context.language !== "en") {
+      reasoning.push(
+        `Warning: ULT typically only available in English, found language "${context.language}"`,
+      );
+      bestConfidence *= 0.7; // Reduce confidence
+    } else if (bestMatch === ResourceType.UST && context.language !== "en") {
+      reasoning.push(
+        `Warning: UST typically only available in English, found language "${context.language}"`,
+      );
+      bestConfidence *= 0.7; // Reduce confidence
+    }
   }
 
   return {
-    valid: issues.length === 0,
-    confidence: detection.confidence,
-    issues,
+    type: bestMatch,
+    confidence: bestConfidence,
+    reasoning,
+    alternatives: alternatives.slice(0, 3), // Top 3 alternatives
   };
 }
 
 /**
- * Get detection statistics for a set of resources
+ * Calculate confidence score for a resource type pattern
  */
-export function getDetectionStats(resources: Resource[]): {
-  totalResources: number;
-  detectedTypes: Record<ResourceType, number>;
-  undetected: number;
-  averageConfidence: number;
-  highConfidenceCount: number;
-} {
-  const stats = {
-    totalResources: resources.length,
-    detectedTypes: {} as Record<ResourceType, number>,
-    undetected: 0,
-    averageConfidence: 0,
-    highConfidenceCount: 0,
-  };
+function calculateConfidence(
+  context: ResourceContext,
+  pattern: ResourcePattern,
+): number {
+  let confidence = 0;
+  let factors = 0;
 
-  // Initialize type counts
-  for (const type of Object.values(ResourceType)) {
-    stats.detectedTypes[type] = 0;
+  // Identifier matching (highest weight)
+  if (matchesIdentifierPattern(context.identifier, pattern.identifiers)) {
+    confidence += 0.4;
+    factors++;
   }
+
+  // Subject matching (high weight)
+  if (matchesSubject(context.subject, pattern.subjects)) {
+    confidence += 0.3;
+    factors++;
+  }
+
+  // Organization hint (medium weight)
+  if (
+    context.organization &&
+    pattern.organizationHints.includes(context.organization)
+  ) {
+    confidence += 0.15;
+    factors++;
+  }
+
+  // Keyword matching in name/title/description (lower weight)
+  const textContent = [context.name, context.title, context.description]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const keywordMatches = pattern.keywords.filter((keyword: string) =>
+    textContent.includes(keyword.toLowerCase()),
+  );
+
+  if (keywordMatches.length > 0) {
+    confidence += 0.1 * (keywordMatches.length / pattern.keywords.length);
+    factors++;
+  }
+
+  // Language validation for language-specific resources
+  if (
+    isLanguageSpecificResource(pattern) &&
+    !isValidLanguageCode(context.language)
+  ) {
+    confidence *= 0.5; // Reduce confidence for invalid language codes
+  }
+
+  // Normalize confidence based on pattern base confidence
+  confidence *= pattern.confidence;
+
+  // Apply minimum threshold
+  return factors > 0 ? Math.min(confidence, 1.0) : 0;
+}
+
+/**
+ * Check if identifier matches any of the patterns
+ */
+function matchesIdentifierPattern(
+  identifier: string,
+  patterns: readonly RegExp[],
+): boolean {
+  return patterns.some((pattern) => pattern.test(identifier));
+}
+
+/**
+ * Check if subject matches expected subjects
+ */
+function matchesSubject(
+  subject: string,
+  expectedSubjects: readonly string[],
+): boolean {
+  if (!subject) return false;
+
+  return expectedSubjects.some(
+    (expected) =>
+      subject.toLowerCase().includes(expected.toLowerCase()) ||
+      expected.toLowerCase().includes(subject.toLowerCase()),
+  );
+}
+
+/**
+ * Generate human-readable reason for match
+ */
+function generateReason(
+  context: ResourceContext,
+  pattern: ResourcePattern,
+  confidence: number,
+): string {
+  const reasons: string[] = [];
+
+  if (matchesIdentifierPattern(context.identifier, pattern.identifiers)) {
+    reasons.push("identifier pattern");
+  }
+
+  if (matchesSubject(context.subject, pattern.subjects)) {
+    reasons.push("subject match");
+  }
+
+  if (
+    context.organization &&
+    pattern.organizationHints.includes(context.organization)
+  ) {
+    reasons.push("organization hint");
+  }
+
+  const reasonText =
+    reasons.length > 0 ? `(${reasons.join(", ")})` : "(keyword similarity)";
+  return `${(confidence * 100).toFixed(1)}% ${reasonText}`;
+}
+
+/**
+ * Check if resource type is language-specific
+ */
+function isLanguageSpecificResource(pattern: ResourcePattern): boolean {
+  // Most UW resources are language-specific except original language texts
+  return !pattern.keywords.includes("original");
+}
+
+/**
+ * Basic language code validation
+ */
+function isValidLanguageCode(language: string): boolean {
+  if (!language) return false;
+
+  // Allow standard language codes (2-3 letters) and common variants
+  return /^[a-z]{2,3}(-[a-z0-9]+)*$/i.test(language);
+}
+
+/**
+ * Detect multiple resources from a catalog response
+ */
+export function detectResourcesFromCatalog(
+  catalogData: Record<string, unknown>[],
+): Array<{
+  resource: Record<string, unknown>;
+  detection: ResourceDetectionResult;
+}> {
+  return catalogData.map((resource) => {
+    const context: ResourceContext = {
+      identifier:
+        (resource.name as string) || (resource.identifier as string) || "",
+      subject: (resource.subject as string) || "",
+      organization:
+        ((resource.owner as Record<string, unknown>)?.login as string) ||
+        (resource.organization as string) ||
+        "",
+      language: (resource.language as string) || "",
+      name: (resource.name as string) || "",
+      title: (resource.title as string) || "",
+      description: (resource.description as string) || "",
+      metadata: resource,
+    };
+
+    const detection = detectResourceType(context);
+
+    return {
+      resource,
+      detection,
+    };
+  });
+}
+
+/**
+ * Filter resources by type with confidence threshold
+ */
+export function filterResourcesByType(
+  detectedResources: ReturnType<typeof detectResourcesFromCatalog>,
+  resourceType: ResourceType,
+  minConfidence = 0.5,
+): Record<string, unknown>[] {
+  return detectedResources
+    .filter(
+      (item) =>
+        item.detection.type === resourceType &&
+        item.detection.confidence >= minConfidence,
+    )
+    .map((item) => ({
+      ...item.resource,
+      detectionConfidence: item.detection.confidence,
+      detectionReasoning: item.detection.reasoning,
+    }));
+}
+
+/**
+ * Get resource statistics from detected resources
+ */
+export function getResourceStats(
+  detectedResources: ReturnType<typeof detectResourcesFromCatalog>,
+) {
+  const stats = {
+    total: detectedResources.length,
+    detected: 0,
+    byType: {} as Record<ResourceType, number>,
+    averageConfidence: 0,
+    highConfidence: 0, // > 0.8
+    mediumConfidence: 0, // 0.5 - 0.8
+    lowConfidence: 0, // < 0.5
+    undetected: 0,
+  };
 
   let totalConfidence = 0;
 
-  for (const resource of resources) {
-    const detection = detectResourceType(resource);
+  for (const item of detectedResources) {
+    if (item.detection.type) {
+      stats.detected++;
+      stats.byType[item.detection.type] =
+        (stats.byType[item.detection.type] || 0) + 1;
+      totalConfidence += item.detection.confidence;
 
-    if (detection.type) {
-      stats.detectedTypes[detection.type]++;
-      if (detection.confidence >= 0.8) {
-        stats.highConfidenceCount++;
+      if (item.detection.confidence > 0.8) {
+        stats.highConfidence++;
+      } else if (item.detection.confidence >= 0.5) {
+        stats.mediumConfidence++;
+      } else {
+        stats.lowConfidence++;
       }
     } else {
       stats.undetected++;
     }
-
-    totalConfidence += detection.confidence;
   }
 
-  stats.averageConfidence = stats.totalResources > 0 ? totalConfidence / stats.totalResources : 0;
+  stats.averageConfidence =
+    stats.detected > 0 ? totalConfidence / stats.detected : 0;
 
   return stats;
+}
+
+/**
+ * Suggest improvements for low-confidence detections
+ */
+export function suggestImprovements(
+  detection: ResourceDetectionResult,
+): string[] {
+  const suggestions: string[] = [];
+
+  if (detection.confidence < 0.5) {
+    suggestions.push(
+      "Consider adding more descriptive identifiers (e.g., en_ult, es_tn)",
+    );
+    suggestions.push(
+      "Ensure subject field accurately describes the resource type",
+    );
+    suggestions.push(
+      "Add keywords in title or description that match resource type",
+    );
+  }
+
+  if (detection.alternatives.length > 1) {
+    const topAlt = detection.alternatives[1];
+    if (Math.abs(detection.confidence - topAlt.confidence) < 0.1) {
+      suggestions.push(
+        `Detection is ambiguous - could also be ${topAlt.type.toUpperCase()} (${(topAlt.confidence * 100).toFixed(1)}%)`,
+      );
+    }
+  }
+
+  if (!detection.type) {
+    suggestions.push(
+      "Resource type could not be determined - consider using standard UW naming conventions",
+    );
+  }
+
+  return suggestions;
 }
