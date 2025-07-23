@@ -10,22 +10,6 @@ import type { CacheBypassOptions } from "../unified-cache";
 export const fetchScriptureHandler: PlatformHandler = async (
   request: PlatformRequest
 ): Promise<PlatformResponse> => {
-  const startTime = Date.now();
-
-  // Handle CORS
-  if (request.method === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers":
-          "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      },
-      body: "",
-    };
-  }
-
   try {
     const referenceParam = request.queryStringParameters.reference;
     const language = request.queryStringParameters.language || "en";
@@ -33,8 +17,6 @@ export const fetchScriptureHandler: PlatformHandler = async (
     const includeVerseNumbers = request.queryStringParameters.includeVerseNumbers !== "false";
     const formatParam = request.queryStringParameters.format || "text";
     const format = (formatParam === "usfm" ? "usfm" : "text") as "text" | "usfm";
-    const includeMultipleTranslations =
-      request.queryStringParameters.includeMultipleTranslations !== "false";
     const specificTranslations = request.queryStringParameters.translations
       ? request.queryStringParameters.translations.split(",").map((t) => t.trim())
       : undefined;
@@ -62,7 +44,6 @@ export const fetchScriptureHandler: PlatformHandler = async (
       organization,
       includeVerseNumbers,
       format,
-      includeMultipleTranslations,
       specificTranslations,
       bypassCache: bypassOptions,
     });

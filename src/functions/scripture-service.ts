@@ -17,13 +17,25 @@ import {
   extractVerseTextWithNumbers,
 } from "./usfm-extractor";
 
+interface CatalogResource {
+  name: string;
+  title: string;
+  ingredients?: Array<{
+    identifier: string;
+    path: string;
+  }>;
+}
+
+interface CatalogResponse {
+  data?: CatalogResource[];
+}
+
 export interface ScriptureOptions {
   reference: string;
   language?: string;
   organization?: string;
   includeVerseNumbers?: boolean;
   format?: "text" | "usfm";
-  includeMultipleTranslations?: boolean;
   specificTranslations?: string[];
   bypassCache?: CacheBypassOptions;
 }
@@ -74,7 +86,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     organization = "unfoldingWord",
     includeVerseNumbers = true,
     format = "text",
-    includeMultipleTranslations = false,
+    specificTranslations,
     bypassCache,
   } = options;
 
@@ -93,7 +105,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   }
 
   // Create cache key that includes ALL parameters
-  const responseKey = `scripture:${referenceParam}:${language}:${organization}:${includeVerseNumbers}:${format}:${includeMultipleTranslations}`;
+  const responseKey = `scripture:${referenceParam}:${language}:${organization}:${includeVerseNumbers}:${format}:${specificTranslations?.join(",")}`;
 
   // Try to get cached response first
   const cachedResponse = await unifiedCache.getWithDeduplication(
@@ -124,7 +136,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   async function fetchFreshScripture(): Promise<ScriptureResult> {
     // Search for scripture resources from BOTH subjects
     const subjects = ["Aligned%20Bible", "Bible"];
-    const allResources: any[] = [];
+    const allResources: CatalogResource[] = [];
 
     for (const subject of subjects) {
       const searchUrl = `https://git.door43.org/api/v1/catalog/search?subject=${subject}&lang=${language}&owner=${organization}`;
@@ -136,16 +148,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
         continue; // Continue to next subject instead of throwing
       }
 
-      const catalogData = (await catalogResponse.json()) as {
-        data?: Array<{
-          name: string;
-          title: string;
-          ingredients?: Array<{
-            identifier: string;
-            path: string;
-          }>;
-        }>;
-      };
+      const catalogData = (await catalogResponse.json()) as CatalogResponse;
 
       if (catalogData.data) {
         allResources.push(...catalogData.data);
@@ -160,43 +163,44 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     console.log(`📊 Found ${allResources.length} scripture resources across all subjects`);
 
     // Deduplicate resources by name (in case same resource appears in multiple subjects)
-    const uniqueResources = allResources.reduce((acc: any[], resource: any) => {
-      if (!acc.find((r: any) => r.name === resource.name)) {
-        acc.push(resource);
-      }
-      return acc;
-    }, []);
+    const uniqueResources = allResources.reduce(
+      (acc: CatalogResource[], resource: CatalogResource) => {
+        if (!acc.find((r: CatalogResource) => r.name === resource.name)) {
+          acc.push(resource);
+        }
+        return acc;
+      },
+      []
+    );
 
     console.log(`📊 Found ${uniqueResources.length} unique scripture resources`);
 
     // Filter by specific translations if requested
     let filteredResources = uniqueResources;
-    if (options.specificTranslations && options.specificTranslations.length > 0) {
+    if (specificTranslations && specificTranslations.length > 0) {
       filteredResources = uniqueResources.filter((resource) =>
-        options.specificTranslations!.includes(resource.name)
+        specificTranslations!.includes(resource.name)
       );
       console.log(
-        `🎯 Filtered to ${filteredResources.length} specific translations: ${options.specificTranslations.join(", ")}`
+        `🎯 Filtered to ${filteredResources.length} specific translations: ${specificTranslations.join(", ")}`
       );
 
       if (filteredResources.length === 0) {
         console.warn(
-          `⚠️ No resources found for specified translations: ${options.specificTranslations.join(", ")}`
+          `⚠️ No resources found for specified translations: ${specificTranslations.join(", ")}`
         );
         // Fall back to all available resources if none of the specified ones exist
         filteredResources = uniqueResources;
       }
     }
 
-    // Handle multiple translations if requested (and not overridden by specific translations)
-    const resourcesToProcess = options.specificTranslations
-      ? filteredResources
-      : includeMultipleTranslations
-        ? filteredResources
-        : [filteredResources[0]];
+    // Handle translations: if none specified, return all; if specified, return only those
+    const resourcesToProcess = specificTranslations
+      ? filteredResources // Use only the specified translations
+      : uniqueResources; // Use all available translations (default)
 
     console.log(
-      `📖 Processing ${resourcesToProcess.length} resource(s) (multiple translations: ${includeMultipleTranslations})`
+      `📖 Processing ${resourcesToProcess.length} resource(s) (${specificTranslations ? `specific: ${specificTranslations.join(",")}` : "all available"})`
     );
 
     const scriptures = [];
@@ -205,7 +209,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
       // Find the correct file from ingredients
       const ingredient = resource.ingredients?.find(
-        (ing: any) => ing.identifier === reference?.book.toLowerCase()
+        (ing: { identifier: string }) => ing.identifier === reference?.book.toLowerCase()
       );
 
       if (!ingredient || !reference) {
@@ -306,31 +310,32 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
       throw new Error(`No scripture text found for ${referenceParam}`);
     }
 
-    const result: ScriptureResult = includeMultipleTranslations
-      ? {
-          scriptures,
-          metadata: {
-            responseTime: Date.now() - startTime,
-            cached: false,
-            timestamp: new Date().toISOString(),
-            includeVerseNumbers,
-            format,
-            translationsFound: scriptures.length,
-            cacheKey: responseKey,
-          },
-        }
-      : {
-          scripture: scriptures[0],
-          metadata: {
-            responseTime: Date.now() - startTime,
-            cached: false,
-            timestamp: new Date().toISOString(),
-            includeVerseNumbers,
-            format,
-            translationsFound: scriptures.length,
-            cacheKey: responseKey,
-          },
-        };
+    const result: ScriptureResult =
+      specificTranslations && specificTranslations.length === 1
+        ? {
+            scripture: scriptures[0],
+            metadata: {
+              responseTime: Date.now() - startTime,
+              cached: false,
+              timestamp: new Date().toISOString(),
+              includeVerseNumbers,
+              format,
+              translationsFound: scriptures.length,
+              cacheKey: responseKey,
+            },
+          }
+        : {
+            scriptures,
+            metadata: {
+              responseTime: Date.now() - startTime,
+              cached: false,
+              timestamp: new Date().toISOString(),
+              includeVerseNumbers,
+              format,
+              translationsFound: scriptures.length,
+              cacheKey: responseKey,
+            },
+          };
 
     return result;
   }
@@ -351,7 +356,10 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 /**
  * Extract raw USFM passage for format=usfm requests
  */
-function extractUSFMPassage(usfm: string, reference: any): string {
+function extractUSFMPassage(
+  usfm: string,
+  reference: { book: string; chapter?: number; verse?: number; verseEnd?: number }
+): string {
   const chapterPattern = new RegExp(`\\\\c\\s+${reference.chapter}\\b`);
   const chapterSplit = usfm.split(chapterPattern);
 
