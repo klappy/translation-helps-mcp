@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.3] - 2025-07-23
+
+### 🚀 Major Infrastructure Fixes & Data Integrity Improvements
+
+- **Fixed Critical Translation Questions Data Issues**: Resolved systematic problems causing empty question strings
+  - **Ingredients Pattern Implementation**: Replaced all hardcoded file paths with dynamic catalog search + ingredients pattern
+    - Fixed `src/functions/translation-questions-service.ts` to use catalog API instead of hardcoded `tq_*.tsv` paths
+    - Fixed `src/functions/word-links-service.ts` to use ingredients for translation word links discovery
+    - Fixed `src/functions/translation-words-service.ts` to use ingredients for word link file detection
+    - Fixed `src/services/ResourceAggregator.ts` to use catalog search for translation questions
+    - **Result**: Eliminated 404 errors from missing hardcoded resource files
+  - **TSV Parsing Logic Corrections**: Fixed incorrect column structure assumptions
+    - Updated parsing from 5-column to correct 7-column TSV structure
+    - Proper column mapping: `Reference | ID | Tags | Quote | Occurrence | Question | Response`
+    - Fixed destructuring: `const [ref, , , , , question, response] = columns;`
+    - **Result**: Translation questions now return actual question text instead of empty strings
+
+- **Fixed POST Request Handling**: Resolved API endpoints not processing JSON request bodies
+  - Updated `src/functions/handlers/fetch-translation-questions.ts` to parse both query parameters and POST JSON bodies
+  - Added support for requests like `{"reference": "Titus 1:1", "language": "en", "organization": "unfoldingWord"}`
+  - Maintains backward compatibility with existing GET query parameter usage
+  - **Result**: All API endpoints now properly support both GET and POST methods
+
+- **Enhanced MCP Tool Compatibility**: Added method name aliasing for improved tool integration
+  - Added support for hyphenated method names in MCP endpoints (`fetch-translation-questions`)
+  - Maintains existing underscore method names (`fetch_translation_questions`)
+  - Fixed "Unknown method" errors when AI tools use hyphenated naming conventions
+  - **Result**: Improved compatibility with various AI assistants and MCP clients
+
+### 🔧 System Architecture Improvements
+
+- **Resource Discovery Modernization**: Transitioned from static file assumptions to dynamic resource catalog
+  - All translation help services now use unfoldingWord's official catalog API
+  - Ingredients-based file discovery ensures compatibility with evolving resource structures
+  - Eliminates dependency on specific file naming conventions
+  - **Impact**: More resilient system that adapts to upstream resource organization changes
+
+- **Data Quality Assurance**: Enhanced parsing logic to handle real-world TSV data structures
+  - Comprehensive validation of translation questions TSV format
+  - Proper handling of empty cells and variable column counts
+  - Improved error handling for malformed data
+  - **Impact**: More reliable data extraction with better error recovery
+
+### 🧪 Testing & Verification
+
+- **Comprehensive Endpoint Testing**: Verified all access methods work correctly
+  - Direct API GET requests: `✅ Working`
+  - Direct API POST requests: `✅ Working`
+  - MCP with underscores: `✅ Working`
+  - MCP with hyphens: `✅ Working`
+  - Resource aggregation: `✅ Working`
+  - **Result**: All translation questions endpoints consistently return actual question data
+
 ## [4.4.1] - 2025-07-22
 
 ### 🧹 Project Organization & Quality Improvements

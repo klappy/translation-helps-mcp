@@ -4,15 +4,14 @@
  */
 
 import { ParsedReference } from "../parsers/referenceParser.js";
-import { DCSApiClient } from "./DCSApiClient.js";
 import { logger } from "../utils/logger.js";
 import {
-  extractVerseText,
-  extractVerseRange,
   extractChapterText,
-  extractChapterRange,
+  extractVerseRange,
+  extractVerseText,
   validateCleanText,
 } from "../utils/usfmExtractor.js";
+import { DCSApiClient } from "./DCSApiClient.js";
 
 export interface ResourceOptions {
   language: string;
@@ -382,31 +381,49 @@ export class ResourceAggregator {
   }
 
   /**
-   * Fetch translation questions from DCS
+   * Fetch translation questions from DCS using catalog search and ingredients
    */
   private async fetchTranslationQuestions(
     reference: ParsedReference,
     options: ResourceOptions
   ): Promise<TranslationQuestion[]> {
     try {
-      const repoName = `${options.language}_tq`;
-      const bookCode = this.getBookCode(reference.book);
-      const filePath = `tq_${bookCode}.tsv`;
+      // Use catalog search with ingredients pattern
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Questions&lang=${options.language}&owner=${options.organization}`;
+      const searchResponse = await fetch(searchUrl);
 
-      logger.debug("Fetching translation questions", {
-        organization: options.organization,
-        repo: repoName,
-        file: filePath,
-      });
+      if (!searchResponse.ok) {
+        logger.warn("Failed to search catalog for translation questions");
+        return [];
+      }
 
-      const response = await this.dcsClient.getRawFileContent(
-        options.organization,
-        repoName,
-        filePath
-      );
+      const searchData = (await searchResponse.json()) as {
+        data?: { name: string; ingredients?: { identifier?: string; path?: string }[] }[];
+      };
+      const tqResources = searchData.data || [];
 
-      if (response.success && response.data) {
-        return this.parseTQFromTSV(response.data, reference);
+      for (const resource of tqResources) {
+        const bookCode = this.getBookCode(reference.book);
+        const ingredient = resource.ingredients?.find(
+          (ing: { identifier?: string; path?: string }) =>
+            ing.identifier === bookCode ||
+            ing.identifier === reference.book.toUpperCase() ||
+            ing.identifier === reference.book.toLowerCase()
+        );
+
+        if (!ingredient || !ingredient.path) {
+          continue;
+        }
+
+        const response = await this.dcsClient.getRawFileContent(
+          options.organization,
+          resource.name,
+          ingredient.path
+        );
+
+        if (response.success && response.data) {
+          return this.parseTQFromTSV(response.data, reference);
+        }
       }
 
       return [];
@@ -1015,22 +1032,25 @@ export class ResourceAggregator {
         if (!line.trim()) continue;
 
         const cols = line.split("\t");
-        if (cols.length < 5) continue;
+        if (cols.length < 7) continue;
 
-        const chapter = parseInt(cols[1]);
-        const verse = parseInt(cols[2]);
+        // Correct structure: Reference | ID | Tags | Quote | Occurrence | Question | Response
+        const [ref, , , , , question, response] = cols;
 
-        // Filter for the requested reference
+        const refMatch = ref.match(/(\d+):(\d+)/);
+        if (!refMatch) continue;
+
+        const chapter = parseInt(refMatch[1]);
+        const verse = parseInt(refMatch[2]);
+
         if (reference.chapter && chapter !== reference.chapter) continue;
         if (reference.verse && verse !== reference.verse) continue;
 
-        const question: TranslationQuestion = {
+        questions.push({
           reference: `${reference.book} ${chapter}:${verse}`,
-          question: cols[3] || "",
-          answer: cols[4] || undefined,
-        };
-
-        questions.push(question);
+          question: question?.trim() || "",
+          answer: response?.trim() || undefined,
+        });
       }
     } catch (error) {
       logger.error("Error parsing TQ TSV", {

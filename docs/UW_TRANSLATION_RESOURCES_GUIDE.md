@@ -863,9 +863,11 @@ Aaron was Moses' older brother. God chose Aaron to be the first high priest...
 #### Technical Specifications
 
 - **Format**: TSV files, one per book
-- **Naming**: `tq_[BOOK].tsv` (e.g., `tq_GEN.tsv`)
+- **Discovery**: Dynamic via catalog API + ingredients pattern (no hardcoded file names)
 - **Repository**: [unfoldingWord Translation Questions](https://git.door43.org/unfoldingword/en_tq)
 - **License**: Creative Commons Attribution-ShareAlike 4.0
+
+> **Note**: As of v4.4.3, the Translation Helps MCP uses the catalog API and resource ingredients to dynamically discover translation question files, eliminating the need for hardcoded file naming conventions like `tq_[BOOK].tsv`. This makes the system more resilient to upstream resource organization changes.
 
 #### TSV Column Structure
 

@@ -4,12 +4,13 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
-import { parseReference } from "./reference-parser";
 import { cache } from "./cache";
+import { parseReference } from "./reference-parser";
 
 export interface TranslationQuestion {
   reference: string;
   question: string;
+  response?: string;
 }
 
 export interface TranslationQuestionsOptions {
@@ -108,7 +109,7 @@ export async function fetchTranslationQuestions(
 
   // Find the correct file from ingredients
   const ingredient = resource.ingredients?.find(
-    (ing: any) => ing.identifier === reference.book.toLowerCase()
+    (ing: { identifier?: string }) => ing.identifier === reference.book.toLowerCase()
   );
 
   if (!ingredient) {
@@ -190,9 +191,10 @@ function parseTQFromTSV(
     if (!line.trim()) continue;
 
     const columns = line.split("\t");
-    if (columns.length < 5) continue;
+    if (columns.length < 7) continue; // Need at least 7 columns
 
-    const [ref, id, tags, supportReference, question] = columns;
+    // Correct structure: Reference | ID | Tags | Quote | Occurrence | Question | Response
+    const [ref, , , , , question, response] = columns;
 
     // Parse the reference
     const refMatch = ref.match(/(\d+):(\d+)/);
@@ -205,23 +207,21 @@ function parseTQFromTSV(
     let include = false;
 
     if (reference.verse && reference.verseEnd) {
-      // Verse range within same chapter
       include =
         chapterNum === reference.chapter &&
         verseNum >= reference.verse &&
         verseNum <= reference.verseEnd;
     } else if (reference.verse) {
-      // Single verse
       include = chapterNum === reference.chapter && verseNum === reference.verse;
     } else {
-      // Full chapter
       include = chapterNum === reference.chapter;
     }
 
-    if (include) {
+    if (include && question && question.trim()) {
       questions.push({
-        reference: `${reference.book} ${ref}`,
-        question: question || "",
+        reference: `${reference.book} ${chapterNum}:${verseNum}`,
+        question: question.trim(),
+        response: response?.trim() || undefined,
       });
     }
   }

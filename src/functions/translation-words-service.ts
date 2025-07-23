@@ -4,8 +4,8 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
-import { parseReference } from "./reference-parser";
 import { cache } from "./cache";
+import { parseReference } from "./reference-parser";
 
 export interface TranslationWord {
   term: string;
@@ -120,8 +120,23 @@ export async function fetchTranslationWords(
   // Then fetch individual word definitions
   const words: TranslationWord[] = [];
 
-  // Get the translation word links for this reference
-  const linksUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/twl_${reference.book.toUpperCase()}.tsv`;
+  // Find the TWL file from ingredients for this book
+  const ingredient = resource.ingredients?.find((ing: { path?: string }) => {
+    const path = ing.path?.toLowerCase() || "";
+    const bookLower = reference.book.toLowerCase();
+    return (
+      path.includes(`twl_${bookLower}`) || path.includes(`twl_${reference.book.toUpperCase()}`)
+    );
+  });
+
+  if (!ingredient) {
+    throw new Error(
+      `Translation word links for ${reference.book} not found in resource ${resource.name}`
+    );
+  }
+
+  // Build URL using the ingredient path
+  const linksUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
   console.log(`🔗 Fetching word links from: ${linksUrl}`);
 
   // Try to get from cache first
@@ -249,7 +264,7 @@ function parseWordLinksFromTSV(
  */
 async function fetchWordDefinition(
   wordId: string,
-  resource: any,
+  resource: { name: string; ingredients?: { path?: string; identifier?: string }[] },
   organization: string,
   language: string
 ): Promise<TranslationWord | null> {
@@ -286,7 +301,7 @@ async function fetchWordDefinition(
       const lines = wordContent.split("\n");
       let title = "";
       let definition = "";
-      let content = wordContent;
+      const content = wordContent;
 
       // Extract title (first heading)
       for (const line of lines) {
