@@ -7,18 +7,15 @@
 		Activity,
 		AlertCircle,
 		Beaker,
-		Book,
 		BookOpen,
 		CheckCircle,
 		Code,
 		Database,
 		ExternalLink,
-		FileText,
 		Globe,
 		Info,
+		Languages,
 		Link,
-		List,
-		MessageSquare,
 		Search,
 		Terminal,
 		Zap
@@ -61,11 +58,29 @@
 			description: 'Fetch files and filter data to smaller, relevant chunks for specific use cases',
 			healthKey: 'core'
 		},
-		linked: {
-			name: 'Extended Endpoints',
+		translation: {
+			name: 'Translation Endpoints',
+			icon: Languages,
+			description: 'Translation-specific resources and specialized content',
+			healthKey: 'translation'
+		},
+		linguistics: {
+			name: 'Linguistics & Words',
+			icon: BookOpen,
+			description: 'Word-level analysis, translation words, and linguistic resources',
+			healthKey: 'linguistics'
+		},
+		metadata: {
+			name: 'Metadata & Discovery',
+			icon: Search,
+			description: 'Resource discovery, language coverage, and availability information',
+			healthKey: 'metadata'
+		},
+		comprehensive: {
+			name: 'Comprehensive & Aggregated',
 			icon: Link,
 			description: 'Bring multiple sources together, handle complex chained events, or merge data',
-			healthKey: 'extended'
+			healthKey: 'comprehensive'
 		},
 		experimental: {
 			name: 'Experimental',
@@ -75,496 +90,843 @@
 		}
 	};
 
-	// Organized MCP Tools by category
+	// Complete endpoint data merged from api-docs with MCP tool mappings
 	const mcpTools = {
 		core: [
 			{
 				name: 'Fetch Scripture',
 				tool: 'translation_helps_fetch_scripture',
-				description: 'Get Bible text in USFM or plain text format',
+				description:
+					'Retrieves Scripture text in ULT/GLT and/or UST/GST translations with embedded word alignment data for precise translation work.',
 				apiEndpoint: '/api/fetch-scripture',
-				icon: BookOpen,
+				method: 'GET',
+				category: 'core',
 				parameters: [
 					{
 						name: 'reference',
-						type: 'string',
 						required: true,
-						description: 'Bible reference (e.g., "John 3:16")'
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference (e.g., "John 3:16", "Romans 1:1-5")'
 					},
 					{
 						name: 'language',
-						type: 'string',
 						required: false,
-						default: 'en',
-						description: 'Language code'
+						type: 'string',
+						example: 'en',
+						description: 'Target language code (ISO 639-1)'
 					},
 					{
 						name: 'organization',
-						type: 'string',
 						required: false,
-						default: 'unfoldingWord',
-						description: 'Content organization'
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization/publisher'
 					},
 					{
 						name: 'includeVerseNumbers',
-						type: 'boolean',
 						required: false,
-						default: 'true',
-						description: 'Include verse numbers in the text'
+						type: 'boolean',
+						example: true,
+						description: 'Include verse numbers in response'
 					},
 					{
 						name: 'format',
-						type: 'select',
 						required: false,
-						default: 'text',
+						type: 'string',
+						example: 'text',
 						options: ['text', 'usfm'],
-						description: 'Output format: clean text or raw USFM'
+						description: 'Response format (text or usfm)'
 					},
 					{
-						name: 'translations',
-						type: 'string',
+						name: 'includeAlignment',
 						required: false,
-						description:
-							'Specific translations to include (comma-separated: en_ult,en_ust,en_t4t,en_ueb). Leave empty for all translations.'
+						type: 'boolean',
+						example: false,
+						description: 'Include word alignment data for translation work'
 					}
 				],
-				exampleRequest: {
-					reference: 'John 3:16',
-					language: 'en',
-					organization: 'unfoldingWord',
-					includeVerseNumbers: 'true',
-					format: 'text'
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord',
+						includeVerseNumbers: true,
+						format: 'text'
+					}
 				}
 			},
 			{
-				name: 'Fetch Translation Notes',
-				tool: 'translation_helps_fetch_translation_notes',
-				description: 'Get detailed translation notes for Bible passages',
-				apiEndpoint: '/api/fetch-translation-notes',
-				icon: FileText,
+				name: 'Fetch ULT Scripture',
+				tool: 'translation_helps_fetch_ult_scripture',
+				description:
+					'Fetches ULT (Unlocked Literal Text) Scripture with precise word alignment data for translation teams.',
+				apiEndpoint: '/api/fetch-ult-scripture',
+				method: 'GET',
+				category: 'core',
 				parameters: [
 					{
 						name: 'reference',
-						type: 'string',
 						required: true,
-						description: 'Bible reference (e.g., "Titus 1:1")'
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
 					},
 					{
 						name: 'language',
-						type: 'string',
 						required: false,
-						default: 'en',
+						type: 'string',
+						example: 'en',
 						description: 'Language code'
 					},
 					{
 						name: 'organization',
-						type: 'string',
 						required: false,
-						default: 'unfoldingWord',
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization'
+					},
+					{
+						name: 'includeAlignment',
+						required: false,
+						type: 'boolean',
+						example: false,
+						description: 'Include word alignment data'
+					}
+				],
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord'
+					}
+				}
+			},
+			{
+				name: 'Fetch UST Scripture',
+				tool: 'translation_helps_fetch_ust_scripture',
+				description:
+					'Fetches UST (Unlocked Simplified Text) Scripture optimized for clarity and comprehension.',
+				apiEndpoint: '/api/fetch-ust-scripture',
+				method: 'GET',
+				category: 'core',
+				parameters: [
+					{
+						name: 'reference',
+						required: true,
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
+					},
+					{
+						name: 'language',
+						required: false,
+						type: 'string',
+						example: 'en',
+						description: 'Language code'
+					},
+					{
+						name: 'organization',
+						required: false,
+						type: 'string',
+						example: 'unfoldingWord',
 						description: 'Content organization'
 					}
 				],
-				exampleRequest: {
-					reference: 'Titus 1:1',
-					language: 'en',
-					organization: 'unfoldingWord'
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord'
+					}
+				}
+			}
+		],
+		translation: [
+			{
+				name: 'Fetch Translation Notes',
+				tool: 'translation_helps_fetch_translation_notes',
+				description:
+					'Retrieves detailed translation notes providing cultural context, linguistic insights, and translation guidance.',
+				apiEndpoint: '/api/fetch-translation-notes',
+				method: 'GET',
+				category: 'translation',
+				parameters: [
+					{
+						name: 'reference',
+						required: true,
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
+					},
+					{
+						name: 'language',
+						required: false,
+						type: 'string',
+						example: 'en',
+						description: 'Language code'
+					},
+					{
+						name: 'organization',
+						required: false,
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization'
+					},
+					{
+						name: 'includeIntro',
+						required: false,
+						type: 'boolean',
+						example: true,
+						description: 'Include book/chapter introductory notes'
+					},
+					{
+						name: 'includeContext',
+						required: false,
+						type: 'boolean',
+						example: true,
+						description: 'Include contextual background notes'
+					}
+				],
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord',
+						includeIntro: true
+					}
 				}
 			},
 			{
 				name: 'Fetch Translation Questions',
 				tool: 'translation_helps_fetch_translation_questions',
-				description: 'Get comprehension questions for Bible passages',
+				description:
+					'Provides comprehension and accuracy-checking questions for translation validation and quality assurance.',
 				apiEndpoint: '/api/fetch-translation-questions',
-				icon: MessageSquare,
+				method: 'GET',
+				category: 'translation',
 				parameters: [
 					{
 						name: 'reference',
-						type: 'string',
 						required: true,
-						description: 'Bible reference (e.g., "John 3:16")'
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
 					},
 					{
 						name: 'language',
-						type: 'string',
 						required: false,
-						default: 'en',
+						type: 'string',
+						example: 'en',
 						description: 'Language code'
 					},
 					{
 						name: 'organization',
-						type: 'string',
 						required: false,
-						default: 'unfoldingWord',
+						type: 'string',
+						example: 'unfoldingWord',
 						description: 'Content organization'
 					}
 				],
-				exampleRequest: {
-					reference: 'John 3:16',
-					language: 'en',
-					organization: 'unfoldingWord'
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord'
+					}
 				}
 			},
 			{
 				name: 'Fetch Translation Academy',
 				tool: 'translation_helps_fetch_translation_academy',
-				description: 'Get training materials and educational articles on translation principles',
+				description:
+					'Access Translation Academy articles explaining translation principles, techniques, and best practices.',
 				apiEndpoint: '/api/fetch-translation-academy',
-				icon: Book,
+				method: 'GET',
+				category: 'translation',
 				parameters: [
 					{
-						name: 'topic',
-						type: 'string',
+						name: 'article',
 						required: false,
-						description: 'Specific translation topic or article (e.g., "metaphor")'
+						type: 'string',
+						example: 'translate-unknown',
+						description: 'Specific article identifier'
 					},
 					{
 						name: 'language',
-						type: 'string',
 						required: false,
-						default: 'en',
+						type: 'string',
+						example: 'en',
 						description: 'Language code'
 					},
 					{
 						name: 'organization',
-						type: 'string',
 						required: false,
-						default: 'unfoldingWord',
+						type: 'string',
+						example: 'unfoldingWord',
 						description: 'Content organization'
+					},
+					{
+						name: 'manual',
+						required: false,
+						type: 'string',
+						example: 'translate',
+						description: 'Manual type (translate, checking, etc.)'
 					}
 				],
-				exampleRequest: {
-					topic: 'metaphor',
-					language: 'en',
-					organization: 'unfoldingWord'
-				}
-			},
-			{
-				name: 'Get Translation Word',
-				tool: 'translation_helps_get_translation_word',
-				description: 'Get specific translation word article content',
-				apiEndpoint: '/api/get-translation-word',
-				icon: Book,
-				parameters: [
-					{
-						name: 'term',
-						type: 'string',
-						required: true,
-						description: 'Single word term to look up (e.g., "grace")'
-					},
-					{
-						name: 'language',
-						type: 'string',
-						required: false,
-						default: 'en',
-						description: 'Language code'
-					},
-					{
-						name: 'organization',
-						type: 'string',
-						required: false,
-						default: 'unfoldingWord',
-						description: 'Content organization'
+				example: {
+					request: {
+						article: 'translate-unknown',
+						language: 'en',
+						organization: 'unfoldingWord'
 					}
-				],
-				exampleRequest: {
-					reference: 'Genesis 1:1',
-					language: 'en',
-					organization: 'unfoldingWord'
 				}
-			},
+			}
+		],
+		linguistics: [
 			{
-				name: 'Browse Translation Words',
-				tool: 'translation_helps_browse_translation_words',
-				description: 'Browse available translation word articles by category',
-				apiEndpoint: '/api/browse-translation-words',
-				icon: Search,
-				parameters: [
-					{
-						name: 'language',
-						type: 'string',
-						required: false,
-						default: 'en',
-						description: 'Language code'
-					},
-					{
-						name: 'category',
-						type: 'string',
-						required: false,
-						description: 'Filter by category (kt, names, other)'
-					},
-					{
-						name: 'organization',
-						type: 'string',
-						required: false,
-						default: 'unfoldingWord',
-						description: 'Content organization'
-					}
-				],
-				exampleRequest: {
-					language: 'en',
-					category: 'kt',
-					organization: 'unfoldingWord'
-				}
-			},
-			{
-				name: 'Fetch Translation Words (Content)',
+				name: 'Fetch Translation Words',
 				tool: 'translation_helps_fetch_translation_words',
-				description: 'Get translation word article content for Bible references',
+				description:
+					'Retrieves key term definitions, cultural context, and translation recommendations for important biblical concepts.',
 				apiEndpoint: '/api/fetch-translation-words',
-				icon: FileText,
+				method: 'GET',
+				category: 'linguistics',
 				parameters: [
 					{
 						name: 'reference',
-						type: 'string',
 						required: true,
-						description: 'Bible reference (e.g., "Genesis 1:1")'
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
 					},
 					{
 						name: 'language',
-						type: 'string',
 						required: false,
-						default: 'en',
+						type: 'string',
+						example: 'en',
 						description: 'Language code'
 					},
 					{
 						name: 'organization',
-						type: 'string',
 						required: false,
-						default: 'unfoldingWord',
+						type: 'string',
+						example: 'unfoldingWord',
 						description: 'Content organization'
 					}
 				],
-				exampleRequest: {
-					reference: 'Genesis 1:1',
-					language: 'en',
-					organization: 'unfoldingWord'
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord'
+					}
 				}
 			},
 			{
 				name: 'Fetch Translation Word Links',
 				tool: 'translation_helps_fetch_translation_word_links',
-				description: 'Get translation word link metadata for specific Bible references',
+				description:
+					'Gets word-level linking data connecting translation words to specific verse locations and occurrences.',
 				apiEndpoint: '/api/fetch-translation-word-links',
-				icon: Link,
+				method: 'GET',
+				category: 'linguistics',
 				parameters: [
 					{
 						name: 'reference',
-						type: 'string',
 						required: true,
-						description: 'Bible reference (e.g., "Genesis 1:1")'
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
 					},
 					{
 						name: 'language',
-						type: 'string',
 						required: false,
-						default: 'en',
+						type: 'string',
+						example: 'en',
 						description: 'Language code'
 					},
 					{
 						name: 'organization',
-						type: 'string',
 						required: false,
-						default: 'unfoldingWord',
+						type: 'string',
+						example: 'unfoldingWord',
 						description: 'Content organization'
 					}
 				],
-				exampleRequest: {
-					reference: 'Genesis 1:1',
-					language: 'en',
-					organization: 'unfoldingWord'
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord'
+					}
 				}
 			},
 			{
-				name: 'Get Languages',
-				tool: 'translation_helps_get_languages',
-				description: 'List all available languages for translation resources',
-				apiEndpoint: '/api/get-languages',
-				icon: Globe,
-				parameters: [],
-				exampleRequest: {}
-			},
-			{
-				name: 'Extract References',
-				tool: 'translation_helps_extract_references',
-				description: 'Extract and parse Bible references from text',
-				apiEndpoint: '/api/extract-references',
-				icon: Search,
+				name: 'Get Translation Word',
+				tool: 'translation_helps_get_translation_word',
+				description:
+					'Retrieves detailed information for a specific translation word including definitions, examples, and related terms.',
+				apiEndpoint: '/api/get-translation-word',
+				method: 'GET',
+				category: 'linguistics',
 				parameters: [
 					{
-						name: 'text',
-						type: 'string',
+						name: 'word',
 						required: true,
-						description: 'Text containing Bible references'
-					}
-				],
-				exampleRequest: {
-					text: 'See John 3:16 and Romans 1:1 for more details'
-				}
-			},
-			{
-				name: 'List Available Resources',
-				tool: 'translation_helps_list_available_resources',
-				description: 'Search and list available translation resources',
-				apiEndpoint: '/api/list-available-resources',
-				icon: List,
-				parameters: [
+						type: 'string',
+						example: 'grace',
+						description: 'Translation word identifier'
+					},
 					{
 						name: 'language',
-						type: 'string',
 						required: false,
-						default: 'en',
+						type: 'string',
+						example: 'en',
 						description: 'Language code'
 					},
 					{
-						name: 'query',
-						type: 'string',
+						name: 'organization',
 						required: false,
-						description: 'Search query term'
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization'
 					}
 				],
-				exampleRequest: {
-					language: 'en',
-					query: 'faith'
+				example: {
+					request: {
+						word: 'grace',
+						language: 'en',
+						organization: 'unfoldingWord'
+					}
+				}
+			},
+			{
+				name: 'Browse Translation Words',
+				tool: 'translation_helps_browse_translation_words',
+				description:
+					'Browse and search through available translation words with filtering and categorization options.',
+				apiEndpoint: '/api/browse-translation-words',
+				method: 'GET',
+				category: 'linguistics',
+				parameters: [
+					{
+						name: 'language',
+						required: false,
+						type: 'string',
+						example: 'en',
+						description: 'Language code'
+					},
+					{
+						name: 'organization',
+						required: false,
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization'
+					},
+					{
+						name: 'category',
+						required: false,
+						type: 'string',
+						example: 'kt',
+						options: ['kt', 'names', 'other'],
+						description: 'Word category filter'
+					},
+					{
+						name: 'search',
+						required: false,
+						type: 'string',
+						example: 'grace',
+						description: 'Search term'
+					},
+					{
+						name: 'limit',
+						required: false,
+						type: 'number',
+						example: 50,
+						description: 'Maximum number of results'
+					}
+				],
+				example: {
+					request: {
+						language: 'en',
+						organization: 'unfoldingWord',
+						category: 'kt',
+						limit: 50
+					}
+				}
+			},
+			{
+				name: 'Get Words for Reference',
+				tool: 'translation_helps_get_words_for_reference',
+				description:
+					'Finds all translation words associated with a specific Bible reference for comprehensive word study.',
+				apiEndpoint: '/api/get-words-for-reference',
+				method: 'GET',
+				category: 'linguistics',
+				parameters: [
+					{
+						name: 'reference',
+						required: true,
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
+					},
+					{
+						name: 'language',
+						required: false,
+						type: 'string',
+						example: 'en',
+						description: 'Language code'
+					},
+					{
+						name: 'organization',
+						required: false,
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization'
+					}
+				],
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord'
+					}
+				}
+			}
+		],
+		metadata: [
+			{
+				name: 'Get Languages',
+				tool: 'translation_helps_get_languages',
+				description:
+					'Lists all available languages with their codes, names, and resource availability information.',
+				apiEndpoint: '/api/get-languages',
+				method: 'GET',
+				category: 'metadata',
+				parameters: [
+					{
+						name: 'organization',
+						required: false,
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Filter by organization'
+					}
+				],
+				example: {
+					request: {
+						organization: 'unfoldingWord'
+					}
 				}
 			},
 			{
 				name: 'Get Available Books',
 				tool: 'translation_helps_get_available_books',
-				description: 'List available Bible books for translation resources',
+				description:
+					'Returns list of Bible books available for a specific language and organization with resource counts.',
 				apiEndpoint: '/api/get-available-books',
-				icon: BookOpen,
+				method: 'GET',
+				category: 'metadata',
 				parameters: [
 					{
 						name: 'language',
-						type: 'string',
 						required: false,
-						default: 'en',
+						type: 'string',
+						example: 'en',
 						description: 'Language code'
 					},
 					{
 						name: 'organization',
-						type: 'string',
 						required: false,
-						default: 'unfoldingWord',
+						type: 'string',
+						example: 'unfoldingWord',
 						description: 'Content organization'
 					}
 				],
-				exampleRequest: {
-					language: 'en',
-					organization: 'unfoldingWord'
-				}
-			}
-		],
-		linked: [
-			{
-				name: 'Get Words for Reference',
-				tool: 'translation_helps_get_words_for_reference',
-				description: 'Get full paginated listing of translation words for Bible references',
-				apiEndpoint: '/api/get-words-for-reference',
-				icon: List,
-				parameters: [
-					{
-						name: 'reference',
-						type: 'string',
-						required: true,
-						description: 'Bible reference (e.g., "John 3:16")'
-					},
-					{
-						name: 'language',
-						type: 'string',
-						required: false,
-						default: 'en',
-						description: 'Language code'
-					},
-					{
-						name: 'organization',
-						type: 'string',
-						required: false,
-						default: 'unfoldingWord',
-						description: 'Content organization'
+				example: {
+					request: {
+						language: 'en',
+						organization: 'unfoldingWord'
 					}
-				],
-				exampleRequest: {
-					reference: 'John 3:16',
-					language: 'en',
-					organization: 'unfoldingWord'
 				}
 			},
 			{
-				name: 'Fetch Resources',
-				tool: 'translation_helps_fetch_resources',
-				description: 'Get comprehensive translation resources for a Bible reference',
-				apiEndpoint: '/api/fetch-resources',
-				icon: Database,
+				name: 'Language Coverage',
+				tool: 'translation_helps_language_coverage',
+				description:
+					'Provides comprehensive coverage analysis showing resource availability across languages and content types.',
+				apiEndpoint: '/api/language-coverage',
+				method: 'GET',
+				category: 'metadata',
 				parameters: [
 					{
-						name: 'reference',
+						name: 'organization',
+						required: false,
 						type: 'string',
-						required: true,
-						description: 'Bible reference (e.g., "John 3:16")'
+						example: 'unfoldingWord',
+						description: 'Organization filter'
 					},
 					{
-						name: 'language',
-						type: 'string',
+						name: 'detailed',
 						required: false,
-						default: 'en',
+						type: 'boolean',
+						example: false,
+						description: 'Include detailed resource breakdown'
+					}
+				],
+				example: {
+					request: {
+						organization: 'unfoldingWord',
+						detailed: true
+					}
+				}
+			},
+			{
+				name: 'List Available Resources',
+				tool: 'translation_helps_list_available_resources',
+				description:
+					'Discovers and lists all available resources for a language/organization combination with metadata.',
+				apiEndpoint: '/api/list-available-resources',
+				method: 'GET',
+				category: 'metadata',
+				parameters: [
+					{
+						name: 'language',
+						required: false,
+						type: 'string',
+						example: 'en',
 						description: 'Language code'
 					},
 					{
 						name: 'organization',
-						type: 'string',
 						required: false,
-						default: 'unfoldingWord',
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization'
+					},
+					{
+						name: 'resourceType',
+						required: false,
+						type: 'string',
+						example: 'scripture',
+						options: ['scripture', 'notes', 'questions', 'words', 'academy'],
+						description: 'Filter by resource type'
+					}
+				],
+				example: {
+					request: {
+						language: 'en',
+						organization: 'unfoldingWord'
+					}
+				}
+			},
+			{
+				name: 'Resource Recommendations',
+				tool: 'translation_helps_resource_recommendations',
+				description:
+					'Provides intelligent resource recommendations based on content analysis and translation needs.',
+				apiEndpoint: '/api/resource-recommendations',
+				method: 'GET',
+				category: 'metadata',
+				parameters: [
+					{
+						name: 'reference',
+						required: false,
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference for context-specific recommendations'
+					},
+					{
+						name: 'language',
+						required: false,
+						type: 'string',
+						example: 'en',
+						description: 'Target language'
+					},
+					{
+						name: 'organization',
+						required: false,
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization'
+					},
+					{
+						name: 'translationType',
+						required: false,
+						type: 'string',
+						example: 'literal',
+						options: ['literal', 'meaning', 'free'],
+						description: 'Translation approach preference'
+					}
+				],
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						translationType: 'literal'
+					}
+				}
+			},
+			{
+				name: 'Extract References',
+				tool: 'translation_helps_extract_references',
+				description:
+					'Extracts and normalizes Bible references from text with validation and formatting options.',
+				apiEndpoint: '/api/extract-references',
+				method: 'GET',
+				category: 'metadata',
+				parameters: [
+					{
+						name: 'text',
+						required: true,
+						type: 'string',
+						example: 'See John 3:16 and Romans 8:28 for examples',
+						description: 'Text containing Bible references'
+					},
+					{
+						name: 'format',
+						required: false,
+						type: 'string',
+						example: 'standard',
+						options: ['standard', 'short', 'long'],
+						description: 'Reference format preference'
+					}
+				],
+				example: {
+					request: {
+						text: 'See John 3:16 and Romans 8:28 for examples',
+						format: 'standard'
+					}
+				}
+			}
+		],
+		comprehensive: [
+			{
+				name: 'Fetch Resources',
+				tool: 'translation_helps_fetch_resources',
+				description:
+					'One-stop endpoint that aggregates multiple resource types (scripture, notes, questions, words) for comprehensive content delivery.',
+				apiEndpoint: '/api/fetch-resources',
+				method: 'GET',
+				category: 'comprehensive',
+				parameters: [
+					{
+						name: 'reference',
+						required: true,
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
+					},
+					{
+						name: 'language',
+						required: false,
+						type: 'string',
+						example: 'en',
+						description: 'Language code'
+					},
+					{
+						name: 'organization',
+						required: false,
+						type: 'string',
+						example: 'unfoldingWord',
 						description: 'Content organization'
 					},
 					{
 						name: 'resources',
-						type: 'array',
 						required: false,
-						description: 'Resource types to include'
+						type: 'array',
+						example: ['scripture', 'notes', 'questions'],
+						description: 'Specific resources to include'
 					}
 				],
-				exampleRequest: {
-					reference: 'Titus 1:1',
-					language: 'en',
-					organization: 'unfoldingWord',
-					resources: ['scripture', 'notes', 'questions', 'words']
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord',
+						resources: ['scripture', 'notes', 'questions', 'words']
+					}
+				}
+			},
+			{
+				name: 'Get Context',
+				tool: 'translation_helps_get_context',
+				description:
+					'Provides rich contextual information including cultural background, historical context, and cross-references for enhanced understanding.',
+				apiEndpoint: '/api/get-context',
+				method: 'GET',
+				category: 'comprehensive',
+				parameters: [
+					{
+						name: 'reference',
+						required: true,
+						type: 'string',
+						example: 'John 3:16',
+						description: 'Bible reference'
+					},
+					{
+						name: 'language',
+						required: false,
+						type: 'string',
+						example: 'en',
+						description: 'Language code'
+					},
+					{
+						name: 'organization',
+						required: false,
+						type: 'string',
+						example: 'unfoldingWord',
+						description: 'Content organization'
+					},
+					{
+						name: 'deepAnalysis',
+						required: false,
+						type: 'boolean',
+						example: true,
+						description: 'Include deep contextual analysis'
+					}
+				],
+				example: {
+					request: {
+						reference: 'John 3:16',
+						language: 'en',
+						organization: 'unfoldingWord',
+						deepAnalysis: true
+					}
 				}
 			}
 		],
 		experimental: [
 			{
-				name: 'Get Context',
-				tool: 'translation_helps_get_context',
-				description: 'Get contextual information and cross-references for Bible passages',
-				apiEndpoint: '/api/get-context',
-				icon: Info,
+				name: 'Health Check',
+				tool: 'translation_helps_health',
+				description:
+					'Comprehensive API health monitoring with endpoint-specific status, performance metrics, and system diagnostics.',
+				apiEndpoint: '/api/health',
+				method: 'GET',
+				category: 'experimental',
 				parameters: [
 					{
-						name: 'reference',
-						type: 'string',
-						required: true,
-						description: 'Bible reference (e.g., "Genesis 1:1")'
+						name: 'detailed',
+						required: false,
+						type: 'boolean',
+						example: true,
+						description: 'Include detailed endpoint diagnostics'
 					},
 					{
-						name: 'language',
-						type: 'string',
+						name: 'include',
 						required: false,
-						default: 'en',
-						description: 'Language code'
-					},
-					{
-						name: 'organization',
-						type: 'string',
-						required: false,
-						default: 'unfoldingWord',
-						description: 'Content organization'
+						type: 'array',
+						example: ['core', 'translation'],
+						description: 'Specific endpoint categories to check'
 					}
 				],
-				exampleRequest: {
-					reference: 'Genesis 1:1',
-					language: 'en',
-					organization: 'unfoldingWord'
+				example: {
+					request: {
+						detailed: true,
+						include: ['core', 'translation', 'linguistics']
+					}
 				}
 			}
 		]
@@ -1148,7 +1510,7 @@
 										name: selectedTool.name,
 										path: selectedTool.apiEndpoint,
 										parameters: selectedTool.parameters || [],
-										example: { request: selectedTool.exampleRequest }
+										example: selectedTool.example
 									}}
 									loading={loadingStates[selectedTool.apiEndpoint]}
 									on:test={handleTest}

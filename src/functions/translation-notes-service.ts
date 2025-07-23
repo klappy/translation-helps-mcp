@@ -28,7 +28,6 @@ export interface TranslationNotesOptions {
 }
 
 export interface TranslationNotesResult {
-  translationNotes: TranslationNote[];
   verseNotes: TranslationNote[];
   contextNotes: TranslationNote[];
   citation: {
@@ -52,7 +51,7 @@ export interface TranslationNotesResult {
  * Core translation notes fetching logic with unified resource discovery
  */
 export async function fetchTranslationNotes(
-  options: TranslationNotesOptions
+  options: TranslationNotesOptions,
 ): Promise<TranslationNotesResult> {
   const startTime = Date.now();
   const {
@@ -78,7 +77,8 @@ export async function fetchTranslationNotes(
 
   // Check cache first
   const responseKey = `notes:${reference}:${language}:${organization}`;
-  const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
+  const cachedResponse =
+    await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
     console.log(`🚀 FAST cache hit for processed notes: ${responseKey}`);
@@ -87,15 +87,14 @@ export async function fetchTranslationNotes(
     const allNotes = cachedResponse.value.translationNotes || [];
     const verseNotes = allNotes.filter(
       (note: TranslationNote) =>
-        !note.reference.includes("intro") && !note.reference.includes("front:")
+        !note.reference.includes("intro") && !note.reference.includes("front:"),
     );
     const contextNotes = allNotes.filter(
       (note: TranslationNote) =>
-        note.reference.includes("intro") || note.reference.includes("front:")
+        note.reference.includes("intro") || note.reference.includes("front:"),
     );
 
     return {
-      translationNotes: allNotes,
       verseNotes: includeIntro ? verseNotes : allNotes,
       contextNotes: includeIntro ? contextNotes : [],
       citation: cachedResponse.value.citation,
@@ -113,21 +112,33 @@ export async function fetchTranslationNotes(
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
   console.log(`🔍 Using unified resource discovery for translation notes...`);
-  const resourceInfo = await getResourceForBook(reference, "notes", language, organization);
+  const resourceInfo = await getResourceForBook(
+    reference,
+    "notes",
+    language,
+    organization,
+  );
 
   if (!resourceInfo) {
-    throw new Error(`No translation notes found for ${language}/${organization}`);
+    throw new Error(
+      `No translation notes found for ${language}/${organization}`,
+    );
   }
 
-  console.log(`📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`);
+  console.log(
+    `📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`,
+  );
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
-    (ing: { identifier?: string }) => ing.identifier === parsedRef.book.toLowerCase()
+    (ing: { identifier?: string }) =>
+      ing.identifier === parsedRef.book.toLowerCase(),
   );
 
   if (!ingredient) {
-    throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
+    throw new Error(
+      `Book ${parsedRef.book} not found in resource ${resourceInfo.name}`,
+    );
   }
 
   // Build URL for the TSV file
@@ -143,7 +154,9 @@ export async function fetchTranslationNotes(
     const fileResponse = await fetch(fileUrl);
     if (!fileResponse.ok) {
       console.error(`❌ Failed to fetch TN file: ${fileResponse.status}`);
-      throw new Error(`Failed to fetch translation notes content: ${fileResponse.status}`);
+      throw new Error(
+        `Failed to fetch translation notes content: ${fileResponse.status}`,
+      );
     }
 
     tsvData = await fileResponse.text();
@@ -157,20 +170,25 @@ export async function fetchTranslationNotes(
   }
 
   // Parse the TSV data
-  const notes = parseTNFromTSV(tsvData, parsedRef, includeIntro, includeContext);
+  const notes = parseTNFromTSV(
+    tsvData,
+    parsedRef,
+    includeIntro,
+    includeContext,
+  );
   console.log(`📝 Parsed ${notes.length} translation notes`);
 
   // Separate verse notes from context notes
   const verseNotes = notes.filter(
     (note: TranslationNote) =>
-      !note.reference.includes("intro") && !note.reference.includes("front:")
+      !note.reference.includes("intro") && !note.reference.includes("front:"),
   );
   const contextNotes = notes.filter(
-    (note: TranslationNote) => note.reference.includes("intro") || note.reference.includes("front:")
+    (note: TranslationNote) =>
+      note.reference.includes("intro") || note.reference.includes("front:"),
   );
 
   const result: TranslationNotesResult = {
-    translationNotes: notes,
     verseNotes: includeIntro ? verseNotes : notes,
     contextNotes: includeIntro ? contextNotes : [],
     citation: {
@@ -178,7 +196,9 @@ export async function fetchTranslationNotes(
       title: resourceInfo.title,
       organization,
       language,
-      url: resourceInfo.url || `https://git.door43.org/${organization}/${resourceInfo.name}`,
+      url:
+        resourceInfo.url ||
+        `https://git.door43.org/${organization}/${resourceInfo.name}`,
       version: "master",
     },
     metadata: {
@@ -192,7 +212,7 @@ export async function fetchTranslationNotes(
 
   // Cache the transformed response
   await cache.setTransformedResponse(responseKey, {
-    translationNotes: result.translationNotes,
+    translationNotes: [...result.verseNotes, ...result.contextNotes],
     citation: result.citation,
   });
 
@@ -208,7 +228,7 @@ function parseTNFromTSV(
   tsvData: string,
   reference: { book: string; chapter: number; verse?: number },
   includeIntro: boolean,
-  includeContext: boolean
+  includeContext: boolean,
 ): TranslationNote[] {
   const lines = tsvData.split("\n").filter((line) => line.trim());
   const notes: TranslationNote[] = [];
@@ -236,7 +256,8 @@ function parseTNFromTSV(
         const verseNum = parseInt(refMatch[2]);
 
         if (reference.verse) {
-          include = chapterNum === reference.chapter && verseNum === reference.verse;
+          include =
+            chapterNum === reference.chapter && verseNum === reference.verse;
         } else {
           include = chapterNum === reference.chapter;
         }

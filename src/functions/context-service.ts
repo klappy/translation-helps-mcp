@@ -4,7 +4,10 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
-import { fetchTranslationNotes, TranslationNote } from "./translation-notes-service";
+import {
+  fetchTranslationNotes,
+  TranslationNote,
+} from "./translation-notes-service";
 
 export interface ContextOptions {
   reference: string;
@@ -76,7 +79,7 @@ export interface ContextResult {
  * Extract contextual information from translation notes
  */
 export async function getContextFromTranslationNotes(
-  options: ContextOptions
+  options: ContextOptions,
 ): Promise<ContextResult> {
   const startTime = Date.now();
   const {
@@ -104,10 +107,12 @@ export async function getContextFromTranslationNotes(
     includeContext: deepAnalysis,
   });
 
-  const allNotes = notesResult.translationNotes;
+  const allNotes = [...notesResult.verseNotes, ...notesResult.contextNotes];
 
   // Parse the reference to get book name and chapter
-  const referenceMatch = referenceParam.match(/^(\w+(?:\s+\w+)*)\s+(\d+)(?::(\d+))?/);
+  const referenceMatch = referenceParam.match(
+    /^(\w+(?:\s+\w+)*)\s+(\d+)(?::(\d+))?/,
+  );
   const bookName = referenceMatch ? referenceMatch[1] : "Unknown";
   const chapterNum = referenceMatch ? parseInt(referenceMatch[2]) : 1;
 
@@ -135,7 +140,8 @@ export async function getContextFromTranslationNotes(
 
     metadata: {
       sourceNotes: allNotes.length,
-      bookIntroFound: bookContext.title !== "Unknown" && bookContext.author !== "Unknown",
+      bookIntroFound:
+        bookContext.title !== "Unknown" && bookContext.author !== "Unknown",
       chapterIntroFound: chapterContext.structure !== "Unknown",
       verseNotesFound: verseContext.specificNotes.length,
       includeRawData,
@@ -159,9 +165,14 @@ export async function getContextFromTranslationNotes(
 /**
  * Extract book context from front:intro notes
  */
-function extractBookIntroContext(notes: TranslationNote[], bookName: string): BookContext {
+function extractBookIntroContext(
+  notes: TranslationNote[],
+  bookName: string,
+): BookContext {
   // Find the front:intro note
-  const frontIntro = notes.find((note) => note.reference.includes("front:intro"));
+  const frontIntro = notes.find((note) =>
+    note.reference.includes("front:intro"),
+  );
 
   const context: BookContext = {
     title: bookName,
@@ -201,43 +212,56 @@ function extractBookIntroContext(notes: TranslationNote[], bookName: string): Bo
   }
 
   // Extract purpose/about information
-  const aboutMatch = introText.match(/### What is[^?]*about[^?]*\?\s*\n\n([^#]*)/);
+  const aboutMatch = introText.match(
+    /### What is[^?]*about[^?]*\?\s*\n\n([^#]*)/,
+  );
   if (aboutMatch) {
     context.purpose = aboutMatch[1].replace(/\n/g, " ").trim();
     console.log(`🎯 Extracted purpose: ${context.purpose.substring(0, 50)}...`);
   }
 
   // Extract title suggestions
-  const titleMatch = introText.match(/### How should the title[^?]*\?\s*\n\n([^#]*)/);
+  const titleMatch = introText.match(
+    /### How should the title[^?]*\?\s*\n\n([^#]*)/,
+  );
   if (titleMatch) {
     const titleText = titleMatch[1];
     const suggestions = titleText.match(/"([^"]+)"/g);
     if (suggestions) {
-      context.titleSuggestions = suggestions.map((s: string) => s.replace(/"/g, ""));
-      console.log(`📝 Extracted ${context.titleSuggestions.length} title suggestions`);
+      context.titleSuggestions = suggestions.map((s: string) =>
+        s.replace(/"/g, ""),
+      );
+      console.log(
+        `📝 Extracted ${context.titleSuggestions.length} title suggestions`,
+      );
     }
   }
 
   // Extract religious and cultural concepts
   const conceptsMatch = introText.match(
-    /## Part 2: Important Religious and Cultural Concepts\s*\n\n([^#]*)/
+    /## Part 2: Important Religious and Cultural Concepts\s*\n\n([^#]*)/,
   );
   if (conceptsMatch) {
     context.historicalBackground = conceptsMatch[1].replace(/\n/g, " ").trim();
     console.log(
-      `🏛️ Extracted historical background: ${context.historicalBackground.substring(0, 50)}...`
+      `🏛️ Extracted historical background: ${context.historicalBackground.substring(0, 50)}...`,
     );
   }
 
   // Extract common phrases and translation issues
-  const phrasesMatch = introText.match(/### What is the meaning of[^?]*\?\s*\n\n([^#]*)/);
+  const phrasesMatch = introText.match(
+    /### What is the meaning of[^?]*\?\s*\n\n([^#]*)/,
+  );
   if (phrasesMatch) {
     context.commonPhrases.push(phrasesMatch[1].replace(/\n/g, " ").trim());
     console.log(`💬 Extracted common phrases`);
   }
 
   // Determine literary genre from content
-  if (introText.toLowerCase().includes("letter") || introText.toLowerCase().includes("epistle")) {
+  if (
+    introText.toLowerCase().includes("letter") ||
+    introText.toLowerCase().includes("epistle")
+  ) {
     context.literaryGenre = "Epistle/Letter";
   } else if (introText.toLowerCase().includes("gospel")) {
     context.literaryGenre = "Gospel";
@@ -259,9 +283,14 @@ function extractBookIntroContext(notes: TranslationNote[], bookName: string): Bo
 /**
  * Extract chapter context from chapter intro notes
  */
-function extractChapterIntroContext(notes: TranslationNote[], chapterNum: number): ChapterContext {
+function extractChapterIntroContext(
+  notes: TranslationNote[],
+  chapterNum: number,
+): ChapterContext {
   // Find the chapter intro note
-  const chapterIntro = notes.find((note) => note.reference.includes(`${chapterNum}:intro`));
+  const chapterIntro = notes.find((note) =>
+    note.reference.includes(`${chapterNum}:intro`),
+  );
 
   const context: ChapterContext = {
     number: chapterNum,
@@ -282,40 +311,56 @@ function extractChapterIntroContext(notes: TranslationNote[], chapterNum: number
   console.log(`📖 Found chapter intro note (${introText.length} chars)`);
 
   // Extract structure and formatting
-  const structureMatch = introText.match(/## Structure and Formatting\s*\n\n([^#]*)/);
+  const structureMatch = introText.match(
+    /## Structure and Formatting\s*\n\n([^#]*)/,
+  );
   if (structureMatch) {
     context.structure = structureMatch[1].replace(/\n/g, " ").trim();
-    console.log(`🏗️ Extracted structure: ${context.structure.substring(0, 50)}...`);
+    console.log(
+      `🏗️ Extracted structure: ${context.structure.substring(0, 50)}...`,
+    );
   }
 
   // Extract religious concepts
-  const religiousMatch = introText.match(/## Religious[^#]*Concepts[^#]*\n\n([^#]*)/);
+  const religiousMatch = introText.match(
+    /## Religious[^#]*Concepts[^#]*\n\n([^#]*)/,
+  );
   if (religiousMatch) {
     const concepts = religiousMatch[1].split(/\n\n### /);
     context.religiousConcepts = concepts
       .map((c: string) => c.replace(/\n/g, " ").trim())
       .filter((c: string) => c.length > 0);
-    console.log(`⛪ Extracted ${context.religiousConcepts.length} religious concepts`);
+    console.log(
+      `⛪ Extracted ${context.religiousConcepts.length} religious concepts`,
+    );
   }
 
   // Extract cultural concepts
-  const culturalMatch = introText.match(/## [^#]*Cultural[^#]*Concepts[^#]*\n\n([^#]*)/);
+  const culturalMatch = introText.match(
+    /## [^#]*Cultural[^#]*Concepts[^#]*\n\n([^#]*)/,
+  );
   if (culturalMatch) {
     const concepts = culturalMatch[1].split(/\n\n### /);
     context.culturalConcepts = concepts
       .map((c: string) => c.replace(/\n/g, " ").trim())
       .filter((c: string) => c.length > 0);
-    console.log(`🌍 Extracted ${context.culturalConcepts.length} cultural concepts`);
+    console.log(
+      `🌍 Extracted ${context.culturalConcepts.length} cultural concepts`,
+    );
   }
 
   // Extract translation issues
-  const translationMatch = introText.match(/## Translation Issues[^#]*\n\n([^#]*)/);
+  const translationMatch = introText.match(
+    /## Translation Issues[^#]*\n\n([^#]*)/,
+  );
   if (translationMatch) {
     const issues = translationMatch[1].split(/\n\n### /);
     context.translationIssues = issues
       .map((i: string) => i.replace(/\n/g, " ").trim())
       .filter((i: string) => i.length > 0);
-    console.log(`🔄 Extracted ${context.translationIssues.length} translation issues`);
+    console.log(
+      `🔄 Extracted ${context.translationIssues.length} translation issues`,
+    );
   }
 
   return context;
@@ -327,7 +372,8 @@ function extractChapterIntroContext(notes: TranslationNote[], chapterNum: number
 function extractVerseSpecificContext(notes: TranslationNote[]): VerseContext {
   // Find verse-specific notes (exclude intro notes)
   const verseNotes = notes.filter(
-    (note) => !note.reference.includes("intro") && !note.reference.includes("front:")
+    (note) =>
+      !note.reference.includes("intro") && !note.reference.includes("front:"),
   );
 
   const keyTerms: string[] = [];
@@ -357,7 +403,7 @@ function extractVerseSpecificContext(notes: TranslationNote[]): VerseContext {
   }
 
   console.log(
-    `📝 Processed ${verseNotes.length} verse notes, found ${keyTerms.length} key terms, ${challenges.length} challenges, ${crossReferences.length} cross-references`
+    `📝 Processed ${verseNotes.length} verse notes, found ${keyTerms.length} key terms, ${challenges.length} challenges, ${crossReferences.length} cross-references`,
   );
 
   return {
