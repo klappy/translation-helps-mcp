@@ -1,16 +1,22 @@
 /**
  * Translation Notes Service
- * Shared core implementation for fetching translation notes
- * Used by both Netlify functions and MCP tools for consistency
+ * Fetches translation notes from DCS (Door43 Content Service)
+ * Uses unified resource discovery to minimize DCS API calls
  */
 
-import { parseReference } from "./reference-parser";
 import { cache } from "./cache";
+import { parseReference } from "./reference-parser";
+import { getResourceForBook } from "./resource-detector";
 
 export interface TranslationNote {
+  id: string;
   reference: string;
-  quote: string;
   note: string;
+  quote?: string;
+  occurrence?: number;
+  occurrences?: number;
+  tags?: string[];
+  supportReference?: string;
 }
 
 export interface TranslationNotesOptions {
@@ -43,36 +49,35 @@ export interface TranslationNotesResult {
 }
 
 /**
- * Core translation notes fetching logic - extracted from working Netlify function
+ * Core translation notes fetching logic with unified resource discovery
  */
 export async function fetchTranslationNotes(
   options: TranslationNotesOptions
 ): Promise<TranslationNotesResult> {
   const startTime = Date.now();
   const {
-    reference: referenceParam,
+    reference,
     language = "en",
     organization = "unfoldingWord",
     includeIntro = true,
     includeContext = true,
   } = options;
 
+  const parsedRef = parseReference(reference);
+  if (!parsedRef) {
+    throw new Error(`Invalid reference format: ${reference}`);
+  }
+
   console.log(`📝 Core translation notes service called with:`, {
-    reference: referenceParam,
+    reference,
     language,
     organization,
     includeIntro,
     includeContext,
   });
 
-  // Parse the reference
-  const reference = parseReference(referenceParam);
-  if (!reference) {
-    throw new Error(`Invalid reference format: ${referenceParam}`);
-  }
-
-  // Check for cached transformed response FIRST
-  const responseKey = `notes:${referenceParam}:${language}:${organization}`;
+  // Check cache first
+  const responseKey = `notes:${reference}:${language}:${organization}`;
   const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
@@ -106,51 +111,31 @@ export async function fetchTranslationNotes(
 
   console.log(`🔄 Processing fresh notes request: ${responseKey}`);
 
-  // Search catalog for Translation Notes
-  const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Notes&lang=${language}&owner=${organization}`;
-  console.log(`🔍 Searching catalog: ${catalogUrl}`);
+  // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
+  console.log(`🔍 Using unified resource discovery for translation notes...`);
+  const resourceInfo = await getResourceForBook(reference, "notes", language, organization);
 
-  const catalogResponse = await fetch(catalogUrl);
-  if (!catalogResponse.ok) {
-    console.error(`❌ Catalog search failed: ${catalogResponse.status}`);
-    throw new Error(`Failed to search catalog: ${catalogResponse.status}`);
-  }
-
-  const catalogData = (await catalogResponse.json()) as {
-    data?: Array<{
-      name: string;
-      title: string;
-      ingredients?: Array<{
-        identifier: string;
-        path: string;
-      }>;
-    }>;
-  };
-
-  console.log(`📊 Found ${catalogData.data?.length || 0} translation notes resources`);
-
-  if (!catalogData.data || catalogData.data.length === 0) {
+  if (!resourceInfo) {
     throw new Error(`No translation notes found for ${language}/${organization}`);
   }
 
-  const resource = catalogData.data[0];
-  console.log(`📖 Using resource: ${resource.name} (${resource.title})`);
+  console.log(`📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`);
 
   // Find the correct file from ingredients
-  const ingredient = resource.ingredients?.find(
-    (ing: any) => ing.identifier === reference.book.toLowerCase()
+  const ingredient = resourceInfo.ingredients?.find(
+    (ing: { identifier?: string }) => ing.identifier === parsedRef.book.toLowerCase()
   );
 
   if (!ingredient) {
-    throw new Error(`Book ${reference.book} not found in resource ${resource.name}`);
+    throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
   }
 
   // Build URL for the TSV file
-  const fileUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
+  const fileUrl = `https://git.door43.org/${organization}/${resourceInfo.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
   console.log(`🔗 Fetching from: ${fileUrl}`);
 
   // Try to get from cache first
-  const cacheKey = `tsv:${fileUrl}`;
+  const cacheKey = `tn:${fileUrl}`;
   let tsvData = await cache.getFileContent(cacheKey);
 
   if (!tsvData) {
@@ -172,15 +157,16 @@ export async function fetchTranslationNotes(
   }
 
   // Parse the TSV data
-  const notes = parseTNFromTSV(tsvData, reference, includeIntro);
+  const notes = parseTNFromTSV(tsvData, parsedRef, includeIntro, includeContext);
   console.log(`📝 Parsed ${notes.length} translation notes`);
 
   // Separate verse notes from context notes
   const verseNotes = notes.filter(
-    (note) => !note.reference.includes("intro") && !note.reference.includes("front:")
+    (note: TranslationNote) =>
+      !note.reference.includes("intro") && !note.reference.includes("front:")
   );
   const contextNotes = notes.filter(
-    (note) => note.reference.includes("intro") || note.reference.includes("front:")
+    (note: TranslationNote) => note.reference.includes("intro") || note.reference.includes("front:")
   );
 
   const result: TranslationNotesResult = {
@@ -188,11 +174,11 @@ export async function fetchTranslationNotes(
     verseNotes: includeIntro ? verseNotes : notes,
     contextNotes: includeIntro ? contextNotes : [],
     citation: {
-      resource: resource.name,
-      title: resource.title,
+      resource: resourceInfo.name,
+      title: resourceInfo.title,
       organization,
       language,
-      url: `https://git.door43.org/${organization}/${resource.name}`,
+      url: resourceInfo.url || `https://git.door43.org/${organization}/${resourceInfo.name}`,
       version: "master",
     },
     metadata: {
@@ -206,94 +192,71 @@ export async function fetchTranslationNotes(
 
   // Cache the transformed response
   await cache.setTransformedResponse(responseKey, {
-    translationNotes: notes,
+    translationNotes: result.translationNotes,
     citation: result.citation,
   });
+
+  console.log(`📝 Parsed ${notes.length} translation notes`);
 
   return result;
 }
 
 /**
- * Parse Translation Notes from TSV data - extracted from working implementation
+ * Parse Translation Notes from TSV data
  */
 function parseTNFromTSV(
   tsvData: string,
-  reference: { book: string; chapter: number; verse?: number; verseEnd?: number },
-  includeIntro: boolean = false
+  reference: { book: string; chapter: number; verse?: number },
+  includeIntro: boolean,
+  includeContext: boolean
 ): TranslationNote[] {
-  const lines = tsvData.split("\n");
+  const lines = tsvData.split("\n").filter((line) => line.trim());
   const notes: TranslationNote[] = [];
-
-  // Skip header line
-  if (lines.length > 0 && lines[0].startsWith("Reference")) {
-    lines.shift();
-  }
+  let noteId = 1;
 
   for (const line of lines) {
-    if (!line.trim()) continue;
-
     const columns = line.split("\t");
-    if (columns.length < 7) continue;
+    if (columns.length < 7) continue; // Skip malformed lines
 
-    const [ref, id, tags, supportReference, quote, occurrence, noteText] = columns;
+    const [ref, , , quote, occurrence, note, tags] = columns;
 
-    // Skip intro notes if not requested
-    if (!includeIntro && ref.includes("intro")) {
-      continue;
-    }
+    // Handle different reference formats
+    let include = false;
+    let noteRef = ref;
 
-    // Parse the reference
-    const refMatch = ref.match(/(\d+):(\d+)/);
-    if (!refMatch && !ref.includes("intro")) continue;
+    if (ref.includes("front:intro") || ref.includes("intro")) {
+      // This is an introduction note
+      include = includeIntro || includeContext;
+      noteRef = `${reference.book} Introduction`;
+    } else {
+      // Parse chapter:verse reference
+      const refMatch = ref.match(/(\d+):(\d+)/);
+      if (refMatch) {
+        const chapterNum = parseInt(refMatch[1]);
+        const verseNum = parseInt(refMatch[2]);
 
-    if (refMatch) {
-      const chapterNum = parseInt(refMatch[1]);
-      const verseNum = parseInt(refMatch[2]);
-
-      // Check if this note is in our range
-      let include = false;
-
-      if (!reference.verse && reference.verseEnd) {
-        // Chapter range
-        const startChapter = reference.chapter;
-        const endChapter = reference.verseEnd;
-        include = chapterNum >= startChapter && chapterNum <= endChapter;
-      } else if (reference.verse && reference.verseEnd) {
-        // Verse range within same chapter
-        include =
-          chapterNum === reference.chapter &&
-          verseNum >= reference.verse &&
-          verseNum <= reference.verseEnd;
-      } else if (reference.verse) {
-        // Single verse
-        include = chapterNum === reference.chapter && verseNum === reference.verse;
-      } else {
-        // Full chapter
-        include = chapterNum === reference.chapter;
-      }
-
-      if (!include) continue;
-    } else if (includeIntro && ref.includes("intro")) {
-      // Handle intro notes
-      if (ref === "front:intro") {
-        // Book intro - always include if includeIntro is true
-      } else if (ref.includes(":intro")) {
-        // Chapter intro - check if it's for our chapter
-        const introChapterMatch = ref.match(/(\d+):intro/);
-        if (introChapterMatch) {
-          const introChapter = parseInt(introChapterMatch[1]);
-          if (introChapter !== reference.chapter) continue;
+        if (reference.verse) {
+          include = chapterNum === reference.chapter && verseNum === reference.verse;
+        } else {
+          include = chapterNum === reference.chapter;
         }
+        noteRef = `${reference.book} ${chapterNum}:${verseNum}`;
       }
     }
 
-    notes.push({
-      reference: `${reference.book} ${ref}`,
-      quote: quote || "",
-      note: noteText || "",
-    });
+    if (include && note && note.trim()) {
+      notes.push({
+        id: `tn-${reference.book}-${noteId++}`,
+        reference: noteRef,
+        note: note.trim(),
+        quote: quote ? quote.trim() : undefined,
+        occurrence: occurrence ? parseInt(occurrence) : undefined,
+        occurrences: undefined, // Not provided in standard format
+        tags: tags ? tags.split(",").map((t) => t.trim()) : [],
+        supportReference: undefined, // Could be extracted from note content
+      });
+    }
   }
 
-  console.log(`📝 Parsed ${notes.length} translation notes`);
   return notes;
 }
