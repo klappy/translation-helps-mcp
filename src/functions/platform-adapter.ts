@@ -1,5 +1,5 @@
 // Platform-agnostic adapter for function handling
-import { unifiedCache, CacheBypassOptions, shouldBypassCache } from "./unified-cache";
+import { CacheBypassOptions, shouldBypassCache, unifiedCache } from "./unified-cache";
 
 export interface PlatformRequest {
   method: string;
@@ -159,43 +159,13 @@ export function createSvelteKitHandler(handler: PlatformHandler, _cacheAdapter?:
       headers: Object.fromEntries(request.headers.entries()),
     };
 
-    try {
-      // Try unified cache first (unless bypassed)
-      const cacheResult = await unifiedCache.get(cacheKey, "apiResponse", bypassOptions);
-
-      if (cacheResult.value) {
-        console.log(`🚀 Cache HIT for ${url.pathname}`);
-        return new Response(JSON.stringify(cacheResult.value), {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers":
-              "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            ...unifiedCache.generateCacheHeaders(cacheResult),
-          },
-        });
-      }
-
-      console.log(`🔄 Cache MISS for ${url.pathname} - processing request`);
-    } catch (error) {
-      console.warn("Cache read failed:", error);
-    }
+    // Skip platform-level caching - let individual services handle their own caching
+    // to avoid double-caching with different cache keys
 
     // Process the request
     const response = await handler(platformRequest);
 
-    // Cache successful responses (unless bypassed)
-    if (response.statusCode === 200 && (!bypassOptions || !shouldBypassCache(bypassOptions))) {
-      try {
-        const responseData = JSON.parse(response.body);
-        await unifiedCache.set(cacheKey, responseData, "apiResponse");
-        console.log(`💾 Cached response for ${url.pathname}`);
-      } catch (error) {
-        console.warn("Cache write failed:", error);
-      }
-    }
+    // Skip platform-level response caching - services handle their own caching
 
     return new Response(response.body, {
       status: response.statusCode,

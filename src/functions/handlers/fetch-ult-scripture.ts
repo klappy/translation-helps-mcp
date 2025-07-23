@@ -4,7 +4,7 @@
  * Implements the foundation of the unfoldingWord translation ecosystem
  *
  * ULT = unfoldingWord Literal Text (English)
- * GLT = Gateway Literal Text (Strategic Languages)
+ * GLT = Gateway Literal Text (Strategic Languages) - Form-centric translation
  */
 
 import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";

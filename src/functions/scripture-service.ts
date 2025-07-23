@@ -6,6 +6,7 @@
 
 import { parseReference } from "./reference-parser";
 import { CacheBypassOptions, unifiedCache } from "./unified-cache";
+import { parseUSFMAlignment, type WordAlignment } from "./usfm-alignment-parser.js";
 import {
   extractChapterRange,
   extractChapterRangeWithNumbers,
@@ -38,6 +39,7 @@ export interface ScriptureOptions {
   format?: "text" | "usfm";
   specificTranslations?: string[];
   bypassCache?: CacheBypassOptions;
+  includeAlignment?: boolean; // New option for alignment data
 }
 
 export interface ScriptureResult {
@@ -51,6 +53,14 @@ export interface ScriptureResult {
       url: string;
       version: string;
     };
+    alignment?: {
+      words: WordAlignment[];
+      metadata: {
+        totalAlignments: number;
+        averageConfidence: number;
+        hasCompleteAlignment: boolean;
+      };
+    };
   };
   scriptures?: Array<{
     text: string;
@@ -62,6 +72,14 @@ export interface ScriptureResult {
       url: string;
       version: string;
     };
+    alignment?: {
+      words: WordAlignment[];
+      metadata: {
+        totalAlignments: number;
+        averageConfidence: number;
+        hasCompleteAlignment: boolean;
+      };
+    };
   }>;
   metadata: {
     responseTime: number;
@@ -72,6 +90,7 @@ export interface ScriptureResult {
     translationsFound: number;
     cacheKey?: string;
     cacheType?: string;
+    hasAlignmentData?: boolean;
   };
 }
 
@@ -88,6 +107,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     format = "text",
     specificTranslations,
     bypassCache,
+    includeAlignment = false, // Default to false for backward compatibility
   } = options;
 
   console.log(`📖 Core scripture service called with:`, {
@@ -96,6 +116,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     organization,
     includeVerseNumbers,
     format,
+    includeAlignment,
     bypassCache: bypassCache ? "enabled" : "disabled",
   });
 
@@ -134,6 +155,9 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   }
 
   async function fetchFreshScripture(): Promise<ScriptureResult> {
+    const executionId = Math.random().toString(36).substr(2, 9);
+    console.log(`🆔 fetchFreshScripture execution ID: ${executionId}`);
+
     // Search for scripture resources from BOTH subjects
     const subjects = ["Aligned%20Bible", "Bible"];
     const allResources: CatalogResource[] = [];
@@ -202,6 +226,9 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     console.log(
       `📖 Processing ${resourcesToProcess.length} resource(s) (${specificTranslations ? `specific: ${specificTranslations.join(",")}` : "all available"})`
     );
+    console.log(
+      `🐛 DEBUG: resourcesToProcess names: ${resourcesToProcess.map((r) => r.name).join(", ")}`
+    );
 
     const scriptures = [];
     for (const resource of resourcesToProcess) {
@@ -223,6 +250,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
       try {
         // Get USFM data
+        console.log(`🔍 Checking USFM cache for: usfm:${fileUrl}`);
         const usfmCacheResult = await unifiedCache.getWithDeduplication(
           `usfm:${fileUrl}`,
           async () => {
@@ -239,9 +267,20 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
           bypassCache
         );
 
+        console.log(
+          `🎯 USFM cache result: fromCache=${usfmCacheResult.fromCache}, length=${usfmCacheResult.data?.length || 0}`
+        );
+        if (usfmCacheResult.fromCache) {
+          console.log(`🚀 USFM cache HIT! Using cached file.`);
+        }
+
         const usfmData = usfmCacheResult.data;
 
         // Choose extraction method based on format and includeVerseNumbers
+        const extractionStart = Date.now();
+        console.log(
+          `⚡ Starting USFM extraction for ${reference.book} ${reference.chapter}:${reference.verse}`
+        );
         let text = "";
 
         if (format === "usfm") {
@@ -287,6 +326,46 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
         }
 
         if (text.trim()) {
+          // Process alignment data if requested
+          let alignmentData:
+            | {
+                words: WordAlignment[];
+                metadata: {
+                  totalAlignments: number;
+                  averageConfidence: number;
+                  hasCompleteAlignment: boolean;
+                };
+              }
+            | undefined;
+
+          if (includeAlignment && format !== "usfm") {
+            try {
+              console.log(`🔗 Processing alignment data for ${resource.name}`);
+              const alignmentStart = Date.now();
+
+              // Parse alignment from the full USFM data for the passage
+              const passageUSFM = extractUSFMPassage(usfmData, reference);
+              const parsedAlignment = parseUSFMAlignment(passageUSFM);
+
+              alignmentData = {
+                words: parsedAlignment.alignments,
+                metadata: {
+                  totalAlignments: parsedAlignment.metadata.totalAlignments,
+                  averageConfidence: parsedAlignment.metadata.averageConfidence,
+                  hasCompleteAlignment: parsedAlignment.metadata.hasCompleteAlignment,
+                },
+              };
+
+              const alignmentTime = Date.now() - alignmentStart;
+              console.log(
+                `🔗 Alignment processing completed in ${alignmentTime}ms: ${parsedAlignment.alignments.length} alignments found`
+              );
+            } catch (alignmentError) {
+              console.warn(`⚠️ Alignment processing failed for ${resource.name}:`, alignmentError);
+              // Continue without alignment data
+            }
+          }
+
           scriptures.push({
             text: text.trim(),
             translation: resource.title,
@@ -297,8 +376,12 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
               url: `https://git.door43.org/${organization}/${resource.name}`,
               version: "master",
             },
+            alignment: alignmentData,
           });
-          console.log(`📝 Extracted ${text.length} characters from ${resource.name}`);
+          const extractionTime = Date.now() - extractionStart;
+          console.log(
+            `📝 Extracted ${text.length} characters from ${resource.name} in ${extractionTime}ms`
+          );
         }
       } catch (error) {
         console.warn(`⚠️ Failed to process ${resource.name}:`, error);
@@ -322,6 +405,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
               format,
               translationsFound: scriptures.length,
               cacheKey: responseKey,
+              hasAlignmentData: includeAlignment && scriptures[0]?.alignment !== undefined,
             },
           }
         : {
@@ -334,6 +418,8 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
               format,
               translationsFound: scriptures.length,
               cacheKey: responseKey,
+              hasAlignmentData:
+                includeAlignment && scriptures.some((s) => s.alignment !== undefined),
             },
           };
 
@@ -342,8 +428,8 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
   const result = await fetchFreshScripture();
 
-  // Cache the result (unless bypassed)
-  if (!bypassCache || !cachedResponse.cacheInfo?.bypassReason) {
+  // Cache the result (unless explicitly bypassed)
+  if (!cachedResponse.cacheInfo?.bypassReason) {
     await unifiedCache.set(responseKey, result, "transformedResponse");
     console.log(`💾 Cached transformed scripture response: ${responseKey}`);
   } else {

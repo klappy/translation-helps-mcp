@@ -4,7 +4,7 @@
  * Complements ULT/GLT by showing natural, clear expressions of biblical meaning
  *
  * UST = unfoldingWord Simplified Text (English)
- * GST = Gateway Simplified Text (Strategic Languages)
+ * GST = Gateway Simplified Text (Strategic Languages) - Meaning-centric translation
  */
 
 import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";
@@ -108,7 +108,7 @@ export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
     const cacheKey = `ust:${language}:${organization}:${reference}:${includeAlignment}:${includeClarity}`;
 
     // Check cache first (unless bypassed)
-    let cacheStatus: "hit" | "miss" | "partial" = "miss";
+    const cacheStatus: "hit" | "miss" | "partial" = "miss";
     if (!bypassCache) {
       try {
         const cached = await unifiedCache.get(cacheKey);

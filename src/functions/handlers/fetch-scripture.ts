@@ -20,6 +20,7 @@ export const fetchScriptureHandler: PlatformHandler = async (
     const specificTranslations = request.queryStringParameters.translations
       ? request.queryStringParameters.translations.split(",").map((t) => t.trim())
       : undefined;
+    const includeAlignment = request.queryStringParameters.includeAlignment === "true";
 
     if (!referenceParam) {
       return {
@@ -46,6 +47,7 @@ export const fetchScriptureHandler: PlatformHandler = async (
       format,
       specificTranslations,
       bypassCache: bypassOptions,
+      includeAlignment,
     });
 
     // Clean, improved response structure (v4.0.0)
