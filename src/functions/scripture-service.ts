@@ -5,6 +5,7 @@
  */
 
 import { parseReference } from "./reference-parser";
+import { discoverAvailableResources } from "./resource-detector";
 import { CacheBypassOptions, unifiedCache } from "./unified-cache";
 import { parseUSFMAlignment, type WordAlignment } from "./usfm-alignment-parser.js";
 import {
@@ -18,18 +19,7 @@ import {
   extractVerseTextWithNumbers,
 } from "./usfm-extractor";
 
-interface CatalogResource {
-  name: string;
-  title: string;
-  ingredients?: Array<{
-    identifier: string;
-    path: string;
-  }>;
-}
-
-interface CatalogResponse {
-  data?: CatalogResource[];
-}
+export { type WordAlignment };
 
 export interface ScriptureOptions {
   reference: string;
@@ -158,51 +148,22 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     const executionId = Math.random().toString(36).substr(2, 9);
     console.log(`🆔 fetchFreshScripture execution ID: ${executionId}`);
 
-    // Search for scripture resources from BOTH subjects
-    const subjects = ["Aligned%20Bible", "Bible"];
-    const allResources: CatalogResource[] = [];
-
-    for (const subject of subjects) {
-      const searchUrl = `https://git.door43.org/api/v1/catalog/search?subject=${subject}&lang=${language}&owner=${organization}`;
-      console.log(`🔍 Searching catalog: ${searchUrl}`);
-
-      const catalogResponse = await fetch(searchUrl);
-      if (!catalogResponse.ok) {
-        console.warn(`⚠️ Catalog search failed for ${subject}: ${catalogResponse.status}`);
-        continue; // Continue to next subject instead of throwing
-      }
-
-      const catalogData = (await catalogResponse.json()) as CatalogResponse;
-
-      if (catalogData.data) {
-        allResources.push(...catalogData.data);
-      }
-    }
+    // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog searches
+    console.log(`🔍 Using unified resource discovery for scripture...`);
+    const availability = await discoverAvailableResources(referenceParam, language, organization);
+    const allResources = availability.scripture;
 
     if (allResources.length === 0) {
       console.error(`❌ No scripture resources found for ${language}/${organization}`);
       throw new Error(`No scripture resources found for ${language}/${organization}`);
     }
 
-    console.log(`📊 Found ${allResources.length} scripture resources across all subjects`);
-
-    // Deduplicate resources by name (in case same resource appears in multiple subjects)
-    const uniqueResources = allResources.reduce(
-      (acc: CatalogResource[], resource: CatalogResource) => {
-        if (!acc.find((r: CatalogResource) => r.name === resource.name)) {
-          acc.push(resource);
-        }
-        return acc;
-      },
-      []
-    );
-
-    console.log(`📊 Found ${uniqueResources.length} unique scripture resources`);
+    console.log(`📊 Found ${allResources.length} scripture resources from unified discovery`);
 
     // Filter by specific translations if requested
-    let filteredResources = uniqueResources;
+    let filteredResources = allResources;
     if (specificTranslations && specificTranslations.length > 0) {
-      filteredResources = uniqueResources.filter((resource) =>
+      filteredResources = allResources.filter((resource) =>
         specificTranslations!.includes(resource.name)
       );
       console.log(
@@ -214,14 +175,14 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
           `⚠️ No resources found for specified translations: ${specificTranslations.join(", ")}`
         );
         // Fall back to all available resources if none of the specified ones exist
-        filteredResources = uniqueResources;
+        filteredResources = allResources;
       }
     }
 
     // Handle translations: if none specified, return all; if specified, return only those
     const resourcesToProcess = specificTranslations
       ? filteredResources // Use only the specified translations
-      : uniqueResources; // Use all available translations (default)
+      : allResources; // Use all available translations (default)
 
     console.log(
       `📖 Processing ${resourcesToProcess.length} resource(s) (${specificTranslations ? `specific: ${specificTranslations.join(",")}` : "all available"})`
