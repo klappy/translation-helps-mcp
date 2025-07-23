@@ -18,10 +18,10 @@ const CACHE_TTLS = {
   organizations: Math.min(3600, MAX_TTL), // 1 hour
   languages: Math.min(3600, MAX_TTL), // 1 hour
   resources: Math.min(300, MAX_TTL), // 5 minutes
-  fileContent: Math.min(600, MAX_TTL), // 10 minutes
+  fileContent: Math.min(1800, MAX_TTL), // 30 minutes (1800s) - DCS API files
   metadata: Math.min(1800, MAX_TTL), // 30 minutes
   deduplication: Math.min(60, MAX_TTL), // 1 minute
-  transformedResponse: Math.min(600, MAX_TTL), // 10 minutes for processed responses
+  transformedResponse: Math.min(1800, MAX_TTL), // 30 minutes (1800s) - processed responses
 } as const;
 
 type CacheType = keyof typeof CACHE_TTLS;
