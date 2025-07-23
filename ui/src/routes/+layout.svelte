@@ -1,33 +1,31 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount, onDestroy } from 'svelte';
 	import {
-		Zap,
-		TestTube,
-		MessageSquare,
-		Code,
-		Menu,
-		X,
-		ExternalLink,
-		Github,
-		BookOpen,
-		Settings,
-		HelpCircle,
-		TrendingUp,
-		Wrench,
-		Droplets,
-		Activity
-	} from 'lucide-svelte';
-	import '../app.css';
+		coreHealth,
+		experimentalHealth,
+		extendedHealth,
+		overallHealth,
+		startHealthMonitoring,
+		stopHealthMonitoring
+	} from '$lib/services/healthService';
 	import { VERSION } from '$lib/version';
 	import {
-		startHealthMonitoring,
-		stopHealthMonitoring,
-		coreHealth,
-		extendedHealth,
-		experimentalHealth,
-		overallHealth
-	} from '$lib/services/healthService';
+		Activity,
+		BookOpen,
+		Code,
+		Droplets,
+		ExternalLink,
+		Github,
+		Menu,
+		MessageSquare,
+		Settings,
+		TestTube,
+		TrendingUp,
+		X,
+		Zap
+	} from 'lucide-svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import '../app.css';
 
 	// Navigation items
 	const navItems = [
@@ -36,6 +34,18 @@
 			label: 'Home',
 			icon: Zap,
 			description: 'Overview and features'
+		},
+		{
+			href: '/api-docs',
+			label: 'API Docs',
+			icon: BookOpen,
+			description: 'Interactive API documentation'
+		},
+		{
+			href: '/developer-portal',
+			label: 'Developer',
+			icon: Settings,
+			description: 'Developer tools and portal'
 		},
 		{
 			href: '/test',
@@ -51,7 +61,7 @@
 		},
 		{
 			href: '/mcp-tools',
-			label: 'MCP Tools API',
+			label: 'MCP Tools',
 			icon: Code,
 			description: 'MCP server tools and API documentation'
 		},

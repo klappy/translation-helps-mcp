@@ -199,59 +199,72 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					]
 				});
 
-			case 'tools/call':
+			case 'tools/call': {
 				const { name, arguments: args } = body.params || body;
 
 				// Route to appropriate handler
 				switch (name) {
-					case 'fetch_scripture':
+					case 'fetch_scripture': {
 						const scriptureResult = await handleFetchScripture(args);
 						return json(scriptureResult);
+					}
 
-					case 'fetch_translation_notes':
+					case 'fetch_translation_notes': {
 						const notesResult = await handleFetchTranslationNotes(args);
 						return json(notesResult);
+					}
 
-					case 'get_languages':
+					case 'get_languages': {
 						const langResult = await handleGetLanguages(args || {});
 						return json(langResult);
+					}
 
 					case 'fetch_translation_questions':
-					case 'fetch-translation-questions': // Support hyphenated alias
+					case 'fetch-translation-questions': {
+						// Support hyphenated alias
 						const questionsResult = await handleFetchTranslationQuestions(args);
 						return json(questionsResult);
+					}
 
-					case 'browse_translation_words':
+					case 'browse_translation_words': {
 						const browseResult = await handleBrowseTranslationWords(args);
 						return json(browseResult);
+					}
 
-					case 'get_context':
+					case 'get_context': {
 						const contextResult = await handleGetContext(args);
 						return json(contextResult);
+					}
 
-					case 'extract_references':
+					case 'extract_references': {
 						const refsResult = await handleExtractReferences(args);
 						return json(refsResult);
+					}
 
-					case 'fetch_resources':
+					case 'fetch_resources': {
 						const resourcesResult = await handleFetchResources(args);
 						return json(resourcesResult);
+					}
 
-					case 'get_words_for_reference':
+					case 'get_words_for_reference': {
 						const wordsForRefResult = await handleGetWordsForReference(args);
 						return json(wordsForRefResult);
+					}
 
-					case 'get_translation_word':
+					case 'get_translation_word': {
 						const translationWordResult = await handleGetTranslationWord(args);
 						return json(translationWordResult);
+					}
 
-					case 'search_resources':
+					case 'search_resources': {
 						const searchResult = await handleSearchResources(args);
 						return json(searchResult);
+					}
 
 					default:
-						throw new Error(`Unknown tool: ${name}`);
+						throw new Error(`Unknown method: ${name}`);
 				}
+			}
 
 			case 'ping':
 				return json({});
