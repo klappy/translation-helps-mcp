@@ -3,36 +3,36 @@ info:
   title: Translation Helps MCP API
   description: |
     # 🌟 Translation Helps Platform API
-    
+
     High-performance API platform providing **instant access to unfoldingWord translation resources** 
     with **word-level alignment precision** for Mother Tongue Translators worldwide.
-    
+
     ## 🎯 Key Features
-    
+
     - **Strategic Language Bridge**: Access comprehensive translation resources in Strategic Languages (English, Spanish, French, etc.)
     - **Word-Level Precision**: USFM 3.0 alignment data connects every word between original languages and Strategic Languages
     - **AI-Native Integration**: MCP protocol enables AI assistants to provide contextual translation help
     - **High Performance**: Advanced caching and optimization for sub-second response times
     - **Global Scale**: Designed to handle 1000+ RPS with 10k+ concurrent users
-    
+
     ## 📚 Translation Approaches
-    
+
     ### ULT (unfoldingWord Literal Text) - Form-Centric
     - Preserves original language structure and word order
     - Maintains source language idioms and figures of speech
     - Includes embedded word alignment data
-    
+
     ### UST (unfoldingWord Simplified Text) - Meaning-Centric  
     - Natural target language expression
     - Clear, accessible communication
     - Cultural adaptation for better understanding
-    
+
     ## 🔗 Related Resources
-    
+
     - **Live Demo**: [https://translation-helps-mcp.pages.dev/test](https://translation-helps-mcp.pages.dev/test)
     - **MCP Tools**: [https://translation-helps-mcp.pages.dev/mcp-tools](https://translation-helps-mcp.pages.dev/mcp-tools)
     - **GitHub Repository**: [https://github.com/translationhelps/translation-helps-mcp](https://github.com/translationhelps/translation-helps-mcp)
-    
+
   version: "1.0.0"
   contact:
     name: Translation Helps Support
@@ -56,7 +56,7 @@ tags:
     description: Essential scripture and translation endpoints
   - name: translation
     description: Translation notes, questions, and guidance
-  - name: linguistics  
+  - name: linguistics
     description: Word definitions, links, and linguistic analysis
   - name: metadata
     description: Available books, languages, and resource discovery
@@ -73,18 +73,18 @@ paths:
       description: |
         Retrieves Scripture text in ULT/GLT and/or UST/GST translations with embedded 
         word alignment data for precise translation work.
-        
+
         **Optimized for:**
         - Single verse lookups (fastest: ~50-100ms)
         - Verse ranges within a chapter (~100-200ms)
         - Full chapter requests (~200-500ms)
-        
+
         **Response includes:**
         - ULT (Literal) and UST (Simplified) text
         - USFM 3.0 alignment markers
         - Verse structure and formatting
         - Performance metadata
-        
+
       parameters:
         - name: reference
           in: query
@@ -146,12 +146,12 @@ paths:
             default: text
             example: "text"
       responses:
-        '200':
+        "200":
           description: Scripture retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScriptureResponse'
+                $ref: "#/components/schemas/ScriptureResponse"
               examples:
                 john_3_16:
                   summary: John 3:16 Example
@@ -169,12 +169,12 @@ paths:
                     cached: true
                     timestamp: "2024-12-19T10:30:00.000Z"
                     responseTime: 45
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
       x-code-samples:
         - lang: JavaScript
           source: |
@@ -192,6 +192,124 @@ paths:
           source: |
             curl "https://translation-helps-mcp.pages.dev/api/fetch-scripture?reference=John3:16"
 
+  /fetch-ult-scripture:
+    get:
+      tags: [core]
+      summary: Fetch ULT Scripture
+      description: |
+        Retrieves ULT (unfoldingWord Literal Text) or GLT (Gateway Literal Text) Scripture 
+        with word-level precision and form-centric translation approach.
+
+        **ULT Features:**
+        - Preserves original language structure
+        - Maintains source idioms and figures of speech
+        - Includes word alignment data
+        - Form-centric translation approach
+
+      parameters:
+        - name: reference
+          in: query
+          required: true
+          description: Bible reference (e.g., "John 3:16", "Romans 1:1-5")
+          schema:
+            type: string
+            example: "John 3:16"
+        - name: language
+          in: query
+          required: false
+          description: Target language code (ISO 639-1)
+          schema:
+            type: string
+            default: "en"
+            example: "en"
+        - name: organization
+          in: query
+          required: false
+          description: Content organization/publisher
+          schema:
+            type: string
+            default: "unfoldingWord"
+            example: "unfoldingWord"
+        - name: includeVerseNumbers
+          in: query
+          required: false
+          description: Include verse numbers in response
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: ULT Scripture retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScriptureResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /fetch-ust-scripture:
+    get:
+      tags: [core]
+      summary: Fetch UST Scripture
+      description: |
+        Retrieves UST (unfoldingWord Simplified Text) or GST (Gateway Simplified Text) 
+        Scripture with meaning-centric translation approach for clarity.
+
+        **UST Features:**
+        - Natural target language expression
+        - Clear, accessible communication
+        - Cultural adaptation for understanding
+        - Meaning-centric translation approach
+
+      parameters:
+        - name: reference
+          in: query
+          required: true
+          description: Bible reference (e.g., "John 3:16", "Romans 1:1-5")
+          schema:
+            type: string
+            example: "John 3:16"
+        - name: language
+          in: query
+          required: false
+          description: Target language code (ISO 639-1)
+          schema:
+            type: string
+            default: "en"
+            example: "en"
+        - name: organization
+          in: query
+          required: false
+          description: Content organization/publisher
+          schema:
+            type: string
+            default: "unfoldingWord"
+            example: "unfoldingWord"
+        - name: includeVerseNumbers
+          in: query
+          required: false
+          description: Include verse numbers in response
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: UST Scripture retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScriptureResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /fetch-translation-notes:
     get:
       tags: [translation]
@@ -199,13 +317,13 @@ paths:
       description: |
         Retrieves detailed translation notes that provide context, cultural background,
         and translation guidance for specific Bible passages.
-        
+
         **Translation notes include:**
         - Exegetical explanations
         - Cultural and historical context
         - Alternative translation suggestions
         - Cross-references to related passages
-        
+
       parameters:
         - name: reference
           in: query
@@ -229,18 +347,18 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Translation notes retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TranslationNotesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/TranslationNotesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /fetch-translation-questions:
     get:
@@ -249,13 +367,13 @@ paths:
       description: |
         Retrieves comprehension questions designed to help translators and checkers
         verify accurate understanding and translation of Bible passages.
-        
+
         **Questions cover:**
         - Key theological concepts
         - Cultural and historical elements
         - Linguistic accuracy verification
         - Meaning preservation checks
-        
+
       parameters:
         - name: reference
           in: query
@@ -279,18 +397,18 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Translation questions retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TranslationQuestionsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/TranslationQuestionsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /fetch-translation-words:
     get:
@@ -299,14 +417,14 @@ paths:
       description: |
         Retrieves definitions and detailed information for key biblical terms,
         including theological concepts, cultural references, and translation guidance.
-        
+
         **Word information includes:**
         - Comprehensive definitions
         - Original language etymology
         - Cultural and theological context
         - Usage examples in Scripture
         - Related terms and concepts
-        
+
       parameters:
         - name: reference
           in: query
@@ -330,18 +448,18 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Translation words retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TranslationWordsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/TranslationWordsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /fetch-translation-word-links:
     get:
@@ -351,7 +469,7 @@ paths:
         Retrieves word links that connect specific terms in Bible passages
         to their corresponding translation word entries, enabling precise
         word-level translation guidance.
-        
+
       parameters:
         - name: reference
           in: query
@@ -375,18 +493,18 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Translation word links retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TranslationWordLinksResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/TranslationWordLinksResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /fetch-resources:
     get:
@@ -395,20 +513,20 @@ paths:
       description: |
         **🚀 POWER ENDPOINT** - Retrieves all available translation resources
         for a Bible reference in a single optimized call.
-        
+
         **Includes:**
         - Scripture text (ULT + UST with alignment)
         - Translation notes
         - Translation questions  
         - Translation words
         - Word links
-        
+
         **Performance:**
         - Optimized parallel fetching
         - Smart caching across resource types
         - Single network round-trip
         - Typical response: 200-500ms
-        
+
       parameters:
         - name: reference
           in: query
@@ -432,18 +550,18 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: All resources retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AllResourcesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/AllResourcesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /get-languages:
     get:
@@ -452,23 +570,23 @@ paths:
       description: |
         Retrieves the complete list of available languages with their
         coverage information and resource availability.
-        
+
         **Language information includes:**
         - Language codes (ISO 639-1/639-3)
         - Language names (native and English)
         - Resource coverage statistics
         - Completion percentages
         - Last update timestamps
-        
+
       responses:
-        '200':
+        "200":
           description: Languages retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LanguagesResponse'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/LanguagesResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /get-available-books:
     get:
@@ -477,7 +595,7 @@ paths:
       description: |
         Retrieves the list of available Bible books with their
         coverage information for a specific language.
-        
+
       parameters:
         - name: language
           in: query
@@ -494,14 +612,152 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Available books retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BooksResponse'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/BooksResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /language-coverage:
+    get:
+      tags: [metadata]
+      summary: Language Coverage Matrix
+      description: |
+        Retrieves comprehensive coverage matrix showing which resources are 
+        available for each Strategic Language with completeness metrics.
+
+        **Coverage includes:**
+        - Resource availability by language
+        - Completeness percentages
+        - Last updated timestamps
+        - Recommendation status
+
+      parameters:
+        - name: includeMetadata
+          in: query
+          required: false
+          description: Include detailed metadata for each resource
+          schema:
+            type: boolean
+            default: false
+        - name: minCompleteness
+          in: query
+          required: false
+          description: Minimum completeness percentage to include
+          schema:
+            type: number
+            minimum: 0
+            maximum: 100
+            example: 80
+      responses:
+        "200":
+          description: Language coverage matrix retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanguageCoverageResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /list-available-resources:
+    get:
+      tags: [metadata]
+      summary: List Available Resources
+      description: |
+        Retrieves comprehensive list of all available translation resources 
+        with detailed metadata and filtering options.
+
+        **Resource types include:**
+        - ULT/GLT (Literal Text)
+        - UST/GST (Simplified Text) 
+        - Translation Notes (TN)
+        - Translation Words (TW)
+        - Translation Questions (TQ)
+        - Translation Academy (TA)
+
+      parameters:
+        - name: language
+          in: query
+          required: false
+          description: Filter by language code
+          schema:
+            type: string
+            example: "en"
+        - name: organization
+          in: query
+          required: false
+          description: Filter by organization
+          schema:
+            type: string
+            example: "unfoldingWord"
+        - name: resourceType
+          in: query
+          required: false
+          description: Filter by resource type
+          schema:
+            type: string
+            enum: [ult, ust, tn, tw, tq, ta, twl]
+            example: "ult"
+      responses:
+        "200":
+          description: Available resources listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourcesListResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /resource-recommendations:
+    get:
+      tags: [metadata]
+      summary: Resource Recommendations
+      description: |
+        Provides intelligent recommendations for translation resources based on 
+        user context and project requirements.
+
+        **Recommendations consider:**
+        - Heart language proficiency
+        - Strategic language availability
+        - Project type requirements
+        - Resource completeness
+        - Translation approach preferences
+
+      parameters:
+        - name: heartLanguage
+          in: query
+          required: false
+          description: Heart language code for recommendations
+          schema:
+            type: string
+            example: "swh"
+        - name: strategicLanguage
+          in: query
+          required: false
+          description: Strategic language for translation work
+          schema:
+            type: string
+            example: "en"
+        - name: projectType
+          in: query
+          required: false
+          description: Type of translation project
+          schema:
+            type: string
+            enum: [full_bible, new_testament, old_testament, book, passage]
+            example: "full_bible"
+      responses:
+        "200":
+          description: Resource recommendations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceRecommendationsResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /browse-translation-words:
     get:
@@ -510,7 +766,7 @@ paths:
       description: |
         Browse and search through translation words by category,
         enabling discovery of related terms and concepts.
-        
+
       parameters:
         - name: category
           in: query
@@ -534,14 +790,14 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Translation words browsed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BrowseWordsResponse'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/BrowseWordsResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /get-translation-word:
     get:
@@ -550,7 +806,7 @@ paths:
       description: |
         Retrieves detailed information for a specific translation word
         by its identifier.
-        
+
       parameters:
         - name: word
           in: query
@@ -574,18 +830,18 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Translation word retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TranslationWordResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/TranslationWordResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /get-words-for-reference:
     get:
@@ -594,7 +850,7 @@ paths:
       description: |
         Retrieves all translation words that are relevant for a specific
         Bible reference, with their associated links and definitions.
-        
+
       parameters:
         - name: reference
           in: query
@@ -618,16 +874,16 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Words for reference retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WordsForReferenceResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/WordsForReferenceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /extract-references:
     get:
@@ -636,7 +892,7 @@ paths:
       description: |
         Extracts and normalizes Bible references from text input,
         useful for parsing user input and content analysis.
-        
+
       parameters:
         - name: text
           in: query
@@ -646,16 +902,16 @@ paths:
             type: string
             example: "Please see John 3:16 and Romans 1:1-5 for context"
       responses:
-        '200':
+        "200":
           description: References extracted successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExtractedReferencesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/ExtractedReferencesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /get-context:
     get:
@@ -664,7 +920,7 @@ paths:
       description: |
         Retrieves contextual information for Bible references,
         including surrounding passages and cross-references.
-        
+
       parameters:
         - name: reference
           in: query
@@ -688,16 +944,16 @@ paths:
             type: string
             default: "unfoldingWord"
       responses:
-        '200':
+        "200":
           description: Context information retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ContextResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/ServerError'
+                $ref: "#/components/schemas/ContextResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
   /health:
     get:
@@ -706,27 +962,27 @@ paths:
       description: |
         System health check endpoint that returns the current status
         of the API and its dependencies.
-        
+
         **Health metrics include:**
         - API response time
         - Cache performance
         - Database connectivity
         - Third-party service status
         - Memory and CPU usage
-        
+
       responses:
-        '200':
+        "200":
           description: System is healthy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
-        '503':
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
           description: System is experiencing issues
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/HealthResponse"
 
 components:
   schemas:
@@ -737,9 +993,9 @@ components:
           type: object
           properties:
             ult:
-              $ref: '#/components/schemas/ScriptureText'
+              $ref: "#/components/schemas/ScriptureText"
             ust:
-              $ref: '#/components/schemas/ScriptureText'
+              $ref: "#/components/schemas/ScriptureText"
         reference:
           type: string
           example: "John 3:16"
@@ -777,7 +1033,7 @@ components:
         notes:
           type: array
           items:
-            $ref: '#/components/schemas/TranslationNote'
+            $ref: "#/components/schemas/TranslationNote"
         reference:
           type: string
         language:
@@ -814,7 +1070,7 @@ components:
         questions:
           type: array
           items:
-            $ref: '#/components/schemas/TranslationQuestion'
+            $ref: "#/components/schemas/TranslationQuestion"
         reference:
           type: string
         language:
@@ -847,7 +1103,7 @@ components:
         words:
           type: array
           items:
-            $ref: '#/components/schemas/TranslationWord'
+            $ref: "#/components/schemas/TranslationWord"
         reference:
           type: string
         language:
@@ -888,7 +1144,7 @@ components:
         links:
           type: array
           items:
-            $ref: '#/components/schemas/WordLink'
+            $ref: "#/components/schemas/WordLink"
         reference:
           type: string
         language:
@@ -919,15 +1175,15 @@ components:
       type: object
       properties:
         scripture:
-          $ref: '#/components/schemas/ScriptureResponse'
+          $ref: "#/components/schemas/ScriptureResponse"
         notes:
-          $ref: '#/components/schemas/TranslationNotesResponse'
+          $ref: "#/components/schemas/TranslationNotesResponse"
         questions:
-          $ref: '#/components/schemas/TranslationQuestionsResponse'
+          $ref: "#/components/schemas/TranslationQuestionsResponse"
         words:
-          $ref: '#/components/schemas/TranslationWordsResponse'
+          $ref: "#/components/schemas/TranslationWordsResponse"
         wordLinks:
-          $ref: '#/components/schemas/TranslationWordLinksResponse'
+          $ref: "#/components/schemas/TranslationWordLinksResponse"
         reference:
           type: string
         language:
@@ -944,7 +1200,7 @@ components:
         languages:
           type: array
           items:
-            $ref: '#/components/schemas/Language'
+            $ref: "#/components/schemas/Language"
         total:
           type: integer
         timestamp:
@@ -995,7 +1251,7 @@ components:
         books:
           type: array
           items:
-            $ref: '#/components/schemas/Book'
+            $ref: "#/components/schemas/Book"
         language:
           type: string
         organization:
@@ -1029,11 +1285,11 @@ components:
         categories:
           type: array
           items:
-            $ref: '#/components/schemas/WordCategory'
+            $ref: "#/components/schemas/WordCategory"
         words:
           type: array
           items:
-            $ref: '#/components/schemas/TranslationWord'
+            $ref: "#/components/schemas/TranslationWord"
         language:
           type: string
         organization:
@@ -1060,11 +1316,11 @@ components:
       type: object
       properties:
         word:
-          $ref: '#/components/schemas/TranslationWord'
+          $ref: "#/components/schemas/TranslationWord"
         relatedWords:
           type: array
           items:
-            $ref: '#/components/schemas/TranslationWord'
+            $ref: "#/components/schemas/TranslationWord"
         language:
           type: string
         timestamp:
@@ -1079,11 +1335,11 @@ components:
         words:
           type: array
           items:
-            $ref: '#/components/schemas/TranslationWord'
+            $ref: "#/components/schemas/TranslationWord"
         links:
           type: array
           items:
-            $ref: '#/components/schemas/WordLink'
+            $ref: "#/components/schemas/WordLink"
         reference:
           type: string
         language:
@@ -1100,7 +1356,7 @@ components:
         references:
           type: array
           items:
-            $ref: '#/components/schemas/ExtractedReference'
+            $ref: "#/components/schemas/ExtractedReference"
         originalText:
           type: string
         timestamp:
@@ -1177,11 +1433,11 @@ components:
           type: object
           properties:
             cache:
-              $ref: '#/components/schemas/ServiceHealth'
+              $ref: "#/components/schemas/ServiceHealth"
             database:
-              $ref: '#/components/schemas/ServiceHealth'
+              $ref: "#/components/schemas/ServiceHealth"
             dcs:
-              $ref: '#/components/schemas/ServiceHealth'
+              $ref: "#/components/schemas/ServiceHealth"
         metrics:
           type: object
           properties:
@@ -1213,6 +1469,184 @@ components:
         message:
           type: string
 
+    LanguageCoverageResponse:
+      type: object
+      properties:
+        languages:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "English"
+              coverage:
+                type: object
+                properties:
+                  ult:
+                    $ref: "#/components/schemas/ResourceCoverage"
+                  ust:
+                    $ref: "#/components/schemas/ResourceCoverage"
+                  tn:
+                    $ref: "#/components/schemas/ResourceCoverage"
+                  tw:
+                    $ref: "#/components/schemas/ResourceCoverage"
+                  tq:
+                    $ref: "#/components/schemas/ResourceCoverage"
+                  ta:
+                    $ref: "#/components/schemas/ResourceCoverage"
+                  twl:
+                    $ref: "#/components/schemas/ResourceCoverage"
+              completeness:
+                type: number
+                minimum: 0
+                maximum: 100
+                example: 85.5
+              recommended:
+                type: boolean
+                example: true
+        metadata:
+          type: object
+          properties:
+            totalLanguages:
+              type: integer
+            lastUpdated:
+              type: string
+              format: date-time
+        timestamp:
+          type: string
+          format: date-time
+        responseTime:
+          type: number
+
+    ResourceCoverage:
+      type: object
+      properties:
+        available:
+          type: boolean
+        version:
+          type: string
+          example: "85"
+        updated:
+          type: string
+          format: date-time
+        books:
+          type: integer
+          description: Number of books available (for book-based resources)
+        articles:
+          type: integer
+          description: Number of articles available (for article-based resources)
+
+    ResourcesListResponse:
+      type: object
+      properties:
+        resources:
+          type: array
+          items:
+            type: object
+            properties:
+              identifier:
+                type: string
+                example: "en_ult"
+              type:
+                type: string
+                enum: [ult, ust, tn, tw, tq, ta, twl]
+              language:
+                type: string
+                example: "en"
+              organization:
+                type: string
+                example: "unfoldingWord"
+              name:
+                type: string
+                example: "unfoldingWord Literal Text"
+              description:
+                type: string
+              version:
+                type: string
+              updated:
+                type: string
+                format: date-time
+              completeness:
+                type: number
+                minimum: 0
+                maximum: 100
+              books:
+                type: array
+                items:
+                  type: string
+        total:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+        responseTime:
+          type: number
+
+    ResourceRecommendationsResponse:
+      type: object
+      properties:
+        recommendations:
+          type: object
+          properties:
+            strategicLanguages:
+              type: array
+              items:
+                type: object
+                properties:
+                  language:
+                    type: string
+                    example: "en"
+                  name:
+                    type: string
+                    example: "English"
+                  score:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+                  reasons:
+                    type: array
+                    items:
+                      type: string
+                  resources:
+                    type: array
+                    items:
+                      type: string
+            resources:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum: [ult, ust, tn, tw, tq, ta, twl]
+                  priority:
+                    type: string
+                    enum: [essential, recommended, optional]
+                  reason:
+                    type: string
+                  availability:
+                    type: object
+                    properties:
+                      heartLanguage:
+                        type: boolean
+                      strategicLanguage:
+                        type: boolean
+        context:
+          type: object
+          properties:
+            heartLanguage:
+              type: string
+            strategicLanguage:
+              type: string
+            projectType:
+              type: string
+        timestamp:
+          type: string
+          format: date-time
+        responseTime:
+          type: number
+
     ErrorResponse:
       type: object
       properties:
@@ -1237,7 +1671,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Missing required parameter"
             code: "MISSING_PARAMETER"
@@ -1252,7 +1686,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Resource not found"
             code: "NOT_FOUND"
@@ -1267,7 +1701,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Internal server error"
             code: "INTERNAL_ERROR"

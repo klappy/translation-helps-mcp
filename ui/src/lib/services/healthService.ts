@@ -1,5 +1,5 @@
-import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
+import { derived, writable } from 'svelte/store';
 
 interface HealthStatus {
 	status: 'healthy' | 'warning' | 'error';
@@ -174,15 +174,18 @@ async function fetchHealthData(): Promise<HealthStatus | null> {
 // Auto-refresh health data
 let refreshInterval: NodeJS.Timeout | null = null;
 
-export function startHealthMonitoring(intervalMs: number = 30000) {
+export function startHealthMonitoring() {
 	if (!browser) return;
 
-	// Initial fetch
+	// Only fetch once on page load to reduce log clutter and improve performance
+	console.log('Health monitoring: single check on page load');
+
+	// Initial fetch only - no auto-refresh
 	fetchHealthData();
 
-	// Set up auto-refresh
-	if (refreshInterval) clearInterval(refreshInterval);
-	refreshInterval = setInterval(fetchHealthData, intervalMs);
+	// Auto-refresh disabled to prevent log spam
+	// if (refreshInterval) clearInterval(refreshInterval);
+	// refreshInterval = setInterval(fetchHealthData, _intervalMs);
 }
 
 export function stopHealthMonitoring() {

@@ -26,12 +26,12 @@ export function shouldBypassCache(options: CacheBypassOptions): boolean {
     return true;
   }
 
-  // Check headers for cache bypass
+  // Check headers for explicit cache bypass (NOT standard browser cache-control)
+  // Note: Browser cache-control headers are for browser caching, not our server cache
   const cacheControl = headers["cache-control"] || headers["Cache-Control"] || "";
   if (
-    cacheControl.includes("no-cache") ||
-    cacheControl.includes("no-store") ||
-    cacheControl.includes("max-age=0")
+    cacheControl.includes("no-store") // Still respect no-store as it's more serious
+    // Removed no-cache and max-age=0 as browsers send these for normal requests
   ) {
     return true;
   }
@@ -252,6 +252,9 @@ export class UnifiedCacheManager {
     }
 
     // Check if there's already a pending request for this key
+    console.log(
+      `🔍 Checking pending requests for: ${fullKey}, has pending: ${this.pendingRequests.has(fullKey)}`
+    );
     if (this.pendingRequests.has(fullKey)) {
       console.log(`⏳ Waiting for pending request: ${key}`);
       const result = (await this.pendingRequests.get(fullKey)) as T;
@@ -263,6 +266,7 @@ export class UnifiedCacheManager {
     }
 
     // Start new request
+    console.log(`🚀 Starting new request for: ${fullKey}`);
     const requestPromise = fetcher()
       .then(async (result) => {
         // Only cache if we're not bypassing

@@ -3,11 +3,10 @@
  * Auto-generated from shared handler with in-memory caching
  */
 
-import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
 import { fetchScriptureHandler } from '$lib/../../../src/functions/handlers/fetch-scripture';
-import { MemoryCacheAdapter } from '$lib/../../../src/functions/caches/memory-cache';
+import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
 
-const cache = new MemoryCacheAdapter();
-export const GET = createSvelteKitHandler(fetchScriptureHandler, cache);
-export const POST = createSvelteKitHandler(fetchScriptureHandler, cache);
-export const OPTIONS = createSvelteKitHandler(fetchScriptureHandler, cache);
+// Remove duplicate caching - scripture service handles its own unified caching
+export const GET = createSvelteKitHandler(fetchScriptureHandler);
+export const POST = createSvelteKitHandler(fetchScriptureHandler);
+export const OPTIONS = createSvelteKitHandler(fetchScriptureHandler);

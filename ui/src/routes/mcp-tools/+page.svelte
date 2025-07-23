@@ -2,17 +2,7 @@
 	// @ts-nocheck
 	import ApiTester from '$lib/components/ApiTester.svelte';
 	import ResponseDisplay from '$lib/components/ResponseDisplay.svelte';
-	import {
-		coreHealth,
-		experimentalHealth,
-		extendedHealth,
-		healthData,
-		isLoading,
-		overallHealth,
-		refreshHealth,
-		startHealthMonitoring,
-		stopHealthMonitoring
-	} from '$lib/services/healthService';
+	import { healthData, isLoading, refreshHealth } from '$lib/services/healthService';
 	import {
 		Activity,
 		AlertCircle,
@@ -35,9 +25,14 @@
 	} from 'lucide-svelte';
 	import { onDestroy, onMount } from 'svelte';
 
-	// Health check state
-	// let healthData = null; // This line is removed as per the edit hint
-	// let healthLoading = false; // This line is removed as per the edit hint
+	// Default health indicators to prevent reactive loops
+	let defaultHealthIndicator = {
+		status: 'loading',
+		label: 'Loading',
+		tooltip: 'Status loading...',
+		color: 'text-gray-400',
+		badgeColor: 'bg-gray-400/20 text-gray-400'
+	};
 
 	// Current selection state
 	let selectedCategory = 'overview';
@@ -205,6 +200,40 @@
 				],
 				exampleRequest: {
 					reference: 'John 3:16',
+					language: 'en',
+					organization: 'unfoldingWord'
+				}
+			},
+			{
+				name: 'Fetch Translation Academy',
+				tool: 'translation_helps_fetch_translation_academy',
+				description: 'Get training materials and educational articles on translation principles',
+				apiEndpoint: '/api/fetch-translation-academy',
+				icon: Book,
+				parameters: [
+					{
+						name: 'topic',
+						type: 'string',
+						required: false,
+						description: 'Specific translation topic or article (e.g., "metaphor")'
+					},
+					{
+						name: 'language',
+						type: 'string',
+						required: false,
+						default: 'en',
+						description: 'Language code'
+					},
+					{
+						name: 'organization',
+						type: 'string',
+						required: false,
+						default: 'unfoldingWord',
+						description: 'Content organization'
+					}
+				],
+				exampleRequest: {
+					topic: 'metaphor',
 					language: 'en',
 					organization: 'unfoldingWord'
 				}
@@ -633,11 +662,12 @@
 	}
 
 	onMount(() => {
-		startHealthMonitoring();
+		// Health monitoring disabled to prevent CORS and infinite loop issues
+		// startHealthMonitoring();
 	});
 
 	onDestroy(() => {
-		stopHealthMonitoring();
+		// stopHealthMonitoring();
 	});
 </script>
 
@@ -694,50 +724,8 @@
 									: 'text-gray-300 hover:bg-gray-700'}"
 								on:click={() => selectCategory(key)}
 							>
-								<!-- Health Status Bullet Point -->
-								{#if category.healthKey === 'overall'}
-									<div
-										class="h-3 w-3 rounded-full {$overallHealth.status === 'healthy'
-											? 'bg-emerald-400'
-											: $overallHealth.status === 'warning'
-												? 'bg-yellow-400'
-												: $overallHealth.status === 'error'
-													? 'bg-red-400'
-													: 'animate-pulse bg-gray-400'}"
-									></div>
-								{:else if category.healthKey === 'core'}
-									<div
-										class="h-3 w-3 rounded-full {$coreHealth.status === 'healthy'
-											? 'bg-emerald-400'
-											: $coreHealth.status === 'warning'
-												? 'bg-yellow-400'
-												: $coreHealth.status === 'error'
-													? 'bg-red-400'
-													: 'animate-pulse bg-gray-400'}"
-									></div>
-								{:else if category.healthKey === 'extended'}
-									<div
-										class="h-3 w-3 rounded-full {$extendedHealth.status === 'healthy'
-											? 'bg-emerald-400'
-											: $extendedHealth.status === 'warning'
-												? 'bg-yellow-400'
-												: $extendedHealth.status === 'error'
-													? 'bg-red-400'
-													: 'animate-pulse bg-gray-400'}"
-									></div>
-								{:else if category.healthKey === 'experimental'}
-									<div
-										class="h-3 w-3 rounded-full {$experimentalHealth.status === 'healthy'
-											? 'bg-emerald-400'
-											: $experimentalHealth.status === 'warning'
-												? 'bg-yellow-400'
-												: $experimentalHealth.status === 'error'
-													? 'bg-red-400'
-													: 'animate-pulse bg-gray-400'}"
-									></div>
-								{:else}
-									<div class="h-3 w-3 rounded-full bg-blue-400/60"></div>
-								{/if}
+								<!-- Simple status indicator (health monitoring disabled) -->
+								<div class="h-3 w-3 rounded-full bg-gray-400"></div>
 
 								<svelte:component this={category.icon} class="h-4 w-4" />
 								{category.name}
@@ -758,23 +746,8 @@
 											: 'text-gray-300 hover:bg-gray-700'}"
 										on:click={() => selectTool(tool)}
 									>
-										<!-- Individual Tool Health Status Bullet -->
-										{#if $healthData}
-											{@const health = getEndpointHealth(tool.apiEndpoint, $healthData)}
-											{#if health}
-												<div
-													class="h-2 w-2 rounded-full {health.status === 'healthy'
-														? 'bg-emerald-400'
-														: health.status === 'warning'
-															? 'bg-yellow-400'
-															: 'bg-red-400'}"
-												></div>
-											{:else}
-												<div class="h-2 w-2 rounded-full bg-gray-400"></div>
-											{/if}
-										{:else}
-											<div class="h-2 w-2 animate-pulse rounded-full bg-gray-400"></div>
-										{/if}
+										<!-- Simple tool status indicator (health monitoring disabled) -->
+										<div class="h-2 w-2 rounded-full bg-gray-400"></div>
 										<span class="flex-1">{tool.name}</span>
 									</button>
 								{/each}
@@ -1104,7 +1077,8 @@
 							<div class="mb-6 flex items-center gap-3">
 								<svelte:component this={selectedTool.icon} class="h-6 w-6 text-purple-400" />
 								<h2 class="text-2xl font-bold text-white">{selectedTool.name}</h2>
-								{#if $healthData}
+								<!-- Temporarily disabled health display to fix infinite loop -->
+								{#if false && $healthData}
 									{@const health = getEndpointHealth(selectedTool.apiEndpoint, $healthData)}
 									{#if health}
 										<span class="flex items-center gap-1 text-sm {getStatusClass(health.status)}">

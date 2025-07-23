@@ -3,9 +3,9 @@
  * Auto-generated from shared handler with in-memory caching
  */
 
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
 import { VERSION } from '$lib/version.js';
+import type { RequestHandler } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 
 // Define test cases for each endpoint organized by category
 interface EndpointTest {
@@ -332,13 +332,10 @@ export const GET: RequestHandler = async ({ url }) => {
 		responseTime: Date.now() - startTime
 	};
 
-	// Return appropriate HTTP status based on health
-	// Only return 503 if core endpoints are failing, not experimental ones
-	const coreFailures = coreResults.filter((r) => r.status === 'error').length;
-	const httpStatus = coreFailures > 0 ? 503 : 200;
-
+	// Health check endpoint should ALWAYS return 200
+	// Problems are reported in the response data, not HTTP status codes
 	return json(healthData, {
-		status: httpStatus,
+		status: 200,
 		headers: {
 			'Access-Control-Allow-Origin': '*',
 			'Access-Control-Allow-Headers': 'Content-Type',

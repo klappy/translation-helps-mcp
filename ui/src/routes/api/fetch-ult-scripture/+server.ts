@@ -1,27 +1,11 @@
 /**
- * API Route: ULT/GLT Scripture Endpoint
- * GET /api/fetch-ult-scripture
- *
- * Fetches literal (form-centric) Scripture texts with embedded alignment data
- * Supports both ULT (English) and GLT (Strategic Languages)
+ * SvelteKit API Route for fetch-ult-scripture
+ * ULT/GLT Scripture Endpoint - Literal text with word alignment
  */
 
-import { fetchULTScriptureHandler } from '../../../functions/handlers/fetch-ult-scripture.js';
-import type { RequestHandler } from './$types.js';
+import { fetchULTScriptureHandler } from '$lib/../../../src/functions/handlers/fetch-ult-scripture';
+import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
 
-export const GET: RequestHandler = async ({ request }) => {
-	const platformRequest = {
-		method: request.method,
-		url: request.url,
-		headers: Object.fromEntries(request.headers.entries()),
-		body: null,
-		queryStringParameters: Object.fromEntries(new URL(request.url).searchParams.entries())
-	};
-
-	const response = await fetchULTScriptureHandler(platformRequest);
-
-	return new Response(response.body, {
-		status: response.statusCode,
-		headers: response.headers
-	});
-};
+export const GET = createSvelteKitHandler(fetchULTScriptureHandler);
+export const POST = createSvelteKitHandler(fetchULTScriptureHandler);
+export const OPTIONS = createSvelteKitHandler(fetchULTScriptureHandler);

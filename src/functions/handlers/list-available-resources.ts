@@ -3,18 +3,11 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
-import {
-  ResourceDescriptions,
-  ResourceType,
-} from "../../constants/terminology.js";
-import type {
-  PlatformHandler,
-  PlatformRequest,
-  PlatformResponse,
-} from "../platform-adapter";
+import { ResourceDescriptions, ResourceType } from "../../constants/terminology.js";
+import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const listAvailableResourcesHandler: PlatformHandler = async (
-  request: PlatformRequest,
+  request: PlatformRequest
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -52,13 +45,13 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
       },
       {
         type: ResourceType.GLT,
-        name: "Gateway Literal Text",
+        name: "Gateway Literal Text (Strategic Languages)",
         description: ResourceDescriptions[ResourceType.GLT],
         languages: language ? [language] : ["es", "fr", "pt", "ru"],
       },
       {
         type: ResourceType.GST,
-        name: "Gateway Simplified Text",
+        name: "Gateway Simplified Text (Strategic Languages)",
         description: ResourceDescriptions[ResourceType.GST],
         languages: language ? [language] : ["es", "fr", "pt", "ru"],
       },
