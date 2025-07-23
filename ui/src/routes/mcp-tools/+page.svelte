@@ -1,43 +1,39 @@
 <script>
 	// @ts-nocheck
-	import {
-		Wrench,
-		Code,
-		Search,
-		BookOpen,
-		MessageSquare,
-		FileText,
-		Users,
-		Zap,
-		Copy,
-		ExternalLink,
-		CheckCircle,
-		AlertCircle,
-		Info,
-		Terminal,
-		Globe,
-		Database,
-		List,
-		Link,
-		Activity,
-		Settings,
-		Beaker,
-		Book
-	} from 'lucide-svelte';
 	import ApiTester from '$lib/components/ApiTester.svelte';
 	import ResponseDisplay from '$lib/components/ResponseDisplay.svelte';
-	import { onMount, onDestroy } from 'svelte';
 	import {
-		startHealthMonitoring,
-		stopHealthMonitoring,
 		coreHealth,
-		extendedHealth,
 		experimentalHealth,
-		overallHealth,
+		extendedHealth,
 		healthData,
 		isLoading,
-		refreshHealth
+		overallHealth,
+		refreshHealth,
+		startHealthMonitoring,
+		stopHealthMonitoring
 	} from '$lib/services/healthService';
+	import {
+		Activity,
+		AlertCircle,
+		Beaker,
+		Book,
+		BookOpen,
+		CheckCircle,
+		Code,
+		Database,
+		ExternalLink,
+		FileText,
+		Globe,
+		Info,
+		Link,
+		List,
+		MessageSquare,
+		Search,
+		Terminal,
+		Zap
+	} from 'lucide-svelte';
+	import { onDestroy, onMount } from 'svelte';
 
 	// Health check state
 	// let healthData = null; // This line is removed as per the edit hint
@@ -113,12 +109,36 @@
 						required: false,
 						default: 'unfoldingWord',
 						description: 'Content organization'
+					},
+					{
+						name: 'includeVerseNumbers',
+						type: 'boolean',
+						required: false,
+						default: 'true',
+						description: 'Include verse numbers in the text'
+					},
+					{
+						name: 'format',
+						type: 'select',
+						required: false,
+						default: 'text',
+						options: ['text', 'usfm'],
+						description: 'Output format: clean text or raw USFM'
+					},
+					{
+						name: 'translations',
+						type: 'string',
+						required: false,
+						description:
+							'Specific translations to include (comma-separated: en_ult,en_ust,en_t4t,en_ueb). Leave empty for all translations.'
 					}
 				],
 				exampleRequest: {
 					reference: 'John 3:16',
 					language: 'en',
-					organization: 'unfoldingWord'
+					organization: 'unfoldingWord',
+					includeVerseNumbers: 'true',
+					format: 'text'
 				}
 			},
 			{
