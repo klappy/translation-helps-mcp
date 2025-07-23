@@ -20,7 +20,7 @@ This document provides comprehensive technical documentation for developers buil
 
 ### Mission and Philosophy
 
-unfoldingWord translation resources are developed under Creative Commons Attribution-ShareAlike 4.0 licenses to provide the global church with high-quality, interconnected Bible translation tools. The ecosystem serves **Mother Tongue Translators (MTTs)** who use **Strategic Languages** (formerly known as Gateway Languages) as their bridge to translate Scripture into their **heart languages**.
+unfoldingWord translation resources are developed under Creative Commons Attribution-ShareAlike 4.0 licenses to provide the global church with high-quality, interconnected Bible translation tools. The ecosystem serves **Mother Tongue Translators (MTTs)** who use **Strategic Languages** as their bridge to translate Scripture into their **heart languages**.
 
 ### Key Definitions
 
@@ -268,7 +268,7 @@ graph TB
 
 **Versification as the Coordinate System**: Every resource uses the versification system as its reference framework. Developers must ensure their applications handle versification consistently across all resources to maintain proper coordination.
 
-**Strategic Language Flexibility**: The system supports multiple Strategic Languages (English, Spanish, French, etc.) with identical structural patterns. Developers should design their applications to work with any Strategic Language implementation, not just English. For detailed information about Strategic Language translation processes, see the [Gateway Language Manual](https://gl-manual.readthedocs.io/en/latest/gl_translation.html).
+**Strategic Language Flexibility**: The system supports multiple Strategic Languages (English, Spanish, French, etc.) with identical structural patterns. Developers should design their applications to work with any Strategic Language implementation, not just English. For detailed information about Strategic Language translation processes, see the [Strategic Language Manual](https://gl-manual.readthedocs.io/en/latest/gl_translation.html).
 
 ## Getting Started with Integration
 
@@ -1314,7 +1314,7 @@ unfoldingWord created English resources for Mother Tongue Translators, serving a
 
 **Organization Types**:
 
-- **Language-Specific Organizations**: Like `es-419_gl` (Latin American Spanish Gateway Language resources)
+- **Language-Specific Organizations**: Like `es-419_gl` (Latin American Spanish Strategic Language resources)
 - **Multi-Language Organizations**: Like `unfoldingWord` (hosting resources for multiple languages)
 - **Mixed Organizations**: Some organizations host both Strategic Language and other language resources
 
@@ -1386,7 +1386,7 @@ relation:
 
 Organizations can create new resource identifiers and subjects as needed for specialized resources, following the established patterns while extending the ecosystem capabilities.
 
-The English implementation serves as the model that other Strategic Language organizations follow, maintaining the same structural patterns and resource types while adapting content for their specific linguistic and cultural contexts. For detailed guidance on Strategic Language translation and adaptation processes, see the [Gateway Language Manual](https://gl-manual.readthedocs.io/en/latest/gl_translation.html).
+The English implementation serves as the model that other Strategic Language organizations follow, maintaining the same structural patterns and resource types while adapting content for their specific linguistic and cultural contexts. For detailed guidance on Strategic Language translation and adaptation processes, see the [Strategic Language Manual](https://gl-manual.readthedocs.io/en/latest/gl_translation.html).
 
 #### Consistent Linking Strategy
 
@@ -1750,7 +1750,7 @@ This documentation provides the foundation for building translation tools that s
 
 ### Translation Methodology and Workflow
 
-- **[Gateway Language Manual](https://gl-manual.readthedocs.io/en/latest/gl_translation.html)** - Comprehensive guide for translating and adapting unfoldingWord resources into Strategic Languages
+- **[Strategic Language Manual](https://gl-manual.readthedocs.io/en/latest/gl_translation.html)** - Comprehensive guide for translating and adapting unfoldingWord resources into Strategic Languages
 - **[unfoldingWord Translator Resources](https://unfoldingword.org/for-translators/)** - Complete collection of tools, training materials, and resources for Bible translation teams
 
 ### Platform and API Documentation
