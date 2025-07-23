@@ -24,6 +24,7 @@ export interface ScriptureOptions {
   includeVerseNumbers?: boolean;
   format?: "text" | "usfm";
   includeMultipleTranslations?: boolean;
+  specificTranslations?: string[];
   bypassCache?: CacheBypassOptions;
 }
 
@@ -121,49 +122,84 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   }
 
   async function fetchFreshScripture(): Promise<ScriptureResult> {
-    // Search for scripture resources
-    const searchUrl = `https://git.door43.org/api/v1/catalog/search?subject=Aligned%20Bible&lang=${language}&owner=${organization}`;
-    console.log(`🔍 Searching catalog: ${searchUrl}`);
+    // Search for scripture resources from BOTH subjects
+    const subjects = ["Aligned%20Bible", "Bible"];
+    const allResources: any[] = [];
 
-    const catalogResponse = await fetch(searchUrl);
-    if (!catalogResponse.ok) {
-      console.error(`❌ Catalog search failed: ${catalogResponse.status}`);
-      throw new Error(`Failed to search catalog: ${catalogResponse.status}`);
-    }
+    for (const subject of subjects) {
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?subject=${subject}&lang=${language}&owner=${organization}`;
+      console.log(`🔍 Searching catalog: ${searchUrl}`);
 
-    const catalogData = (await catalogResponse.json()) as {
-      data?: Array<{
-        name: string;
-        title: string;
-        ingredients?: Array<{
-          identifier: string;
-          path: string;
+      const catalogResponse = await fetch(searchUrl);
+      if (!catalogResponse.ok) {
+        console.warn(`⚠️ Catalog search failed for ${subject}: ${catalogResponse.status}`);
+        continue; // Continue to next subject instead of throwing
+      }
+
+      const catalogData = (await catalogResponse.json()) as {
+        data?: Array<{
+          name: string;
+          title: string;
+          ingredients?: Array<{
+            identifier: string;
+            path: string;
+          }>;
         }>;
-      }>;
-    };
+      };
 
-    console.log(`📊 Found ${catalogData.data?.length || 0} scripture resources`);
-
-    if (!catalogData.data || catalogData.data.length === 0) {
-      throw new Error(`No scripture found for ${language}/${organization}`);
+      if (catalogData.data) {
+        allResources.push(...catalogData.data);
+      }
     }
 
-    // Handle multiple translations if requested
-    const resourcesToProcess = includeMultipleTranslations
-      ? catalogData.data
-      : [catalogData.data[0]];
-    const scriptures: Array<{
-      text: string;
-      translation: string;
-      citation: {
-        resource: string;
-        organization: string;
-        language: string;
-        url: string;
-        version: string;
-      };
-    }> = [];
+    if (allResources.length === 0) {
+      console.error(`❌ No scripture resources found for ${language}/${organization}`);
+      throw new Error(`No scripture resources found for ${language}/${organization}`);
+    }
 
+    console.log(`📊 Found ${allResources.length} scripture resources across all subjects`);
+
+    // Deduplicate resources by name (in case same resource appears in multiple subjects)
+    const uniqueResources = allResources.reduce((acc: any[], resource: any) => {
+      if (!acc.find((r: any) => r.name === resource.name)) {
+        acc.push(resource);
+      }
+      return acc;
+    }, []);
+
+    console.log(`📊 Found ${uniqueResources.length} unique scripture resources`);
+
+    // Filter by specific translations if requested
+    let filteredResources = uniqueResources;
+    if (options.specificTranslations && options.specificTranslations.length > 0) {
+      filteredResources = uniqueResources.filter((resource) =>
+        options.specificTranslations!.includes(resource.name)
+      );
+      console.log(
+        `🎯 Filtered to ${filteredResources.length} specific translations: ${options.specificTranslations.join(", ")}`
+      );
+
+      if (filteredResources.length === 0) {
+        console.warn(
+          `⚠️ No resources found for specified translations: ${options.specificTranslations.join(", ")}`
+        );
+        // Fall back to all available resources if none of the specified ones exist
+        filteredResources = uniqueResources;
+      }
+    }
+
+    // Handle multiple translations if requested (and not overridden by specific translations)
+    const resourcesToProcess = options.specificTranslations
+      ? filteredResources
+      : includeMultipleTranslations
+        ? filteredResources
+        : [filteredResources[0]];
+
+    console.log(
+      `📖 Processing ${resourcesToProcess.length} resource(s) (multiple translations: ${includeMultipleTranslations})`
+    );
+
+    const scriptures = [];
     for (const resource of resourcesToProcess) {
       console.log(`📖 Processing resource: ${resource.name} (${resource.title})`);
 
