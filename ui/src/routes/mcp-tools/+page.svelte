@@ -472,7 +472,7 @@
 				category: 'linguistics',
 				parameters: [
 					{
-						name: 'word',
+						name: 'term',
 						required: true,
 						type: 'string',
 						example: 'grace',
@@ -495,7 +495,7 @@
 				],
 				example: {
 					request: {
-						word: 'grace',
+						term: 'grace',
 						language: 'en',
 						organization: 'unfoldingWord'
 					}
