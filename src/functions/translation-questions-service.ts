@@ -1,16 +1,19 @@
 /**
  * Translation Questions Service
- * Shared core implementation for fetching translation questions
- * Used by both Netlify functions and MCP tools for consistency
+ * Fetches translation questions from DCS (Door43 Content Service)
+ * Uses unified resource discovery to minimize DCS API calls
  */
 
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
+import { getResourceForBook } from "./resource-detector";
 
 export interface TranslationQuestion {
+  id: string;
   reference: string;
   question: string;
-  response?: string;
+  response: string;
+  tags?: string[];
 }
 
 export interface TranslationQuestionsOptions {
@@ -37,34 +40,72 @@ export interface TranslationQuestionsResult {
 }
 
 /**
- * Core translation questions fetching logic
+ * Parse TSV data into TranslationQuestion objects
+ */
+function parseTQFromTSV(tsvData: string, reference: ParsedReference): TranslationQuestion[] {
+  const lines = tsvData.split("\n").filter((line) => line.trim());
+  const questions: TranslationQuestion[] = [];
+  let questionId = 1;
+
+  for (const line of lines) {
+    const columns = line.split("\t");
+    if (columns.length < 7) continue; // Skip malformed lines
+
+    const [book, chapter, verse, , question, response] = columns;
+
+    // Only include questions for the requested reference
+    if (
+      book.toLowerCase() === reference.book.toLowerCase() &&
+      parseInt(chapter) === reference.chapter &&
+      (reference.verse === undefined || parseInt(verse) === reference.verse)
+    ) {
+      questions.push({
+        id: `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
+        reference: `${book} ${chapter}:${verse}`,
+        question: question.trim(),
+        response: response.trim(),
+        tags: [], // Could be populated from additional columns if available
+      });
+    }
+  }
+
+  return questions;
+}
+
+interface ParsedReference {
+  book: string;
+  chapter: number;
+  verse?: number;
+}
+
+/**
+ * Core translation questions fetching logic with unified resource discovery
  */
 export async function fetchTranslationQuestions(
   options: TranslationQuestionsOptions
 ): Promise<TranslationQuestionsResult> {
   const startTime = Date.now();
-  const { reference: referenceParam, language = "en", organization = "unfoldingWord" } = options;
+  const { reference, language = "en", organization = "unfoldingWord" } = options;
+
+  const parsedRef = parseReference(reference);
+  if (!parsedRef) {
+    throw new Error(`Invalid reference format: ${reference}`);
+  }
 
   console.log(`❓ Core translation questions service called with:`, {
-    reference: referenceParam,
+    reference,
     language,
     organization,
   });
 
-  // Parse the reference
-  const reference = parseReference(referenceParam);
-  if (!reference) {
-    throw new Error(`Invalid reference format: ${referenceParam}`);
-  }
-
-  // Check for cached transformed response FIRST
-  const responseKey = `questions:${referenceParam}:${language}:${organization}`;
+  // Check cache first
+  const responseKey = `questions:${reference}:${language}:${organization}`;
   const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
     console.log(`🚀 FAST cache hit for processed questions: ${responseKey}`);
     return {
-      translationQuestions: cachedResponse.value.translationQuestions || [],
+      translationQuestions: cachedResponse.value.translationQuestions,
       citation: cachedResponse.value.citation,
       metadata: {
         responseTime: Date.now() - startTime,
@@ -77,47 +118,27 @@ export async function fetchTranslationQuestions(
 
   console.log(`🔄 Processing fresh questions request: ${responseKey}`);
 
-  // Search catalog for Translation Questions
-  const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Questions&lang=${language}&owner=${organization}`;
-  console.log(`🔍 Searching catalog: ${catalogUrl}`);
+  // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
+  console.log(`🔍 Using unified resource discovery for translation questions...`);
+  const resourceInfo = await getResourceForBook(reference, "questions", language, organization);
 
-  const catalogResponse = await fetch(catalogUrl);
-  if (!catalogResponse.ok) {
-    console.error(`❌ Catalog search failed: ${catalogResponse.status}`);
-    throw new Error(`Failed to search catalog: ${catalogResponse.status}`);
-  }
-
-  const catalogData = (await catalogResponse.json()) as {
-    data?: Array<{
-      name: string;
-      title: string;
-      ingredients?: Array<{
-        identifier: string;
-        path: string;
-      }>;
-    }>;
-  };
-
-  console.log(`📊 Found ${catalogData.data?.length || 0} translation questions resources`);
-
-  if (!catalogData.data || catalogData.data.length === 0) {
+  if (!resourceInfo) {
     throw new Error(`No translation questions found for ${language}/${organization}`);
   }
 
-  const resource = catalogData.data[0];
-  console.log(`📖 Using resource: ${resource.name} (${resource.title})`);
+  console.log(`📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`);
 
   // Find the correct file from ingredients
-  const ingredient = resource.ingredients?.find(
-    (ing: { identifier?: string }) => ing.identifier === reference.book.toLowerCase()
+  const ingredient = resourceInfo.ingredients?.find(
+    (ing: { identifier?: string }) => ing.identifier === parsedRef.book.toLowerCase()
   );
 
   if (!ingredient) {
-    throw new Error(`Book ${reference.book} not found in resource ${resource.name}`);
+    throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
   }
 
   // Build URL for the TSV file
-  const fileUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
+  const fileUrl = `https://git.door43.org/${organization}/${resourceInfo.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
   console.log(`🔗 Fetching from: ${fileUrl}`);
 
   // Try to get from cache first
@@ -143,16 +164,16 @@ export async function fetchTranslationQuestions(
   }
 
   // Parse the TSV data
-  const questions = parseTQFromTSV(tsvData, reference);
+  const questions = parseTQFromTSV(tsvData, parsedRef);
   console.log(`❓ Parsed ${questions.length} translation questions`);
 
   const result: TranslationQuestionsResult = {
     translationQuestions: questions,
     citation: {
-      resource: resource.name,
+      resource: resourceInfo.name,
       organization,
       language,
-      url: `https://git.door43.org/${organization}/${resource.name}`,
+      url: resourceInfo.url || `https://git.door43.org/${organization}/${resourceInfo.name}`,
       version: "master",
     },
     metadata: {
@@ -169,63 +190,7 @@ export async function fetchTranslationQuestions(
     citation: result.citation,
   });
 
-  return result;
-}
-
-/**
- * Parse Translation Questions from TSV data
- */
-function parseTQFromTSV(
-  tsvData: string,
-  reference: { book: string; chapter: number; verse?: number; verseEnd?: number }
-): TranslationQuestion[] {
-  const lines = tsvData.split("\n");
-  const questions: TranslationQuestion[] = [];
-
-  // Skip header line
-  if (lines.length > 0 && lines[0].startsWith("Reference")) {
-    lines.shift();
-  }
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-
-    const columns = line.split("\t");
-    if (columns.length < 7) continue; // Need at least 7 columns
-
-    // Correct structure: Reference | ID | Tags | Quote | Occurrence | Question | Response
-    const [ref, , , , , question, response] = columns;
-
-    // Parse the reference
-    const refMatch = ref.match(/(\d+):(\d+)/);
-    if (!refMatch) continue;
-
-    const chapterNum = parseInt(refMatch[1]);
-    const verseNum = parseInt(refMatch[2]);
-
-    // Check if this question is in our range
-    let include = false;
-
-    if (reference.verse && reference.verseEnd) {
-      include =
-        chapterNum === reference.chapter &&
-        verseNum >= reference.verse &&
-        verseNum <= reference.verseEnd;
-    } else if (reference.verse) {
-      include = chapterNum === reference.chapter && verseNum === reference.verse;
-    } else {
-      include = chapterNum === reference.chapter;
-    }
-
-    if (include && question && question.trim()) {
-      questions.push({
-        reference: `${reference.book} ${chapterNum}:${verseNum}`,
-        question: question.trim(),
-        response: response?.trim() || undefined,
-      });
-    }
-  }
-
   console.log(`❓ Parsed ${questions.length} translation questions`);
-  return questions;
+
+  return result;
 }
