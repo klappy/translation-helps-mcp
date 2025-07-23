@@ -34,7 +34,10 @@ export const fetchScriptureHandler: PlatformHandler = async (
     const formatParam = request.queryStringParameters.format || "text";
     const format = (formatParam === "usfm" ? "usfm" : "text") as "text" | "usfm";
     const includeMultipleTranslations =
-      request.queryStringParameters.includeMultipleTranslations === "true";
+      request.queryStringParameters.includeMultipleTranslations !== "false";
+    const specificTranslations = request.queryStringParameters.translations
+      ? request.queryStringParameters.translations.split(",").map((t) => t.trim())
+      : undefined;
 
     if (!referenceParam) {
       return {
@@ -60,6 +63,7 @@ export const fetchScriptureHandler: PlatformHandler = async (
       includeVerseNumbers,
       format,
       includeMultipleTranslations,
+      specificTranslations,
       bypassCache: bypassOptions,
     });
 
