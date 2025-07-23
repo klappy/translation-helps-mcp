@@ -1,512 +1,222 @@
 /**
- * Resource Type Detection System
- * Intelligently identifies ULT/GLT, UST/GST, and all help resources from catalog responses
- * Handles organization-specific variations and provides confidence scoring
- *
- * Implements Task 7 from the implementation plan
+ * Resource Detector Service
+ * Unified DCS catalog discovery to minimize API calls
+ * Caches resource availability and provides metadata to other services
  */
 
-import { ResourceType } from "../constants/terminology.js";
+import { cache } from "./cache";
+import { parseReference } from "./reference-parser";
 
-export interface ResourceDetectionResult {
-  type: ResourceType | null;
-  confidence: number; // 0-1, higher = more confident
-  reasoning: string[]; // Explanation of detection logic
-  alternatives: Array<{
-    type: ResourceType;
-    confidence: number;
-    reason: string;
+export interface ResourceCatalogInfo {
+  name: string;
+  title: string;
+  subject: string;
+  ingredients?: Array<{
+    identifier: string;
+    path: string;
   }>;
+  url?: string;
 }
 
-export interface ResourceContext {
-  identifier: string;
-  subject: string;
+export interface ResourceAvailability {
+  scripture: ResourceCatalogInfo[];
+  notes: ResourceCatalogInfo[];
+  questions: ResourceCatalogInfo[];
+  words: ResourceCatalogInfo[];
+  wordLinks: ResourceCatalogInfo[];
+  lastUpdated: string;
+  book: string;
   organization: string;
   language: string;
-  name?: string;
-  title?: string;
-  description?: string;
-  metadata?: Record<string, unknown>;
 }
-
-interface ResourcePattern {
-  identifiers: readonly RegExp[];
-  subjects: readonly string[];
-  keywords: readonly string[];
-  organizationHints: readonly string[];
-  confidence: number;
-}
-
-// Pattern definitions for resource detection
-const RESOURCE_PATTERNS: Record<ResourceType, ResourcePattern> = {
-  [ResourceType.ULT]: {
-    identifiers: [/^[a-z]{2,3}[-_]ult$/i, /^ult$/i, /unfoldingword.*literal/i],
-    subjects: ["Bible", "Aligned Bible", "Scripture"],
-    keywords: [
-      "literal",
-      "form-centric",
-      "unfoldingword",
-      "original structure",
-    ],
-    organizationHints: ["unfoldingWord"],
-    confidence: 0.9,
-  },
-  [ResourceType.GLT]: {
-    identifiers: [/^[a-z]{2,3}[-_]glt$/i, /^glt$/i, /gateway.*literal/i],
-    subjects: ["Bible", "Aligned Bible", "Scripture"],
-    keywords: ["literal", "gateway", "form-centric", "strategic"],
-    organizationHints: ["unfoldingWord", "Door43-Catalog"],
-    confidence: 0.9,
-  },
-  [ResourceType.UST]: {
-    identifiers: [
-      /^[a-z]{2,3}[-_]ust$/i,
-      /^ust$/i,
-      /unfoldingword.*simplified/i,
-    ],
-    subjects: ["Bible", "Aligned Bible", "Scripture"],
-    keywords: ["simplified", "meaning-based", "unfoldingword", "clear"],
-    organizationHints: ["unfoldingWord"],
-    confidence: 0.9,
-  },
-  [ResourceType.GST]: {
-    identifiers: [/^[a-z]{2,3}[-_]gst$/i, /^gst$/i, /gateway.*simplified/i],
-    subjects: ["Bible", "Aligned Bible", "Scripture"],
-    keywords: ["simplified", "gateway", "meaning-based", "strategic"],
-    organizationHints: ["unfoldingWord", "Door43-Catalog"],
-    confidence: 0.9,
-  },
-  [ResourceType.TN]: {
-    identifiers: [/^[a-z]{2,3}[-_]tn$/i, /^tn$/i, /translation.*notes?$/i],
-    subjects: ["Translation Notes", "Notes", "Translation Academy"],
-    keywords: ["notes", "translation", "explanation", "commentary"],
-    organizationHints: ["unfoldingWord", "Door43-Catalog"],
-    confidence: 0.95,
-  },
-  [ResourceType.TW]: {
-    identifiers: [/^[a-z]{2,3}[-_]tw$/i, /^tw$/i, /translation.*words?$/i],
-    subjects: ["Translation Words", "Dictionary", "Lexicon"],
-    keywords: ["words", "dictionary", "terms", "lexicon", "definitions"],
-    organizationHints: ["unfoldingWord", "Door43-Catalog"],
-    confidence: 0.95,
-  },
-  [ResourceType.TWL]: {
-    identifiers: [
-      /^[a-z]{2,3}[-_]twl$/i,
-      /^twl$/i,
-      /translation.*words?.*links?$/i,
-    ],
-    subjects: ["Translation Words Links", "Translation Words"],
-    keywords: ["links", "words", "connections", "mappings"],
-    organizationHints: ["unfoldingWord", "Door43-Catalog"],
-    confidence: 0.9,
-  },
-  [ResourceType.TQ]: {
-    identifiers: [/^[a-z]{2,3}[-_]tq$/i, /^tq$/i, /translation.*questions?$/i],
-    subjects: ["Translation Questions", "Questions"],
-    keywords: ["questions", "checking", "comprehension", "validation"],
-    organizationHints: ["unfoldingWord", "Door43-Catalog"],
-    confidence: 0.95,
-  },
-  [ResourceType.TA]: {
-    identifiers: [/^[a-z]{2,3}[-_]ta$/i, /^ta$/i, /translation.*academy$/i],
-    subjects: ["Translation Academy", "Academy", "Manual"],
-    keywords: ["academy", "manual", "methodology", "training", "principles"],
-    organizationHints: ["unfoldingWord", "Door43-Catalog"],
-    confidence: 0.95,
-  },
-  [ResourceType.OBS]: {
-    identifiers: [/^[a-z]{2,3}[-_]obs$/i, /^obs$/i, /open.*bible.*stories$/i],
-    subjects: ["Open Bible Stories", "Stories", "Bible Stories"],
-    keywords: ["stories", "open", "narrative", "chronological"],
-    organizationHints: ["unfoldingWord", "Door43-Catalog"],
-    confidence: 0.9,
-  },
-  [ResourceType.UHB]: {
-    identifiers: [/^uhb$/i, /unfoldingword.*hebrew$/i, /hebrew.*bible$/i],
-    subjects: ["Hebrew Bible", "Original Language", "Hebrew"],
-    keywords: ["hebrew", "original", "uhb", "masoretic"],
-    organizationHints: ["unfoldingWord"],
-    confidence: 0.95,
-  },
-  [ResourceType.UGNT]: {
-    identifiers: [/^ugnt$/i, /unfoldingword.*greek$/i, /greek.*testament$/i],
-    subjects: ["Greek New Testament", "Original Language", "Greek"],
-    keywords: ["greek", "testament", "ugnt", "original"],
-    organizationHints: ["unfoldingWord"],
-    confidence: 0.95,
-  },
-  // Add missing resource types with default patterns
-  [ResourceType.SN]: {
-    identifiers: [/^[a-z]{2,3}[-_]sn$/i, /^sn$/i, /study.*notes?$/i],
-    subjects: ["Study Notes", "Notes"],
-    keywords: ["study", "notes", "commentary", "detailed"],
-    organizationHints: ["unfoldingWord"],
-    confidence: 0.9,
-  },
-  [ResourceType.SQ]: {
-    identifiers: [/^[a-z]{2,3}[-_]sq$/i, /^sq$/i, /study.*questions?$/i],
-    subjects: ["Study Questions", "Questions"],
-    keywords: ["study", "questions", "discussion", "reflection"],
-    organizationHints: ["unfoldingWord"],
-    confidence: 0.9,
-  },
-};
 
 /**
- * Main resource detection function
+ * Discover all available resources for a book/language/organization in one shot
+ * Caches results to minimize DCS catalog API calls
  */
-export function detectResourceType(
-  context: ResourceContext,
-): ResourceDetectionResult {
-  const alternatives: ResourceDetectionResult["alternatives"] = [];
-  let bestMatch: ResourceType | null = null;
-  let bestConfidence = 0;
-  const reasoning: string[] = [];
+export async function discoverAvailableResources(
+  reference: string,
+  language: string = "en",
+  organization: string = "unfoldingWord"
+): Promise<ResourceAvailability> {
+  const parsedRef = parseReference(reference);
+  if (!parsedRef) {
+    throw new Error(`Invalid reference format: ${reference}`);
+  }
+  const book = parsedRef.book;
 
-  // Check each resource type pattern
-  for (const [resourceType, pattern] of Object.entries(RESOURCE_PATTERNS)) {
-    const type = resourceType as ResourceType;
-    const confidence = calculateConfidence(context, pattern);
+  // Cache key for this book/language/org combination
+  const cacheKey = `resource-discovery:${book}:${language}:${organization}`;
 
-    if (confidence > 0.1) {
-      // Only consider reasonable matches
-      alternatives.push({
-        type,
-        confidence,
-        reason: generateReason(context, pattern, confidence),
-      });
+  // Try cache first
+  const cached = await cache.getWithCacheInfo(cacheKey, "metadata");
+  if (cached.value) {
+    console.log(`🎯 Resource discovery cache HIT for ${book}/${language}/${organization}`);
+    return cached.value;
+  }
 
-      if (confidence > bestConfidence) {
-        bestMatch = type;
-        bestConfidence = confidence;
+  console.log(`🔍 Discovering resources for ${book}/${language}/${organization}`);
+
+  const availability: ResourceAvailability = {
+    scripture: [],
+    notes: [],
+    questions: [],
+    words: [],
+    wordLinks: [],
+    lastUpdated: new Date().toISOString(),
+    book,
+    organization,
+    language,
+  };
+
+  // Parallel catalog searches for all resource types
+  const searches = [
+    {
+      type: "scripture" as keyof ResourceAvailability,
+      subjects: ["Bible", "Aligned Bible"],
+    },
+    {
+      type: "notes" as keyof ResourceAvailability,
+      subjects: ["TSV Translation Notes"],
+    },
+    {
+      type: "questions" as keyof ResourceAvailability,
+      subjects: ["TSV Translation Questions"],
+    },
+    {
+      type: "words" as keyof ResourceAvailability,
+      subjects: ["Translation Words"],
+    },
+    {
+      type: "wordLinks" as keyof ResourceAvailability,
+      subjects: ["Translation Word Links"],
+    },
+  ];
+
+  const searchPromises = searches.flatMap((search) =>
+    search.subjects.map(async (subject) => {
+      try {
+        const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=${encodeURIComponent(subject)}&lang=${language}&owner=${organization}`;
+        console.log(`🔍 Catalog search: ${subject} for ${language}/${organization}`);
+
+        const response = await fetch(catalogUrl);
+        if (!response.ok) {
+          console.warn(`⚠️ Catalog search failed for ${subject}: ${response.status}`);
+          return { type: search.type, resources: [] };
+        }
+
+        const data = (await response.json()) as {
+          data?: ResourceCatalogInfo[];
+        };
+
+        const resources = (data.data || []).map((resource) => ({
+          ...resource,
+          subject,
+          url: `https://git.door43.org/${organization}/${resource.name}`,
+        }));
+
+        console.log(`📊 Found ${resources.length} ${subject} resources`);
+        return { type: search.type, resources };
+      } catch (error) {
+        console.warn(`⚠️ Catalog search error for ${subject}:`, error);
+        return { type: search.type, resources: [] };
       }
-    }
+    })
+  );
+
+  // Wait for all searches to complete
+  const searchResults = await Promise.all(searchPromises);
+
+  // Aggregate results by resource type
+  for (const result of searchResults) {
+    const existing = availability[result.type] as ResourceCatalogInfo[];
+    existing.push(...result.resources);
   }
 
-  // Sort alternatives by confidence
-  alternatives.sort((a, b) => b.confidence - a.confidence);
+  // Remove duplicates within each resource type
+  availability.scripture = availability.scripture.filter(
+    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+  );
+  availability.notes = availability.notes.filter(
+    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+  );
+  availability.questions = availability.questions.filter(
+    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+  );
+  availability.words = availability.words.filter(
+    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+  );
+  availability.wordLinks = availability.wordLinks.filter(
+    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+  );
 
-  // Generate reasoning for best match
-  if (bestMatch) {
-    const pattern = RESOURCE_PATTERNS[bestMatch];
-    reasoning.push(
-      `Identified as ${bestMatch.toUpperCase()} with ${(bestConfidence * 100).toFixed(1)}% confidence`,
-    );
+  // Cache the discovery results
+  await cache.set(cacheKey, availability, "metadata");
 
-    // Add specific reasons
-    if (matchesIdentifierPattern(context.identifier, pattern.identifiers)) {
-      reasoning.push(
-        `Identifier "${context.identifier}" matches ${bestMatch.toUpperCase()} pattern`,
-      );
-    }
+  const totalResources =
+    availability.scripture.length +
+    availability.notes.length +
+    availability.questions.length +
+    availability.words.length +
+    availability.wordLinks.length;
 
-    if (matchesSubject(context.subject, pattern.subjects)) {
-      reasoning.push(
-        `Subject "${context.subject}" indicates ${bestMatch.toUpperCase()} resource`,
-      );
-    }
+  console.log(
+    `🎯 Resource discovery complete: ${totalResources} total resources found for ${book}`
+  );
 
-    if (
-      context.organization &&
-      pattern.organizationHints.includes(context.organization)
-    ) {
-      reasoning.push(
-        `Organization "${context.organization}" commonly produces ${bestMatch.toUpperCase()}`,
-      );
-    }
+  return availability;
+}
 
-    // Language-specific logic
-    if (bestMatch === ResourceType.ULT && context.language !== "en") {
-      reasoning.push(
-        `Warning: ULT typically only available in English, found language "${context.language}"`,
-      );
-      bestConfidence *= 0.7; // Reduce confidence
-    } else if (bestMatch === ResourceType.UST && context.language !== "en") {
-      reasoning.push(
-        `Warning: UST typically only available in English, found language "${context.language}"`,
-      );
-      bestConfidence *= 0.7; // Reduce confidence
-    }
+/**
+ * Get specific resource info for a resource type and book
+ * Uses cached discovery data when available
+ */
+export async function getResourceForBook(
+  reference: string,
+  resourceType: "scripture" | "notes" | "questions" | "words" | "wordLinks",
+  language: string = "en",
+  organization: string = "unfoldingWord"
+): Promise<ResourceCatalogInfo | null> {
+  const availability = await discoverAvailableResources(reference, language, organization);
+  const resources = availability[resourceType];
+
+  if (!resources || resources.length === 0) {
+    return null;
   }
+
+  // Return the first (usually best) resource of this type
+  return resources[0];
+}
+
+/**
+ * Check if any resources exist for a reference without fetching full details
+ * Super fast check using cached discovery data
+ */
+export async function checkResourceAvailability(
+  reference: string,
+  language: string = "en",
+  organization: string = "unfoldingWord"
+): Promise<{
+  hasScripture: boolean;
+  hasNotes: boolean;
+  hasQuestions: boolean;
+  hasWords: boolean;
+  hasWordLinks: boolean;
+  totalResources: number;
+}> {
+  const availability = await discoverAvailableResources(reference, language, organization);
 
   return {
-    type: bestMatch,
-    confidence: bestConfidence,
-    reasoning,
-    alternatives: alternatives.slice(0, 3), // Top 3 alternatives
+    hasScripture: availability.scripture.length > 0,
+    hasNotes: availability.notes.length > 0,
+    hasQuestions: availability.questions.length > 0,
+    hasWords: availability.words.length > 0,
+    hasWordLinks: availability.wordLinks.length > 0,
+    totalResources:
+      availability.scripture.length +
+      availability.notes.length +
+      availability.questions.length +
+      availability.words.length +
+      availability.wordLinks.length,
   };
-}
-
-/**
- * Calculate confidence score for a resource type pattern
- */
-function calculateConfidence(
-  context: ResourceContext,
-  pattern: ResourcePattern,
-): number {
-  let confidence = 0;
-  let factors = 0;
-
-  // Identifier matching (highest weight)
-  if (matchesIdentifierPattern(context.identifier, pattern.identifiers)) {
-    confidence += 0.4;
-    factors++;
-  }
-
-  // Subject matching (high weight)
-  if (matchesSubject(context.subject, pattern.subjects)) {
-    confidence += 0.3;
-    factors++;
-  }
-
-  // Organization hint (medium weight)
-  if (
-    context.organization &&
-    pattern.organizationHints.includes(context.organization)
-  ) {
-    confidence += 0.15;
-    factors++;
-  }
-
-  // Keyword matching in name/title/description (lower weight)
-  const textContent = [context.name, context.title, context.description]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  const keywordMatches = pattern.keywords.filter((keyword: string) =>
-    textContent.includes(keyword.toLowerCase()),
-  );
-
-  if (keywordMatches.length > 0) {
-    confidence += 0.1 * (keywordMatches.length / pattern.keywords.length);
-    factors++;
-  }
-
-  // Language validation for language-specific resources
-  if (
-    isLanguageSpecificResource(pattern) &&
-    !isValidLanguageCode(context.language)
-  ) {
-    confidence *= 0.5; // Reduce confidence for invalid language codes
-  }
-
-  // Normalize confidence based on pattern base confidence
-  confidence *= pattern.confidence;
-
-  // Apply minimum threshold
-  return factors > 0 ? Math.min(confidence, 1.0) : 0;
-}
-
-/**
- * Check if identifier matches any of the patterns
- */
-function matchesIdentifierPattern(
-  identifier: string,
-  patterns: readonly RegExp[],
-): boolean {
-  return patterns.some((pattern) => pattern.test(identifier));
-}
-
-/**
- * Check if subject matches expected subjects
- */
-function matchesSubject(
-  subject: string,
-  expectedSubjects: readonly string[],
-): boolean {
-  if (!subject) return false;
-
-  return expectedSubjects.some(
-    (expected) =>
-      subject.toLowerCase().includes(expected.toLowerCase()) ||
-      expected.toLowerCase().includes(subject.toLowerCase()),
-  );
-}
-
-/**
- * Generate human-readable reason for match
- */
-function generateReason(
-  context: ResourceContext,
-  pattern: ResourcePattern,
-  confidence: number,
-): string {
-  const reasons: string[] = [];
-
-  if (matchesIdentifierPattern(context.identifier, pattern.identifiers)) {
-    reasons.push("identifier pattern");
-  }
-
-  if (matchesSubject(context.subject, pattern.subjects)) {
-    reasons.push("subject match");
-  }
-
-  if (
-    context.organization &&
-    pattern.organizationHints.includes(context.organization)
-  ) {
-    reasons.push("organization hint");
-  }
-
-  const reasonText =
-    reasons.length > 0 ? `(${reasons.join(", ")})` : "(keyword similarity)";
-  return `${(confidence * 100).toFixed(1)}% ${reasonText}`;
-}
-
-/**
- * Check if resource type is language-specific
- */
-function isLanguageSpecificResource(pattern: ResourcePattern): boolean {
-  // Most UW resources are language-specific except original language texts
-  return !pattern.keywords.includes("original");
-}
-
-/**
- * Basic language code validation
- */
-function isValidLanguageCode(language: string): boolean {
-  if (!language) return false;
-
-  // Allow standard language codes (2-3 letters) and common variants
-  return /^[a-z]{2,3}(-[a-z0-9]+)*$/i.test(language);
-}
-
-/**
- * Detect multiple resources from a catalog response
- */
-export function detectResourcesFromCatalog(
-  catalogData: Record<string, unknown>[],
-): Array<{
-  resource: Record<string, unknown>;
-  detection: ResourceDetectionResult;
-}> {
-  return catalogData.map((resource) => {
-    const context: ResourceContext = {
-      identifier:
-        (resource.name as string) || (resource.identifier as string) || "",
-      subject: (resource.subject as string) || "",
-      organization:
-        ((resource.owner as Record<string, unknown>)?.login as string) ||
-        (resource.organization as string) ||
-        "",
-      language: (resource.language as string) || "",
-      name: (resource.name as string) || "",
-      title: (resource.title as string) || "",
-      description: (resource.description as string) || "",
-      metadata: resource,
-    };
-
-    const detection = detectResourceType(context);
-
-    return {
-      resource,
-      detection,
-    };
-  });
-}
-
-/**
- * Filter resources by type with confidence threshold
- */
-export function filterResourcesByType(
-  detectedResources: ReturnType<typeof detectResourcesFromCatalog>,
-  resourceType: ResourceType,
-  minConfidence = 0.5,
-): Record<string, unknown>[] {
-  return detectedResources
-    .filter(
-      (item) =>
-        item.detection.type === resourceType &&
-        item.detection.confidence >= minConfidence,
-    )
-    .map((item) => ({
-      ...item.resource,
-      detectionConfidence: item.detection.confidence,
-      detectionReasoning: item.detection.reasoning,
-    }));
-}
-
-/**
- * Get resource statistics from detected resources
- */
-export function getResourceStats(
-  detectedResources: ReturnType<typeof detectResourcesFromCatalog>,
-) {
-  const stats = {
-    total: detectedResources.length,
-    detected: 0,
-    byType: {} as Record<ResourceType, number>,
-    averageConfidence: 0,
-    highConfidence: 0, // > 0.8
-    mediumConfidence: 0, // 0.5 - 0.8
-    lowConfidence: 0, // < 0.5
-    undetected: 0,
-  };
-
-  let totalConfidence = 0;
-
-  for (const item of detectedResources) {
-    if (item.detection.type) {
-      stats.detected++;
-      stats.byType[item.detection.type] =
-        (stats.byType[item.detection.type] || 0) + 1;
-      totalConfidence += item.detection.confidence;
-
-      if (item.detection.confidence > 0.8) {
-        stats.highConfidence++;
-      } else if (item.detection.confidence >= 0.5) {
-        stats.mediumConfidence++;
-      } else {
-        stats.lowConfidence++;
-      }
-    } else {
-      stats.undetected++;
-    }
-  }
-
-  stats.averageConfidence =
-    stats.detected > 0 ? totalConfidence / stats.detected : 0;
-
-  return stats;
-}
-
-/**
- * Suggest improvements for low-confidence detections
- */
-export function suggestImprovements(
-  detection: ResourceDetectionResult,
-): string[] {
-  const suggestions: string[] = [];
-
-  if (detection.confidence < 0.5) {
-    suggestions.push(
-      "Consider adding more descriptive identifiers (e.g., en_ult, es_tn)",
-    );
-    suggestions.push(
-      "Ensure subject field accurately describes the resource type",
-    );
-    suggestions.push(
-      "Add keywords in title or description that match resource type",
-    );
-  }
-
-  if (detection.alternatives.length > 1) {
-    const topAlt = detection.alternatives[1];
-    if (Math.abs(detection.confidence - topAlt.confidence) < 0.1) {
-      suggestions.push(
-        `Detection is ambiguous - could also be ${topAlt.type.toUpperCase()} (${(topAlt.confidence * 100).toFixed(1)}%)`,
-      );
-    }
-  }
-
-  if (!detection.type) {
-    suggestions.push(
-      "Resource type could not be determined - consider using standard UW naming conventions",
-    );
-  }
-
-  return suggestions;
 }
