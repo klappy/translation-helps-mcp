@@ -15,7 +15,7 @@ export interface TranslationNote {
   quote?: string;
   occurrence?: number;
   occurrences?: number;
-  tags?: string[];
+  markdown?: string; // Original nested markdown payload
   supportReference?: string;
 }
 
@@ -238,7 +238,7 @@ function parseTNFromTSV(
     const columns = line.split("\t");
     if (columns.length < 7) continue; // Skip malformed lines
 
-    const [ref, , , quote, occurrence, note, tags] = columns;
+    const [ref, , , quote, occurrence, note, markdownPayload] = columns;
 
     // Handle different reference formats
     let include = false;
@@ -273,7 +273,7 @@ function parseTNFromTSV(
         quote: quote ? quote.trim() : undefined,
         occurrence: occurrence ? parseInt(occurrence) : undefined,
         occurrences: undefined, // Not provided in standard format
-        tags: tags ? tags.split(",").map((t) => t.trim()) : [],
+        markdown: markdownPayload ? markdownPayload.trim() : undefined, // Original nested markdown payload
         supportReference: undefined, // Could be extracted from note content
       });
     }
