@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:5173";
+const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:5175";
 const TIMEOUT = 30000;
 
 async function fetchScripture(params: Record<string, string>) {
