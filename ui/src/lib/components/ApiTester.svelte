@@ -1,6 +1,6 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-	import { Play, Loader } from 'lucide-svelte';
+	import { Loader, Play } from 'lucide-svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 
 	export let endpoint;
 	export let loading = false;
@@ -9,9 +9,13 @@
 	const dispatch = createEventDispatcher();
 
 	let formData = {};
+	let currentEndpointName = null;
 
-	// Initialize form data with default values from endpoint parameters
-	$: if (endpoint) {
+	// Initialize form data only when endpoint actually changes (not on every reactive cycle)
+	function initializeFormData() {
+		if (!endpoint || endpoint.name === currentEndpointName) return;
+
+		currentEndpointName = endpoint.name;
 		const newFormData = {};
 		endpoint.parameters?.forEach((param) => {
 			// Extract default from example if available
@@ -24,6 +28,16 @@
 			}
 		});
 		formData = newFormData;
+	}
+
+	// Initialize on mount and when endpoint changes
+	onMount(() => {
+		initializeFormData();
+	});
+
+	// Only re-initialize if the endpoint name actually changed
+	$: if (endpoint?.name !== currentEndpointName) {
+		initializeFormData();
 	}
 
 	function handleSubmit() {
