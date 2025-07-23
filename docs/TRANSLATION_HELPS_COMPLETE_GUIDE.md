@@ -244,10 +244,12 @@ const loadResource = async (resourceId) => {
 
 ### Common Test Failures
 
-- **Hardcoded expectations about file names** - Files use unpredictable prefixes
+- ~~**Hardcoded expectations about file names**~~ - ✅ **Fixed in v4.4.3** - Now uses dynamic catalog discovery
 - **Assuming all resources exist** - Some books missing in some languages
 - **Not handling partial results** - API may return incomplete data
 - **Race conditions in parallel loading** - Use proper Promise handling
+
+> **v4.4.3 Update**: The system now uses the catalog API and ingredients pattern to dynamically discover resource files, eliminating hardcoded file name assumptions that previously caused test failures.
 
 ## 🚀 DEPLOYMENT CONSIDERATIONS
 

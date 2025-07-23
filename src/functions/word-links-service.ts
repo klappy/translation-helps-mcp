@@ -4,8 +4,8 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
-import { parseReference } from "./reference-parser";
 import { cache } from "./cache";
+import { parseReference } from "./reference-parser";
 
 export interface TranslationWordLink {
   word: string;
@@ -110,8 +110,20 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
   const resource = catalogData.data[0];
   console.log(`📖 Using resource: ${resource.name} (${resource.title})`);
 
-  // Get the translation word links for this reference
-  const linksUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/twl_${reference.book.toUpperCase()}.tsv`;
+  // Find the correct file from ingredients
+  const ingredient = resource.ingredients?.find(
+    (ing: { identifier?: string }) =>
+      ing.identifier === reference.book.toLowerCase() ||
+      ing.identifier === reference.book.toUpperCase() ||
+      ing.identifier === reference.book
+  );
+
+  if (!ingredient) {
+    throw new Error(`Book ${reference.book} not found in resource ${resource.name}`);
+  }
+
+  // Build URL using the ingredient path
+  const linksUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
   console.log(`🔗 Fetching from: ${linksUrl}`);
 
   // Try to get from cache first

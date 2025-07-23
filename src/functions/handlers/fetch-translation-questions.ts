@@ -5,7 +5,6 @@
 
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { fetchTranslationQuestions } from "../translation-questions-service";
-import type { CacheBypassOptions } from "../unified-cache";
 
 export const fetchTranslationQuestionsHandler: PlatformHandler = async (
   request: PlatformRequest
@@ -27,9 +26,22 @@ export const fetchTranslationQuestionsHandler: PlatformHandler = async (
   }
 
   try {
-    const referenceParam = request.queryStringParameters.reference;
-    const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    // Parse parameters from either query string or POST body
+    let params: { reference?: string; language?: string; organization?: string } = {};
+
+    if (request.method === "POST" && request.body) {
+      try {
+        params = JSON.parse(request.body);
+      } catch {
+        params = {};
+      }
+    }
+
+    // Prefer query parameters over body parameters
+    const referenceParam = request.queryStringParameters.reference || params.reference;
+    const language = request.queryStringParameters.language || params.language || "en";
+    const organization =
+      request.queryStringParameters.organization || params.organization || "unfoldingWord";
 
     if (!referenceParam) {
       return {
@@ -40,12 +52,6 @@ export const fetchTranslationQuestionsHandler: PlatformHandler = async (
         }),
       };
     }
-
-    // Prepare cache bypass options from request
-    const bypassOptions: CacheBypassOptions = {
-      queryParams: request.queryStringParameters,
-      headers: request.headers,
-    };
 
     // Fetch translation questions
     const result = await fetchTranslationQuestions({

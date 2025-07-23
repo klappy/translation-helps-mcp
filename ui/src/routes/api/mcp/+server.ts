@@ -1,18 +1,18 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import type { RequestHandler } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import { getVersion } from '../../../../../src/version.js';
 
 // Import our existing tool handlers
-import { handleFetchScripture } from '../../../../../src/tools/fetchScripture.js';
-import { handleFetchTranslationNotes } from '../../../../../src/tools/fetchTranslationNotes.js';
-import { handleFetchTranslationQuestions } from '../../../../../src/tools/fetchTranslationQuestions.js';
-import { handleGetTranslationWord } from '../../../../../src/tools/getTranslationWord.js';
-import { handleGetContext } from '../../../../../src/tools/getContext.js';
-import { handleGetLanguages } from '../../../../../src/tools/getLanguages.js';
 import { handleBrowseTranslationWords } from '../../../../../src/tools/browseTranslationWords.js';
 import { handleExtractReferences } from '../../../../../src/tools/extractReferences.js';
 import { handleFetchResources } from '../../../../../src/tools/fetchResources.js';
+import { handleFetchScripture } from '../../../../../src/tools/fetchScripture.js';
+import { handleFetchTranslationNotes } from '../../../../../src/tools/fetchTranslationNotes.js';
+import { handleFetchTranslationQuestions } from '../../../../../src/tools/fetchTranslationQuestions.js';
+import { handleGetContext } from '../../../../../src/tools/getContext.js';
+import { handleGetLanguages } from '../../../../../src/tools/getLanguages.js';
+import { handleGetTranslationWord } from '../../../../../src/tools/getTranslationWord.js';
 import { handleGetWordsForReference } from '../../../../../src/tools/getWordsForReference.js';
 import { handleSearchResources } from '../../../../../src/tools/searchResources.js';
 
@@ -217,6 +217,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						return json(langResult);
 
 					case 'fetch_translation_questions':
+					case 'fetch-translation-questions': // Support hyphenated alias
 						const questionsResult = await handleFetchTranslationQuestions(args);
 						return json(questionsResult);
 
