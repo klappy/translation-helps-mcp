@@ -5,10 +5,25 @@
 
 import { getVersion } from "../../version.js";
 import type { PlatformHandler } from "../platform-adapter.js";
+import { unifiedCache } from "../unified-cache.js";
 
-export const healthHandler: PlatformHandler = async (context, headers = {}) => {
+export const healthHandler: PlatformHandler = async (request) => {
   try {
     const version = getVersion();
+    const url = new URL(request.url);
+    const clearCache = url.searchParams.get("clearCache") === "true";
+
+    let cacheInfo = {};
+
+    // Handle cache clearing
+    if (clearCache) {
+      await unifiedCache.clear();
+      cacheInfo = {
+        cacheCleared: true,
+        message: "All cache entries have been cleared",
+      };
+      console.log("🧹 Cache manually cleared via health endpoint");
+    }
 
     return {
       statusCode: 200,
@@ -19,11 +34,11 @@ export const healthHandler: PlatformHandler = async (context, headers = {}) => {
         service: "translation-helps-mcp",
         description:
           "MCP Server for unfoldingWord translation resources supporting Mother Tongue Translators",
+        ...cacheInfo,
       }),
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "no-cache",
-        ...headers,
       },
     };
   } catch (error) {
@@ -36,7 +51,7 @@ export const healthHandler: PlatformHandler = async (context, headers = {}) => {
       }),
       headers: {
         "Content-Type": "application/json",
-        ...headers,
+        "Cache-Control": "no-cache",
       },
     };
   }
