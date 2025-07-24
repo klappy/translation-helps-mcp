@@ -363,7 +363,7 @@ This project follows strict development standards to ensure UW (unfoldingWord) t
 
 ### Development Standards
 
-- **✅ Terminology Compliance**: Use "Strategic Language" not "Gateway Language"
+- **✅ Terminology Compliance**: Use "Strategic Language" not "Gateway Language" (deprecated)
 - **✅ UW Resource Types**: Use proper ULT/GLT, UST/GST terminology
 - **✅ Code Formatting**: Prettier + ESLint with custom UW rules
 - **✅ Pre-commit Validation**: Automatic terminology checking
@@ -412,7 +412,7 @@ When developing, always use:
 
 | ❌ Avoid             | ✅ Use Instead                               |
 | -------------------- | -------------------------------------------- |
-| Gateway Language     | Strategic Language                           |
+| ~~Gateway Language~~ | Strategic Language (use this instead)        |
 | Bible texts          | ULT/GLT (Literal) or UST/GST (Simplified)    |
 | Translation          | Specific resource type (TN, TW, TWL, TQ, TA) |
 | Generic descriptions | UW-specific resource descriptions            |
