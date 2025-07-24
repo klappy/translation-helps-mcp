@@ -102,4 +102,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ui/.svelte-kit/cloudflare --project-name=translation-helps-mcp --functions=ui/functions
+          command: pages deploy ui/.svelte-kit/cloudflare --project-name=translation-helps-mcp
