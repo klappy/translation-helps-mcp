@@ -3,7 +3,7 @@
  */
 
 // Base interfaces
-export interface DCSApiResponse<T = any> {
+export interface DCSApiResponse<T = unknown> {
   data?: T;
   message?: string;
   status?: number;
@@ -12,7 +12,7 @@ export interface DCSApiResponse<T = any> {
 export interface DCSError {
   code: string;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // Organization/Owner interfaces
@@ -108,7 +108,7 @@ export interface Resource {
   internal: boolean;
   mirror_interval: string;
   mirror_updated: string;
-  repo_transfer: any;
+  repo_transfer: unknown;
   topics: string[];
   metadata?: ResourceMetadata;
   catalog?: CatalogInfo;
@@ -249,4 +249,63 @@ export interface DCSResponse<T> {
   error?: DCSError;
   statusCode?: number;
   headers?: Record<string, string>;
+}
+
+// ===== X-RAY TRACING INTERFACES =====
+
+export interface DCSCallTrace {
+  /** Unique identifier for this specific DCS call */
+  id: string;
+  /** The endpoint that was called */
+  endpoint: string;
+  /** Full URL that was requested */
+  url: string;
+  /** HTTP method used */
+  method: string;
+  /** When the request started */
+  startTime: number;
+  /** When the request completed */
+  endTime: number;
+  /** Response time in milliseconds */
+  duration: number;
+  /** HTTP status code */
+  statusCode: number;
+  /** Whether the request was successful */
+  success: boolean;
+  /** Cache status from response headers */
+  cacheStatus: "HIT" | "MISS" | "PARTIAL" | "EXPIRED" | "UNKNOWN";
+  /** Cache source (CloudFlare, API Gateway, etc.) */
+  cacheSource?: string;
+  /** Number of retry attempts made */
+  attempts: number;
+  /** Error message if failed */
+  error?: string;
+  /** Response size in bytes */
+  responseSize?: number;
+  /** Request parameters or payload */
+  requestData?: Record<string, unknown>;
+}
+
+export interface XRayTrace {
+  /** Unique trace ID for grouping related DCS calls */
+  traceId: string;
+  /** The main API endpoint that initiated this trace */
+  mainEndpoint: string;
+  /** Array of all DCS calls made during this request */
+  calls: DCSCallTrace[];
+  /** Total time for all DCS calls */
+  totalDuration: number;
+  /** Number of cache hits vs misses */
+  cacheStats: {
+    hits: number;
+    misses: number;
+    total: number;
+    hitRate: number;
+  };
+  /** Overall performance summary */
+  performance: {
+    fastest: number;
+    slowest: number;
+    average: number;
+  };
 }

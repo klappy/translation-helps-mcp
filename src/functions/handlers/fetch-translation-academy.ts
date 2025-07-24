@@ -6,6 +6,7 @@
 
 import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";
 import { DCSApiClient } from "../../services/DCSApiClient.js";
+import type { XRayTrace } from "../../types/dcs.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
 
@@ -42,6 +43,7 @@ interface TAResponse {
       totalEstimatedTime: number;
       cacheStatus: "hit" | "miss" | "partial";
       responseTime: number;
+      xrayTrace?: XRayTrace; // X-Ray tracing data for debugging
     };
   };
   error?: string;
@@ -92,8 +94,11 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (request) =
 
     console.log(`🔄 TA cache MISS, fetching fresh data for: ${language} [CACHE KEY: ${cacheKey}]`);
 
-    // Fetch fresh data
+    // Fetch fresh data with X-Ray tracing
     const dcsClient = new DCSApiClient();
+    const traceId = `ta_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    dcsClient.enableTracing(traceId, "/api/fetch-translation-academy");
+
     const result = await fetchTAData(
       dcsClient,
       language,
@@ -102,6 +107,10 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (request) =
       difficulty,
       moduleId
     );
+
+    // Collect X-Ray trace data
+    const xrayTrace = dcsClient.getTrace();
+    dcsClient.disableTracing();
 
     if (!result) {
       const errorResponse: TAResponse = {
@@ -136,6 +145,7 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (request) =
           ...result.metadata,
           responseTime,
           cacheStatus: bypassCache ? "miss" : "miss",
+          ...(xrayTrace && { xrayTrace }), // Only include if xrayTrace is not null
         },
       },
       timestamp: new Date().toISOString(),
