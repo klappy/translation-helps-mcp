@@ -758,6 +758,13 @@ export class DCSApiClient {
   }
 
   /**
+   * Add a custom trace entry (public method for external use)
+   */
+  addCustomTrace(trace: DCSCallTrace): void {
+    this.addTrace(trace);
+  }
+
+  /**
    * Parse cache status from response headers
    */
   private parseCacheStatus(response: Response): {

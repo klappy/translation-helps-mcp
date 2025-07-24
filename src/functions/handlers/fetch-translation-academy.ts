@@ -6,7 +6,7 @@
 
 import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";
 import { DCSApiClient } from "../../services/DCSApiClient.js";
-import type { XRayTrace } from "../../types/dcs.js";
+import type { DCSCallTrace, XRayTrace } from "../../types/dcs.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
 
@@ -73,70 +73,87 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (request) =
     // Create cache key with version to invalidate old null results
     const cacheKey = `ta:v2:${language}:${organization}:${category || "all"}:${difficulty || "all"}:${moduleId || "all"}`;
 
-    // Try to get from cache first
-    if (!bypassCache) {
-      const cachedResult = await unifiedCache.get(cacheKey);
-      if (cachedResult?.value) {
-        console.log(`🚀 TA cache HIT for: ${cacheKey}`);
-        return {
-          statusCode: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "max-age=3600",
-          },
-          body: JSON.stringify({
-            ...cachedResult.value,
-            timestamp: new Date().toISOString(),
-          }),
-        };
-      }
-    }
-
-    console.log(`🔄 TA cache MISS, fetching fresh data for: ${language} [CACHE KEY: ${cacheKey}]`);
-
-    // Fetch fresh data with X-Ray tracing
+    // Always initialize X-Ray tracing for current request timing
     const dcsClient = new DCSApiClient();
     const traceId = `ta_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     dcsClient.enableTracing(traceId, "/api/fetch-translation-academy");
 
-    const result = await fetchTAData(
-      dcsClient,
-      language,
-      organization,
-      category,
-      difficulty,
-      moduleId
-    );
+    let result;
+    let cacheStatus: "hit" | "miss" = "miss";
 
-    // Collect X-Ray trace data
+    // Try to get from cache first
+    if (!bypassCache) {
+      const cacheStartTime = performance.now();
+      const cachedResult = await unifiedCache.get(cacheKey);
+      const cacheEndTime = performance.now();
+
+      if (cachedResult?.value) {
+        console.log(`🚀 TA cache HIT for: ${cacheKey}`);
+
+        // Add synthetic cache access trace entry
+        const cacheTrace: DCSCallTrace = {
+          id: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          endpoint: `/cache/${cacheKey}`,
+          url: `internal://cache/${cacheKey}`,
+          method: "GET",
+          startTime: cacheStartTime,
+          endTime: cacheEndTime,
+          duration: cacheEndTime - cacheStartTime,
+          statusCode: 200,
+          success: true,
+          cacheStatus: "HIT",
+          cacheSource: "Unified Cache",
+          attempts: 1,
+          responseSize: JSON.stringify(cachedResult.value).length,
+        };
+
+        // Manually add the cache trace to show cache hit timing
+        dcsClient.addCustomTrace(cacheTrace);
+
+        result = cachedResult.value;
+        cacheStatus = "hit";
+      }
+    }
+
+    // If not cached, fetch fresh data
+    if (!result) {
+      console.log(
+        `🔄 TA cache MISS, fetching fresh data for: ${language} [CACHE KEY: ${cacheKey}]`
+      );
+
+      result = await fetchTAData(dcsClient, language, organization, category, difficulty, moduleId);
+
+      if (!result) {
+        const errorResponse: TAResponse = {
+          success: false,
+          error: `No Translation Academy content found for ${language}`,
+          timestamp: new Date().toISOString(),
+        };
+
+        return {
+          statusCode: 404,
+          body: JSON.stringify(errorResponse),
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+        };
+      }
+
+      // Cache the result (without X-Ray data)
+      if (!bypassCache) {
+        await unifiedCache.set(cacheKey, result, "transformedResponse");
+        console.log(`💾 Cached TA response: ${cacheKey}`);
+      }
+    }
+
+    // Generate fresh X-Ray trace for this request
     const xrayTrace = dcsClient.getTrace();
     dcsClient.disableTracing();
 
-    if (!result) {
-      const errorResponse: TAResponse = {
-        success: false,
-        error: `No Translation Academy content found for ${language}`,
-        timestamp: new Date().toISOString(),
-      };
-
-      return {
-        statusCode: 404,
-        body: JSON.stringify(errorResponse),
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
-        },
-      };
-    }
-
-    // Cache the result
-    if (!bypassCache) {
-      await unifiedCache.set(cacheKey, result, "transformedResponse");
-      console.log(`💾 Cached TA response: ${cacheKey}`);
-    }
-
     const responseTime = Date.now() - startTime;
 
+    // Build final response with fresh X-Ray data (never cached)
     const response: TAResponse = {
       success: true,
       data: {
@@ -144,8 +161,8 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (request) =
         metadata: {
           ...result.metadata,
           responseTime,
-          cacheStatus: bypassCache ? "miss" : "miss",
-          ...(xrayTrace && { xrayTrace }), // Only include if xrayTrace is not null
+          cacheStatus,
+          ...(xrayTrace && { xrayTrace }), // Fresh X-Ray data for every request
         },
       },
       timestamp: new Date().toISOString(),
