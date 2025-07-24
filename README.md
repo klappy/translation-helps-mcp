@@ -363,7 +363,7 @@ This project follows strict development standards to ensure UW (unfoldingWord) t
 
 ### Development Standards
 
-- **✅ Terminology Compliance**: Use "Strategic Language" not "Gateway Language" (deprecated)
+- **✅ Terminology Compliance**: Use "Strategic Language" not obsolete terms
 - **✅ UW Resource Types**: Use proper ULT/GLT, UST/GST terminology
 - **✅ Code Formatting**: Prettier + ESLint with custom UW rules
 - **✅ Pre-commit Validation**: Automatic terminology checking
@@ -393,7 +393,7 @@ npm run preview               # Preview production build
 
 The repository includes automatic pre-commit validation:
 
-- **Terminology Check**: Prevents commits with outdated "Gateway Language" terms
+- **Terminology Check**: Prevents commits with outdated terminology
 - **Code Formatting**: Auto-formats code with Prettier
 - **Linting**: Enforces code quality and UW standards
 - **Type Checking**: Validates TypeScript types
@@ -412,7 +412,7 @@ When developing, always use:
 
 | ❌ Avoid             | ✅ Use Instead                               |
 | -------------------- | -------------------------------------------- |
-| ~~Gateway Language~~ | Strategic Language (use this instead)        |
+| Legacy terminology   | Strategic Language (current standard)        |
 | Bible texts          | ULT/GLT (Literal) or UST/GST (Simplified)    |
 | Translation          | Specific resource type (TN, TW, TWL, TQ, TA) |
 | Generic descriptions | UW-specific resource descriptions            |

@@ -1,5 +1,5 @@
-import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -48,7 +48,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Get the OpenAI API key
 		const apiKey = typeof process !== 'undefined' && process.env?.OPENAI_API_KEY;
 		if (!apiKey) {
-			throw error(500, 'OpenAI API key not configured');
+			console.error('❌ OpenAI API key not configured in environment variables');
+			console.log('💡 To fix: Set OPENAI_API_KEY in Cloudflare Pages environment variables');
+			throw error(
+				500,
+				'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable in Cloudflare Pages dashboard under Settings > Environment variables.'
+			);
 		}
 
 		// Build messages array with system prompt
@@ -104,8 +109,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		let fullResponse = '';
 		const chunks = [];
 
-		while (true) {
-			const { done, value } = await reader.read();
+		let done = false;
+		while (!done) {
+			const result = await reader.read();
+			done = result.done;
+			const value = result.value;
 
 			if (done) break;
 
