@@ -489,29 +489,50 @@
 			method: 'GET',
 			summary: 'Resource Recommendations',
 			description:
-				'Provides intelligent recommendations for translation resources based on user context and project requirements.',
+				'Provides intelligent recommendations for translation resources based on user context and scripture reference.',
 			category: 'metadata',
 			parameters: [
 				{
-					name: 'heartLanguage',
-					required: false,
+					name: 'book',
+					required: true,
 					type: 'string',
-					example: 'swh',
-					description: 'Heart language code for recommendations'
+					example: 'Romans',
+					description: 'Bible book name for recommendations'
 				},
 				{
-					name: 'strategicLanguage',
+					name: 'chapter',
+					required: true,
+					type: 'string',
+					example: '9',
+					description: 'Chapter number'
+				},
+				{
+					name: 'userRole',
+					required: true,
+					type: 'string',
+					example: 'translator',
+					description: 'User role: translator, checker, consultant, or facilitator'
+				},
+				{
+					name: 'verse',
+					required: false,
+					type: 'string',
+					example: '1',
+					description: 'Specific verse number for targeted recommendations'
+				},
+				{
+					name: 'language',
 					required: false,
 					type: 'string',
 					example: 'en',
-					description: 'Strategic language for translation work'
+					description: 'Target language code'
 				},
 				{
-					name: 'projectType',
+					name: 'organization',
 					required: false,
 					type: 'string',
-					example: 'full_bible',
-					description: 'Type of translation project'
+					example: 'unfoldingWord',
+					description: 'Content organization'
 				}
 			]
 		},

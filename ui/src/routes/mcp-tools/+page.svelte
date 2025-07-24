@@ -731,18 +731,40 @@
 				category: 'metadata',
 				parameters: [
 					{
-						name: 'reference',
+						name: 'book',
+						required: true,
+						type: 'string',
+						example: 'Romans',
+						description: 'Bible book name for context-specific recommendations'
+					},
+					{
+						name: 'chapter',
+						required: true,
+						type: 'string',
+						example: '9',
+						description: 'Chapter number'
+					},
+					{
+						name: 'userRole',
+						required: true,
+						type: 'string',
+						example: 'translator',
+						options: ['translator', 'checker', 'consultant', 'facilitator'],
+						description: 'User role for targeted recommendations'
+					},
+					{
+						name: 'verse',
 						required: false,
 						type: 'string',
-						example: 'Genesis 1:1',
-						description: 'Bible reference for context-specific recommendations'
+						example: '1',
+						description: 'Specific verse number for targeted recommendations'
 					},
 					{
 						name: 'language',
 						required: false,
 						type: 'string',
 						example: 'en',
-						description: 'Target language'
+						description: 'Target language code'
 					},
 					{
 						name: 'organization',
@@ -750,22 +772,14 @@
 						type: 'string',
 						example: 'unfoldingWord',
 						description: 'Content organization'
-					},
-					{
-						name: 'translationType',
-						required: false,
-						type: 'string',
-						example: 'literal',
-						options: ['literal', 'meaning', 'free'],
-						description: 'Translation approach preference'
 					}
 				],
-				example: {
-					request: {
-						reference: 'Genesis 1:1',
-						language: 'en',
-						translationType: 'literal'
-					}
+				defaultValues: {
+					book: 'Romans',
+					chapter: '9',
+					userRole: 'translator',
+					language: 'en',
+					organization: 'unfoldingWord'
 				}
 			},
 			{
