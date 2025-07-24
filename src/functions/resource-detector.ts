@@ -4,8 +4,202 @@
  * Caches resource availability and provides metadata to other services
  */
 
+import { ResourceType } from "../constants/terminology";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
+
+export interface ResourceContext {
+  identifier: string;
+  subject: string;
+  organization?: string;
+  language?: string;
+  name?: string;
+  title?: string;
+  description?: string;
+}
+
+export interface ResourceDetectionResult {
+  type: ResourceType | null;
+  confidence: number;
+  reasoning: string[];
+  alternatives: Array<{ type: ResourceType; confidence: number; reason: string }>;
+  context?: ResourceContext;
+}
+
+export interface CatalogDetectionResult {
+  detection: ResourceDetectionResult;
+  resource: Record<string, unknown>;
+}
+
+/**
+ * Detect resource type from identifier and subject patterns
+ * Implements the algorithm from Task 7 implementation plan
+ */
+export function detectResourceType(context: ResourceContext): ResourceDetectionResult {
+  const reasoning: string[] = [];
+  const alternatives: Array<{ type: ResourceType; confidence: number; reason: string }> = [];
+  let bestMatch: { type: ResourceType; confidence: number } | null = null;
+
+  if (!context.identifier || !context.subject) {
+    return {
+      type: null,
+      confidence: 0,
+      reasoning: ["Missing identifier or subject"],
+      alternatives: [],
+      context,
+    };
+  }
+
+  const identifier = context.identifier.toLowerCase();
+  const subject = context.subject.toLowerCase();
+
+  // High confidence patterns - exact identifier matches
+  // Check longer patterns first to avoid partial matches (twl before tw)
+  const exactPatterns: Array<{ pattern: string; type: ResourceType }> = [
+    { pattern: "twl", type: ResourceType.TWL },
+    { pattern: "ult", type: ResourceType.ULT },
+    { pattern: "glt", type: ResourceType.GLT },
+    { pattern: "ust", type: ResourceType.UST },
+    { pattern: "gst", type: ResourceType.GST },
+    { pattern: "tn", type: ResourceType.TN },
+    { pattern: "tw", type: ResourceType.TW },
+    { pattern: "tq", type: ResourceType.TQ },
+    { pattern: "ta", type: ResourceType.TA },
+    { pattern: "uhb", type: ResourceType.UHB },
+    { pattern: "ugnt", type: ResourceType.UGNT },
+  ];
+
+  // Check for exact resource type in identifier
+  for (const { pattern, type } of exactPatterns) {
+    if (
+      identifier.includes(`_${pattern}`) ||
+      (identifier.endsWith(pattern) &&
+        (identifier.length === pattern.length ||
+          identifier[identifier.length - pattern.length - 1] === "_"))
+    ) {
+      bestMatch = { type, confidence: 0.95 };
+      reasoning.push(`Exact identifier match: found '${pattern}' in '${identifier}'`);
+      break;
+    }
+  }
+
+  // Medium confidence patterns - subject-based detection
+  // NOTE: Check TWL before TW to avoid mismatching
+  if (!bestMatch) {
+    if (subject.includes("bible") || subject.includes("aligned bible")) {
+      if (identifier.includes("ult") || identifier.includes("glt")) {
+        bestMatch = { type: ResourceType.ULT, confidence: 0.8 };
+        reasoning.push(`Bible subject with literal identifier: '${identifier}'`);
+      } else if (identifier.includes("ust") || identifier.includes("gst")) {
+        bestMatch = { type: ResourceType.UST, confidence: 0.8 };
+        reasoning.push(`Bible subject with simplified identifier: '${identifier}'`);
+      } else {
+        // Default to ULT for generic Bible subjects
+        bestMatch = { type: ResourceType.ULT, confidence: 0.6 };
+        reasoning.push(`Generic Bible subject, defaulting to ULT`);
+      }
+    } else if (subject.includes("translation notes")) {
+      bestMatch = { type: ResourceType.TN, confidence: 0.85 };
+      reasoning.push(`Translation Notes subject detected`);
+    } else if (
+      subject.includes("translation word links") ||
+      subject.includes("translation words links")
+    ) {
+      bestMatch = { type: ResourceType.TWL, confidence: 0.85 };
+      reasoning.push(`Translation Words Links subject detected`);
+    } else if (subject.includes("translation words")) {
+      bestMatch = { type: ResourceType.TW, confidence: 0.85 };
+      reasoning.push(`Translation Words subject detected`);
+    } else if (subject.includes("translation questions")) {
+      bestMatch = { type: ResourceType.TQ, confidence: 0.85 };
+      reasoning.push(`Translation Questions subject detected`);
+    } else if (subject.includes("translation academy")) {
+      bestMatch = { type: ResourceType.TA, confidence: 0.85 };
+      reasoning.push(`Translation Academy subject detected`);
+    } else if (subject.includes("hebrew bible")) {
+      bestMatch = { type: ResourceType.UHB, confidence: 0.9 };
+      reasoning.push(`Hebrew Bible subject detected`);
+    } else if (subject.includes("greek new testament") || subject.includes("greek nt")) {
+      bestMatch = { type: ResourceType.UGNT, confidence: 0.9 };
+      reasoning.push(`Greek New Testament subject detected`);
+    }
+  }
+
+  // Low confidence fallback patterns
+  if (!bestMatch) {
+    reasoning.push(
+      `No clear pattern match for identifier '${identifier}' and subject '${subject}'`
+    );
+    return {
+      type: null,
+      confidence: 0,
+      reasoning,
+      alternatives: [],
+      context,
+    };
+  }
+
+  // Confidence adjustments based on context
+  let finalConfidence = bestMatch.confidence;
+
+  // Reduce confidence for obviously wrong combinations
+  if (
+    subject.includes("quantum physics") ||
+    subject.includes("cooking") ||
+    subject.includes("sports")
+  ) {
+    finalConfidence = Math.max(0.1, finalConfidence - 0.8);
+    reasoning.push(`Subject appears non-biblical, reducing confidence`);
+  }
+
+  // Boost confidence for organization match
+  if (context.organization === "unfoldingWord" || context.organization === "Door43-Catalog") {
+    finalConfidence = Math.min(1.0, finalConfidence + 0.05);
+    reasoning.push(`Trusted organization: ${context.organization}`);
+  }
+
+  return {
+    type: bestMatch.type,
+    confidence: finalConfidence,
+    reasoning,
+    alternatives,
+    context,
+  };
+}
+
+/**
+ * Detect resource types from catalog response data
+ * Processes multiple resources at once for efficiency
+ */
+export function detectResourcesFromCatalog(
+  catalogData: Record<string, unknown>[]
+): CatalogDetectionResult[] {
+  return catalogData.map((resource) => {
+    const context: ResourceContext = {
+      identifier: typeof resource.name === "string" ? resource.name : "",
+      subject: typeof resource.subject === "string" ? resource.subject : "",
+      organization:
+        typeof resource.organization === "string"
+          ? resource.organization
+          : typeof resource.owner === "object" &&
+              resource.owner &&
+              typeof (resource.owner as Record<string, unknown>).login === "string"
+            ? ((resource.owner as Record<string, unknown>).login as string)
+            : "",
+      language: typeof resource.language === "string" ? resource.language : "",
+      name: typeof resource.name === "string" ? resource.name : "",
+      title: typeof resource.title === "string" ? resource.title : "",
+      description: typeof resource.description === "string" ? resource.description : "",
+    };
+
+    const detection = detectResourceType(context);
+
+    return {
+      detection,
+      resource: resource,
+    };
+  });
+}
 
 export interface ResourceCatalogInfo {
   name: string;

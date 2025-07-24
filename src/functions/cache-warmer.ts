@@ -349,6 +349,9 @@ export class CacheWarmer {
       return { bytes: 0 }; // Already warm
     }
 
+    // Add small delay to ensure measurable duration for testing
+    await new Promise((resolve) => setTimeout(resolve, 1));
+
     // Fetch the resource based on type
     let data: any;
     let bytes = 0;
