@@ -115,9 +115,16 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
 
     console.log(`🔄 TWL cache MISS, fetching fresh data for: ${reference}`);
 
-    // Fetch fresh data
+    // Fetch fresh data with X-Ray tracing
     const dcsClient = new DCSApiClient();
+    const traceId = `twl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    dcsClient.enableTracing(traceId, "/api/fetch-translation-word-links");
+
     const result = await fetchTWLData(dcsClient, reference, language, organization);
+
+    // Collect X-Ray trace data
+    const xrayTrace = dcsClient.getTrace();
+    dcsClient.disableTracing();
 
     if (!result) {
       const errorResponse: TWLResponse = {
