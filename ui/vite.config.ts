@@ -1,10 +1,12 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	server: {
+		port: 8174,
+		host: true,
 		// Configure file watching to include parent src directory
 		watch: {
 			usePolling: true,
@@ -20,14 +22,10 @@ export default defineConfig({
 		fs: {
 			allow: ['..'],
 			strict: false
-		},
-		proxy: {
-			'/.netlify/functions': {
-				target: 'http://localhost:8888',
-				changeOrigin: true,
-				secure: false
-			}
 		}
+	},
+	preview: {
+		port: 8175
 	},
 	test: {
 		projects: [
