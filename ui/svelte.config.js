@@ -4,7 +4,11 @@ import adapter from '@sveltejs/adapter-cloudflare';
 const config = {
 	kit: {
 		adapter: adapter({
-			// Cloudflare Pages configuration - no routes config needed for API routes to work
+			// Cloudflare Pages configuration with Functions support
+			routes: {
+				include: ['/*'],
+				exclude: ['/build/*', '/_app/*']
+			}
 		})
 	}
 };

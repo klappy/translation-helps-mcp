@@ -26,7 +26,12 @@ jobs:
           cache-dependency-path: "ui/package-lock.json"
 
       - name: Install dependencies
-        run: npm run build:${{ matrix.platform }}
+        run: |
+          if [ "${{ matrix.platform }}" = "cloudflare" ]; then
+            cd ui && npm install && npm run build
+          else
+            npm run build:${{ matrix.platform }}
+          fi
 
       - name: Test routing (Netlify)
         if: matrix.platform == 'netlify'
@@ -87,11 +92,11 @@ jobs:
           cache-dependency-path: "ui/package-lock.json"
 
       - name: Build for Cloudflare
-        run: npm run build:cloudflare
+        run: cd ui && npm run build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ui/build --project-name=translation-helps-mcp
+          command: pages deploy ui/.svelte-kit/cloudflare --project-name=translation-helps-mcp
