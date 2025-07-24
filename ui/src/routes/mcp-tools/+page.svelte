@@ -106,8 +106,8 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
-						description: 'Bible reference (e.g., "John 3:16", "Romans 1:1-5")'
+						example: 'Genesis 1:1',
+						description: 'Bible reference (e.g., "Genesis 1:1", "Romans 1:1-5")'
 					},
 					{
 						name: 'language',
@@ -148,7 +148,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord',
 						includeVerseNumbers: true,
@@ -169,7 +169,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -196,7 +196,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord'
 					}
@@ -215,7 +215,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -235,7 +235,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord'
 					}
@@ -256,7 +256,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -290,7 +290,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord',
 						includeIntro: true
@@ -310,7 +310,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -330,7 +330,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord'
 					}
@@ -397,7 +397,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -417,7 +417,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord'
 					}
@@ -436,7 +436,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -456,7 +456,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord'
 					}
@@ -475,7 +475,7 @@
 						name: 'term',
 						required: true,
 						type: 'string',
-						example: 'grace',
+						example: 'faith',
 						description: 'Translation word identifier'
 					},
 					{
@@ -495,7 +495,7 @@
 				],
 				example: {
 					request: {
-						term: 'grace',
+						term: 'faith',
 						language: 'en',
 						organization: 'unfoldingWord'
 					}
@@ -536,7 +536,7 @@
 						name: 'search',
 						required: false,
 						type: 'string',
-						example: 'grace',
+						example: 'faith',
 						description: 'Search term'
 					},
 					{
@@ -569,7 +569,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -589,7 +589,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord'
 					}
@@ -734,7 +734,7 @@
 						name: 'reference',
 						required: false,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference for context-specific recommendations'
 					},
 					{
@@ -762,7 +762,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						translationType: 'literal'
 					}
@@ -781,7 +781,7 @@
 						name: 'text',
 						required: true,
 						type: 'string',
-						example: 'See John 3:16 and Romans 8:28 for examples',
+						example: 'See Genesis 1:1 and Psalm 23:1 for examples',
 						description: 'Text containing Bible references'
 					},
 					{
@@ -795,7 +795,7 @@
 				],
 				example: {
 					request: {
-						text: 'See John 3:16 and Romans 8:28 for examples',
+						text: 'See Genesis 1:1 and Psalm 23:1 for examples',
 						format: 'standard'
 					}
 				}
@@ -815,7 +815,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -842,7 +842,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord',
 						resources: ['scripture', 'notes', 'questions', 'words']
@@ -862,7 +862,7 @@
 						name: 'reference',
 						required: true,
 						type: 'string',
-						example: 'John 3:16',
+						example: 'Genesis 1:1',
 						description: 'Bible reference'
 					},
 					{
@@ -889,7 +889,7 @@
 				],
 				example: {
 					request: {
-						reference: 'John 3:16',
+						reference: 'Genesis 1:1',
 						language: 'en',
 						organization: 'unfoldingWord',
 						deepAnalysis: true

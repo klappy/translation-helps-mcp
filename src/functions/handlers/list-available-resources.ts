@@ -45,13 +45,13 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
       },
       {
         type: ResourceType.GLT,
-        name: "Gateway Literal Text (Strategic Languages)",
+        name: "Gateway Literal Text",
         description: ResourceDescriptions[ResourceType.GLT],
         languages: language ? [language] : ["es", "fr", "pt", "ru"],
       },
       {
         type: ResourceType.GST,
-        name: "Gateway Simplified Text (Strategic Languages)",
+        name: "Gateway Simplified Text",
         description: ResourceDescriptions[ResourceType.GST],
         languages: language ? [language] : ["es", "fr", "pt", "ru"],
       },

@@ -32,14 +32,18 @@ export enum ResourceType {
 // ===== RESOURCE DESCRIPTIONS =====
 export const ResourceDescriptions = {
   [ResourceType.ULT]:
-    "Form-centric translation preserving original language structure and word order",
-  [ResourceType.GLT]: "Gateway Literal Text - form-centric translation in Strategic Languages",
-  [ResourceType.UST]: "Meaning-based translation demonstrating clear, natural expression",
-  [ResourceType.GST]: "Gateway Simplified Text - meaning-based translation in Strategic Languages",
-  [ResourceType.TN]: "Verse-by-verse explanations for difficult passages with cultural background",
+    "Form-centric translation preserving original language structure and word order with word alignment",
+  [ResourceType.GLT]:
+    "Gateway Literal Text - form-centric translation preserving source language structure in Strategic Languages with word alignment",
+  [ResourceType.UST]:
+    "Meaning-based translation demonstrating clear, natural expression with word alignment",
+  [ResourceType.GST]:
+    "Gateway Simplified Text - meaning-based translation demonstrating natural expression in Strategic Languages with word alignment",
+  [ResourceType.TN]:
+    "Verse-by-verse explanations for difficult passages with cultural background and guidance",
   [ResourceType.TW]: "Comprehensive biblical term definitions with cross-references",
   [ResourceType.TWL]: "Maps word occurrences to Translation Words articles",
-  [ResourceType.TQ]: "Comprehension validation questions for translation checking",
+  [ResourceType.TQ]: "Community checking questions for translation validation and comprehension",
   [ResourceType.TA]: "Translation methodology and best practices training modules",
   [ResourceType.OBS]: "Open Bible Stories for chronological Scripture overview",
   [ResourceType.SN]: "Detailed study notes for deeper biblical understanding",
@@ -229,7 +233,7 @@ export interface AlignmentData {
     length: number;
   };
   confidence: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ===== VALIDATION FUNCTIONS =====
@@ -299,16 +303,31 @@ export function getResourcesByCategory(
 // ===== DEPRECATED TERMINOLOGY MAPPING =====
 // For backward compatibility and migration assistance
 export const DeprecatedTerms = {
-  "gateway-language": UserType.STRATEGIC_LANGUAGE,
-  "gateway language": UserType.STRATEGIC_LANGUAGE,
-  gatewayLanguage: UserType.STRATEGIC_LANGUAGE,
-  gl: UserType.STRATEGIC_LANGUAGE,
+  "strategic-language": UserType.STRATEGIC_LANGUAGE,
+  "strategic language": UserType.STRATEGIC_LANGUAGE,
+  strategicLanguage: UserType.STRATEGIC_LANGUAGE,
+  sl: UserType.STRATEGIC_LANGUAGE,
 } as const;
 
 export function migrateDeprecatedTerm(oldTerm: string): string {
   const normalized = oldTerm.toLowerCase().replace(/[_\s]/g, "-");
   return DeprecatedTerms[normalized as keyof typeof DeprecatedTerms] || oldTerm;
 }
+
+// ===== EXPORTS FOR TEST COMPATIBILITY =====
+// These exports match the interface expected by existing tests
+export const UserTypes = {
+  MTT: "Mother Tongue Translator",
+  STRATEGIC_LANGUAGE: "Strategic Language",
+  HEART_LANGUAGE: "Heart Language",
+} as const;
+
+export const LanguageRoles = {
+  STRATEGIC: "strategic",
+  HEART: "heart",
+  ORIGINAL: "original",
+  BRIDGE: "bridge",
+} as const;
 
 // ===== CONSTANTS FOR COMMON USAGE =====
 export const DEFAULT_STRATEGIC_LANGUAGE = "en";
