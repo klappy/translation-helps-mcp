@@ -1,7 +1,6 @@
 <script>
 	// @ts-nocheck
 	import ApiTester from '$lib/components/ApiTester.svelte';
-	import ResponseDisplay from '$lib/components/ResponseDisplay.svelte';
 	import { healthData, isLoading, refreshHealth } from '$lib/services/healthService';
 	import {
 		Activity,
@@ -994,6 +993,11 @@
 		loadingStates[endpointKey] = true;
 		responses[endpointKey] = null;
 
+		// Start timing
+		const startTime = performance.now();
+		let responseTime = null;
+		let cacheStatus = 'unknown';
+
 		try {
 			// Build URL with parameters
 			const functionName = endpointKey.replace('/api/', '');
@@ -1007,6 +1011,40 @@
 			});
 
 			const response = await fetch(url.toString());
+			
+			// Calculate response time
+			responseTime = Math.round(performance.now() - startTime);
+
+			// Detect cache status from various possible header indicators
+			const cacheControl = response.headers.get('cache-control');
+			const cfCacheStatus = response.headers.get('cf-cache-status');
+			const xCacheStatus = response.headers.get('x-cache-status');
+			const xCache = response.headers.get('x-cache');
+			const age = response.headers.get('age');
+			
+			// Determine cache status from headers
+			if (cfCacheStatus) {
+				cacheStatus = cfCacheStatus.toLowerCase() === 'hit' ? 'hit' : 'miss';
+			} else if (xCacheStatus) {
+				cacheStatus = xCacheStatus.toLowerCase().includes('hit') ? 'hit' : 'miss';
+			} else if (xCache) {
+				cacheStatus = xCache.toLowerCase().includes('hit') ? 'hit' : 'miss';
+			} else if (age && parseInt(age) > 0) {
+				cacheStatus = 'hit';
+			} else if (cacheControl && cacheControl.includes('no-cache')) {
+				cacheStatus = 'miss';
+			} else {
+				// Check if response has our custom cache indicators
+				try {
+					const tempData = await response.clone().json();
+					if (tempData.metadata?.cacheHit !== undefined) {
+						cacheStatus = tempData.metadata.cacheHit ? 'hit' : 'miss';
+					}
+				} catch (e) {
+					// Ignore JSON parsing errors
+				}
+			}
+
 			const data = await response.json();
 
 			// Store the actual API response as the main response
@@ -1014,21 +1052,34 @@
 			responses[endpointKey] = {
 				// The actual API response data (what developers need to see)
 				...data,
-				// Metadata about the request (for debugging)
+				// Enhanced metadata about the request (for debugging and performance display)
 				_metadata: {
 					success: response.ok,
 					status: response.status,
 					url: url.toString(),
+					responseTime,
+					cacheStatus,
+					headers: {
+						cacheControl,
+						cfCacheStatus,
+						xCacheStatus,
+						xCache,
+						age
+					},
 					note: 'The data above is the actual API response. This _metadata section is for debugging only.'
 				}
 			};
 		} catch (error) {
+			responseTime = Math.round(performance.now() - startTime);
+			
 			responses[endpointKey] = {
 				error: error.message,
 				_metadata: {
 					success: false,
 					status: 0,
 					url: 'Error occurred',
+					responseTime,
+					cacheStatus: 'error',
 					note: 'The error above is the actual API response. This _metadata section is for debugging only.'
 				}
 			};
@@ -1527,14 +1578,9 @@
 										example: selectedTool.example
 									}}
 									loading={loadingStates[selectedTool.apiEndpoint]}
+									result={responses[selectedTool.apiEndpoint]}
 									on:test={handleTest}
 								/>
-
-								{#if responses[selectedTool.apiEndpoint]}
-									<div class="mt-6">
-										<ResponseDisplay response={responses[selectedTool.apiEndpoint]} />
-									</div>
-								{/if}
 							</div>
 						</div>
 					{/if}
