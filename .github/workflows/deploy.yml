@@ -92,7 +92,10 @@ jobs:
           cache-dependency-path: "ui/package-lock.json"
 
       - name: Build for Cloudflare
-        run: cd ui && npm run build
+        run: |
+          cd ui && npm run build
+          cp -r .svelte-kit/output .svelte-kit/cloudflare/
+          cp -r .svelte-kit/cloudflare-tmp .svelte-kit/cloudflare/
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
