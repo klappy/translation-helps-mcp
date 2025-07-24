@@ -6,6 +6,7 @@
 
 import {
   CatalogSearchParams,
+  DCSCallTrace,
   DCSError,
   DCSRequestOptions,
   DCSResponse,
@@ -14,6 +15,7 @@ import {
   Owner,
   OwnerSearchParams,
   Resource,
+  XRayTrace,
 } from "../types/dcs.js";
 import { logger } from "../utils/logger.js";
 
@@ -31,6 +33,10 @@ export class DCSApiClient {
   private readonly maxRetries: number;
   private readonly retryDelay: number;
   private readonly userAgent: string;
+
+  // X-Ray Tracing Properties
+  private tracingEnabled: boolean = false;
+  private currentTrace: XRayTrace | null = null;
 
   constructor(config: DCSClientConfig = {}) {
     this.baseUrl =
@@ -69,12 +75,19 @@ export class DCSApiClient {
 
     let lastError: Error | null = null;
 
+    // X-Ray tracing setup
+    const traceId = this.tracingEnabled
+      ? `dcs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      : "";
+    const startTime = this.tracingEnabled ? performance.now() : 0;
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         logger.debug(`Making DCS API request (attempt ${attempt + 1})`, {
           url,
           headers,
           timeout,
+          traceId: this.tracingEnabled ? traceId : undefined,
         });
 
         const controller = new AbortController();
@@ -86,14 +99,42 @@ export class DCSApiClient {
         });
 
         clearTimeout(timeoutId);
+        const endTime = this.tracingEnabled ? performance.now() : 0;
 
         const responseData = await this.parseResponse<T>(response);
+
+        // Add X-Ray trace entry for successful response
+        if (this.tracingEnabled) {
+          const duration = endTime - startTime;
+          const { cacheStatus, cacheSource } = this.parseCacheStatus(response);
+          const contentLength = response.headers.get("content-length");
+
+          const trace: DCSCallTrace = {
+            id: traceId,
+            endpoint: endpoint,
+            url: url,
+            method: "GET",
+            startTime: startTime,
+            endTime: endTime,
+            duration: duration,
+            statusCode: response.status,
+            success: responseData.success,
+            cacheStatus: cacheStatus,
+            cacheSource: cacheSource,
+            attempts: attempt + 1,
+            responseSize: contentLength ? parseInt(contentLength, 10) : undefined,
+            requestData: options.headers,
+          };
+
+          this.addTrace(trace);
+        }
 
         if (responseData.success) {
           logger.debug("DCS API request successful", {
             url,
             status: response.status,
             attempt: attempt + 1,
+            traceId: this.tracingEnabled ? traceId : undefined,
           });
           return responseData;
         }
@@ -110,11 +151,36 @@ export class DCSApiClient {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
+        // Add X-Ray trace entry for failed request
+        if (this.tracingEnabled) {
+          const endTime = performance.now();
+          const duration = endTime - startTime;
+
+          const trace: DCSCallTrace = {
+            id: traceId,
+            endpoint: endpoint,
+            url: url,
+            method: "GET",
+            startTime: startTime,
+            endTime: endTime,
+            duration: duration,
+            statusCode: 0, // No response received
+            success: false,
+            cacheStatus: "UNKNOWN",
+            attempts: attempt + 1,
+            error: lastError.message,
+            requestData: options.headers,
+          };
+
+          this.addTrace(trace);
+        }
+
         logger.warn(`DCS API request failed (attempt ${attempt + 1})`, {
           url,
           error: lastError.message,
           attempt: attempt + 1,
           maxRetries,
+          traceId: this.tracingEnabled ? traceId : undefined,
         });
 
         // If this was the last attempt, don't wait
@@ -605,5 +671,138 @@ export class DCSApiClient {
     ];
 
     return strategicLanguages.includes(languageCode.toLowerCase());
+  }
+
+  // ===== X-RAY TRACING METHODS =====
+
+  /**
+   * Enable x-ray tracing for this client instance
+   */
+  enableTracing(traceId: string, mainEndpoint: string): void {
+    this.tracingEnabled = true;
+    this.currentTrace = {
+      traceId,
+      mainEndpoint,
+      calls: [],
+      totalDuration: 0,
+      cacheStats: {
+        hits: 0,
+        misses: 0,
+        total: 0,
+        hitRate: 0,
+      },
+      performance: {
+        fastest: Infinity,
+        slowest: 0,
+        average: 0,
+      },
+    };
+
+    logger.debug("X-Ray tracing enabled", { traceId, mainEndpoint });
+  }
+
+  /**
+   * Disable tracing
+   */
+  disableTracing(): void {
+    this.tracingEnabled = false;
+    this.currentTrace = null;
+    logger.debug("X-Ray tracing disabled");
+  }
+
+  /**
+   * Get the current trace data
+   */
+  getTrace(): XRayTrace | null {
+    if (!this.currentTrace) return null;
+
+    // Calculate final statistics
+    const calls = this.currentTrace.calls;
+    const totalDuration = calls.reduce((sum, call) => sum + call.duration, 0);
+    const hits = calls.filter((call) => call.cacheStatus === "HIT").length;
+    const misses = calls.filter((call) => call.cacheStatus === "MISS").length;
+    const total = calls.length;
+
+    this.currentTrace.totalDuration = totalDuration;
+    this.currentTrace.cacheStats = {
+      hits,
+      misses,
+      total,
+      hitRate: total > 0 ? (hits / total) * 100 : 0,
+    };
+
+    if (calls.length > 0) {
+      const durations = calls.map((call) => call.duration);
+      this.currentTrace.performance = {
+        fastest: Math.min(...durations),
+        slowest: Math.max(...durations),
+        average: totalDuration / calls.length,
+      };
+    }
+
+    return { ...this.currentTrace };
+  }
+
+  /**
+   * Add a DCS call trace entry
+   */
+  private addTrace(trace: DCSCallTrace): void {
+    if (!this.tracingEnabled || !this.currentTrace) return;
+
+    this.currentTrace.calls.push(trace);
+    logger.debug("Added DCS call trace", {
+      id: trace.id,
+      duration: trace.duration,
+      cacheStatus: trace.cacheStatus,
+    });
+  }
+
+  /**
+   * Parse cache status from response headers
+   */
+  private parseCacheStatus(response: Response): {
+    cacheStatus: DCSCallTrace["cacheStatus"];
+    cacheSource?: string;
+  } {
+    // Check various cache headers
+    const cfCacheStatus = response.headers.get("cf-cache-status")?.toLowerCase();
+    const xCache = response.headers.get("x-cache")?.toLowerCase();
+    const cacheControl = response.headers.get("cache-control")?.toLowerCase();
+    const age = response.headers.get("age");
+
+    // CloudFlare cache status
+    if (cfCacheStatus) {
+      const statusMap: Record<string, DCSCallTrace["cacheStatus"]> = {
+        hit: "HIT",
+        miss: "MISS",
+        expired: "EXPIRED",
+        updating: "PARTIAL",
+        stale: "EXPIRED",
+      };
+      return {
+        cacheStatus: statusMap[cfCacheStatus] || "UNKNOWN",
+        cacheSource: "CloudFlare",
+      };
+    }
+
+    // X-Cache header (common in CDNs)
+    if (xCache) {
+      if (xCache.includes("hit")) return { cacheStatus: "HIT", cacheSource: "CDN" };
+      if (xCache.includes("miss")) return { cacheStatus: "MISS", cacheSource: "CDN" };
+    }
+
+    // Age header indicates cached response
+    if (age && parseInt(age, 10) > 0) {
+      return { cacheStatus: "HIT", cacheSource: "HTTP Cache" };
+    }
+
+    // Cache-Control header analysis
+    if (cacheControl) {
+      if (cacheControl.includes("no-cache") || cacheControl.includes("no-store")) {
+        return { cacheStatus: "MISS", cacheSource: "Cache Disabled" };
+      }
+    }
+
+    return { cacheStatus: "UNKNOWN" };
   }
 }

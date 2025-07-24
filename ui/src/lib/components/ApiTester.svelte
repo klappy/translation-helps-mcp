@@ -198,4 +198,108 @@
 			<pre class="overflow-auto text-sm text-gray-300">{JSON.stringify(result, null, 2)}</pre>
 		</div>
 	{/if}
+
+	<!-- X-Ray Tracing Visualization -->
+	{#if result?.data?.metadata?.xrayTrace}
+		<div class="mt-6 rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-4">
+			<div class="mb-4 flex items-center gap-2">
+				<Database class="h-5 w-5 text-cyan-400" />
+				<h4 class="font-mono text-lg font-semibold text-cyan-300">X-Ray: DCS Call Trace</h4>
+				<div class="ml-auto rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-medium text-cyan-300">
+					{result.data.metadata.xrayTrace.calls.length} calls
+				</div>
+			</div>
+
+			<!-- Trace Summary -->
+			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+				<div class="rounded bg-slate-800/50 p-3">
+					<div class="text-xs text-gray-400">Total Duration</div>
+					<div class="text-lg font-mono font-bold text-cyan-300">
+						{result.data.metadata.xrayTrace.totalDuration.toFixed(1)}ms
+					</div>
+				</div>
+				<div class="rounded bg-slate-800/50 p-3">
+					<div class="text-xs text-gray-400">Cache Hit Rate</div>
+					<div class="text-lg font-mono font-bold text-emerald-300">
+						{result.data.metadata.xrayTrace.cacheStats.hitRate.toFixed(1)}%
+					</div>
+				</div>
+				<div class="rounded bg-slate-800/50 p-3">
+					<div class="text-xs text-gray-400">Performance</div>
+					<div class="text-lg font-mono font-bold text-amber-300">
+						{result.data.metadata.xrayTrace.performance.average.toFixed(1)}ms avg
+					</div>
+				</div>
+			</div>
+
+			<!-- Individual DCS Calls -->
+			<div class="space-y-2">
+				<div class="text-sm font-medium text-gray-300">Individual DCS API Calls:</div>
+				{#each result.data.metadata.xrayTrace.calls as call, index}
+					<div class="flex items-center gap-3 rounded bg-slate-800/30 p-3 font-mono text-sm">
+						<!-- Call Number -->
+						<div class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-white">
+							{index + 1}
+						</div>
+
+						<!-- Cache Status Badge -->
+						<div class="flex-shrink-0">
+							{#if call.cacheStatus === 'HIT'}
+								<span class="inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-1 text-xs font-medium text-emerald-300">
+									�� HIT
+								</span>
+							{:else if call.cacheStatus === 'MISS'}
+								<span class="inline-flex items-center gap-1 rounded bg-orange-500/20 px-2 py-1 text-xs font-medium text-orange-300">
+									🌐 MISS
+								</span>
+							{:else}
+								<span class="inline-flex items-center gap-1 rounded bg-gray-500/20 px-2 py-1 text-xs font-medium text-gray-300">
+									❓ {call.cacheStatus}
+								</span>
+							{/if}
+						</div>
+
+						<!-- Endpoint -->
+						<div class="flex-1 truncate text-cyan-300">
+							{call.endpoint}
+						</div>
+
+						<!-- Timing -->
+						<div class="flex-shrink-0 text-right">
+							<div class="font-bold {
+								call.duration < 50 ? 'text-emerald-300' :
+								call.duration < 100 ? 'text-yellow-300' :
+								call.duration < 300 ? 'text-orange-300' : 
+								'text-red-300'
+							}">
+								{call.duration.toFixed(1)}ms
+							</div>
+							{#if call.cacheSource}
+								<div class="text-xs text-gray-400">{call.cacheSource}</div>
+							{/if}
+						</div>
+
+						<!-- Status Code -->
+						<div class="flex-shrink-0">
+							<span class="inline-flex items-center rounded px-2 py-1 text-xs font-medium {
+								call.statusCode >= 200 && call.statusCode < 300 ? 'bg-emerald-500/20 text-emerald-300' :
+								call.statusCode >= 400 ? 'bg-red-500/20 text-red-300' :
+								'bg-gray-500/20 text-gray-300'
+							}">
+								{call.statusCode}
+							</span>
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<!-- Debug Information (Collapsible) -->
+			<details class="mt-4">
+				<summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-300">
+					🔍 Debug Details
+				</summary>
+				<pre class="mt-2 max-h-40 overflow-auto rounded bg-slate-900/50 p-3 text-xs text-gray-300">{JSON.stringify(result.data.metadata.xrayTrace, null, 2)}</pre>
+			</details>
+		</div>
+	{/if}
 </div>
