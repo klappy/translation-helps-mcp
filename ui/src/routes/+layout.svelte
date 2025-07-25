@@ -582,7 +582,7 @@
 				<div class="flex flex-col items-center justify-between space-y-6 md:flex-row md:space-y-0">
 					<div class="text-center md:text-left">
 						<div class="text-gray-300">
-							© 2025 Christopher Klapp • Built with ❤️ for the Bible translation community
+							© 2025 Klappy • Built with ❤️ for the Bible translation community
 						</div>
 						<div class="mt-1 text-sm text-blue-300">
 							<span class="font-medium">The age of stateless RAG has arrived</span>
