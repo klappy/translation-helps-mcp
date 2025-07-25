@@ -36,24 +36,6 @@
 			description: 'Overview and features'
 		},
 		{
-			href: '/api-docs',
-			label: 'API Docs',
-			icon: BookOpen,
-			description: 'Interactive API documentation'
-		},
-		{
-			href: '/developer-portal',
-			label: 'Developer',
-			icon: Settings,
-			description: 'Developer tools and portal'
-		},
-		{
-			href: '/test',
-			label: 'Test',
-			icon: TestTube,
-			description: 'Test API endpoints'
-		},
-		{
 			href: '/chat',
 			label: 'Chat',
 			icon: MessageSquare,
@@ -560,13 +542,7 @@
 							<Code class="h-4 w-4 transition-transform group-hover:scale-110" />
 							<span class="text-sm">MCP Tools API</span>
 						</a>
-						<a
-							href="/test"
-							class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
-						>
-							<TestTube class="h-4 w-4 transition-transform group-hover:scale-110" />
-							<span class="text-sm">Test API</span>
-						</a>
+
 						<a
 							href="/rag-manifesto"
 							class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
@@ -604,7 +580,6 @@
 							<a href="/mcp-tools" class="text-gray-400 transition-colors hover:text-blue-300"
 								>API</a
 							>
-							<a href="/test" class="text-gray-400 transition-colors hover:text-blue-300">Test</a>
 						</div>
 					</div>
 				</div>

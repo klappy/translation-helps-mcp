@@ -707,7 +707,7 @@
 
 				<div class="flex flex-col justify-center gap-4 sm:flex-row">
 					<a
-						href="/test"
+						href="/mcp-tools"
 						class="inline-flex items-center rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-600/80 to-cyan-600/80 px-8 py-4 font-bold text-white shadow-lg backdrop-blur-xl transition-all hover:from-blue-500/90 hover:to-cyan-500/90 hover:shadow-xl"
 					>
 						🚀 Try The Aqueduct API
