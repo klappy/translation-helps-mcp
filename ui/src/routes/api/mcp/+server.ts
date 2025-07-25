@@ -260,10 +260,22 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						
 						if (response.ok) {
 							const data = await response.json();
+							
+							// Extract scripture text from the response
+							let scriptureText = 'Scripture not found';
+							
+							if (data.scriptures && data.scriptures.length > 0) {
+								// Find ULT or UST translation
+								const ult = data.scriptures.find(s => s.translation === "unfoldingWord® Literal Text");
+								const ust = data.scriptures.find(s => s.translation === "unfoldingWord® Simplified Text");
+								
+								scriptureText = (ult?.text || ust?.text || data.scriptures[0]?.text || 'Scripture not found');
+							}
+							
 							return json({
 								content: [{
 									type: 'text',
-									text: data.ult || data.ust || 'Scripture not found'
+									text: scriptureText
 								}]
 							});
 						} else {
