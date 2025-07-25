@@ -53,62 +53,26 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 		messages = [...messages, userMessage];
 		inputValue = '';
 		isLoading = true;
+		
 		scrollToBottom();
 		
-		// Create assistant message placeholder
-		const assistantMessage = {
-			id: (Date.now() + 1).toString(),
-			role: 'assistant',
-			content: '',
-			timestamp: new Date(),
-			xrayData: {
-				tools: [],
-				totalTime: 0,
-				citations: []
-			}
-		};
-		
-		messages = [...messages, assistantMessage];
-		
-		try {
-			// Call AI endpoint with MCP tools
-			const response = await fetch('/api/chat', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					message: userMessage.content,
-					history: messages.slice(0, -2), // Exclude current messages
-					enableXRay: true
-				})
-			});
+		// Simulate API call with mock response
+		setTimeout(() => {
+			const assistantMessage = {
+				id: (Date.now() + 1).toString(),
+				role: 'assistant',
+				content: getMockResponse(userMessage.content),
+				timestamp: new Date(),
+				xrayData: getMockXrayData()
+			};
 			
-			if (!response.ok) throw new Error('Failed to get response');
-			
-			const data = await response.json();
-			
-			// Update assistant message
-			messages = messages.map(msg => 
-				msg.id === assistantMessage.id 
-					? { ...msg, content: data.content, xrayData: data.xrayData }
-					: msg
-			);
-			
-			currentXRayData = data.xrayData;
-			
-		} catch (error) {
-			console.error('Chat error:', error);
-			messages = messages.map(msg => 
-				msg.id === assistantMessage.id 
-					? { ...msg, content: 'Sorry, I encountered an error. Please try again.' }
-					: msg
-			);
-		} finally {
+			messages = [...messages, assistantMessage];
 			isLoading = false;
 			scrollToBottom();
-		}
+		}, 1500);
 	}
 	
-	// Handle enter key
+	// Handle Enter key
 	function handleKeydown(event) {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
@@ -116,142 +80,98 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 		}
 	}
 	
-	// Format message content with components
-	function formatContent(content) {
-		// This would parse content and replace scripture/word references with components
-		// For now, return as-is
-		return content;
+	// Mock response generator
+	function getMockResponse(query) {
+		const lowerQuery = query.toLowerCase();
+		
+		if (lowerQuery.includes('john 3:16')) {
+			return `Here's John 3:16 from the ULT:
+
+"For God so loved the world that he gave his only begotten Son, so that everyone who believes in him will not perish but will have eternal life."
+
+[Scripture - John 3:16 ULT]`;
+		}
+		
+		if (lowerQuery.includes('love') || lowerQuery.includes('agape')) {
+			return `The Greek word "agape" (ἀγάπη) appears frequently in the New Testament:
+
+**Definition**: Unconditional, self-sacrificial love
+**Usage**: Often describes God's love for humanity
+**Key verses**: 1 Corinthians 13, 1 John 4:8
+
+[Translation Words - Love/Agape]`;
+		}
+		
+		return `I can help you explore Bible passages and translation resources. Try asking about:
+- A specific verse (e.g., "What does John 3:16 say?")
+- Translation notes for a passage
+- The meaning of specific words
+- Translation questions
+
+What would you like to know?`;
+	}
+	
+	// Mock X-ray data
+	function getMockXrayData() {
+		return {
+			tools: [
+				{
+					id: 'tool-1',
+					name: 'fetch_scripture',
+					params: { reference: 'John 3:16', version: 'ult' },
+					response: { text: 'For God so loved...' },
+					duration: 145,
+					cached: true
+				}
+			],
+			totalTime: 145,
+			citations: ['Scripture - John 3:16 ULT'],
+			timeline: [
+				{ time: 0, event: 'Request received' },
+				{ time: 10, event: 'Tool: fetch_scripture' },
+				{ time: 145, event: 'Response sent' }
+			]
+		};
 	}
 </script>
 
-<style>
-	.chat-container {
-		@apply flex h-full flex-col bg-gray-900;
-	}
-	
-	.messages-area {
-		@apply flex-1 overflow-y-auto px-4 py-6;
-	}
-	
-	.message {
-		@apply mb-6 flex items-start gap-3;
-	}
-	
-	.message.user {
-		@apply flex-row-reverse;
-	}
-	
-	.message-avatar {
-		@apply flex h-10 w-10 items-center justify-center rounded-lg;
-	}
-	
-	.message.assistant .message-avatar {
-		@apply bg-blue-600;
-	}
-	
-	.message.user .message-avatar {
-		@apply bg-gray-700;
-	}
-	
-	.message-content {
-		@apply max-w-2xl rounded-lg px-4 py-3;
-	}
-	
-	.message.assistant .message-content {
-		@apply bg-gray-800 text-gray-100;
-	}
-	
-	.message.user .message-content {
-		@apply bg-blue-600 text-white;
-	}
-	
-	.input-area {
-		@apply border-t border-gray-800 bg-gray-900 p-4;
-	}
-	
-	.input-container {
-		@apply mx-auto flex max-w-4xl items-end gap-3;
-	}
-	
-	.input-wrapper {
-		@apply flex-1;
-	}
-	
-	.input-field {
-		@apply w-full resize-none rounded-lg bg-gray-800 px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500;
-	}
-	
-	.send-button {
-		@apply flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-50;
-	}
-	
-	.xray-toggle {
-		@apply flex h-12 w-12 items-center justify-center rounded-lg bg-gray-800 text-gray-400 transition-colors hover:bg-gray-700 hover:text-gray-200;
-	}
-	
-	.xray-toggle.active {
-		@apply bg-blue-600 text-white;
-	}
-	
-	.loading-dots {
-		@apply inline-flex gap-1;
-	}
-	
-	.loading-dots span {
-		@apply inline-block h-2 w-2 animate-bounce rounded-full bg-blue-500;
-	}
-	
-	.loading-dots span:nth-child(2) {
-		animation-delay: 0.1s;
-	}
-	
-	.loading-dots span:nth-child(3) {
-		animation-delay: 0.2s;
-	}
-	
-	.citation {
-		@apply mt-2 text-xs text-gray-500;
-	}
-	
-	.message-timestamp {
-		@apply mt-1 text-xs text-gray-600;
-	}
-</style>
-
-<div class="chat-container">
-	<div class="messages-area" bind:this={messagesContainer}>
+<div class="flex h-full flex-col" style="background-color: #0f172a;">
+	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto px-4 py-6">
 		{#each messages as message}
-			<div class="message {message.role}">
-				<div class="message-avatar">
-					{#if message.role === 'assistant'}
-						<Sparkles class="h-6 w-6" />
+			<div class="mb-6 flex items-start gap-3 {message.role === 'user' ? 'flex-row-reverse' : ''}">
+				<div class="flex h-10 w-10 items-center justify-center rounded-lg {message.role === 'user' ? 'bg-blue-600' : 'bg-gray-700'}">
+					{#if message.role === 'user'}
+						<MessageSquare class="h-5 w-5 text-white" />
 					{:else}
-						<MessageSquare class="h-5 w-5" />
+						<Sparkles class="h-5 w-5 text-white" />
 					{/if}
 				</div>
 				
-				<div class="flex-1">
-					<div class="message-content">
-						{#if message.role === 'assistant' && !message.content && isLoading}
-							<div class="loading-dots">
-								<span></span>
-								<span></span>
-								<span></span>
-							</div>
-						{:else}
-							<div class="whitespace-pre-wrap">
-								{@html formatContent(message.content)}
-							</div>
+				<div class="max-w-2xl">
+					<div class="rounded-lg px-4 py-3 {message.role === 'user' ? 'bg-gray-800 text-gray-100' : 'bg-blue-600 text-white'}">
+						{message.content}
+						
+						{#if message.xrayData}
+							{#if message.xrayData.tools.length > 0}
+								<div class="mt-2 flex items-center gap-2 text-xs opacity-75">
+									<Clock class="h-3 w-3" />
+									{message.xrayData.totalTime}ms
+									{#if message.xrayData.tools[0].cached}
+										<Database class="h-3 w-3" />
+										Cached
+									{/if}
+								</div>
+							{/if}
 							
-							{#if message.xrayData?.citations?.length > 0}
-								<div class="citation">
+							{#if message.xrayData.citations.length > 0}
+								<div class="mt-2 text-xs opacity-75">
 									📚 Sources: {message.xrayData.citations.join(', ')}
 								</div>
 							{/if}
 						{/if}
 					</div>
 					
-					<div class="message-timestamp">
+					<div class="mt-2 text-xs text-gray-500">
 						{message.timestamp.toLocaleTimeString()}
 					</div>
 					
@@ -272,22 +192,21 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 		{/each}
 	</div>
 	
-	<div class="input-area">
-		<div class="input-container">
-			<div class="input-wrapper">
+	<div class="border-t border-gray-800 p-4" style="background-color: #0f172a;">
+		<div class="mx-auto flex max-w-4xl items-end gap-3">
+			<div class="flex-1">
 				<textarea
-					class="input-field"
+					class="w-full resize-none rounded-lg bg-gray-800 px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
 					placeholder="Ask about a Bible verse, translation notes, or word meanings..."
 					bind:value={inputValue}
 					on:keydown={handleKeydown}
 					rows="1"
 					disabled={isLoading}
-				/>
+				></textarea>
 			</div>
 			
 			<button
-				class="xray-toggle"
-				class:active={showXRay}
+				class="flex h-12 w-12 items-center justify-center rounded-lg text-gray-400 transition-colors hover:text-gray-200 {showXRay ? 'bg-blue-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}"
 				on:click={() => showXRay = !showXRay}
 				title="Toggle X-Ray view"
 			>
@@ -299,19 +218,33 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 			</button>
 			
 			<button
-				class="send-button"
+				class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
 				on:click={sendMessage}
-				disabled={!inputValue.trim() || isLoading}
+				disabled={isLoading || !inputValue.trim()}
 			>
-				<Send class="h-5 w-5" />
+				{#if isLoading}
+					<div class="inline-flex gap-1">
+						<span class="inline-block h-2 w-2 animate-bounce rounded-full bg-white" style="animation-delay: 0ms"></span>
+						<span class="inline-block h-2 w-2 animate-bounce rounded-full bg-white" style="animation-delay: 150ms"></span>
+						<span class="inline-block h-2 w-2 animate-bounce rounded-full bg-white" style="animation-delay: 300ms"></span>
+					</div>
+				{:else}
+					<Send class="h-5 w-5" />
+				{/if}
 			</button>
 		</div>
+		
+		{#if messages.length === 1}
+			<div class="mt-1 text-center text-xs text-gray-600">
+				Press Enter to send • Shift+Enter for new line
+			</div>
+		{/if}
 	</div>
 </div>
 
 {#if showXRay && currentXRayData}
-	<XRayPanel 
-		data={currentXRayData} 
+	<XRayPanel
+		data={currentXRayData}
 		on:close={() => showXRay = false}
 	/>
 {/if}
