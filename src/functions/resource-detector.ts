@@ -304,13 +304,17 @@ export async function discoverAvailableResources(
         };
 
         const resources = (data.data || []).map((resource) => ({
-          ...resource,
+          name: resource.name,
+          title: resource.title || resource.door43_metadata?.title || resource.description,
           subject,
           url: `https://git.door43.org/${organization}/${resource.name}`,
-          ingredients: resource.metadata?.ingredients || resource.ingredients || []
+          ingredients: resource.ingredients || resource.door43_metadata?.ingredients || resource.metadata?.ingredients || []
         }));
 
         console.log(`📊 Found ${resources.length} ${subject} resources`);
+        if (resources.length > 0) {
+          console.log(`🔍 First resource ingredients:`, resources[0].ingredients?.slice(0, 3));
+        }
         return { type: search.type, resources };
       } catch (error) {
         console.warn(`⚠️ Catalog search error for ${subject}:`, error);
