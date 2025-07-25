@@ -7,13 +7,13 @@
  * Implements Task 9 from the implementation plan
  */
 
-import { cache } from "../cache.js";
-import type { PlatformHandler } from "../platform-adapter.js";
 import {
   recommendResources,
   type RecommendationContext,
   type ScriptureReference,
-} from "../resource-recommender.js";
+} from "../../experimental/resource-recommender.js";
+import { cache } from "../cache.js";
+import type { PlatformHandler } from "../platform-adapter.js";
 
 // Cache TTL: 30 minutes (recommendations can be cached but not too long since context matters)
 const CACHE_TTL = 1800; // 30 minutes in seconds
