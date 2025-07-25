@@ -376,10 +376,15 @@ export async function getResourceForBook(
   language: string = "en",
   organization: string = "unfoldingWord"
 ): Promise<ResourceCatalogInfo | null> {
+  console.log(`🔍 getResourceForBook called:`, { reference, resourceType, language, organization });
   const availability = await discoverAvailableResources(reference, language, organization);
   const resources = availability[resourceType];
 
+  console.log(`📦 Resources found for ${resourceType}:`, resources?.length || 0);
+  console.log(`🔍 First resource:`, resources?.[0]);
+  
   if (!resources || resources.length === 0) {
+    console.error(`❌ No resources found for ${resourceType}`);
     return null;
   }
 
