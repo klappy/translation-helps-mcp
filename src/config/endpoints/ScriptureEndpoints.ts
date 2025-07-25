@@ -1,152 +1,174 @@
 /**
  * Scripture Endpoint Configurations
+ * 
+ * Defines configurations for all scripture-related endpoints
+ * with USFM to text transformation.
  */
 
-import { CommonParams, EndpointConfig } from "../EndpointConfig";
-import { ResponseShapes } from "../ResponseShapes";
+import type { EndpointConfig } from '../EndpointConfig';
+import { ScriptureShape } from '../ResponseShapes';
 
+/**
+ * Base scripture parameter configuration
+ */
+const scriptureParams = {
+  reference: {
+    type: 'string' as const,
+    required: true,
+    description: 'Bible reference (e.g., "John 3:16", "Romans 1:1-5", "Matthew 5")',
+    validation: {
+      pattern: '^[A-Za-z0-9\\s]+\\s+\\d+(:\\d+(-\\d+)?)?$'
+    }
+  },
+  language: {
+    type: 'string' as const,
+    required: false,
+    default: 'en',
+    description: 'Language code (e.g., "en", "es", "fr")'
+  },
+  organization: {
+    type: 'string' as const,
+    required: false,
+    default: 'unfoldingWord',
+    description: 'Organization name'
+  },
+  includeVerseNumbers: {
+    type: 'boolean' as const,
+    required: false,
+    default: true,
+    description: 'Include verse numbers in the text'
+  },
+  format: {
+    type: 'string' as const,
+    required: false,
+    default: 'text',
+    description: 'Output format',
+    validation: {
+      enum: ['text', 'usfm']
+    }
+  }
+};
+
+/**
+ * Fetch Scripture endpoint (general)
+ */
 export const FetchScriptureEndpoint: EndpointConfig = {
-  name: "fetch-scripture",
-  path: "/fetch-scripture",
-  category: "core",
-  description: "Fetch scripture text in any supported version (ULT/UST)",
-
-  params: {
-    reference: CommonParams.reference,
-    language: CommonParams.language,
-    version: {
-      name: "version",
-      type: "string",
-      required: false,
-      default: "ult",
-      description: "Scripture version (ult or ust)",
-      examples: ["ult", "ust"],
-      validation: {
-        enum: ["ult", "ust"],
-      },
-    },
-  },
-
+  name: 'fetch-scripture',
+  path: '/api/fetch-scripture',
+  category: 'core',
+  description: 'Fetch Bible scripture text for any reference',
+  params: scriptureParams,
   dataSource: {
-    type: "dcs",
-    transformation: "usfm-to-text",
-    endpoint: "/api/v1/repos/{owner}/{repo}/contents/{path}",
+    type: 'dcs',
+    resource: 'ult',
+    transformation: 'usfm-to-text'
   },
-
-  responseShape: ResponseShapes.scripture,
-
+  responseShape: ScriptureShape,
   examples: [
     {
-      params: { reference: "John 3:16", language: "en", version: "ult" },
+      params: { reference: 'John 3:16' },
       response: {
-        text: "For God so loved the world, that he gave his only begotten Son, so that everyone who believes in him may not perish but may have eternal life.",
-        reference: "John 3:16",
-        version: "ult",
-        language: "en",
+        text: 'For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.',
+        reference: 'John 3:16',
+        version: 'ult',
+        language: 'en'
       },
-      description: "Single verse example",
+      description: 'Single verse'
     },
     {
-      params: { reference: "Genesis 1:1-3", language: "en", version: "ust" },
+      params: { reference: 'Romans 1:1-5' },
       response: {
-        text: 'In the beginning, God created the heavens and the earth. The earth was without form and empty. Darkness was upon the surface of the deep. The Spirit of God was moving above the surface of the waters. God said, "Let there be light," and there was light.',
-        reference: "Genesis 1:1-3",
-        version: "ust",
-        language: "en",
+        text: 'Paul, a servant of Jesus Christ, called to be an apostle...',
+        reference: 'Romans 1:1-5',
+        version: 'ult',
+        language: 'en'
       },
-      description: "Verse range example",
+      description: 'Verse range'
     },
+    {
+      params: { reference: 'Matthew 5' },
+      response: {
+        text: 'When Jesus saw the crowds, he went up on the mountain...',
+        reference: 'Matthew 5',
+        version: 'ult',
+        language: 'en'
+      },
+      description: 'Entire chapter'
+    }
   ],
-
   performance: {
-    targetMs: 300,
-    cacheable: true,
-    cacheKey: "{language}:{version}:{reference}",
+    expectedMs: 300,
+    cacheStrategy: 'aggressive'
   },
-
-  mcp: {
-    toolName: "fetchScripture",
-    description:
-      "Fetch scripture passages from the unfoldingWord Literal Text (ULT) or Simplified Text (UST)",
-  },
+  errorHandling: {
+    invalidReference: 'Invalid reference format. Use: "Book Chapter:Verse" (e.g., "John 3:16")',
+    resourceNotFound: 'Scripture resource not available for this language',
+    languageNotSupported: 'Language not supported for scripture resources'
+  }
 };
 
-export const FetchUltScriptureEndpoint: EndpointConfig = {
-  name: "fetch-ult-scripture",
-  path: "/fetch-ult-scripture",
-  category: "core",
-  description: "Fetch scripture from unfoldingWord Literal Text (ULT)",
-
-  params: {
-    reference: CommonParams.reference,
-    language: CommonParams.language,
-  },
-
+/**
+ * Fetch ULT Scripture endpoint
+ */
+export const FetchULTScriptureEndpoint: EndpointConfig = {
+  name: 'fetch-ult-scripture',
+  path: '/api/fetch-ult-scripture',
+  category: 'core',
+  description: 'Fetch unfoldingWord Literal Translation (ULT) scripture',
+  params: scriptureParams,
   dataSource: {
-    type: "dcs",
-    transformation: "usfm-to-text",
-    endpoint: "/api/v1/repos/{owner}/ult/contents/{path}",
+    type: 'dcs',
+    resource: 'ult',
+    transformation: 'usfm-to-text'
   },
-
-  responseShape: ResponseShapes.scripture,
-
+  responseShape: ScriptureShape,
   examples: [
     {
-      params: { reference: "John 3:16", language: "en" },
+      params: { reference: 'Genesis 1:1' },
       response: {
-        text: "For God so loved the world, that he gave his only begotten Son, so that everyone who believes in him may not perish but may have eternal life.",
-        reference: "John 3:16",
-        version: "ult",
-        language: "en",
-      },
-      description: "ULT specific endpoint",
-    },
+        text: 'In the beginning, God created the heavens and the earth.',
+        reference: 'Genesis 1:1',
+        version: 'ult',
+        language: 'en'
+      }
+    }
   ],
-
   performance: {
-    targetMs: 300,
-    cacheable: true,
-    cacheKey: "{language}:ult:{reference}",
-  },
+    expectedMs: 300,
+    cacheStrategy: 'aggressive'
+  }
 };
 
-export const FetchUstScriptureEndpoint: EndpointConfig = {
-  name: "fetch-ust-scripture",
-  path: "/fetch-ust-scripture",
-  category: "core",
-  description: "Fetch scripture from unfoldingWord Simplified Text (UST)",
-
-  params: {
-    reference: CommonParams.reference,
-    language: CommonParams.language,
-  },
-
+/**
+ * Fetch UST Scripture endpoint
+ */
+export const FetchUSTScriptureEndpoint: EndpointConfig = {
+  name: 'fetch-ust-scripture',
+  path: '/api/fetch-ust-scripture',
+  category: 'core',
+  description: 'Fetch unfoldingWord Simplified Translation (UST) scripture',
+  params: scriptureParams,
   dataSource: {
-    type: "dcs",
-    transformation: "usfm-to-text",
-    endpoint: "/api/v1/repos/{owner}/ust/contents/{path}",
+    type: 'dcs',
+    resource: 'ust',
+    transformation: 'usfm-to-text'
   },
-
-  responseShape: ResponseShapes.scripture,
-
+  responseShape: ScriptureShape,
   examples: [
     {
-      params: { reference: "John 3:16", language: "en" },
+      params: { reference: 'Genesis 1:1' },
       response: {
-        text: "God loved the people in the world so much that he gave his only Son to them. The result is that everyone who believes in him will not die but will live forever.",
-        reference: "John 3:16",
-        version: "ust",
-        language: "en",
-      },
-      description: "UST simplified text example",
-    },
+        text: 'Long, long ago, God created the heavens and the earth.',
+        reference: 'Genesis 1:1',
+        version: 'ust',
+        language: 'en'
+      }
+    }
   ],
-
   performance: {
-    targetMs: 300,
-    cacheable: true,
-    cacheKey: "{language}:ust:{reference}",
-  },
+    expectedMs: 300,
+    cacheStrategy: 'aggressive'
+  }
 };
 
 /**
@@ -154,6 +176,6 @@ export const FetchUstScriptureEndpoint: EndpointConfig = {
  */
 export const ScriptureEndpoints = [
   FetchScriptureEndpoint,
-  FetchUltScriptureEndpoint,
-  FetchUstScriptureEndpoint,
+  FetchULTScriptureEndpoint,
+  FetchUSTScriptureEndpoint
 ];

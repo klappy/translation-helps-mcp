@@ -1,8 +1,8 @@
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { SACRED_TEXT_SYSTEM_PROMPT } from '../../../../../src/config/SacredTextConstraints.js';
 import { getVersion } from '../../../../../src/version.js';
+import { SACRED_TEXT_SYSTEM_PROMPT } from '../../../../../src/config/SacredTextConstraints.js';
 
 // Import our existing tool handlers
 // TEMPORARILY COMMENTED OUT - These imports require dependencies not available in UI build
@@ -44,8 +44,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					tools: [
 						{
 							name: 'get_system_prompt',
-							description:
-								'Get the complete system prompt and constraints for full transparency about AI behavior',
+							description: 'Get the complete system prompt and constraints for full transparency about AI behavior',
 							inputSchema: {
 								type: 'object',
 								properties: {
@@ -256,7 +255,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						version: '1.0.0',
 						lastUpdated: '2025-07-25'
 					};
-
+					
 					if (args.includeImplementationDetails) {
 						response.implementationDetails = {
 							validationFunctions: [
@@ -271,25 +270,21 @@ export const POST: RequestHandler = async ({ request, url }) => {
 							]
 						};
 					}
-
+					
 					return json({
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(response, null, 2)
-							}
-						]
+						content: [{
+							type: 'text',
+							text: JSON.stringify(response, null, 2)
+						}]
 					});
 				}
 
 				// Temporary response for other tools
 				return json({
-					content: [
-						{
-							type: 'text',
-							text: 'Tool temporarily unavailable during refactoring. Please check back soon!'
-						}
-					]
+					content: [{
+						type: 'text',
+						text: 'Tool temporarily unavailable during refactoring. Please check back soon!'
+					}]
 				});
 			}
 

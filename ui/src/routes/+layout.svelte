@@ -18,6 +18,9 @@
 		Github,
 		Menu,
 		MessageSquare,
+		Settings,
+		TestTube,
+		TrendingUp,
 		X,
 		Zap
 	} from 'lucide-svelte';
@@ -33,34 +36,28 @@
 			description: 'Overview and features'
 		},
 		{
+			href: '/chat',
+			label: 'Chat',
+			icon: MessageSquare,
+			description: 'AI-powered Bible assistant'
+		},
+		{
 			href: '/mcp-tools',
 			label: 'MCP Tools',
 			icon: Code,
 			description: 'MCP server tools and API documentation'
 		},
 		{
-			href: '/chat',
-			label: 'AI Assistant',
-			icon: MessageSquare,
-			description: 'AI-powered Bible assistant'
+			href: '/performance',
+			label: 'Performance',
+			icon: TrendingUp,
+			description: 'Performance & cost analysis'
 		},
 		{
-			href: '/changelog',
-			label: 'Changelog',
-			icon: Activity,
-			description: 'Updates and releases'
-		},
-		{
-			href: '/whitepaper',
-			label: 'Whitepaper',
-			icon: BookOpen,
-			description: 'Technical documentation'
-		},
-		{
-			href: '/about',
-			label: 'About',
-			icon: Droplets,
-			description: 'About this project'
+			href: '/rag-manifesto',
+			label: 'RAG Manifesto',
+			icon: Zap,
+			description: 'The right way to do Bible RAG'
 		}
 	];
 

@@ -10,7 +10,7 @@ This document defines the requirements for promoting features from experimental 
 
 - **Required**: Written approval from project maintainers
 - **Format**: GitHub issue with "promotion-request" label
-- **Include**:
+- **Include**: 
   - Feature description
   - Performance metrics
   - Usage statistics
@@ -19,7 +19,7 @@ This document defines the requirements for promoting features from experimental 
 ### 2. Partner Approval ✅
 
 - **Required**: Sign-off from at least one partner organization
-- **Evidence**:
+- **Evidence**: 
   - Partner has tested in their workflow
   - Feedback documented
   - Use cases validated
@@ -29,11 +29,11 @@ This document defines the requirements for promoting features from experimental 
 
 ### Response Time Requirements
 
-| Percentile    | Maximum Time |
-| ------------- | ------------ |
-| 50th (median) | < 200ms      |
-| 95th          | < 500ms      |
-| 99th          | < 1000ms     |
+| Percentile | Maximum Time |
+|------------|--------------|
+| 50th (median) | < 200ms |
+| 95th | < 500ms |
+| 99th | < 1000ms |
 
 ### Cache Performance
 
@@ -69,15 +69,12 @@ This document defines the requirements for promoting features from experimental 
 **Avg Response Time**: [Milliseconds]
 
 ### Issues Encountered
-
 1. [Issue description and resolution]
 
 ### User Feedback
-
 - [Feedback summary]
 
 ### Performance Graphs
-
 - [Include response time graphs]
 - [Include error rate trends]
 ```
@@ -180,49 +177,41 @@ load_test_requirements:
 # Promotion Request: AI Content Summarizer
 
 ## Summary
-
 Request to promote AI Content Summarizer from experimental to core.
 
 ## Evidence
 
 ### Approvals
-
 - [x] Maintainer approval: @username (link)
 - [x] Partner approval: Organization X (link)
 
 ### Performance Metrics
-
 - 50th percentile: 180ms ✅
 - 95th percentile: 420ms ✅
 - Cache hit ratio: 85% ✅
 - Error rate: 0.05% ✅
 
 ### Testing
-
-- Testing period: 2025-02-01 to 2025-03-01
+- Testing period: 2024-06-01 to 2024-07-01
 - Total requests: 125,000
 - Unique users: 12
 - Critical issues: 0
 
 ### Documentation
-
 - [x] API docs: /docs/api/ai-summarizer.md
 - [x] Integration guide: /docs/guides/ai-integration.md
 - [x] Migration guide: /docs/migration/ai-summarizer.md
 
 ### Test Coverage
-
 - Unit tests: 94% coverage
 - Integration tests: 15 scenarios
 - Load test results: [link to results]
 
 ## Risk Assessment
-
 Low risk - feature is additive and doesn't modify existing functionality.
 
 ## Migration Plan
-
-1. Move files on 2025-03-15
+1. Move files on 2024-07-15
 2. Update imports
 3. Deploy to staging
 4. Monitor for 24 hours

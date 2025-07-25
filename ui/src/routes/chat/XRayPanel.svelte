@@ -1,5 +1,5 @@
 <script>
-	import { ChevronDown, ChevronRight, Clock, Database, X, Zap } from 'lucide-svelte';
+	import { X, ChevronDown, ChevronRight, Clock, Database, Zap, AlertCircle } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
 	
 	export let data = null;

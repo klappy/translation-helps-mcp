@@ -1,55 +1,37 @@
 /**
  * Endpoint Configuration Index
- *
- * Registers all endpoint configurations with the registry
+ * 
+ * Registers all endpoint configurations with the registry.
  */
 
-import { endpointRegistry } from "../EndpointRegistry";
-import { ContextEndpoints } from "./ContextEndpoints";
-import { DiscoveryEndpoints } from "./DiscoveryEndpoints";
-import { ScriptureEndpoints } from "./ScriptureEndpoints";
-import { TranslationHelpsEndpoints } from "./TranslationHelpsEndpoints";
+import { EndpointRegistry } from '../EndpointRegistry';
+import { ScriptureEndpoints } from './ScriptureEndpoints';
+import { TranslationHelpsEndpoints } from './TranslationHelpsEndpoints';
+import { TranslationAcademyEndpoints } from './TranslationAcademyEndpoints';
+import { DiscoveryEndpoints } from './DiscoveryEndpoints';
+import { ContextEndpoints } from './ContextEndpoints';
 
-// Register all core endpoints
-function registerCoreEndpoints() {
-  // Scripture endpoints
-  ScriptureEndpoints.forEach((config) => {
-    endpointRegistry.register(config);
-  });
+// Combine all endpoints
+const allEndpoints = [
+  ...ScriptureEndpoints,
+  ...TranslationHelpsEndpoints,
+  ...TranslationAcademyEndpoints,
+  ...DiscoveryEndpoints,
+  ...ContextEndpoints
+];
 
-  // Translation helps endpoints
-  TranslationHelpsEndpoints.forEach((config) => {
-    endpointRegistry.register(config);
-  });
-
-  // Discovery endpoints
-  DiscoveryEndpoints.forEach((config) => {
-    endpointRegistry.register(config);
-  });
-
-  // Context endpoints
-  ContextEndpoints.forEach((config) => {
-    endpointRegistry.register(config);
-  });
-}
-
-// Register experimental endpoints
-function registerExperimentalEndpoints() {
-  // Experimental endpoints will be registered here
-  // For now, this is empty as we're focusing on core
-}
-
-// Initialize all endpoints
-export function initializeEndpoints() {
-  registerCoreEndpoints();
-  registerExperimentalEndpoints();
-
-  // Validate all registered endpoints
-  const errors = endpointRegistry.validate();
-  if (errors.length > 0) {
-    console.warn("Endpoint configuration warnings:", errors);
+// Register all endpoints
+export function registerAllEndpoints(): void {
+  for (const endpoint of allEndpoints) {
+    EndpointRegistry.register(endpoint);
   }
 }
 
-// Export the registry for use
-export { endpointRegistry };
+// Export individual endpoint groups
+export {
+  ScriptureEndpoints,
+  TranslationHelpsEndpoints,
+  TranslationAcademyEndpoints,
+  DiscoveryEndpoints,
+  ContextEndpoints
+};

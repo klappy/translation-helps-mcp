@@ -1,22 +1,22 @@
 /**
  * UI Generator for MCP Tools
- *
+ * 
  * Generates consistent UI components from endpoint configurations
  * for the MCP Tools page.
  */
 
-import type { EndpointConfig, ParamConfig } from "./EndpointConfig";
-import { EndpointRegistry } from "./EndpointRegistry";
+import type { EndpointConfig, ParamConfig } from './EndpointConfig';
+import { EndpointRegistry } from './EndpointRegistry';
 
 export interface UIComponent {
-  type: "form" | "display" | "metrics";
+  type: 'form' | 'display' | 'metrics';
   config: any;
 }
 
 export interface EndpointUI {
   name: string;
   description: string;
-  category: "core" | "experimental";
+  category: 'core' | 'experimental';
   parameterForm: ParameterFormConfig;
   examples: ExampleConfig[];
   responseDisplay: ResponseDisplayConfig;
@@ -31,7 +31,7 @@ export interface ParameterFormConfig {
 export interface FormFieldConfig {
   name: string;
   label: string;
-  type: "text" | "number" | "select" | "checkbox";
+  type: 'text' | 'number' | 'select' | 'checkbox';
   placeholder?: string;
   options?: { value: string; label: string }[];
   required: boolean;
@@ -51,7 +51,7 @@ export interface ExampleConfig {
 }
 
 export interface ResponseDisplayConfig {
-  type: "json" | "text" | "table" | "custom";
+  type: 'json' | 'text' | 'table' | 'custom';
   syntaxHighlight: boolean;
   collapsible: boolean;
   fields?: string[]; // Specific fields to display
@@ -84,16 +84,16 @@ export function generateEndpointUI(config: EndpointConfig): EndpointUI {
  */
 function generateParameterForm(config: EndpointConfig): ParameterFormConfig {
   const fields: FormFieldConfig[] = [];
-
+  
   for (const [name, paramConfig] of Object.entries(config.params)) {
     if (!paramConfig) continue;
-
+    
     fields.push(generateFormField(name, paramConfig));
   }
-
+  
   return {
     fields,
-    submitLabel: "Execute",
+    submitLabel: 'Execute',
   };
 }
 
@@ -109,21 +109,21 @@ function generateFormField(name: string, param: ParamConfig): FormFieldConfig {
     defaultValue: param.default,
     helpText: param.description,
   };
-
+  
   // Add placeholder for text fields
-  if (field.type === "text") {
+  if (field.type === 'text') {
     field.placeholder = generatePlaceholder(name, param);
   }
-
+  
   // Add options for enum validation
   if (param.validation?.enum) {
-    field.type = "select";
-    field.options = param.validation.enum.map((value) => ({
+    field.type = 'select';
+    field.options = param.validation.enum.map(value => ({
       value,
       label: formatLabel(value),
     }));
   }
-
+  
   // Add validation rules
   if (param.validation) {
     field.validation = {
@@ -132,21 +132,21 @@ function generateFormField(name: string, param: ParamConfig): FormFieldConfig {
       max: param.validation.max,
     };
   }
-
+  
   return field;
 }
 
 /**
  * Map parameter type to form field type
  */
-function mapParamTypeToFormType(paramType: string): FormFieldConfig["type"] {
+function mapParamTypeToFormType(paramType: string): FormFieldConfig['type'] {
   switch (paramType) {
-    case "number":
-      return "number";
-    case "boolean":
-      return "checkbox";
+    case 'number':
+      return 'number';
+    case 'boolean':
+      return 'checkbox';
     default:
-      return "text";
+      return 'text';
   }
 }
 
@@ -155,14 +155,14 @@ function mapParamTypeToFormType(paramType: string): FormFieldConfig["type"] {
  */
 function generatePlaceholder(name: string, param: ParamConfig): string {
   switch (name) {
-    case "reference":
-      return "e.g., John 3:16 or Romans 1:1-5";
-    case "language":
-      return "e.g., en, es, fr";
-    case "organization":
-      return "e.g., unfoldingWord";
-    case "resource":
-      return "e.g., ult, ust, tn, tw";
+    case 'reference':
+      return 'e.g., John 3:16 or Romans 1:1-5';
+    case 'language':
+      return 'e.g., en, es, fr';
+    case 'organization':
+      return 'e.g., unfoldingWord';
+    case 'resource':
+      return 'e.g., ult, ust, tn, tw';
     default:
       return `Enter ${formatLabel(name).toLowerCase()}`;
   }
@@ -173,8 +173,8 @@ function generatePlaceholder(name: string, param: ParamConfig): string {
  */
 function formatLabel(name: string): string {
   return name
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (str) => str.toUpperCase())
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
     .trim();
 }
 
@@ -194,18 +194,18 @@ function generateExamples(config: EndpointConfig): ExampleConfig[] {
  */
 function generateExampleDescription(params: Record<string, any>): string {
   const parts: string[] = [];
-
+  
   if (params.reference) {
     parts.push(`Reference: ${params.reference}`);
   }
-  if (params.language && params.language !== "en") {
+  if (params.language && params.language !== 'en') {
     parts.push(`Language: ${params.language}`);
   }
   if (params.resource) {
     parts.push(`Resource: ${params.resource}`);
   }
-
-  return parts.join(", ");
+  
+  return parts.join(', ');
 }
 
 /**
@@ -213,36 +213,36 @@ function generateExampleDescription(params: Record<string, any>): string {
  */
 function generateResponseDisplay(config: EndpointConfig): ResponseDisplayConfig {
   const shapeType = config.responseShape.type;
-
+  
   switch (shapeType) {
-    case "scripture":
+    case 'scripture':
       return {
-        type: "text",
+        type: 'text',
         syntaxHighlight: false,
         collapsible: true,
-        fields: ["text", "reference", "version"],
+        fields: ['text', 'reference', 'version'],
       };
-
-    case "notes":
-    case "questions":
+      
+    case 'notes':
+    case 'questions':
       return {
-        type: "table",
+        type: 'table',
         syntaxHighlight: false,
         collapsible: true,
-        fields: ["reference", "content"],
+        fields: ['reference', 'content'],
       };
-
-    case "words":
+      
+    case 'words':
       return {
-        type: "custom",
+        type: 'custom',
         syntaxHighlight: true,
         collapsible: true,
-        fields: ["term", "definition"],
+        fields: ['term', 'definition'],
       };
-
+      
     default:
       return {
-        type: "json",
+        type: 'json',
         syntaxHighlight: true,
         collapsible: true,
       };
@@ -256,7 +256,7 @@ function generateMetricsConfig(config: EndpointConfig): MetricsConfig {
   return {
     showResponseTime: true,
     showCacheStatus: true,
-    showDataSource: config.dataSource.type === "dcs",
+    showDataSource: config.dataSource.type === 'dcs',
     showRequestSize: true,
   };
 }
@@ -266,17 +266,18 @@ function generateMetricsConfig(config: EndpointConfig): MetricsConfig {
  */
 export function generateAllEndpointUIs(): Map<string, EndpointUI> {
   const uis = new Map<string, EndpointUI>();
-
+  
   for (const config of EndpointRegistry.getAll()) {
     uis.set(config.name, generateEndpointUI(config));
   }
-
+  
   return uis;
 }
 
 /**
  * Generate UI by category
  */
-export function generateUIByCategory(category: "core" | "experimental"): EndpointUI[] {
-  return EndpointRegistry.getByCategory(category).map((config) => generateEndpointUI(config));
+export function generateUIByCategory(category: 'core' | 'experimental'): EndpointUI[] {
+  return EndpointRegistry.getByCategory(category)
+    .map(config => generateEndpointUI(config));
 }

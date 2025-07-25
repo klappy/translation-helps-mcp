@@ -6,10 +6,10 @@ import { SACRED_TEXT_SYSTEM_PROMPT } from '../../../../../src/config/SacredTextC
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const { message, history, enableXRay } = await request.json();
-
+		
 		// Simulate processing time
 		const startTime = Date.now();
-
+		
 		// Generate mock response based on message content
 		const lowerMessage = message.toLowerCase();
 		let content = '';
@@ -17,9 +17,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			tools: [],
 			totalTime: 0,
 			citations: [],
-			timeline: [{ time: 0, event: 'Request received' }]
+			timeline: [
+				{ time: 0, event: 'Request received' }
+			]
 		};
-
+		
 		if (lowerMessage.includes('john 3:16')) {
 			content = `Here's John 3:16 from the ULT (Unfoldingword Literal Text):
 
@@ -28,7 +30,7 @@ export const POST: RequestHandler = async ({ request }) => {
 This verse is often called the "Gospel in a nutshell" as it summarizes God's love and plan for salvation.
 
 [Scripture - John 3:16 ULT]`;
-
+			
 			xrayData.tools.push({
 				id: 'tool-1',
 				name: 'fetch_scripture',
@@ -55,7 +57,7 @@ The word represents divine love - the kind of love God has for humanity and that
 
 [Translation Words - Love/Agape]
 [Translation Notes - 1 Corinthians 13]`;
-
+			
 			xrayData.tools.push({
 				id: 'tool-2',
 				name: 'get_translation_word',
@@ -90,7 +92,7 @@ The word represents divine love - the kind of love God has for humanity and that
 These constraints ensure that scripture is handled with the utmost care and accuracy.
 
 [System Constraints - Sacred Text Handling]`;
-
+			
 			xrayData.tools.push({
 				id: 'tool-4',
 				name: 'get_system_prompt',
@@ -117,23 +119,24 @@ What would you like to explore? You can ask about:
 - Available languages and resources
 
 Try asking about a familiar verse to see how I work!`;
-
+			
 			xrayData.timeline.push({ time: 5, event: 'Response generated' });
 		}
-
+		
 		// Calculate total time
 		const endTime = Date.now();
 		xrayData.totalTime = endTime - startTime;
 		xrayData.timeline.push({ time: xrayData.totalTime, event: 'Response sent' });
-
+		
 		return json({
 			content,
 			xrayData: enableXRay ? xrayData : null
 		});
+		
 	} catch (error) {
 		console.error('Chat error:', error);
 		return json(
-			{
+			{ 
 				error: 'Failed to process chat request',
 				details: error instanceof Error ? error.message : 'Unknown error'
 			},
