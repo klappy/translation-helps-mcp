@@ -219,11 +219,12 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				const toolName = body.params?.name;
 				const args = body.params?.arguments || {};
 				
-				// Import the unified handler
-				const { mcpHandler } = await import('$lib/mcp/UnifiedMCPHandler');
+				// Import the unified handler with proper base URL
+				const { UnifiedMCPHandler } = await import('$lib/mcp/UnifiedMCPHandler');
+				const handler = new UnifiedMCPHandler(url.origin);
 				
 				try {
-					const result = await mcpHandler.handleToolCall(toolName, args);
+					const result = await handler.handleToolCall(toolName, args);
 					return json(result);
 				} catch (error) {
 					console.error(`MCP tool error for ${toolName}:`, error);
