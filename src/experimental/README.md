@@ -1,95 +1,58 @@
-# 🧪 EXPERIMENTAL FEATURES LAB
+# 🧪 Experimental Features Lab
 
-## ⚠️ WARNING: EXPERIMENTAL CODE AHEAD ⚠️
+⚠️ **WARNING: EXPERIMENTAL ZONE** ⚠️
 
 This directory contains experimental features that are:
 
-- **NOT production-ready**
-- **NOT guaranteed to work reliably**
-- **NOT covered by stability guarantees**
-- **SUBJECT TO CHANGE without notice**
+- Not production-ready
+- Subject to breaking changes
+- May be removed without notice
+- Require explicit approval before promotion to core
 
-## What's in the Lab?
+## Features Currently in Lab
 
 ### AI-Powered Features
 
-- **ai-content-summarizer.ts** - AI-powered content summarization (currently using mock responses)
-- **ai-quality-checker.ts** - AI quality assessment (currently using mock responses)
+- **ai-content-summarizer.ts** - Summarizes Bible content using AI
+- **ai-quality-checker.ts** - Analyzes translation quality
+- **resource-recommender.ts** - Recommends relevant resources
+- **automated-content-ingestion.ts** - Automatically ingests new content
 
-### Advanced Features (Good Ideas, Poor Execution)
+### Why These Are Experimental
 
-- **resource-aggregator.ts** - Duplicate resource aggregation implementation
-- **cache-warmer.ts** - Deprecated cache warming system
-- **automated-content-ingestion.ts** - Automated content discovery and ingestion
+1. **AI Features** - Need extensive testing for theological accuracy
+2. **Resource Recommender** - Good idea, needs better implementation
+3. **Content Ingestion** - Complex edge cases not fully handled
 
 ## Promotion Criteria
 
-For a feature to move from experimental to core, it must:
+Before any feature can be promoted to core:
 
-1. **Get explicit approval** from project maintainers
-2. **Get partner approval** from stakeholders
-3. **Meet performance benchmarks**:
-   - Response time < 500ms for 95th percentile
-   - Cache hit ratio > 80%
-   - Error rate < 0.1%
-4. **Pass real-world testing**:
-   - Used in production for 30+ days
-   - Processed 10,000+ requests
-   - No critical bugs reported
-5. **Have complete documentation**:
-   - API documentation
-   - Integration guide
-   - Migration guide from experimental
-6. **Have comprehensive tests**:
-   - Unit tests with >90% coverage
-   - Integration tests with real data
-   - Load tests proving scalability
+1. ✅ Your explicit approval required
+2. ✅ Partner approval required
+3. ✅ Performance benchmarks met (<500ms typical)
+4. ✅ Real-world testing completed (30+ days)
+5. ✅ Documentation complete
+6. ✅ Tests with real data passing
+7. ✅ No breaking changes for 14 days
 
-## Using Experimental Features
+## Usage
 
-### In Development
+These features are exposed via the `/api/mcp-experimental` endpoint with clear warnings in tool descriptions.
 
-```typescript
-// ⚠️ EXPERIMENTAL - DO NOT USE IN PRODUCTION
-import { ExperimentalFeature } from "../experimental/feature-experimental";
+## Testing
 
-// Must explicitly acknowledge experimental status
-const feature = new ExperimentalFeature({
-  acknowledgeExperimental: true,
-});
+Test experimental features in isolation:
+
+```bash
+npm run test:experimental
 ```
 
-### MCP Endpoint
+## Notes for LLMs
 
-Experimental features are exposed via a separate MCP endpoint:
+If you're an AI assistant using these tools:
 
-- Production: `/api/mcp`
-- Experimental: `/api/mcp-experimental`
-
-## Migration Path
-
-When a feature is approved for core:
-
-1. Remove `-experimental` suffix from filename
-2. Move to appropriate core directory
-3. Update all imports
-4. Remove experimental warnings
-5. Add to core endpoint configuration
-6. Update documentation
-7. Announce in changelog
-
-## Current Status
-
-| Feature               | Status          | Progress  | Notes                            |
-| --------------------- | --------------- | --------- | -------------------------------- |
-| AI Content Summarizer | 🔬 Experimental | Mock only | Needs real AI integration        |
-| AI Quality Checker    | 🔬 Experimental | Mock only | Needs real AI integration        |
-| Resource Aggregator   | ❌ Deprecated   | N/A       | Duplicate of core implementation |
-| Cache Warmer          | ❌ Deprecated   | N/A       | Feature removed from roadmap     |
-| Automated Ingestion   | 🔬 Experimental | 30%       | Needs webhook implementation     |
-
-## Contact
-
-Questions about experimental features? Contact the development team.
-
-**Remember: These features are experiments. They might work perfectly, they might not work at all, or they might work in unexpected ways. Use at your own risk!**
+- These are EXPERIMENTAL and may fail
+- Always warn users before using
+- Do not rely on these for critical functionality
+- Prefer core tools when available
