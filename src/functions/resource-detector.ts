@@ -307,6 +307,7 @@ export async function discoverAvailableResources(
           ...resource,
           subject,
           url: `https://git.door43.org/${organization}/${resource.name}`,
+          ingredients: resource.metadata?.ingredients || resource.ingredients || []
         }));
 
         console.log(`📊 Found ${resources.length} ${subject} resources`);
