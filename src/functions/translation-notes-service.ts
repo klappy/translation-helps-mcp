@@ -242,6 +242,13 @@ function parseTNFromTSV(
   const notes: TranslationNote[] = [];
   let noteId = 1;
 
+  // Log first line for debugging
+  if (lines.length > 0 && lines[0]) {
+    const firstCols = lines[0].split("\t");
+    console.log(`📋 First TSV line has ${firstCols.length} columns`);
+    console.log(`📋 Sample: ref="${firstCols[0]}", quote="${firstCols[3]}", col5="${firstCols[5]}", col6="${firstCols[6]?.substring(0, 50)}..."`);
+  }
+
   for (const line of lines) {
     const columns = line.split("\t");
     if (columns.length < 7) continue; // Skip malformed lines
@@ -279,15 +286,15 @@ function parseTNFromTSV(
       }
     }
 
-    if (include && note && note.trim()) {
+    if (include && markdownPayload && markdownPayload.trim()) {
       notes.push({
         id: `tn-${reference.book}-${noteId++}`,
         reference: noteRef,
-        note: note.trim(),
+        note: markdownPayload.trim(), // The actual note content is in the markdown field!
         quote: quote ? quote.trim() : undefined,
         occurrence: occurrence ? parseInt(occurrence) : undefined,
         occurrences: undefined, // Not provided in standard format
-        markdown: markdownPayload ? markdownPayload.trim() : undefined, // Original nested markdown payload
+        markdown: markdownPayload ? markdownPayload.trim() : undefined, // Keep original for compatibility
         supportReference: undefined, // Could be extracted from note content
       });
     }
