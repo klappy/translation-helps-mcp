@@ -291,6 +291,133 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						});
 					}
 				}
+				else if (toolName === 'fetch_translation_notes') {
+					const params = new URLSearchParams({
+						reference: args.reference,
+						language: args.language || 'en',
+						organization: args.organization || 'unfoldingWord'
+					});
+					
+					try {
+						// Call the underlying endpoint handler directly
+						const endpoint = await import('../fetch-translation-notes/+server.js');
+						const mockRequest = new Request(`http://localhost/api/fetch-translation-notes?${params}`);
+						const response = await endpoint.GET({ url: new URL(mockRequest.url), request: mockRequest });
+						
+						if (response.ok) {
+							const data = await response.json();
+							
+							// Format translation notes
+							let notesText = '';
+							if (data.notes && data.notes.length > 0) {
+								data.notes.forEach((note, index) => {
+									notesText += `${index + 1}. ${note.text || note.note || note.content}\n\n`;
+								});
+							} else {
+								notesText = 'No translation notes found for this reference.';
+							}
+							
+							return json({
+								content: [{
+									type: 'text',
+									text: notesText
+								}]
+							});
+						} else {
+							throw new Error('Failed to fetch translation notes');
+						}
+					} catch (error) {
+						console.error('Translation notes fetch error:', error);
+						return json({
+							content: [{
+								type: 'text',
+								text: 'Error fetching translation notes. Please try again.'
+							}]
+						});
+					}
+				}
+				else if (toolName === 'fetch_translation_questions') {
+					const params = new URLSearchParams({
+						reference: args.reference,
+						language: args.language || 'en',
+						organization: args.organization || 'unfoldingWord'
+					});
+					
+					try {
+						const endpoint = await import('../fetch-translation-questions/+server.js');
+						const mockRequest = new Request(`http://localhost/api/fetch-translation-questions?${params}`);
+						const response = await endpoint.GET({ url: new URL(mockRequest.url), request: mockRequest });
+						
+						if (response.ok) {
+							const data = await response.json();
+							let questionsText = '';
+							if (data.questions && data.questions.length > 0) {
+								data.questions.forEach((q, index) => {
+									questionsText += `Q${index + 1}: ${q.question}\nA: ${q.answer}\n\n`;
+								});
+							} else {
+								questionsText = 'No translation questions found for this reference.';
+							}
+							
+							return json({
+								content: [{
+									type: 'text',
+									text: questionsText
+								}]
+							});
+						}
+					} catch (error) {
+						console.error('Translation questions fetch error:', error);
+						return json({
+							content: [{
+								type: 'text',
+								text: 'Error fetching translation questions.'
+							}]
+						});
+					}
+				}
+				else if (toolName === 'get_translation_word' || toolName === 'fetch_translation_words') {
+					const params = new URLSearchParams({
+						wordId: args.wordId || args.reference || '',
+						language: args.language || 'en',
+						organization: args.organization || 'unfoldingWord'
+					});
+					
+					try {
+						const endpoint = await import('../fetch-translation-words/+server.js');
+						const mockRequest = new Request(`http://localhost/api/fetch-translation-words?${params}`);
+						const response = await endpoint.GET({ url: new URL(mockRequest.url), request: mockRequest });
+						
+						if (response.ok) {
+							const data = await response.json();
+							let wordsText = '';
+							if (data.words && data.words.length > 0) {
+								data.words.forEach(word => {
+									wordsText += `**${word.term}**\n${word.definition}\n\n`;
+								});
+							} else if (data.term) {
+								wordsText = `**${data.term}**\n${data.definition}`;
+							} else {
+								wordsText = 'No translation words found.';
+							}
+							
+							return json({
+								content: [{
+									type: 'text',
+									text: wordsText
+								}]
+							});
+						}
+					} catch (error) {
+						console.error('Translation words fetch error:', error);
+						return json({
+							content: [{
+								type: 'text',
+								text: 'Error fetching translation words.'
+							}]
+						});
+					}
+				}
 				else if (toolName === 'get_system_prompt') {
 					const response = {
 						systemPrompt: SACRED_TEXT_SYSTEM_PROMPT,
