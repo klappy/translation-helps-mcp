@@ -218,6 +218,22 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			case 'tools/call': {
 				const toolName = body.params?.name;
 				const args = body.params?.arguments || {};
+				
+				// Import the unified handler
+				const { mcpHandler } = await import('$lib/mcp/UnifiedMCPHandler');
+				
+				try {
+					const result = await mcpHandler.handleToolCall(toolName, args);
+					return json(result);
+				} catch (error) {
+					console.error(`MCP tool error for ${toolName}:`, error);
+					return json({
+						content: [{
+							type: 'text',
+							text: error instanceof Error ? error.message : 'Tool execution failed'
+						}]
+					});
+				}
 
 				// TEMPORARILY COMMENTED OUT - Tool handlers require dependencies not available in UI build
 				// const handlers = {
