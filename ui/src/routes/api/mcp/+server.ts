@@ -4,17 +4,18 @@ import { json } from '@sveltejs/kit';
 import { getVersion } from '../../../../../src/version.js';
 
 // Import our existing tool handlers
-import { handleBrowseTranslationWords } from '../../../../../src/tools/browseTranslationWords.js';
-import { handleExtractReferences } from '../../../../../src/tools/extractReferences.js';
-import { handleFetchResources } from '../../../../../src/tools/fetchResources.js';
-import { handleFetchScripture } from '../../../../../src/tools/fetchScripture.js';
-import { handleFetchTranslationNotes } from '../../../../../src/tools/fetchTranslationNotes.js';
-import { handleFetchTranslationQuestions } from '../../../../../src/tools/fetchTranslationQuestions.js';
-import { handleGetContext } from '../../../../../src/tools/getContext.js';
-import { handleGetLanguages } from '../../../../../src/tools/getLanguages.js';
-import { handleGetTranslationWord } from '../../../../../src/tools/getTranslationWord.js';
-import { handleGetWordsForReference } from '../../../../../src/tools/getWordsForReference.js';
-import { handleSearchResources } from '../../../../../src/tools/searchResources.js';
+// TEMPORARILY COMMENTED OUT - These imports require dependencies not available in UI build
+// import { handleBrowseTranslationWords } from '../../../../../src/tools/browseTranslationWords.js';
+// import { handleExtractReferences } from '../../../../../src/tools/extractReferences.js';
+// import { handleFetchResources } from '../../../../../src/tools/fetchResources.js';
+// import { handleFetchScripture } from '../../../../../src/tools/fetchScripture.js';
+// import { handleFetchTranslationNotes } from '../../../../../src/tools/fetchTranslationNotes.js';
+// import { handleFetchTranslationQuestions } from '../../../../../src/tools/fetchTranslationQuestions.js';
+// import { handleGetContext } from '../../../../../src/tools/getContext.js';
+// import { handleGetLanguages } from '../../../../../src/tools/getLanguages.js';
+// import { handleGetTranslationWord } from '../../../../../src/tools/getTranslationWord.js';
+// import { handleGetWordsForReference } from '../../../../../src/tools/getWordsForReference.js';
+// import { handleSearchResources } from '../../../../../src/tools/searchResources.js';
 
 // MCP-over-HTTP Bridge
 export const POST: RequestHandler = async ({ request, url }) => {
@@ -202,7 +203,16 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			case 'tools/call': {
 				const { name, arguments: args } = body.params || body;
 
+				// TEMPORARILY DISABLED - Tool handlers need to be reimplemented for UI build
+				return json({
+					error: {
+						code: ErrorCode.MethodNotFound,
+						message: 'Tool handlers temporarily disabled in UI build'
+					}
+				}, { status: 501 });
+
 				// Route to appropriate handler
+				/* COMMENTED OUT - Needs UI-compatible implementation
 				switch (name) {
 					case 'fetch_scripture': {
 						const scriptureResult = await handleFetchScripture(args);
@@ -264,6 +274,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					default:
 						throw new Error(`Unknown method: ${name}`);
 				}
+				*/
 			}
 
 			case 'ping':
