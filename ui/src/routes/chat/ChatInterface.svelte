@@ -4,6 +4,15 @@
 	import BibleVerse from '$lib/components/BibleVerse.svelte';
 	import TranslationWord from '$lib/components/TranslationWord.svelte';
 	import XRayPanel from './XRayPanel.svelte';
+	import { marked } from 'marked';
+	
+	// Configure marked for safe HTML rendering
+	marked.setOptions({
+		breaks: true,
+		gfm: true,
+		headerIds: true,
+		mangle: false
+	});
 	
 	// State
 	let messages = [];
@@ -12,6 +21,38 @@
 	let showXRay = false;
 	let currentXRayData = null;
 	let messagesContainer;
+	
+	// Helper function to render markdown with proper styling
+	function renderMarkdown(content) {
+		if (!content) return '';
+		
+		// Parse markdown to HTML
+		let html = marked.parse(content);
+		
+		// Add Tailwind classes to HTML elements
+		html = html
+			// Headers
+			.replace(/<h1>/g, '<h1 class="text-2xl font-bold mb-4 mt-6 text-gray-100">')
+			.replace(/<h2>/g, '<h2 class="text-xl font-bold mb-3 mt-5 text-gray-100">')
+			.replace(/<h3>/g, '<h3 class="text-lg font-semibold mb-2 mt-4 text-gray-100">')
+			// Lists
+			.replace(/<ul>/g, '<ul class="list-disc list-inside space-y-2 my-4">')
+			.replace(/<ol>/g, '<ol class="list-decimal list-inside space-y-2 my-4">')
+			.replace(/<li>/g, '<li class="ml-4">')
+			// Paragraphs
+			.replace(/<p>/g, '<p class="mb-4">')
+			// Code
+			.replace(/<code>/g, '<code class="bg-gray-800 px-1 py-0.5 rounded text-sm">')
+			.replace(/<pre>/g, '<pre class="bg-gray-800 p-4 rounded-lg overflow-x-auto my-4">')
+			// Blockquotes
+			.replace(/<blockquote>/g, '<blockquote class="border-l-4 border-gray-600 pl-4 italic my-4">')
+			// Strong/Bold
+			.replace(/<strong>/g, '<strong class="font-bold">')
+			// Links
+			.replace(/<a href/g, '<a class="text-blue-400 hover:text-blue-300 underline" href');
+		
+		return html;
+	}
 	
 	// Welcome message
 	onMount(() => {
@@ -109,6 +150,68 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 	}
 </script>
 
+<style>
+	/* Additional markdown styling */
+	:global(.markdown-content) {
+		line-height: 1.6;
+	}
+	
+	:global(.markdown-content > *:first-child) {
+		margin-top: 0 !important;
+	}
+	
+	:global(.markdown-content > *:last-child) {
+		margin-bottom: 0 !important;
+	}
+	
+	/* Ensure proper contrast for code blocks in blue background */
+	:global(.bg-blue-600 .markdown-content code) {
+		background-color: rgba(0, 0, 0, 0.3);
+		color: #ffffff;
+	}
+	
+	:global(.bg-blue-600 .markdown-content pre) {
+		background-color: rgba(0, 0, 0, 0.3);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+	}
+	
+	/* Better list styling */
+	:global(.markdown-content ul li::marker) {
+		color: currentColor;
+		opacity: 0.7;
+	}
+	
+	:global(.markdown-content ol li::marker) {
+		color: currentColor;
+		opacity: 0.7;
+	}
+	
+	/* Horizontal rules */
+	:global(.markdown-content hr) {
+		border-color: rgba(255, 255, 255, 0.2);
+		margin: 1.5rem 0;
+	}
+	
+	/* Tables if needed */
+	:global(.markdown-content table) {
+		border-collapse: collapse;
+		width: 100%;
+		margin: 1rem 0;
+	}
+	
+	:global(.markdown-content th),
+	:global(.markdown-content td) {
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		padding: 0.5rem;
+		text-align: left;
+	}
+	
+	:global(.markdown-content th) {
+		background-color: rgba(0, 0, 0, 0.2);
+		font-weight: bold;
+	}
+</style>
+
 <div class="flex h-full flex-col" style="background-color: #0f172a;">
 	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto px-4 py-6">
 		{#each messages as message}
@@ -122,8 +225,14 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 				</div>
 				
 				<div class="max-w-2xl">
-					<div class="rounded-lg px-4 py-3 {message.role === 'user' ? 'bg-gray-800 text-gray-100' : 'bg-blue-600 text-white'}">
-						{message.content}
+					<div class="rounded-lg px-4 py-3 {message.role === 'user' ? 'bg-gray-800 text-gray-100' : 'bg-blue-600 text-white'} {message.role === 'assistant' ? 'prose prose-invert max-w-none' : ''}">
+						{#if message.role === 'assistant'}
+							<div class="markdown-content">
+								{@html renderMarkdown(message.content)}
+							</div>
+						{:else}
+							{message.content}
+						{/if}
 						
 						{#if message.xrayData}
 							{#if message.xrayData.tools.length > 0}
