@@ -201,6 +201,117 @@ rm -f file               # Force remove, no questions
 cp -f src dest          # Force copy, no questions
 ```
 
+### 🚨 DEV SERVER MANAGEMENT - STOP THE MADNESS! 🚨
+
+**ALWAYS CHECK FOR RUNNING SERVERS FIRST!**
+
+```bash
+# Check common dev server ports
+for port in 5173 5174 3000 3001 4000 8080; do
+  if lsof -ti:$port >/dev/null 2>&1; then
+    echo "Server already running on port $port"
+    # Test if it's our dev server
+    if curl -s http://localhost:$port/api/health >/dev/null 2>&1; then
+      echo "Our dev server is on port $port"
+      export DEV_PORT=$port
+      break
+    fi
+  fi
+done
+
+# Start dev server and CAPTURE THE PORT FROM OUTPUT
+if [ -z "$DEV_PORT" ]; then
+  echo "Starting new dev server..."
+  npm run dev > dev.log 2>&1 &
+  DEV_PID=$!
+  echo $DEV_PID > .dev-server.pid
+
+  # Wait and extract the actual port from the log
+  for i in {1..10}; do
+    sleep 1
+    # Look for the port in the output (handles Vite format)
+    PORT=$(grep -oE "localhost:([0-9]+)" dev.log | head -1 | cut -d: -f2)
+    if [ ! -z "$PORT" ]; then
+      export DEV_PORT=$PORT
+      echo "Dev server started on port $DEV_PORT"
+      break
+    fi
+  done
+fi
+
+# ALWAYS use the detected port
+echo "Using dev server at http://localhost:$DEV_PORT"
+curl -s http://localhost:$DEV_PORT/api/health
+```
+
+**Port Detection Rules:**
+
+1. NEVER hardcode ports - always detect from output
+2. Check multiple common ports for existing servers
+3. Parse the actual port from server startup logs
+4. Store the port in a variable for reuse
+5. If multiple servers exist, test which one is yours
+
+**Pattern for Any Server:**
+
+```bash
+# Generic pattern for any dev server
+start_server_with_port_detection() {
+  # Start server in background, capture output
+  $1 > server.log 2>&1 &
+  SERVER_PID=$!
+
+  # Extract port from output (adjust regex as needed)
+  for i in {1..15}; do
+    sleep 1
+    PORT=$(grep -oE ":(3[0-9]{3}|[4-9][0-9]{3}|[1-5][0-9]{4})" server.log | head -1 | cut -d: -f2)
+    if [ ! -z "$PORT" ]; then
+      echo "Server started on port $PORT"
+      export SERVER_PORT=$PORT
+      return 0
+    fi
+  done
+
+  echo "Failed to detect server port"
+  kill $SERVER_PID 2>/dev/null
+  return 1
+}
+
+# Usage:
+start_server_with_port_detection "npm run dev"
+# Now use $SERVER_PORT for all requests
+```
+
+### 🚨 WRANGLER (CLOUDFLARE) SERVER MANAGEMENT 🚨
+
+```bash
+# Wrangler runs on port 8787 by default
+# CHECK FIRST:
+lsof -ti:8787 && echo "Wrangler already running" || echo "Port 8787 is free"
+
+# Start wrangler properly:
+if ! lsof -ti:8787; then
+  npx wrangler pages dev ui/build --compatibility-date=2023-12-01 > wrangler.log 2>&1 &
+  WRANGLER_PID=$!
+  echo $WRANGLER_PID > .wrangler.pid
+  sleep 10  # Wrangler takes longer to start
+fi
+
+# Test wrangler is responding:
+curl -s http://localhost:8787/api/health || echo "Wrangler not responding"
+
+# Kill wrangler when done:
+lsof -ti:8787 | xargs kill -9 2>/dev/null
+```
+
+**The Golden Rule: One Server Per Port!**
+
+- Dev server: Port 5173
+- Wrangler: Port 8787
+- NEVER run multiple instances
+- ALWAYS check before starting
+- ALWAYS verify it's actually working
+
 ### Decision Making
 
 - If docs overlap → keep the most comprehensive
