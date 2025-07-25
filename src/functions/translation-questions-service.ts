@@ -127,6 +127,8 @@ export async function fetchTranslationQuestions(
   }
 
   console.log(`📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`);
+  console.log(`🔍 Looking for book: ${parsedRef.book} (lowercased: ${parsedRef.book.toLowerCase()})`);
+  console.log(`📦 Ingredients available:`, resourceInfo.ingredients?.map((i: any) => i.identifier));
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
@@ -134,6 +136,7 @@ export async function fetchTranslationQuestions(
   );
 
   if (!ingredient) {
+    console.error(`❌ Book ${parsedRef.book} not found in ingredients:`, resourceInfo.ingredients);
     throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
   }
 
