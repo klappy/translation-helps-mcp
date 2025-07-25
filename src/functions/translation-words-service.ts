@@ -101,8 +101,8 @@ export async function fetchTranslationWords(
   // Try to find translation word links for this book
   const linksIngredient = resourceInfo.ingredients?.find(
     (ing: { identifier?: string }) =>
-      ing.identifier === `${parsedRef.book.toLowerCase()}_links` ||
-      ing.identifier === parsedRef.book.toLowerCase()
+      ing.identifier?.toLowerCase() === `${parsedRef.book.toLowerCase()}_links` ||
+      ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase()
   );
 
   if (!linksIngredient) {

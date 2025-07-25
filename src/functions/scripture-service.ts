@@ -197,7 +197,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
       // Find the correct file from ingredients
       const ingredient = resource.ingredients?.find(
-        (ing: { identifier: string }) => ing.identifier === reference?.book.toLowerCase()
+        (ing: { identifier: string }) => ing.identifier?.toLowerCase() === reference?.book.toLowerCase()
       );
 
       if (!ingredient || !reference) {
