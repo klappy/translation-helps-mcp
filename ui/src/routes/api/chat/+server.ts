@@ -22,26 +22,27 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		const lowerMessage = message.toLowerCase();
 		let content = '';
 		
-		// Handle scripture requests
-		if (lowerMessage.includes('titus') || lowerMessage.includes('show') || lowerMessage.includes('verse')) {
-			// Extract reference - simple pattern matching for demo
+		// Check for specific tool requests BEFORE general scripture requests
+		// Handle translation questions FIRST
+		if (lowerMessage.includes('question') || lowerMessage.includes('tq')) {
+			// Extract reference
 			let reference = 'Titus 1:1'; // Default
-			if (message.match(/titus\s+\d+:\d+/i)) {
-				reference = message.match(/titus\s+\d+:\d+/i)[0];
+			const refMatch = message.match(/(\w+\s+\d+:\d+)/i);
+			if (refMatch) {
+				reference = refMatch[1];
 			}
 			
-			// Call the MCP tool via the API
+			// Call the MCP tool for translation questions
 			const toolResponse = await fetch('/api/mcp', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					method: 'tools/call',
 					params: {
-						name: 'fetch_scripture',
+						name: 'fetch_translation_questions',
 						arguments: {
 							reference,
-							language: 'en',
-							version: 'ult'
+							language: 'en'
 						}
 					}
 				})
@@ -51,27 +52,23 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			
 			if (toolResponse.ok) {
 				const result = await toolResponse.json();
-				const scriptureText = result.content?.[0]?.text || 'Scripture not found';
+				const questionsText = result.content?.[0]?.text || 'No translation questions found';
 				
-				content = `Here's ${reference} from the ULT (Unfoldingword Literal Text):
-
-${scriptureText}
-
-[Scripture - ${reference} ULT]`;
+				content = `Translation Questions for ${reference}:\n\n${questionsText}\n\n[Translation Questions - ${reference}]`;
 				
 				// Record tool usage
 				xrayData.tools.push({
-					id: 'tool-1',
-					name: 'fetch_scripture',
-					params: { reference, version: 'ult', language: 'en' },
-					response: { text: scriptureText },
+					id: 'tool-4',
+					name: 'fetch_translation_questions',
+					params: { reference, language: 'en' },
+					response: { text: questionsText },
 					duration: Date.now() - startTime - toolStartTime,
 					cached: false
 				});
-				xrayData.citations.push(`Scripture - ${reference} ULT`);
-				xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_scripture' });
+				xrayData.citations.push(`Translation Questions - ${reference}`);
+				xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_translation_questions' });
 			} else {
-				content = 'Sorry, I encountered an error fetching the scripture. Please try again.';
+				content = 'Sorry, I encountered an error fetching the translation questions. Please try again.';
 			}
 		}
 		// Handle translation notes requests
@@ -177,26 +174,27 @@ ${scriptureText}
 				content = 'Please specify which word you\'d like to know about. For example: "What does \'agape\' mean?"';
 			}
 		}
-		// Handle translation questions
-		else if (lowerMessage.includes('question') || lowerMessage.includes('tq')) {
+		// Handle scripture requests LAST (catch-all for verse references)
+		else if (lowerMessage.includes('show') || lowerMessage.includes('verse') || message.match(/\w+\s+\d+:\d+/i)) {
 			// Extract reference
-			let reference = 'Titus 1:1'; // Default
+			let reference = 'John 3:16'; // Default
 			const refMatch = message.match(/(\w+\s+\d+:\d+)/i);
 			if (refMatch) {
-				reference = refMatch[1];
+				reference = refMatch[0];
 			}
 			
-			// Call the MCP tool for translation questions
+			// Call the MCP tool for scripture
 			const toolResponse = await fetch('/api/mcp', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					method: 'tools/call',
 					params: {
-						name: 'fetch_translation_questions',
+						name: 'fetch_scripture',
 						arguments: {
 							reference,
-							language: 'en'
+							language: 'en',
+							version: 'ult'
 						}
 					}
 				})
@@ -206,21 +204,23 @@ ${scriptureText}
 			
 			if (toolResponse.ok) {
 				const result = await toolResponse.json();
-				const questionsText = result.content?.[0]?.text || 'No translation questions found';
+				const scriptureText = result.content?.[0]?.text || 'Scripture not found';
 				
-				content = `Translation Questions for ${reference}:\n\n${questionsText}\n\n[Translation Questions - ${reference}]`;
+				content = `Here's ${reference} from the ULT (Unfoldingword Literal Text):\n\n${scriptureText}\n\n[Scripture - ${reference} ULT]`;
 				
 				// Record tool usage
 				xrayData.tools.push({
-					id: 'tool-4',
-					name: 'fetch_translation_questions',
-					params: { reference, language: 'en' },
-					response: { text: questionsText },
+					id: 'tool-1',
+					name: 'fetch_scripture',
+					params: { reference, version: 'ult', language: 'en' },
+					response: { text: scriptureText },
 					duration: Date.now() - startTime - toolStartTime,
 					cached: false
 				});
-				xrayData.citations.push(`Translation Questions - ${reference}`);
-				xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_translation_questions' });
+				xrayData.citations.push(`Scripture - ${reference} ULT`);
+				xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_scripture' });
+			} else {
+				content = 'Sorry, I encountered an error fetching the scripture. Please try again.';
 			}
 		}
 		// Default response
