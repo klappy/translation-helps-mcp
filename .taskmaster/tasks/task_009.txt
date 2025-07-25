@@ -1,0 +1,109 @@
+# Task ID: 9
+# Title: AI Assistant Chat Interface
+# Status: pending
+# Dependencies: 5, 6
+# Priority: critical
+# Description: Build the paramount showcase 'Taste and See' experience with sacred text constraints and full transparency
+# Details:
+THE SHOWCASE - This is what partners will see first!
+
+Core Requirements:
+1. Sacred Text Constraints:
+   - Scripture quoted VERBATIM (character for character)
+   - NO interpretation of scripture allowed
+   - Resources can be reworded but must cite sources
+   - All responses must cite resource titles used
+
+2. Clean Chat Interface:
+   - First-class, polished UI (not cluttered)
+   - Progressive disclosure (simple → detailed)
+   - Mobile-responsive design
+
+3. X-Ray Tool Visibility:
+   - Show MCP tool discovery process
+   - Expandable tool call details
+   - Response time metrics
+   - Cache hit/miss indicators
+   - Like reasoning traces but for tool usage
+
+4. Transparency Features:
+   - New MCP endpoint: get-system-prompt
+   - Shows exact constraints and instructions
+   - Open source, open methodology
+   - Sets collaboration bar high
+
+5. Reference Implementation:
+   - Shows partners exactly how to integrate
+   - Demonstrates value proposition clearly
+   - 'Taste and See' moment for users
+
+# Test Strategy:
+User acceptance testing with actual translators, performance metrics under 500ms, validate sacred text compliance
+
+# Subtasks:
+## 1. Design Clean Chat UI [pending]
+### Dependencies: None
+### Description: Create first-class, polished chat interface with progressive disclosure
+### Details:
+Requirements:
+- Clean, modern design (think Claude/ChatGPT quality)
+- Not cluttered or gaudy
+- Progressive disclosure: simple by default, detailed on demand
+- Mobile-responsive
+- Accessibility compliant
+- Use existing BibleVerse and TranslationWord components
+- Clear visual hierarchy
+
+## 2. Implement Sacred Text Constraints [pending]
+### Dependencies: None
+### Description: Build system prompt and validation for verbatim scripture handling
+### Details:
+Implementation:
+- Create system prompt enforcing verbatim scripture
+- No interpretation allowed
+- Resources can be reworded but must cite
+- Validate all scripture quotes are exact
+- Add citation requirements for all resources
+- Test with edge cases (partial verses, ranges)
+
+## 3. Build X-Ray Tool Visibility [pending]
+### Dependencies: None
+### Description: Create expandable tool usage visualization with performance metrics
+### Details:
+Features:
+- Capture all MCP tool calls
+- Show tool discovery process
+- Expandable details for each call
+- Response time for each tool
+- Cache hit/miss indicators
+- Total request time
+- Clean, collapsible UI (not overwhelming)
+- Like reasoning traces but for tools
+
+## 4. Add Transparency Endpoint [pending]
+### Dependencies: None
+### Description: Create get-system-prompt MCP tool for full methodology transparency
+### Details:
+Implementation:
+- New MCP tool: get-system-prompt
+- Returns full system constraints
+- Includes sacred text rules
+- Shows citation requirements
+- Documents all behavioral constraints
+- Add to MCP tools page
+- Include in API documentation
+
+## 5. Polish & Test Experience [pending]
+### Dependencies: None
+### Description: Ensure the showcase delivers the 'taste and see' moment
+### Details:
+Testing:
+- User acceptance with translators
+- Performance < 500ms typical
+- Sacred text compliance validation
+- Mobile device testing
+- X-ray feature usability
+- Clear value demonstration
+- Partner feedback incorporation
+- Final polish pass
+
