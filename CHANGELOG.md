@@ -2,8 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [4.6.0] - 2025-01-25
+
+### Added
+
+- Configuration-driven endpoint system for consistency across API/UI/MCP
+- Endpoint registry with validation and type safety
+- Response shape definitions for all resource types
+- MCPToolsV2 component for configuration-driven UI
+- Experimental features lab structure
+- Documentation archive for old/outdated docs
+- Performance metrics component
+- AI Chat interface components (ChatInterface, XRayPanel)
+- Sacred text constraints system
+- Real data validation tests
+- Navigation regression tests
+
+### Changed
+
+- Simplified navigation menu (removed deprecated pages)
+- Updated documentation structure with clear categories
+- Fixed time-travel dates in documentation (2023/2024 → 2025)
+- Reorganized UI routes for better clarity
+- Improved MCP Tools page with configuration-driven approach
+
+### Removed
+
+- Deprecated UI pages: /api-docs, /test, /developer-portal, /sverdle
+- Unused demo validation tests
+- Empty header component
+- Placeholder developer portal content
+
+### Fixed
+
+- Documentation dates now reflect actual project timeline
+- Navigation menu properly highlights active routes
+- Removed references to non-existent cache warming features
 
 ## [4.5.0] - 2024-12-20
 

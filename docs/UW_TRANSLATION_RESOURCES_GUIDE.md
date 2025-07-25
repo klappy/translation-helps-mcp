@@ -1024,12 +1024,12 @@ dublin_core:
   description: "Literal translation for Bible translators"
   format: "text/usfm"
   identifier: "ult"
-  issued: "2024-01-01"
+  issued: "2025-01-01"
   language:
     identifier: "en"
     title: "English"
     direction: "ltr"
-  modified: "2024-01-01T12:00:00-00:00"
+  modified: "2025-01-01T12:00:00-00:00"
   publisher: "unfoldingWord"
   relation:
     - "en/tn"

@@ -1,6 +1,6 @@
 {
   "name": "translation-helps-mcp",
-  "version": "4.5.0",
+  "version": "4.6.0",
   "description": "MCP Server for aggregating Bible translation resources from Door43",
   "type": "module",
   "scripts": {
@@ -14,8 +14,9 @@
     "preview": "cd ui && npm run preview",
     "preview:netlify": "cd ui && npm run preview",
     "preview:cloudflare": "cd ui && npx wrangler pages dev build",
-    "test": "vitest",
+    "test": "vitest --no-watch",
     "test:watch": "vitest watch",
+    "test:ci": "vitest run --reporter=dot",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -23,6 +24,8 @@
     "terminology:check": "npm run lint && echo '✅ Terminology check passed'",
     "typecheck": "tsc --noEmit",
     "deploy": "netlify deploy --prod",
+    "deploy:unattended": "bash scripts/deploy-unattended.sh",
+    "deploy:ci": "npm run test:ci && npm run build && netlify deploy --prod --json",
     "logs": "netlify functions:log",
     "test:smoke": "vitest run tests/smoke.test.ts",
     "test:parity": "vitest run tests/endpoint-parity.test.ts",
