@@ -1,6 +1,8 @@
 <script>
-	import { Clock, Database, Eye, EyeOff, MessageSquare, Send, Sparkles } from 'lucide-svelte';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { MessageSquare, Send, Sparkles, Eye, EyeOff, Clock, Database } from 'lucide-svelte';
+	import BibleVerse from '$lib/components/BibleVerse.svelte';
+	import TranslationWord from '$lib/components/TranslationWord.svelte';
 	import XRayPanel from './XRayPanel.svelte';
 	
 	// State

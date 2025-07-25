@@ -1,56 +1,45 @@
 /**
  * Endpoint Registry
- *
- * Central registry for all endpoint configurations.
- * Validates configurations and prevents duplicate paths.
+ * 
+ * Central registry for managing and validating endpoint configurations.
+ * Prevents duplicate paths and ensures configuration consistency.
  */
 
-import { EndpointConfig } from "./EndpointConfig";
+import type { EndpointConfig, ParamConfig } from './EndpointConfig';
+import { logger } from '../utils/logger';
 
-export class EndpointRegistry {
-  private static instance: EndpointRegistry;
+/**
+ * Registry for all endpoint configurations
+ */
+class EndpointRegistryManager {
   private endpoints: Map<string, EndpointConfig> = new Map();
   private pathIndex: Map<string, string> = new Map(); // path -> name mapping
-
-  private constructor() {}
-
-  static getInstance(): EndpointRegistry {
-    if (!EndpointRegistry.instance) {
-      EndpointRegistry.instance = new EndpointRegistry();
-    }
-    return EndpointRegistry.instance;
-  }
 
   /**
    * Register a new endpoint configuration
    */
   register(config: EndpointConfig): void {
-    // Validate required fields
-    if (!config.name || !config.path) {
-      throw new Error("Endpoint config must have name and path");
-    }
+    // Validate configuration
+    this.validateConfig(config);
 
     // Check for duplicate names
     if (this.endpoints.has(config.name)) {
-      throw new Error(`Endpoint ${config.name} already registered`);
+      throw new Error(`Endpoint '${config.name}' is already registered`);
     }
 
     // Check for duplicate paths
     if (this.pathIndex.has(config.path)) {
       const existingName = this.pathIndex.get(config.path);
-      throw new Error(`Path ${config.path} already registered by ${existingName}`);
-    }
-
-    // Validate parameters
-    for (const [paramName, paramConfig] of Object.entries(config.params)) {
-      if (!paramConfig.name || paramConfig.name !== paramName) {
-        throw new Error(`Parameter ${paramName} has invalid configuration`);
-      }
+      throw new Error(
+        `Path '${config.path}' is already used by endpoint '${existingName}'`
+      );
     }
 
     // Register the endpoint
     this.endpoints.set(config.name, config);
     this.pathIndex.set(config.path, config.name);
+
+    logger.debug(`Registered endpoint: ${config.name} at ${config.path}`);
   }
 
   /**
@@ -78,8 +67,75 @@ export class EndpointRegistry {
   /**
    * Get endpoints by category
    */
-  getByCategory(category: "core" | "experimental"): EndpointConfig[] {
-    return this.getAll().filter((config) => config.category === category);
+  getByCategory(category: 'core' | 'experimental'): EndpointConfig[] {
+    return this.getAll().filter(endpoint => endpoint.category === category);
+  }
+
+  /**
+   * Validate endpoint configuration
+   */
+  private validateConfig(config: EndpointConfig): void {
+    // Validate required fields
+    if (!config.name) {
+      throw new Error('Endpoint name is required');
+    }
+    if (!config.path) {
+      throw new Error('Endpoint path is required');
+    }
+    if (!config.category) {
+      throw new Error('Endpoint category is required');
+    }
+    if (!config.responseShape) {
+      throw new Error('Response shape is required');
+    }
+
+    // Validate path format
+    if (!config.path.startsWith('/')) {
+      throw new Error(`Path must start with '/' but got: ${config.path}`);
+    }
+
+    // Validate parameters
+    this.validateParams(config.params);
+
+    // Validate examples
+    if (!config.examples || config.examples.length === 0) {
+      throw new Error('At least one example is required');
+    }
+
+    // Validate data source
+    if (config.dataSource.type === 'dcs' && !config.dataSource.resource) {
+      throw new Error('DCS resource identifier is required for DCS data sources');
+    }
+  }
+
+  /**
+   * Validate parameter configurations
+   */
+  private validateParams(params: Record<string, ParamConfig | undefined>): void {
+    for (const [name, param] of Object.entries(params)) {
+      if (!param) continue;
+
+      // Validate param type
+      const validTypes = ['string', 'number', 'boolean', 'array'];
+      if (!validTypes.includes(param.type)) {
+        throw new Error(`Invalid parameter type '${param.type}' for param '${name}'`);
+      }
+
+      // Validate default value type matches declared type
+      if (param.default !== undefined) {
+        const defaultType = Array.isArray(param.default) ? 'array' : typeof param.default;
+        if (defaultType !== param.type) {
+          throw new Error(
+            `Default value type '${defaultType}' doesn't match declared type '${param.type}' for param '${name}'`
+          );
+        }
+      }
+
+      // Validate enum values
+      if (param.validation?.enum && param.type !== 'string') {
+        throw new Error(`Enum validation is only supported for string parameters`);
+      }
+    }
   }
 
   /**
@@ -89,75 +145,11 @@ export class EndpointRegistry {
     this.endpoints.clear();
     this.pathIndex.clear();
   }
-
-  /**
-   * Export all configurations for documentation
-   */
-  exportForDocs(): Record<string, any> {
-    const result: Record<string, any> = {
-      core: [],
-      experimental: [],
-    };
-
-    for (const config of this.getAll()) {
-      const exportedConfig = {
-        name: config.name,
-        path: config.path,
-        description: config.description,
-        params: Object.entries(config.params).map(([name, param]) => ({
-          name,
-          type: param.type,
-          required: param.required,
-          default: param.default,
-          description: param.description,
-          examples: param.examples,
-        })),
-        response: {
-          type: config.responseShape.type,
-          fields: config.responseShape.fields,
-          example: config.examples[0]?.response,
-        },
-      };
-
-      result[config.category].push(exportedConfig);
-    }
-
-    return result;
-  }
-
-  /**
-   * Validate all registered endpoints have unique paths and valid configs
-   */
-  validate(): string[] {
-    const errors: string[] = [];
-
-    for (const [name, config] of this.endpoints) {
-      // Check required fields
-      if (!config.description) {
-        errors.push(`${name}: missing description`);
-      }
-
-      // Check parameters have examples
-      for (const [paramName, param] of Object.entries(config.params)) {
-        if (!param.examples || param.examples.length === 0) {
-          errors.push(`${name}.${paramName}: missing examples`);
-        }
-      }
-
-      // Check has at least one example
-      if (!config.examples || config.examples.length === 0) {
-        errors.push(`${name}: missing examples`);
-      }
-
-      // Check performance targets for core endpoints
-      if (config.category === "core" && !config.performance) {
-        errors.push(`${name}: core endpoint missing performance targets`);
-      }
-    }
-
-    return errors;
-  }
 }
 
 // Export singleton instance
-export const endpointRegistry = EndpointRegistry.getInstance();
+export const EndpointRegistry = new EndpointRegistryManager();
+
+// Export types
+export type { EndpointConfig, ParamConfig } from './EndpointConfig';
+export type { ResourceShape } from './EndpointConfig';

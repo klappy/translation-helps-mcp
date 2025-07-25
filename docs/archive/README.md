@@ -1,28 +1,24 @@
 # Documentation Archive
 
-This directory contains documentation that has been archived for historical reference or because it describes features/approaches that are no longer current.
+This directory contains archived documentation that is no longer actively maintained or relevant to the current implementation.
 
-## Structure
+## Archive Structure
 
-- **old-prds/** - Product Requirements Documents from before the 2025 refactor
-- **deprecated-guides/** - Guides for features that have been removed or significantly changed
+- **old-prds/** - Product Requirement Documents from before the project inception (January 2025)
+- **deprecated-guides/** - Guides for features that have been removed or superseded
 - **experimental-features/** - Documentation for experimental features that didn't make it to production
-- **cache-warming/** - Documentation related to the removed cache warming functionality
+- **cache-warming/** - Old cache warming documentation (feature was removed)
 
 ## Why Archive?
 
-Documents are archived rather than deleted to:
+Documents are moved here when they:
+- Reference dates before the project started (anything before January 2025)
+- Describe features that have been removed
+- Contain outdated information that could confuse new developers
+- Were placeholder or aspirational documentation that was never implemented
 
-1. Preserve historical context
-2. Understand past design decisions
-3. Reference old approaches if needed
-4. Maintain a record of what was tried and why it was changed
+## Note
 
-## Archived Items
+These documents are kept for historical reference only. For current documentation, see the main `/docs` directory.
 
-Each subdirectory contains a log of what was archived and when. Items are archived when:
-
-- They reference outdated implementations
-- They describe removed features
-- They contain time-travel dates (references to dates before project start)
-- They document experimental features that were never promoted to core
+Last updated: January 2025

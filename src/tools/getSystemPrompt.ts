@@ -1,12 +1,12 @@
 /**
  * Get System Prompt Tool
- *
+ * 
  * Returns the complete system prompt and constraints for full transparency
  * about how the AI assistant operates.
  */
 
-import { SACRED_TEXT_SYSTEM_PROMPT } from "../config/SacredTextConstraints";
-import { logger } from "../utils/logger";
+import { SACRED_TEXT_SYSTEM_PROMPT } from '../config/SacredTextConstraints';
+import { logger } from '../utils/logger';
 
 export interface GetSystemPromptParams {
   includeImplementationDetails?: boolean;
@@ -35,60 +35,60 @@ export async function getSystemPrompt(
   params: GetSystemPromptParams = {}
 ): Promise<GetSystemPromptResponse> {
   try {
-    logger.info("Getting system prompt for transparency");
+    logger.info('Getting system prompt for transparency');
 
     const response: GetSystemPromptResponse = {
       systemPrompt: SACRED_TEXT_SYSTEM_PROMPT,
       constraints: {
         sacredText: [
-          "Scripture must be quoted verbatim, character for character",
-          "No paraphrasing or summarization of scripture allowed",
-          "No theological interpretation permitted",
-          "Verse numbers must be included in quotes",
+          'Scripture must be quoted verbatim, character for character',
+          'No paraphrasing or summarization of scripture allowed',
+          'No theological interpretation permitted',
+          'Verse numbers must be included in quotes'
         ],
         citations: [
-          "All resources must be cited in [Resource - Reference] format",
-          "Citations must be listed at the end of each response",
-          "Translation helps can be reworded but must cite source",
-          "Clear distinction between scripture and translation helps",
+          'All resources must be cited in [Resource - Reference] format',
+          'Citations must be listed at the end of each response',
+          'Translation helps can be reworded but must cite source',
+          'Clear distinction between scripture and translation helps'
         ],
         transparency: [
-          "System prompt is fully accessible via this tool",
-          "All constraints are documented and enforced",
-          "X-Ray tool shows all MCP tool usage",
-          "Performance metrics are visible for all operations",
-        ],
+          'System prompt is fully accessible via this tool',
+          'All constraints are documented and enforced',
+          'X-Ray tool shows all MCP tool usage',
+          'Performance metrics are visible for all operations'
+        ]
       },
-      version: "1.0.0",
-      lastUpdated: "2025-07-25",
+      version: '1.0.0',
+      lastUpdated: '2025-07-25'
     };
 
     if (params.includeImplementationDetails) {
       response.implementationDetails = {
         validationFunctions: [
-          "validateScriptureQuote() - Ensures exact quote matching",
-          "extractCitations() - Extracts all citations from response",
-          "checkForInterpretation() - Detects theological interpretation",
+          'validateScriptureQuote() - Ensures exact quote matching',
+          'extractCitations() - Extracts all citations from response',
+          'checkForInterpretation() - Detects theological interpretation'
         ],
         errorHandling: [
-          "Invalid references return clear error messages",
-          "Missing resources are explicitly stated",
-          "All errors include actionable suggestions",
+          'Invalid references return clear error messages',
+          'Missing resources are explicitly stated',
+          'All errors include actionable suggestions'
         ],
         performanceTargets: {
-          "Single verse": "< 200ms",
-          "Verse range": "< 300ms",
-          "Full chapter": "< 500ms",
-          "With caching": "< 100ms",
-          "Chat response": "< 2000ms",
-        },
+          'Single verse': '< 200ms',
+          'Verse range': '< 300ms',
+          'Full chapter': '< 500ms',
+          'With caching': '< 100ms',
+          'Chat response': '< 2000ms'
+        }
       };
     }
 
     return response;
   } catch (error) {
-    logger.error("Error getting system prompt:", error);
-    throw new Error("Failed to retrieve system prompt");
+    logger.error('Error getting system prompt:', error);
+    throw new Error('Failed to retrieve system prompt');
   }
 }
 
@@ -96,19 +96,18 @@ export async function getSystemPrompt(
  * Tool metadata for MCP
  */
 export const getSystemPromptTool = {
-  name: "get_system_prompt",
-  description:
-    "Get the complete system prompt and constraints for full transparency about AI behavior",
+  name: 'get_system_prompt',
+  description: 'Get the complete system prompt and constraints for full transparency about AI behavior',
   inputSchema: {
-    type: "object",
+    type: 'object',
     properties: {
       includeImplementationDetails: {
-        type: "boolean",
-        description: "Include technical implementation details",
-        default: false,
-      },
-    },
-  },
+        type: 'boolean',
+        description: 'Include technical implementation details',
+        default: false
+      }
+    }
+  }
 };
 
 /**
@@ -119,9 +118,9 @@ export async function handleGetSystemPrompt(args: any = {}) {
   return {
     content: [
       {
-        type: "text",
-        text: JSON.stringify(result, null, 2),
-      },
-    ],
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
+      }
+    ]
   };
 }

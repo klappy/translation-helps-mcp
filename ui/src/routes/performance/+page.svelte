@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fade, fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { fly } from 'svelte/transition';
 
 	let currentMetrics = {
 		responseTime: 0,
