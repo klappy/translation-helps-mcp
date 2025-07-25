@@ -179,13 +179,18 @@ export async function fetchTranslationNotes(
   console.log(`📝 Parsed ${notes.length} translation notes`);
 
   // Separate verse notes from context notes
+  // Context notes include book-level (front:intro) and chapter-level (N:intro) notes
   const verseNotes = notes.filter(
-    (note: TranslationNote) =>
-      !note.reference.includes("intro") && !note.reference.includes("front:"),
+    (note: TranslationNote) => {
+      const ref = note.reference.toLowerCase();
+      return !ref.includes("intro") && !ref.includes("front:");
+    }
   );
   const contextNotes = notes.filter(
-    (note: TranslationNote) =>
-      note.reference.includes("intro") || note.reference.includes("front:"),
+    (note: TranslationNote) => {
+      const ref = note.reference.toLowerCase();
+      return ref.includes("intro") || ref.includes("front:");
+    }
   );
 
   const result: TranslationNotesResult = {
@@ -244,10 +249,16 @@ function parseTNFromTSV(
     let include = false;
     let noteRef = ref;
 
-    if (ref.includes("front:intro") || ref.includes("intro")) {
-      // This is an introduction note
+    if (ref.includes("front:intro")) {
+      // This is a book-level introduction note
       include = includeIntro || includeContext;
       noteRef = `${reference.book} Introduction`;
+    } else if (ref.match(/^\d+:intro$/)) {
+      // This is a chapter-level introduction note (e.g., "1:intro")
+      const chapterMatch = ref.match(/^(\d+):intro$/);
+      const chapterNum = parseInt(chapterMatch[1]);
+      include = (includeIntro || includeContext) && chapterNum === reference.chapter;
+      noteRef = `${reference.book} Chapter ${chapterNum} Introduction`;
     } else {
       // Parse chapter:verse reference
       const refMatch = ref.match(/(\d+):(\d+)/);
