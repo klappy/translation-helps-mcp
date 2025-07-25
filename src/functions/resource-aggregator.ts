@@ -201,7 +201,7 @@ export class ResourceAggregator {
 
         // Find the correct file from ingredients array
         const ingredient = resource.ingredients.find(
-          (ing) => ing.identifier === reference.book.toLowerCase()
+          (ing) => ing.identifier?.toLowerCase() === reference.book.toLowerCase()
         );
 
         if (!ingredient) {
