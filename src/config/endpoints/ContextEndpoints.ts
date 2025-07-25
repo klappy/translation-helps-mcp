@@ -1,337 +1,178 @@
 /**
  * Context Endpoint Configurations
- *
- * Defines configurations for combined resource fetching endpoints.
  */
 
-import type { EndpointConfig } from "../EndpointConfig";
+import { CommonParams, EndpointConfig } from "../EndpointConfig";
+import { ResponseShapes } from "../ResponseShapes";
 
-/**
- * Get Context endpoint
- */
 export const GetContextEndpoint: EndpointConfig = {
   name: "get-context",
-  path: "/api/get-context",
+  path: "/get-context",
   category: "core",
-  description:
-    "Get comprehensive context for a Bible reference including notes, words, and scripture",
+  description: "Get comprehensive translation context for a scripture reference",
+
   params: {
-    reference: {
-      type: "string",
-      required: true,
-      description: "Bible reference",
-      validation: {
-        pattern: "^[A-Za-z0-9\\s]+\\s+\\d+(:\\d+(-\\d+)?)?$",
-      },
-    },
-    language: {
-      type: "string",
-      required: false,
-      default: "en",
-      description: "Language code",
-    },
-    organization: {
-      type: "string",
-      required: false,
-      default: "unfoldingWord",
-      description: "Organization name",
-    },
-    includeRawData: {
-      type: "boolean",
-      required: false,
-      default: false,
-      description: "Include raw USFM and TSV data",
-    },
-    maxTokens: {
-      type: "number",
-      required: false,
-      description: "Maximum tokens for context (for AI applications)",
-    },
-    deepAnalysis: {
+    reference: CommonParams.reference,
+    language: CommonParams.language,
+    includeScripture: {
+      name: "includeScripture",
       type: "boolean",
       required: false,
       default: true,
-      description: "Perform deep analysis of surrounding context",
+      description: "Include scripture text in response",
+      examples: ["true", "false"],
+    },
+    includeNotes: {
+      name: "includeNotes",
+      type: "boolean",
+      required: false,
+      default: true,
+      description: "Include translation notes",
+      examples: ["true", "false"],
+    },
+    includeWords: {
+      name: "includeWords",
+      type: "boolean",
+      required: false,
+      default: true,
+      description: "Include translation words",
+      examples: ["true", "false"],
+    },
+    includeQuestions: {
+      name: "includeQuestions",
+      type: "boolean",
+      required: false,
+      default: false,
+      description: "Include translation questions",
+      examples: ["true", "false"],
     },
   },
-  dataSource: {
-    type: "computed",
-  },
-  responseShape: {
-    type: "context",
-    fields: {
-      reference: {
-        type: "string",
-        description: "The reference being analyzed",
-      },
-      scripture: {
-        type: "object",
-        description: "Scripture text for the reference",
-      },
-      notes: {
-        type: "array",
-        description: "Translation notes for the reference",
-      },
-      words: {
-        type: "array",
-        description: "Translation words linked to the reference",
-      },
-      questions: {
-        type: "array",
-        description: "Comprehension questions",
-        optional: true,
-      },
-      bookIntro: {
-        type: "object",
-        description: "Book introduction",
-        optional: true,
-      },
-      chapterIntro: {
-        type: "object",
-        description: "Chapter introduction",
-        optional: true,
-      },
-      metadata: {
-        type: "object",
-        description: "Analysis metadata",
-      },
-    },
-  },
-  examples: [
-    {
-      params: { reference: "John 3:16" },
-      response: {
-        reference: "John 3:16",
-        scripture: {
-          ult: "For God so loved the world...",
-          ust: "God loved the people of the world so much...",
-        },
-        notes: [
-          {
-            quote: "For God so loved",
-            note: "This emphasizes the great love of God...",
-          },
-        ],
-        words: [
-          {
-            term: "love",
-            definition: "To love is to act consistently...",
-          },
-          {
-            term: "believe",
-            definition: "To believe is to trust...",
-          },
-        ],
-        metadata: {
-          notesFound: 1,
-          wordsFound: 2,
-          tokenEstimate: 1500,
-        },
-      },
-    },
-  ],
-  performance: {
-    expectedMs: 800,
-    cacheStrategy: "moderate",
-  },
-};
 
-/**
- * Get Words for Reference endpoint
- */
-export const GetWordsForReferenceEndpoint: EndpointConfig = {
-  name: "get-words-for-reference",
-  path: "/api/get-words-for-reference",
-  category: "core",
-  description: "Get all translation word articles for words in a verse",
-  params: {
-    reference: {
-      type: "string",
-      required: true,
-      description: "Bible reference",
-      validation: {
-        pattern: "^[A-Za-z0-9\\s]+\\s+\\d+(:\\d+(-\\d+)?)?$",
-      },
-    },
-    language: {
-      type: "string",
-      required: false,
-      default: "en",
-      description: "Language code",
-    },
-    organization: {
-      type: "string",
-      required: false,
-      default: "unfoldingWord",
-      description: "Organization name",
-    },
-  },
   dataSource: {
-    type: "computed",
+    type: "aggregated",
+    dependencies: [
+      "fetch-scripture",
+      "fetch-translation-notes",
+      "fetch-translation-word-links",
+      "fetch-translation-words",
+      "fetch-translation-questions",
+    ],
   },
-  responseShape: {
-    type: "words",
-    fields: {
-      words: {
-        type: "array",
-        description: "Array of translation word articles",
-      },
-      reference: {
-        type: "string",
-        description: "The reference",
-      },
-      language: {
-        type: "string",
-        description: "Language code",
-      },
-      totalWords: {
-        type: "number",
-        description: "Total number of words found",
-      },
-    },
-  },
-  examples: [
-    {
-      params: { reference: "John 3:16" },
-      response: {
-        words: [
-          {
-            term: "love",
-            title: "Love",
-            definition: "To love is to act consistently...",
-            occurrence: 1,
-          },
-          {
-            term: "believe",
-            title: "Believe",
-            definition: "To believe is to trust...",
-            occurrence: 1,
-          },
-        ],
-        reference: "John 3:16",
-        language: "en",
-        totalWords: 2,
-      },
-    },
-  ],
-  performance: {
-    expectedMs: 600,
-    cacheStrategy: "moderate",
-  },
-};
 
-/**
- * Fetch Resources endpoint (combined fetching)
- */
-export const FetchResourcesEndpoint: EndpointConfig = {
-  name: "fetch-resources",
-  path: "/api/fetch-resources",
-  category: "core",
-  description: "Fetch multiple resource types in a single request",
-  params: {
-    reference: {
-      type: "string",
-      required: true,
-      description: "Bible reference",
-    },
-    language: {
-      type: "string",
-      required: false,
-      default: "en",
-      description: "Language code",
-    },
-    organization: {
-      type: "string",
-      required: false,
-      default: "unfoldingWord",
-      description: "Organization name",
-    },
-    resources: {
-      type: "array",
-      required: false,
-      default: ["scripture", "notes", "questions", "words"],
-      description: "Resource types to fetch",
-    },
-  },
-  dataSource: {
-    type: "computed",
-  },
-  responseShape: {
-    type: "context",
-    fields: {
-      reference: {
-        type: "string",
-        description: "The reference",
-      },
-      scripture: {
-        type: "object",
-        description: "Scripture text",
-        optional: true,
-      },
-      translationNotes: {
-        type: "array",
-        description: "Translation notes",
-        optional: true,
-      },
-      translationQuestions: {
-        type: "array",
-        description: "Comprehension questions",
-        optional: true,
-      },
-      translationWords: {
-        type: "array",
-        description: "Translation words",
-        optional: true,
-      },
-      metadata: {
-        type: "object",
-        description: "Request metadata",
-      },
-    },
-  },
+  responseShape: ResponseShapes.context,
+
   examples: [
     {
       params: {
         reference: "John 3:16",
-        resources: ["scripture", "notes", "words"],
+        language: "en",
+        includeScripture: true,
+        includeNotes: true,
+        includeWords: true,
+        includeQuestions: false,
       },
       response: {
-        reference: "John 3:16",
         scripture: {
           text: "For God so loved the world...",
           version: "ult",
         },
-        translationNotes: [
+        notes: [
           {
-            quote: "For God so loved",
-            note: "This emphasizes...",
+            title: "For God so loved the world",
+            content: "This could also be translated as...",
           },
         ],
-        translationWords: [
-          {
-            term: "love",
-            definition: "To love is...",
-          },
+        words: [
+          { word: "God", definition: "..." },
+          { word: "love", definition: "..." },
+          { word: "world", definition: "..." },
         ],
-        metadata: {
-          resourcesRequested: 3,
-          resourcesFound: 3,
-          responseTime: 750,
-        },
+        questions: [],
+        reference: "John 3:16",
+        language: "en",
       },
+      description: "Full context for John 3:16",
     },
   ],
+
   performance: {
-    expectedMs: 1000,
-    cacheStrategy: "moderate",
+    targetMs: 800,
+    cacheable: true,
+    cacheKey: "{language}:context:{reference}:{options}",
+  },
+
+  mcp: {
+    toolName: "getContext",
+    description:
+      "Get comprehensive Bible study context including scripture, notes, and word definitions",
   },
 };
 
-/**
- * All context endpoints
- */
-export const ContextEndpoints = [
-  GetContextEndpoint,
-  GetWordsForReferenceEndpoint,
-  FetchResourcesEndpoint,
-];
+export const GetWordsForReferenceEndpoint: EndpointConfig = {
+  name: "get-words-for-reference",
+  path: "/get-words-for-reference",
+  category: "core",
+  description: "Get all translation words linked to a specific reference",
+
+  params: {
+    reference: CommonParams.reference,
+    language: CommonParams.language,
+  },
+
+  dataSource: {
+    type: "aggregated",
+    dependencies: ["fetch-translation-word-links", "fetch-translation-words"],
+  },
+
+  responseShape: {
+    type: "context",
+    fields: [
+      { name: "words", type: "array", description: "Array of translation words with definitions" },
+      { name: "reference", type: "string", description: "Scripture reference" },
+      { name: "language", type: "string", description: "Language code" },
+    ],
+    example: {
+      words: [
+        { word: "faith", definition: "..." },
+        { word: "love", definition: "..." },
+      ],
+      reference: "John 3:16",
+      language: "en",
+    },
+  },
+
+  examples: [
+    {
+      params: { reference: "John 3:16", language: "en" },
+      response: {
+        words: [
+          {
+            word: "God",
+            definition: '# God\n\n## Definition:\n\nIn the Bible, the term "God" refers to...',
+          },
+          {
+            word: "love",
+            definition: "# love, beloved\n\n## Definition:\n\nTo love is to care for...",
+          },
+        ],
+        reference: "John 3:16",
+        language: "en",
+      },
+      description: "All words for John 3:16",
+    },
+  ],
+
+  performance: {
+    targetMs: 600,
+    cacheable: true,
+    cacheKey: "{language}:words-for-ref:{reference}",
+  },
+
+  mcp: {
+    toolName: "getWordsForReference",
+    description: "Get all translation word definitions for words in a specific verse",
+  },
+};
+
+// Export all context endpoints
+export const ContextEndpoints = [GetContextEndpoint, GetWordsForReferenceEndpoint];

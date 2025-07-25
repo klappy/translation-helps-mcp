@@ -1,207 +1,171 @@
 /**
  * Discovery Endpoint Configurations
- *
- * Defines configurations for language and resource discovery endpoints.
  */
 
-import type { EndpointConfig } from "../EndpointConfig";
-import { DiscoveryShape } from "../ResponseShapes";
+import { CommonParams, EndpointConfig } from "../EndpointConfig";
+import { ResponseShapes } from "../ResponseShapes";
 
-/**
- * Get Languages endpoint
- */
 export const GetLanguagesEndpoint: EndpointConfig = {
   name: "get-languages",
-  path: "/api/get-languages",
+  path: "/get-languages",
   category: "core",
-  description: "Discover available languages with resource metadata",
+  description: "Discover available languages for translation resources",
+
   params: {
-    organization: {
-      type: "string",
-      required: false,
-      default: "unfoldingWord",
-      description: "Organization name",
-    },
-    includeAlternateNames: {
+    includeMetadata: {
+      name: "includeMetadata",
       type: "boolean",
       required: false,
       default: false,
-      description: "Include alternate language names",
-    },
-    resource: {
-      type: "string",
-      required: false,
-      description: 'Filter by resource availability (e.g., "ult", "tn")',
+      description: "Include detailed language metadata",
+      examples: ["true", "false"],
     },
   },
+
   dataSource: {
-    type: "computed",
+    type: "dcs",
+    transformation: "json-parse",
+    endpoint: "/api/v1/catalog/list",
   },
-  responseShape: DiscoveryShape,
+
+  responseShape: ResponseShapes.discovery,
+
   examples: [
     {
-      params: { organization: "unfoldingWord" },
+      params: { includeMetadata: false },
       response: {
         items: [
-          {
-            code: "en",
-            name: "English",
-            direction: "ltr",
-            resources: ["ult", "ust", "tn", "tw", "tq", "ta"],
-          },
-          {
-            code: "es",
-            name: "Español",
-            direction: "ltr",
-            resources: ["ult", "tn", "tw"],
-          },
+          { code: "en", name: "English", nativeName: "English" },
+          { code: "es", name: "Spanish", nativeName: "Español" },
+          { code: "fr", name: "French", nativeName: "Français" },
         ],
+        total: 3,
         metadata: {
-          totalLanguages: 250,
-          withScripture: 150,
-          withHelps: 100,
+          source: "dcs",
+          lastUpdated: "2025-01-01",
         },
-        totalCount: 250,
       },
+      description: "List of available languages",
     },
   ],
+
   performance: {
-    expectedMs: 400,
-    cacheStrategy: "moderate",
+    targetMs: 500,
+    cacheable: true,
+    cacheKey: "languages:{includeMetadata}",
+  },
+
+  mcp: {
+    toolName: "getLanguages",
+    description: "Get list of languages with available Bible translation resources",
   },
 };
 
-/**
- * Get Available Books endpoint
- */
 export const GetAvailableBooksEndpoint: EndpointConfig = {
   name: "get-available-books",
-  path: "/api/get-available-books",
+  path: "/get-available-books",
   category: "core",
-  description: "Get books available for a specific resource",
+  description: "Get list of Bible books available for a specific resource",
+
   params: {
-    language: {
-      type: "string",
-      required: true,
-      description: "Language code",
-    },
-    resource: {
-      type: "string",
-      required: true,
-      description: 'Resource type (e.g., "ult", "tn")',
-    },
-    organization: {
-      type: "string",
-      required: false,
-      default: "unfoldingWord",
-      description: "Organization name",
-    },
+    language: CommonParams.language,
+    resource: CommonParams.resource,
   },
+
   dataSource: {
     type: "dcs",
+    transformation: "json-parse",
+    endpoint: "/api/v1/repos/{owner}/{resource}/contents",
   },
-  responseShape: DiscoveryShape,
+
+  responseShape: ResponseShapes.discovery,
+
   examples: [
     {
       params: { language: "en", resource: "ult" },
       response: {
         items: [
-          { id: "GEN", name: "Genesis", testament: "OT", chapters: 50 },
-          { id: "EXO", name: "Exodus", testament: "OT", chapters: 40 },
-          { id: "MAT", name: "Matthew", testament: "NT", chapters: 28 },
-          { id: "JHN", name: "John", testament: "NT", chapters: 21 },
+          { id: "gen", name: "Genesis", testament: "OT" },
+          { id: "exo", name: "Exodus", testament: "OT" },
+          { id: "mat", name: "Matthew", testament: "NT" },
         ],
+        total: 66,
         metadata: {
-          totalBooks: 66,
-          oldTestament: 39,
-          newTestament: 27,
+          resource: "ult",
+          language: "en",
+          coverage: "complete",
         },
-        totalCount: 66,
       },
+      description: "Books available in ULT",
     },
   ],
+
   performance: {
-    expectedMs: 300,
-    cacheStrategy: "aggressive",
+    targetMs: 400,
+    cacheable: true,
+    cacheKey: "{language}:{resource}:books",
   },
-  errorHandling: {
-    resourceNotFound: "Resource not available in this language",
-    languageNotSupported: "Language not supported",
+
+  mcp: {
+    toolName: "getAvailableBooks",
+    description: "Discover which Bible books are available for a resource",
   },
 };
 
-/**
- * List Available Resources endpoint
- */
 export const ListAvailableResourcesEndpoint: EndpointConfig = {
   name: "list-available-resources",
-  path: "/api/list-available-resources",
+  path: "/list-available-resources",
   category: "core",
-  description: "List all available resource types",
+  description: "List all available resources for a language",
+
   params: {
-    language: {
-      type: "string",
-      required: false,
-      description: "Filter by language",
-    },
-    organization: {
-      type: "string",
-      required: false,
-      default: "unfoldingWord",
-      description: "Organization name",
-    },
-    subject: {
-      type: "string",
-      required: false,
-      description: 'Filter by subject (e.g., "Bible", "Aligned Bible")',
-    },
+    language: CommonParams.language,
   },
+
   dataSource: {
     type: "dcs",
+    transformation: "json-parse",
+    endpoint: "/api/v1/repos/{owner}",
   },
-  responseShape: DiscoveryShape,
+
+  responseShape: ResponseShapes.discovery,
+
   examples: [
     {
       params: { language: "en" },
       response: {
         items: [
-          {
-            id: "ult",
-            name: "unfoldingWord Literal Text",
-            type: "scripture",
-            format: "usfm",
-          },
-          {
-            id: "tn",
-            name: "Translation Notes",
-            type: "helps",
-            format: "tsv",
-          },
-          {
-            id: "tw",
-            name: "Translation Words",
-            type: "dictionary",
-            format: "markdown",
-          },
+          { id: "ult", name: "unfoldingWord Literal Text", type: "scripture" },
+          { id: "ust", name: "unfoldingWord Simplified Text", type: "scripture" },
+          { id: "tn", name: "Translation Notes", type: "helps" },
+          { id: "tw", name: "Translation Words", type: "helps" },
+          { id: "twl", name: "Translation Word Links", type: "helps" },
+          { id: "tq", name: "Translation Questions", type: "helps" },
+          { id: "ta", name: "Translation Academy", type: "helps" },
         ],
+        total: 7,
         metadata: {
-          scriptureResources: 2,
-          helpResources: 5,
-          totalResources: 7,
+          language: "en",
+          organization: "unfoldingword",
         },
-        totalCount: 7,
       },
+      description: "All resources for English",
     },
   ],
+
   performance: {
-    expectedMs: 500,
-    cacheStrategy: "moderate",
+    targetMs: 400,
+    cacheable: true,
+    cacheKey: "{language}:resources",
+  },
+
+  mcp: {
+    toolName: "listAvailableResources",
+    description: "Discover all available translation resources for a language",
   },
 };
 
-/**
- * All discovery endpoints
- */
+// Export all discovery endpoints
 export const DiscoveryEndpoints = [
   GetLanguagesEndpoint,
   GetAvailableBooksEndpoint,
