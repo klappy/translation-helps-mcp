@@ -3,7 +3,7 @@
  * Single source of truth for all MCP tool calls
  */
 
-import { ToolRegistry, ToolFormatters, type MCPToolResponse } from '../../../src/contracts/ToolContracts';
+import { ToolRegistry, ToolFormatters, type MCPToolResponse } from '../../../../src/contracts/ToolContracts';
 
 export class UnifiedMCPHandler {
   private baseUrl: string;
