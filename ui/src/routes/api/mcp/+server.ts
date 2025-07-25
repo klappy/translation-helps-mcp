@@ -242,8 +242,44 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				// const result = await handler(args);
 				// return json(result);
 
-				// For now, handle just the get_system_prompt tool
-				if (toolName === 'get_system_prompt') {
+				// Handle tools by calling the dedicated endpoints
+				if (toolName === 'fetch_scripture') {
+					const params = new URLSearchParams({
+						reference: args.reference,
+						language: args.language || 'en',
+						organization: args.organization || 'unfoldingWord',
+						includeVerseNumbers: 'true',
+						format: 'text'
+					});
+					
+					try {
+						// Call the underlying endpoint handler directly
+						const endpoint = await import('../fetch-scripture/+server.js');
+						const mockRequest = new Request(`http://localhost/api/fetch-scripture?${params}`);
+						const response = await endpoint.GET({ url: new URL(mockRequest.url), request: mockRequest });
+						
+						if (response.ok) {
+							const data = await response.json();
+							return json({
+								content: [{
+									type: 'text',
+									text: data.ult || data.ust || 'Scripture not found'
+								}]
+							});
+						} else {
+							throw new Error('Failed to fetch scripture');
+						}
+					} catch (error) {
+						console.error('Scripture fetch error:', error);
+						return json({
+							content: [{
+								type: 'text',
+								text: 'Error fetching scripture. Please try again.'
+							}]
+						});
+					}
+				}
+				else if (toolName === 'get_system_prompt') {
 					const response = {
 						systemPrompt: SACRED_TEXT_SYSTEM_PROMPT,
 						constraints: {
