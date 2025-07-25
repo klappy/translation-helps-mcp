@@ -56,20 +56,48 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 		
 		scrollToBottom();
 		
-		// Simulate API call with mock response
-		setTimeout(() => {
+		// Call the chat API
+		try {
+			const response = await fetch('/api/chat', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					message: userMessage.content,
+					history: messages.slice(0, -1), // Exclude current user message
+					enableXRay: true
+				})
+			});
+			
+			if (!response.ok) {
+				throw new Error('Failed to get response');
+			}
+			
+			const data = await response.json();
+			
 			const assistantMessage = {
 				id: (Date.now() + 1).toString(),
 				role: 'assistant',
-				content: getMockResponse(userMessage.content),
+				content: data.content,
 				timestamp: new Date(),
-				xrayData: getMockXrayData()
+				xrayData: data.xrayData
 			};
 			
 			messages = [...messages, assistantMessage];
+			currentXRayData = data.xrayData;
+			
+		} catch (error) {
+			console.error('Chat error:', error);
+			const errorMessage = {
+				id: (Date.now() + 1).toString(),
+				role: 'assistant',
+				content: 'Sorry, I encountered an error. Please try again.',
+				timestamp: new Date()
+			};
+			messages = [...messages, errorMessage];
+		} finally {
 			isLoading = false;
 			scrollToBottom();
-		}, 1500);
+		}
 	}
 	
 	// Handle Enter key
@@ -78,60 +106,6 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 			event.preventDefault();
 			sendMessage();
 		}
-	}
-	
-	// Mock response generator
-	function getMockResponse(query) {
-		const lowerQuery = query.toLowerCase();
-		
-		if (lowerQuery.includes('john 3:16')) {
-			return `Here's John 3:16 from the ULT:
-
-"For God so loved the world that he gave his only begotten Son, so that everyone who believes in him will not perish but will have eternal life."
-
-[Scripture - John 3:16 ULT]`;
-		}
-		
-		if (lowerQuery.includes('love') || lowerQuery.includes('agape')) {
-			return `The Greek word "agape" (ἀγάπη) appears frequently in the New Testament:
-
-**Definition**: Unconditional, self-sacrificial love
-**Usage**: Often describes God's love for humanity
-**Key verses**: 1 Corinthians 13, 1 John 4:8
-
-[Translation Words - Love/Agape]`;
-		}
-		
-		return `I can help you explore Bible passages and translation resources. Try asking about:
-- A specific verse (e.g., "What does John 3:16 say?")
-- Translation notes for a passage
-- The meaning of specific words
-- Translation questions
-
-What would you like to know?`;
-	}
-	
-	// Mock X-ray data
-	function getMockXrayData() {
-		return {
-			tools: [
-				{
-					id: 'tool-1',
-					name: 'fetch_scripture',
-					params: { reference: 'John 3:16', version: 'ult' },
-					response: { text: 'For God so loved...' },
-					duration: 145,
-					cached: true
-				}
-			],
-			totalTime: 145,
-			citations: ['Scripture - John 3:16 ULT'],
-			timeline: [
-				{ time: 0, event: 'Request received' },
-				{ time: 10, event: 'Tool: fetch_scripture' },
-				{ time: 145, event: 'Response sent' }
-			]
-		};
 	}
 </script>
 

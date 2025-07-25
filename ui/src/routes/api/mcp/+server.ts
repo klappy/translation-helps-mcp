@@ -2,6 +2,7 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { getVersion } from '../../../../../src/version.js';
+import { SACRED_TEXT_SYSTEM_PROMPT } from '../../../../../src/config/SacredTextConstraints.js';
 
 // Import our existing tool handlers
 // TEMPORARILY COMMENTED OUT - These imports require dependencies not available in UI build
@@ -41,6 +42,20 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			case 'tools/list':
 				return json({
 					tools: [
+						{
+							name: 'get_system_prompt',
+							description: 'Get the complete system prompt and constraints for full transparency about AI behavior',
+							inputSchema: {
+								type: 'object',
+								properties: {
+									includeImplementationDetails: {
+										type: 'boolean',
+										description: 'Include implementation details and validation functions'
+									}
+								},
+								required: []
+							}
+						},
 						{
 							name: 'fetch_scripture',
 							description: 'Fetch Bible scripture text for a specific reference',
@@ -201,80 +216,76 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				});
 
 			case 'tools/call': {
-				const { name, arguments: args } = body.params || body;
+				const toolName = body.params?.name;
+				const args = body.params?.arguments || {};
 
-				// TEMPORARILY DISABLED - Tool handlers need to be reimplemented for UI build
-				return json({
-					error: {
-						code: ErrorCode.MethodNotFound,
-						message: 'Tool handlers temporarily disabled in UI build'
+				// TEMPORARILY COMMENTED OUT - Tool handlers require dependencies not available in UI build
+				// const handlers = {
+				// 	fetch_scripture: handleFetchScripture,
+				// 	get_context: handleGetContext,
+				// 	fetch_translation_notes: handleFetchTranslationNotes,
+				// 	fetch_translation_questions: handleFetchTranslationQuestions,
+				// 	get_words_for_reference: handleGetWordsForReference,
+				// 	get_translation_word: handleGetTranslationWord,
+				// 	browse_translation_words: handleBrowseTranslationWords,
+				// 	fetch_resources: handleFetchResources,
+				// 	search_resources: handleSearchResources,
+				// 	get_languages: handleGetLanguages,
+				// 	extract_references: handleExtractReferences
+				// };
+
+				// const handler = handlers[toolName];
+				// if (!handler) {
+				// 	throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
+				// }
+
+				// const result = await handler(args);
+				// return json(result);
+
+				// For now, handle just the get_system_prompt tool
+				if (toolName === 'get_system_prompt') {
+					const response = {
+						systemPrompt: SACRED_TEXT_SYSTEM_PROMPT,
+						constraints: {
+							scriptureHandling: 'VERBATIM - Quote scripture character for character',
+							interpretation: 'FORBIDDEN - No theological interpretation allowed',
+							citations: 'REQUIRED - All resources must be cited',
+							transparency: 'FULL - All decisions and sources visible'
+						},
+						version: '1.0.0',
+						lastUpdated: '2025-07-25'
+					};
+					
+					if (args.includeImplementationDetails) {
+						response.implementationDetails = {
+							validationFunctions: [
+								'validateScriptureQuote - Ensures quotes are verbatim',
+								'extractCitations - Extracts all resource citations',
+								'checkForInterpretation - Flags interpretation attempts'
+							],
+							enforcementMechanisms: [
+								'Pre-response validation',
+								'Citation extraction and display',
+								'Interpretation detection and blocking'
+							]
+						};
 					}
-				}, { status: 501 });
-
-				// Route to appropriate handler
-				/* COMMENTED OUT - Needs UI-compatible implementation
-				switch (name) {
-					case 'fetch_scripture': {
-						const scriptureResult = await handleFetchScripture(args);
-						return json(scriptureResult);
-					}
-
-					case 'fetch_translation_notes': {
-						const notesResult = await handleFetchTranslationNotes(args);
-						return json(notesResult);
-					}
-
-					case 'get_languages': {
-						const langResult = await handleGetLanguages(args || {});
-						return json(langResult);
-					}
-
-					case 'fetch_translation_questions':
-					case 'fetch-translation-questions': {
-						// Support hyphenated alias
-						const questionsResult = await handleFetchTranslationQuestions(args);
-						return json(questionsResult);
-					}
-
-					case 'browse_translation_words': {
-						const browseResult = await handleBrowseTranslationWords(args);
-						return json(browseResult);
-					}
-
-					case 'get_context': {
-						const contextResult = await handleGetContext(args);
-						return json(contextResult);
-					}
-
-					case 'extract_references': {
-						const refsResult = await handleExtractReferences(args);
-						return json(refsResult);
-					}
-
-					case 'fetch_resources': {
-						const resourcesResult = await handleFetchResources(args);
-						return json(resourcesResult);
-					}
-
-					case 'get_words_for_reference': {
-						const wordsForRefResult = await handleGetWordsForReference(args);
-						return json(wordsForRefResult);
-					}
-
-					case 'get_translation_word': {
-						const translationWordResult = await handleGetTranslationWord(args);
-						return json(translationWordResult);
-					}
-
-					case 'search_resources': {
-						const searchResult = await handleSearchResources(args);
-						return json(searchResult);
-					}
-
-					default:
-						throw new Error(`Unknown method: ${name}`);
+					
+					return json({
+						content: [{
+							type: 'text',
+							text: JSON.stringify(response, null, 2)
+						}]
+					});
 				}
-				*/
+
+				// Temporary response for other tools
+				return json({
+					content: [{
+						type: 'text',
+						text: 'Tool temporarily unavailable during refactoring. Please check back soon!'
+					}]
+				});
 			}
 
 			case 'ping':
