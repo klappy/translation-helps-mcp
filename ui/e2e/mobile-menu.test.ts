@@ -86,12 +86,12 @@ test.describe('Mobile Menu', () => {
 		const mobileMenu = page.locator('[data-testid="mobile-menu"]');
 		await expect(mobileMenu).toBeVisible();
 		
-		// Click on Test page
-		const testLink = mobileMenu.locator('a[href="/test"]');
-		await testLink.click();
+		// Click on MCP Tools page
+		const mcpLink = mobileMenu.locator('a[href="/mcp-tools"]');
+		await mcpLink.click();
 		
-		// Should navigate to test page
-		await expect(page).toHaveURL('/test');
+		// Should navigate to MCP Tools page
+		await expect(page).toHaveURL('/mcp-tools');
 		
 		// Mobile menu should close after navigation
 		await expect(mobileMenu).not.toBeVisible();

@@ -29,18 +29,18 @@ test.describe('Mobile Menu E2E Tests', () => {
 		// Verify the hamburger icon changed to X
 		await expect(menuButton).toContainText(''); // The X icon
 		
-		// Navigate to the Test page via mobile menu
-		const testLink = mobileMenu.locator('a[href="/test"]');
-		await expect(testLink).toBeVisible();
-		await testLink.click();
+		// Navigate to the MCP Tools page via mobile menu
+		const mcpLink = mobileMenu.locator('a[href="/mcp-tools"]');
+		await expect(mcpLink).toBeVisible();
+		await mcpLink.click();
 		
-		// Verify we navigated to the test page
-		await expect(page).toHaveURL('/test');
+		// Verify we navigated to the MCP Tools page
+		await expect(page).toHaveURL('/mcp-tools');
 		
 		// Verify the mobile menu closed after navigation
 		await expect(mobileMenu).not.toBeVisible();
 		
-		// Open the menu again from the test page
+		// Open the menu again from the MCP Tools page
 		await menuButton.click();
 		await expect(mobileMenu).toBeVisible();
 		
