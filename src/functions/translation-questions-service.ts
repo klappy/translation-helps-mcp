@@ -47,24 +47,37 @@ function parseTQFromTSV(tsvData: string, reference: ParsedReference): Translatio
   const questions: TranslationQuestion[] = [];
   let questionId = 1;
 
+  // Log first few lines for debugging
+  if (lines.length > 0) {
+    console.log(`📋 First TSV line: ${lines[0]}`);
+    console.log(`📋 Parsing questions for ${reference.book} ${reference.chapter}:${reference.verse || '*'}`);
+  }
+
   for (const line of lines) {
     const columns = line.split("\t");
     if (columns.length < 7) continue; // Skip malformed lines
 
-    const [book, chapter, verse, , question, response] = columns;
+    // TSV format: reference, id, tags, quote, occurrence, question, response
+    const [ref, id, tags, quote, occurrence, question, response] = columns;
+    
+    // Parse the reference (e.g., "1:1" -> chapter 1, verse 1)
+    const refMatch = ref.match(/^(\d+):(\d+)$/);
+    if (!refMatch) continue;
+    
+    const chapter = parseInt(refMatch[1]);
+    const verse = parseInt(refMatch[2]);
 
     // Only include questions for the requested reference
     if (
-      book.toLowerCase() === reference.book.toLowerCase() &&
-      parseInt(chapter) === reference.chapter &&
-      (reference.verse === undefined || parseInt(verse) === reference.verse)
+      chapter === reference.chapter &&
+      (reference.verse === undefined || verse === reference.verse)
     ) {
       questions.push({
-        id: `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
-        reference: `${book} ${chapter}:${verse}`,
+        id: id || `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
+        reference: `${reference.bookName} ${chapter}:${verse}`,
         question: question.trim(),
         response: response.trim(),
-        tags: [], // Could be populated from additional columns if available
+        tags: tags ? tags.split(',').map(t => t.trim()) : [],
       });
     }
   }
