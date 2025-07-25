@@ -290,7 +290,7 @@ export async function discoverAvailableResources(
   const searchPromises = searches.flatMap((search) =>
     search.subjects.map(async (subject) => {
       try {
-        const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=${encodeURIComponent(subject)}&lang=${language}&owner=${organization}`;
+        const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=${encodeURIComponent(subject)}&lang=${language}&owner=${organization}&metadataType=rc&includeMetadata=true`;
         console.log(`🔍 Catalog search: ${subject} for ${language}/${organization}`);
 
         const response = await fetch(catalogUrl);
