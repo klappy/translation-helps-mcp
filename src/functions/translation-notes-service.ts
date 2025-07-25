@@ -128,14 +128,17 @@ export async function fetchTranslationNotes(
   console.log(
     `📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`,
   );
+  console.log(`🔍 Looking for book: ${parsedRef.book} (lowercased: ${parsedRef.book.toLowerCase()})`);
+  console.log(`📦 Ingredients available:`, resourceInfo.ingredients?.map((i: any) => i.identifier));
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
     (ing: { identifier?: string }) =>
-      ing.identifier === parsedRef.book.toLowerCase(),
+      ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase(),
   );
 
   if (!ingredient) {
+    console.error(`❌ Book ${parsedRef.book} not found in ingredients:`, resourceInfo.ingredients);
     throw new Error(
       `Book ${parsedRef.book} not found in resource ${resourceInfo.name}`,
     );
