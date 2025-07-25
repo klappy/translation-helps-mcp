@@ -46,31 +46,57 @@ export const ToolFormatters = {
   },
 
   notes: (data: any): string => {
-    if (data.notes && Array.isArray(data.notes)) {
-      return data.notes.map((note: any, index: number) => 
-        `${index + 1}. ${note.text || note.note || note.content}`
-      ).join('\n\n') || 'No translation notes found';
-    }
+    let notes: any[] = [];
+    
+    // Collect all notes (verseNotes and contextNotes)
     if (data.verseNotes && Array.isArray(data.verseNotes)) {
-      return data.verseNotes.map((note: any, index: number) => 
-        `${index + 1}. ${note.note || note.text}`
-      ).join('\n\n') || 'No translation notes found';
+      notes = notes.concat(data.verseNotes);
     }
-    return 'No translation notes found';
+    if (data.contextNotes && Array.isArray(data.contextNotes)) {
+      notes = notes.concat(data.contextNotes);
+    }
+    if (data.notes && Array.isArray(data.notes)) {
+      notes = data.notes;
+    }
+    
+    if (notes.length === 0) {
+      return 'No translation notes found';
+    }
+    
+    // Format notes with proper markdown
+    return notes.map((note: any, index: number) => {
+      const content = note.text || note.note || note.content || '';
+      // Replace escaped newlines with actual newlines
+      let unescapedContent = content.replace(/\\n/g, '\n');
+      
+      // Handle special reference links [[rc:///...]]
+      unescapedContent = unescapedContent.replace(/\[\[rc:\/\/\/([^\]]+)\]\]/g, '`$1`');
+      
+      // Format based on note type
+      if (note.reference?.includes('Introduction') || note.reference?.includes('Chapter')) {
+        // Context notes (introductions) - show as markdown sections
+        return `## ${note.reference}\n\n${unescapedContent}`;
+      } else {
+        // Verse notes - show as numbered list
+        return `**${index + 1}.** ${unescapedContent}`;
+      }
+    }).join('\n\n');
   },
 
   questions: (data: any): string => {
-    if (data.translationQuestions && Array.isArray(data.translationQuestions)) {
-      return data.translationQuestions.map((q: any, index: number) => 
-        `Q${index + 1}: ${q.question}\nA: ${q.response || q.answer}`
-      ).join('\n\n') || 'No translation questions found';
+    const questions = data.translationQuestions || data.questions || [];
+    
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return 'No translation questions found';
     }
-    if (data.questions && Array.isArray(data.questions)) {
-      return data.questions.map((q: any, index: number) => 
-        `Q${index + 1}: ${q.question}\nA: ${q.response || q.answer}`
-      ).join('\n\n') || 'No translation questions found';
-    }
-    return 'No translation questions found';
+    
+    return questions.map((q: any, index: number) => {
+      const question = q.question || '';
+      const answer = q.response || q.answer || '';
+      
+      // Format as markdown with bold question
+      return `**Q${index + 1}: ${question}**\n\n${answer}`;
+    }).join('\n\n---\n\n');
   },
 
   words: (data: any): string => {
