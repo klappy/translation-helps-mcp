@@ -130,7 +130,7 @@ export async function fetchTranslationQuestions(
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
-    (ing: { identifier?: string }) => ing.identifier === parsedRef.book.toLowerCase()
+    (ing: { identifier?: string }) => ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase()
   );
 
   if (!ingredient) {
