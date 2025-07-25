@@ -147,6 +147,29 @@ You have 9 main tasks with 45 subtasks total. Use task-master to:
 git add -A && git commit -m "feat: clear descriptive message"
 ```
 
+### 🚨 COMMIT MESSAGE RULES - NEVER GET STUCK! 🚨
+
+**NEVER use quotes or special characters in commit messages!**
+
+```bash
+# ❌ BAD - These will hang forever:
+git commit -m "fix: update "broken" endpoint"  # Nested quotes = death
+git commit -m 'fix: user's data handling'      # Apostrophes = stuck
+git commit -m "feat: add $variable support"    # $ = bash confusion
+
+# ✅ GOOD - These always work:
+git commit -m "fix: update broken endpoint"    # No nested quotes
+git commit -m "fix: user data handling"        # No apostrophes
+git commit -m "feat: add variable support"     # No special chars
+```
+
+**Safe commit message format:**
+
+- Start with type: feat/fix/chore/docs/refactor
+- Use only letters, numbers, spaces, dashes, colons
+- NO quotes, apostrophes, backticks, $, !, ?, or other special chars
+- Keep it under 72 characters
+
 ### Common Patterns
 
 ```bash
@@ -156,6 +179,26 @@ git add -A && git commit -m "feat: clear descriptive message"
 # Always use flags
 npm install --yes
 rm -rf directory  # No -i flag!
+```
+
+### 🛑 Commands That Will Hang - AVOID THESE!
+
+```bash
+# ❌ These wait for input and ruin everything:
+npm test          # Watches for file changes forever
+npm run dev       # Starts dev server and waits
+npx something     # Often asks for install confirmation
+git commit        # Opens editor and waits
+rm -i file        # Asks for confirmation
+cp -i src dest    # Asks before overwriting
+
+# ✅ Use these instead:
+npm test -- --no-watch     # Runs once and exits
+npm run dev &             # Runs in background (kill later)
+npx --yes something       # Auto-confirm installation
+git commit -m "message"   # Inline message, no editor
+rm -f file               # Force remove, no questions
+cp -f src dest          # Force copy, no questions
 ```
 
 ### Decision Making
