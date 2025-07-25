@@ -67,16 +67,16 @@
 
 		<div class="flex justify-center space-x-4">
 			<a
-				href="/test"
+				href="/mcp-tools"
 				class="rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 text-white transition-all hover:from-blue-600 hover:to-cyan-600 hover:shadow-lg"
 			>
-				Try Live Demo
+				Try MCP Tools
 			</a>
 			<a
-				href="/api-docs"
+				href="/chat"
 				class="rounded-lg border border-blue-500/50 px-6 py-3 text-blue-300 backdrop-blur-xl transition-all hover:border-blue-400 hover:bg-blue-500/10 hover:text-blue-200"
 			>
-				Interactive API Docs
+				AI Bible Assistant
 			</a>
 		</div>
 	</section>

@@ -93,6 +93,35 @@
 	const mcpTools = {
 		core: [
 			{
+				name: 'Get System Prompt',
+				tool: 'get_system_prompt',
+				description:
+					'Get the complete system prompt and constraints for full transparency about AI behavior and sacred text handling.',
+				apiEndpoint: '/api/mcp',
+				method: 'POST',
+				category: 'core',
+				parameters: [
+					{
+						name: 'includeImplementationDetails',
+						required: false,
+						type: 'boolean',
+						example: false,
+						description: 'Include implementation details and validation functions'
+					}
+				],
+				example: {
+					request: {
+						method: 'tools/call',
+						params: {
+							name: 'get_system_prompt',
+							arguments: {
+								includeImplementationDetails: false
+							}
+						}
+					}
+				}
+			},
+			{
 				name: 'Fetch Scripture',
 				tool: 'translation_helps_fetch_scripture',
 				description:

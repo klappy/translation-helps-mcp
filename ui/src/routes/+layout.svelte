@@ -18,9 +18,6 @@
 		Github,
 		Menu,
 		MessageSquare,
-		Settings,
-		TestTube,
-		TrendingUp,
 		X,
 		Zap
 	} from 'lucide-svelte';
@@ -36,46 +33,34 @@
 			description: 'Overview and features'
 		},
 		{
-			href: '/api-docs',
-			label: 'API Docs',
-			icon: BookOpen,
-			description: 'Interactive API documentation'
-		},
-		{
-			href: '/developer-portal',
-			label: 'Developer',
-			icon: Settings,
-			description: 'Developer tools and portal'
-		},
-		{
-			href: '/test',
-			label: 'Test',
-			icon: TestTube,
-			description: 'Test API endpoints'
-		},
-		{
-			href: '/chat',
-			label: 'Chat',
-			icon: MessageSquare,
-			description: 'AI-powered Bible assistant'
-		},
-		{
 			href: '/mcp-tools',
 			label: 'MCP Tools',
 			icon: Code,
 			description: 'MCP server tools and API documentation'
 		},
 		{
-			href: '/performance',
-			label: 'Performance',
-			icon: TrendingUp,
-			description: 'Performance & cost analysis'
+			href: '/chat',
+			label: 'AI Assistant',
+			icon: MessageSquare,
+			description: 'AI-powered Bible assistant'
 		},
 		{
-			href: '/rag-manifesto',
-			label: 'RAG Manifesto',
-			icon: Zap,
-			description: 'The right way to do Bible RAG'
+			href: '/changelog',
+			label: 'Changelog',
+			icon: Activity,
+			description: 'Updates and releases'
+		},
+		{
+			href: '/whitepaper',
+			label: 'Whitepaper',
+			icon: BookOpen,
+			description: 'Technical documentation'
+		},
+		{
+			href: '/about',
+			label: 'About',
+			icon: Droplets,
+			description: 'About this project'
 		}
 	];
 
@@ -560,13 +545,7 @@
 							<Code class="h-4 w-4 transition-transform group-hover:scale-110" />
 							<span class="text-sm">MCP Tools API</span>
 						</a>
-						<a
-							href="/test"
-							class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
-						>
-							<TestTube class="h-4 w-4 transition-transform group-hover:scale-110" />
-							<span class="text-sm">Test API</span>
-						</a>
+
 						<a
 							href="/rag-manifesto"
 							class="group flex items-center space-x-3 text-gray-300 transition-all duration-300 hover:text-blue-300"
@@ -604,7 +583,6 @@
 							<a href="/mcp-tools" class="text-gray-400 transition-colors hover:text-blue-300"
 								>API</a
 							>
-							<a href="/test" class="text-gray-400 transition-colors hover:text-blue-300">Test</a>
 						</div>
 					</div>
 				</div>
