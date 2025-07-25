@@ -90,7 +90,7 @@
     "netlify-functions",
     "door43"
   ],
-  "author": "Christopher Klapp",
+  "author": "Klappy",
   "license": "MIT",
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
