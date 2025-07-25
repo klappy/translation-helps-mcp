@@ -1,0 +1,82 @@
+# Task ID: 2
+# Title: Remove Deprecated UI Pages
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Delete unused/confusing UI pages and focus on MCP Tools page as single interface
+# Details:
+Remove these routes completely:
+- /api-docs/* (MCP Tools has 100% coverage)
+- /test/* (black box, nobody knows what it does)
+- /api-test/* (duplicate of test)
+- /developer-portal/* (10% complete, full of empty content)
+- /pricing/* (not relevant)
+- /sverdle/* (demo app)
+- /mobile-test/* (if unused)
+
+Keep only:
+- Home
+- MCP Tools (primary interface)
+- Changelog
+- Whitepaper
+- About
+
+# Test Strategy:
+Verify all routes return 404, ensure no broken links remain, run E2E tests, check no bookmarks break (project is 2 weeks old)
+
+# Subtasks:
+## 1. Remove API Docs Route [pending]
+### Dependencies: None
+### Description: Delete /api-docs route since MCP Tools provides better coverage
+### Details:
+Delete:
+- ui/src/routes/api-docs/+page.svelte
+- ui/src/routes/api-docs/+page.ts
+- Any api-docs specific components
+Remove from navigation in +layout.svelte
+Note: MCP Tools page already has everything API Docs tried to show
+
+## 2. Remove Test Pages [pending]
+### Dependencies: None
+### Description: Delete /test (useless black box) and related test pages
+### Details:
+Delete:
+- ui/src/routes/test/* (nobody knows what this does)
+- ui/src/routes/api-test/*
+- ui/src/routes/mobile-test/*
+Remove from navigation
+Ensure MCP Tools provides all needed testing functionality
+
+## 3. Remove Developer Portal [pending]
+### Dependencies: None
+### Description: Delete developer portal that's 10% complete
+### Details:
+Delete:
+- ui/src/routes/developer-portal/*
+Remove from navigation
+Note: Either nuke it or elude to it coming later (we choose nuke)
+Move any useful content to main docs
+
+## 4. Remove Pricing and Sverdle [pending]
+### Dependencies: None
+### Description: Delete irrelevant pricing page and demo Sverdle app
+### Details:
+Delete:
+- ui/src/routes/pricing/*
+- ui/src/routes/sverdle/*
+Remove from navigation
+Clean up any Sverdle-specific assets
+Note: Project is 2 weeks old, no bookmarks exist
+
+## 5. Update Navigation & E2E Tests [pending]
+### Dependencies: 2.1, 2.2, 2.3, 2.4
+### Description: Clean up navigation menu and update E2E tests
+### Details:
+In +layout.svelte:
+- Remove all deleted route links
+- Keep only: Home, MCP Tools, Changelog, Whitepaper, About
+Update E2E tests:
+- Remove tests for deleted pages
+- Add comprehensive MCP Tools tests
+- Verify no broken links
+

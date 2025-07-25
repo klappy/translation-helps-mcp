@@ -1,0 +1,82 @@
+# Task ID: 6
+# Title: Update MCP Tools Page for 100% Coverage
+# Status: pending
+# Dependencies: 5
+# Priority: high
+# Description: Make MCP Tools the primary interface with complete visibility and consistent UX
+# Details:
+MCP Tools page requirements:
+1. Full parameter editing with validation
+2. Performance metrics display
+3. Cache hit/miss visibility
+4. Full response with syntax highlighting
+5. Consistent UI across all endpoints
+6. Experimental lab in separate section (lower tab)
+7. Real data examples from config
+8. No more manual endpoint UI code
+
+This is how humans understand what's available to AI!
+
+# Test Strategy:
+Every endpoint works perfectly via MCP Tools, consistent UX, mobile responsive
+
+# Subtasks:
+## 1. Implement Core Section [pending]
+### Dependencies: None
+### Description: Create main section for core endpoints
+### Details:
+Structure:
+- Scripture section
+- Translation Helps section
+- Discovery section
+- Context section
+
+Use configuration to auto-populate
+Clear categorization
+No experimental features here
+
+## 2. Add Performance Visibility [pending]
+### Dependencies: 6.1
+### Description: Show performance metrics for each request
+### Details:
+Display:
+- Response time
+- Cache hit/miss
+- Data source (cache/API)
+- Request size
+- Stack trace for debugging
+Make it xray visibility for debugging
+
+## 3. Implement Experimental Lab Tab [pending]
+### Dependencies: 6.1
+### Description: Add separate section for experimental features
+### Details:
+Create lower tab/section:
+- Clearly marked 'Experimental'
+- Separate from core
+- Warning about stability
+- Same UI patterns
+- Don't clutter main menu
+
+## 4. Add Real Data Examples [pending]
+### Dependencies: 6.1
+### Description: Pull examples from endpoint configurations
+### Details:
+For each endpoint:
+- Show real parameter examples
+- Display actual response data
+- Multiple examples for complex endpoints
+- Copy-to-clipboard functionality
+- From configuration, not hardcoded
+
+## 5. Ensure Mobile Responsiveness [pending]
+### Dependencies: 6.1, 6.2, 6.3, 6.4
+### Description: Make MCP Tools work on all devices
+### Details:
+Implement:
+- Responsive parameter forms
+- Collapsible sections
+- Touch-friendly controls
+- Readable response display
+- Horizontal scroll for wide data
+

@@ -196,4 +196,42 @@ This file contains condensed summaries of completed migrations, deprecated platf
 
 ---
 
+## Archived PRD (December 2024)
+
+### Original Vision
+
+The translation-helps-mcp project aimed to provide a comprehensive MCP server for Bible translation resources, including:
+
+- Core uW resource fetching
+- AI-powered quality checking
+- Advanced caching and optimization
+- Performance monitoring
+- Multiple UI interfaces
+
+### What Was Built
+
+- Complete MCP implementation with 20+ tools
+- Multiple API endpoints (31 total)
+- Various UI pages for testing
+- Extensive documentation
+- Experimental features (AI, caching, etc.)
+
+### Why We're Refactoring
+
+- Feature creep led to confusion
+- Multiple overlapping implementations
+- Inconsistent documentation
+- Too many experimental features mixed with core
+- Manual endpoint management became unmaintainable
+
+### Lessons Learned
+
+1. Start with core functionality, add experiments later
+2. Configuration-driven > Copy-paste implementation
+3. Single source of truth for API interface
+4. Documentation should match implementation 1:1
+5. Separate experimental from production features
+
+---
+
 _This archive preserves institutional knowledge while keeping active documentation focused on current needs._

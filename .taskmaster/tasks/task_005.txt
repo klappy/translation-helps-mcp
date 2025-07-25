@@ -1,0 +1,90 @@
+# Task ID: 5
+# Title: Implement Core Endpoints via Config
+# Status: pending
+# Dependencies: 4
+# Priority: high
+# Description: Migrate core endpoints to configuration system with proper data transformation
+# Details:
+Implement these core endpoints with proper transformations:
+1. Scripture endpoints (USFM to clean text)
+2. Translation Notes (TSV parsing, reference filtering)
+3. Translation Words (article assembly, ToC endpoint)
+4. Translation Words Links (verse-to-word bridge)
+5. Translation Questions (TSV parsing)
+6. Translation Academy (article serving, ToC endpoint)
+7. Discovery endpoints (languages, books per resource)
+8. Context endpoints (combined fetching)
+
+Each must handle real data transformations, not just pass through
+
+# Test Strategy:
+Each endpoint returns properly transformed uW data, tests use real resource content
+
+# Subtasks:
+## 1. Implement Scripture Endpoints [pending]
+### Dependencies: None
+### Description: Configure scripture endpoints with USFM to text transformation
+### Details:
+Implement configs for:
+- fetch-scripture (accepts reference ranges)
+- fetch-ult-scripture
+- fetch-ust-scripture
+Handle:
+- Verse, verse ranges, pericopes, chapters
+- USFM to clean text extraction
+- Proper error messages for invalid references
+
+## 2. Implement Translation Helps [pending]
+### Dependencies: None
+### Description: Configure tN, tW, tWL with proper transformations
+### Details:
+Translation Notes:
+- TSV parsing
+- Reference filtering
+- Link to tA articles
+
+Translation Words:
+- Article assembly (title + parts)
+- Browse endpoint with ToC
+
+Translation Words Links:
+- Verse-to-word mapping
+- Not a browsable resource
+
+## 3. Implement Translation Academy [pending]
+### Dependencies: None
+### Description: Configure tA endpoints with ToC support
+### Details:
+Implement:
+- fetch-translation-academy (article serving)
+- browse-translation-academy (ToC)
+- Direct linking from tN
+- Markdown parsing
+- Article categorization
+
+## 4. Implement Discovery Endpoints [pending]
+### Dependencies: None
+### Description: Configure language and resource discovery
+### Details:
+get-languages:
+- Available languages with metadata
+- Filter by resource availability
+
+get-available-books:
+- Books per resource (not all in sync)
+- Clear indication of coverage
+- Better queries for resource-specific books
+
+## 5. Implement Context Endpoints [pending]
+### Dependencies: 5.1, 5.2, 5.3
+### Description: Configure combined resource fetching
+### Details:
+get-context:
+- Fetch multiple resources for reference
+- Consistent response format
+- Efficient batching
+
+get-words-for-reference:
+- All tW articles for words in verse
+- Uses tWL for mapping
+

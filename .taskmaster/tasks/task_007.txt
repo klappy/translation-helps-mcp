@@ -1,0 +1,80 @@
+# Task ID: 7
+# Title: Create Lab Environment Structure
+# Status: pending
+# Dependencies: 3
+# Priority: medium
+# Description: Set up experimental features in separate room of the house
+# Details:
+Create clear separation for experimental features:
+1. Different room in house (not different house)
+2. Shows on MCP Tools page as lower section/tab
+3. Separate MCP endpoint for lab features
+4. Clear experimental warnings
+5. Features that need approval before core promotion:
+   - AI quality checking
+   - AI summarization
+   - Smart endpoint inference
+   - Advanced caching
+   - Resource recommendations
+   - Automated ingestion
+
+# Test Strategy:
+Experimental features completely isolated, require explicit approval for promotion
+
+# Subtasks:
+## 1. Create Experimental Structure [pending]
+### Dependencies: None
+### Description: Set up directory structure for lab features
+### Details:
+Create:
+- src/experimental/
+- src/experimental/README.md (with big warnings)
+- Separate config for experimental endpoints
+- Clear naming convention (*-experimental.ts)
+- Migration path documentation
+
+## 2. Move AI Features to Lab [pending]
+### Dependencies: 7.1
+### Description: Relocate AI features that aren't battle-tested
+### Details:
+Move:
+- ai-content-summarizer.ts
+- ai-quality-checker.ts
+- Any AI inference features
+Add warnings about experimental status
+Document approval process for core promotion
+
+## 3. Move Advanced Features [pending]
+### Dependencies: 7.1
+### Description: Relocate poorly executed good ideas
+### Details:
+Move these 'good ideas poorly executed':
+- Resource recommendations
+- Advanced caching strategies
+- Smart endpoint inference
+- Automated content ingestion
+- Language coverage (needs better implementation)
+
+## 4. Create Lab MCP Endpoint [pending]
+### Dependencies: 7.2, 7.3
+### Description: Separate MCP server endpoint for experimental
+### Details:
+Create:
+- /api/mcp-experimental
+- Clear warnings in tool descriptions
+- Separate documentation
+- Note that LLMs might try to use these
+- Approval process for promotion
+
+## 5. Document Promotion Criteria [pending]
+### Dependencies: 7.4
+### Description: Define how features graduate to core
+### Details:
+Document requirements:
+- Your explicit approval required
+- Partner approval required
+- Performance benchmarks met
+- Real-world testing completed
+- Documentation complete
+- Tests with real data
+
