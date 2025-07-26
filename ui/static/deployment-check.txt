@@ -1,0 +1,5 @@
+DEPLOYMENT CHECK
+================
+Last update: 2025-07-26 23:33 UTC
+Fix applied: UnifiedMCPHandler for all tools
+Expected behavior: No more empty bullet points in translation notes
