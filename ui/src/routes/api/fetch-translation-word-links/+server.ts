@@ -26,10 +26,17 @@ export const GET: RequestHandler = async ({ url }) => {
 		const result = await aggregator.aggregateResources(parsedReference, {
 			language,
 			organization,
-			resources: ['wordLinks']
+			resources: ['links']
 		});
 
-		return json(result);
+		// Return just the translation word links with metadata
+		return json({
+			links: result.translationWordLinks || [],
+			reference,
+			language,
+			organization,
+			timestamp: new Date().toISOString()
+		});
 	} catch (error) {
 		console.error('Error in fetch-translation-word-links:', error);
 		return json(
