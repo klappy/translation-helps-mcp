@@ -56,7 +56,7 @@ export const ToolFormatters = {
       notes = notes.concat(data.contextNotes);
     }
     if (data.notes && Array.isArray(data.notes)) {
-      notes = data.notes;
+      notes = notes.concat(data.notes);
     }
     
     if (notes.length === 0) {
@@ -65,7 +65,7 @@ export const ToolFormatters = {
     
     // Format notes with proper markdown
     return notes.map((note: any, index: number) => {
-      const content = note.text || note.note || note.content || '';
+      const content = note.text || note.note || note.Note || note.content || '';
       // Replace escaped newlines with actual newlines
       let unescapedContent = content.replace(/\\n/g, '\n');
       
@@ -83,8 +83,8 @@ export const ToolFormatters = {
       });
       
       // Add support reference link if available
-      if (note.supportReference) {
-        const rcPath = note.supportReference.replace('rc://*/', '');
+      if (note.supportReference || note.SupportReference) {
+        const rcPath = (note.supportReference || note.SupportReference).replace('rc://*/', '');
         const parts = rcPath.split('/');
         if (parts[0] === 'ta' && parts[1] === 'man') {
           const articleId = parts.slice(2).join('/');
@@ -94,16 +94,18 @@ export const ToolFormatters = {
       }
       
       // Format based on note type
-      if (note.reference?.includes('Introduction') || note.reference?.includes('Chapter')) {
+      const reference = note.reference || note.Reference;
+      if (reference?.includes('Introduction') || reference?.includes('Chapter')) {
         // Context notes (introductions) - show as markdown sections
-        return `## ${note.reference}\n\n${unescapedContent}`;
+        return `## ${reference}\n\n${unescapedContent}`;
       } else {
         // Verse notes - show with quote context when available
         let formattedNote = `**${index + 1}.**`;
         
         // Add quote if present (Greek/Hebrew with English translation)
-        if (note.quote && note.quote.trim()) {
-          formattedNote += ` **${note.quote}**:`;
+        const quote = note.quote || note.Quote;
+        if (quote && quote.trim()) {
+          formattedNote += ` **${quote}**:`;
         }
         
         // Add the note content on the same line
