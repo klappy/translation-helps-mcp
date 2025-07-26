@@ -376,7 +376,7 @@ class PlatformComparison {
     if (!platformConfig) return { error: "Unknown platform" };
 
     let monthlyCost = 0;
-    let requestsPerMonth = stats.totalRequests * 30; // Extrapolate daily to monthly
+    const requestsPerMonth = stats.totalRequests * 30; // Extrapolate daily to monthly
 
     if (platform === "netlify") {
       const executionCost =

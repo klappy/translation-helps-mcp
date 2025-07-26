@@ -231,7 +231,7 @@ async function applyTransformation(data: any, transformation: string, params: Re
 /**
  * Parse TSV data
  */
-function parseTSV(data: string): any[] {
+export function parseTSV(data: string): any[] {
   const lines = data.split('\n').filter(line => line.trim());
   if (lines.length === 0) return [];
   
