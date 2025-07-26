@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 /**
  * SvelteKit API Route for get-context
  * Auto-generated from shared handler with in-memory caching

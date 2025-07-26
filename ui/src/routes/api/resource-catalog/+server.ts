@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 /**
  * SvelteKit API Route: Resource Catalog
  * GET /api/resource-catalog?reference=...&language=...&organization=...

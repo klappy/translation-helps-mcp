@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 

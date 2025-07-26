@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 /**
  * SvelteKit API Route for fetch-ult-scripture
  * ULT/GLT Scripture Endpoint - Literal text with word alignment
