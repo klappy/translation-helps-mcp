@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify MCP Fix - Live Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .status { 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 8px; 
+            font-family: monospace;
+        }
+        .success { background: #064e3b; border: 2px solid #10b981; }
+        .error { background: #7f1d1d; border: 2px solid #ef4444; }
+        .loading { background: #78350f; border: 2px solid #fbbf24; }
+        pre { 
+            background: #374151; 
+            padding: 15px; 
+            border-radius: 4px; 
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        button:hover { background: #2563eb; }
+        .deployment-info {
+            background: #1f2937;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        h1 { color: #3b82f6; }
+        h2 { color: #10b981; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 MCP Translation Notes Fix Verification</h1>
+    
+    <div class="deployment-info">
+        <h3>Deployment URL</h3>
+        <p><code>https://emergency-investor-demo.translation-helps-mcp.pages.dev</code></p>
+        <p>Testing: <strong>Titus 1:5</strong> (the verse that was showing empty bullet points)</p>
+    </div>
+
+    <button onclick="runAllTests()">🚀 Run All Tests</button>
+    <button onclick="window.location.reload()">🔄 Refresh Page</button>
+
+    <h2>Test 1: Direct API Response</h2>
+    <div id="api-test" class="status loading">Waiting to test...</div>
+
+    <h2>Test 2: MCP Endpoint Response</h2>
+    <div id="mcp-test" class="status loading">Waiting to test...</div>
+
+    <h2>Test 3: Verify Fix Applied</h2>
+    <div id="fix-test" class="status loading">Waiting to verify fix...</div>
+
+    <script>
+        const BASE_URL = 'https://emergency-investor-demo.translation-helps-mcp.pages.dev';
+        const TEST_REF = 'Titus 1:5';
+
+        async function testDirectAPI() {
+            const div = document.getElementById('api-test');
+            div.className = 'status loading';
+            div.innerHTML = 'Testing direct API...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/fetch-translation-notes?reference=${encodeURIComponent(TEST_REF)}&language=en&organization=unfoldingWord`);
+                const data = await response.json();
+                
+                const hasNotes = data.verseNotes && data.verseNotes.length > 0;
+                const firstNote = data.verseNotes?.[0];
+                
+                div.className = hasNotes ? 'status success' : 'status error';
+                div.innerHTML = `
+                    <strong>Status:</strong> ${response.status}<br>
+                    <strong>Has verseNotes:</strong> ${hasNotes}<br>
+                    <strong>Note count:</strong> ${data.verseNotes?.length || 0}<br>
+                    <strong>First note field:</strong> ${firstNote ? Object.keys(firstNote).join(', ') : 'N/A'}<br>
+                    <strong>Has content:</strong> ${firstNote?.note ? '✅ YES' : '❌ NO'}
+                    ${firstNote?.note ? `<pre>Preview: ${firstNote.note.substring(0, 150)}...</pre>` : ''}
+                `;
+            } catch (error) {
+                div.className = 'status error';
+                div.innerHTML = `Error: ${error.message}`;
+            }
+        }
+
+        async function testMCPEndpoint() {
+            const div = document.getElementById('mcp-test');
+            div.className = 'status loading';
+            div.innerHTML = 'Testing MCP endpoint...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/mcp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'tools/call',
+                        params: {
+                            name: 'fetch_translation_notes',
+                            arguments: {
+                                reference: TEST_REF,
+                                language: 'en',
+                                organization: 'unfoldingWord'
+                            }
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                const text = data.content?.[0]?.text || '';
+                
+                // Check for empty bullet points pattern
+                const hasEmptyBullets = /\*\*\d+\.\*\*\s*\n\n\*\*\d+\.\*\*/.test(text) || 
+                                       /\*\*1\.\*\*\s*\n\n\*\*2\.\*\*/.test(text);
+                const hasContent = text.includes('elder') || text.includes('appoint') || text.includes('crete');
+                
+                div.className = hasContent && !hasEmptyBullets ? 'status success' : 'status error';
+                div.innerHTML = `
+                    <strong>Status:</strong> ${response.status}<br>
+                    <strong>Has empty bullets:</strong> ${hasEmptyBullets ? '❌ YES (BAD)' : '✅ NO (GOOD)'}<br>
+                    <strong>Has real content:</strong> ${hasContent ? '✅ YES' : '❌ NO'}<br>
+                    <strong>Response length:</strong> ${text.length} chars<br>
+                    <pre>${text.substring(0, 400)}${text.length > 400 ? '...' : ''}</pre>
+                `;
+            } catch (error) {
+                div.className = 'status error';
+                div.innerHTML = `Error: ${error.message}`;
+            }
+        }
+
+        async function verifyFix() {
+            const div = document.getElementById('fix-test');
+            div.className = 'status loading';
+            div.innerHTML = 'Verifying fix is deployed...';
+
+            try {
+                // Test multiple verses to ensure consistency
+                const testVerses = ['Titus 1:1', 'Titus 1:5', 'John 3:16'];
+                const results = [];
+
+                for (const ref of testVerses) {
+                    const response = await fetch(`${BASE_URL}/api/mcp`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            method: 'tools/call',
+                            params: {
+                                name: 'fetch_translation_notes',
+                                arguments: { reference: ref, language: 'en', organization: 'unfoldingWord' }
+                            }
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    const text = data.content?.[0]?.text || '';
+                    const hasEmptyBullets = /\*\*\d+\.\*\*\s*\n\n\*\*\d+\.\*\*/.test(text);
+                    const hasContent = text.length > 50 && !hasEmptyBullets;
+                    
+                    results.push({
+                        ref,
+                        success: hasContent,
+                        hasEmptyBullets,
+                        length: text.length
+                    });
+                }
+
+                const allSuccess = results.every(r => r.success);
+                div.className = allSuccess ? 'status success' : 'status error';
+                div.innerHTML = `
+                    <strong>Overall:</strong> ${allSuccess ? '✅ FIX IS WORKING!' : '❌ FIX NOT DEPLOYED YET'}<br>
+                    <strong>Details:</strong><br>
+                    ${results.map(r => `
+                        ${r.ref}: ${r.success ? '✅' : '❌'} 
+                        (${r.hasEmptyBullets ? 'has empty bullets' : 'good'}, 
+                        ${r.length} chars)
+                    `).join('<br>')}
+                    <br><br>
+                    <strong>Next steps:</strong><br>
+                    ${allSuccess ? 
+                        '✅ The fix is deployed and working! You can now test on the chat page.' : 
+                        '⏳ Wait 2-5 minutes for Cloudflare to deploy, then refresh this page.'
+                    }
+                `;
+            } catch (error) {
+                div.className = 'status error';
+                div.innerHTML = `Error: ${error.message}`;
+            }
+        }
+
+        async function runAllTests() {
+            await testDirectAPI();
+            await testMCPEndpoint();
+            await verifyFix();
+        }
+
+        // Auto-run tests after 2 seconds
+        setTimeout(runAllTests, 2000);
+    </script>
+</body>
+</html>
