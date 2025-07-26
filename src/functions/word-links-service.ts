@@ -81,7 +81,7 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
   console.log(`🔄 Processing fresh word links request: ${responseKey}`);
 
   // Search catalog for Translation Word Links
-  const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Translation%20Word%20Links&lang=${language}&owner=${organization}`;
+  const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Words%20Links&lang=${language}&owner=${organization}`;
   console.log(`🔍 Searching catalog: ${catalogUrl}`);
 
   const catalogResponse = await fetch(catalogUrl);

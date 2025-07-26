@@ -556,7 +556,7 @@ export class ResourceAggregator {
   ): Promise<TranslationWordLink[]> {
     try {
       // STEP 1: Get resource metadata from catalog
-      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Word%20Links`;
+      const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Words%20Links`;
       const searchResponse = await fetch(searchUrl);
 
       if (!searchResponse.ok) {
