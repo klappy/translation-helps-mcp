@@ -34,7 +34,7 @@ A comprehensive MCP (Model Context Protocol) server that provides AI agents with
 
 ## 🌟 MCP via HTTP/Web API
 
-Translation Helps MCP supports both traditional MCP servers and modern **HTTP-based MCP** that runs perfectly on Cloudflare Workers without WebSockets or long-lived connections.
+Translation Helps MCP runs on **Cloudflare Pages** providing a modern HTTP-based MCP implementation that works perfectly without WebSockets or long-lived connections.
 
 ### ⚡ Live Production Deployment
 
@@ -385,8 +385,41 @@ npm run terminology:check     # Validate UW terminology compliance
 npm run typecheck             # TypeScript type checking
 
 # Build and Deploy
-npm run build                 # Build for production
-npm run preview               # Preview production build
+npm run build                 # Build for production (Cloudflare)
+npm run preview               # Preview production build locally
+npm run deploy                # Deploy to Cloudflare Pages
+```
+
+## 🚀 Deployment
+
+This project is deployed on **Cloudflare Pages** for optimal performance and global distribution.
+
+### Automatic Deployment
+
+Every push to the `main` branch automatically triggers deployment via GitHub Actions:
+
+1. **Fork this repository**
+2. **Set up Cloudflare Pages**:
+   - Connect your GitHub repository to Cloudflare Pages
+   - Set build command: `cd ui && npm install && npm run build`
+   - Set build output directory: `ui/.svelte-kit/cloudflare`
+   - Add compatibility flag: `nodejs_compat`
+   - Set compatibility date: `2024-09-23`
+
+3. **Configure GitHub Secrets** (for GitHub Actions):
+   - `CLOUDFLARE_API_TOKEN`: Your Cloudflare API token
+   - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
+
+4. **Push to main branch** - deployment happens automatically!
+
+### Manual Deployment
+
+```bash
+# Build the project
+npm run build
+
+# Deploy to Cloudflare Pages
+npm run deploy
 ```
 
 ### Pre-commit Hooks
