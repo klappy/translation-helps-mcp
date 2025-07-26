@@ -29,6 +29,14 @@ export const GET: RequestHandler = async ({ url }) => {
 			resources: ['links']
 		});
 
+		// Log what we got
+		console.log('API Result:', {
+			hasResult: !!result,
+			hasTranslationWordLinks: !!result.translationWordLinks,
+			linksCount: result.translationWordLinks?.length || 0,
+			sampleLink: result.translationWordLinks?.[0]
+		});
+
 		// Return just the translation word links with metadata
 		return json({
 			links: result.translationWordLinks || [],

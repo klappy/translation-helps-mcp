@@ -12,6 +12,7 @@ import {
   validateCleanText,
 } from "../utils/usfmExtractor.js";
 import { DCSApiClient } from "./DCSApiClient.js";
+import { parseTSV } from "../config/RouteGenerator.js";
 
 export interface ResourceOptions {
   language: string;
@@ -140,6 +141,7 @@ export class ResourceAggregator {
     if (options.resources.includes("links")) {
       promises.push(
         this.fetchTranslationWordLinks(reference, options).then((links) => {
+          console.log(`📊 TWL: Found ${links.length} links for ${reference.book} ${reference.chapter}:${reference.verse || '*'}`);
           result.translationWordLinks = links;
         })
       );
@@ -1103,42 +1105,47 @@ export class ResourceAggregator {
   }
 
   /**
-   * Parse Translation Word Links from TSV data
+   * Parse Translation Word Links from TSV data - using automatic parsing
    */
-  private parseTWLFromTSV(tsvData: string, reference: ParsedReference): TranslationWordLink[] {
-    const links: TranslationWordLink[] = [];
-
+  private parseTWLFromTSV(tsvData: string, reference: ParsedReference): any[] {
     try {
-      const lines = tsvData.split("\n").slice(1); // Skip header
+      // Use the generic parseTSV to preserve exact structure
+      const allRows = parseTSV(tsvData);
+      
+      // Filter rows based on reference
+      return allRows.filter(row => {
+        const ref = row.Reference;
+        if (!ref) return false;
+        
+        const refMatch = ref.match(/(\d+):(\d+)/);
+        if (!refMatch) return false;
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
+        const chapterNum = parseInt(refMatch[1]);
+        const verseNum = parseInt(refMatch[2]);
 
-        const cols = line.split("\t");
-        if (cols.length < 6) continue;
-
-        const chapter = parseInt(cols[1]);
-        const verse = parseInt(cols[2]);
-
-        // Filter for the requested reference
-        if (reference.chapter && chapter !== reference.chapter) continue;
-        if (reference.verse && verse !== reference.verse) continue;
-
-        const link: TranslationWordLink = {
-          word: cols[4] || "",
-          link: cols[5] || "",
-          occurrences: 1, // Could be calculated from the data
-        };
-
-        links.push(link);
-      }
+        // Check if this word link is in our range
+        if (reference.endVerse && reference.endVerse !== reference.verse) {
+          // Verse range within same chapter
+          return chapterNum === reference.chapter &&
+                 verseNum >= reference.verse! &&
+                 verseNum <= reference.endVerse;
+        } else if (reference.verse) {
+          // Single verse
+          return chapterNum === reference.chapter && verseNum === reference.verse;
+        } else {
+          // Full chapter
+          return chapterNum === reference.chapter;
+        }
+      }).map(row => ({
+        ...row,
+        Reference: `${reference.book} ${row.Reference}` // Keep original field name
+      }));
     } catch (error) {
       logger.error("Error parsing TWL TSV", {
         reference: this.formatReference(reference),
         error: error instanceof Error ? error.message : String(error),
       });
+      return [];
     }
-
-    return links;
   }
 }
