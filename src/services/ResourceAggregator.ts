@@ -143,6 +143,9 @@ export class ResourceAggregator {
         this.fetchTranslationWordLinks(reference, options).then((links) => {
           console.log(`📊 TWL: Found ${links.length} links for ${reference.book} ${reference.chapter}:${reference.verse || '*'}`);
           result.translationWordLinks = links;
+        }).catch((error) => {
+          console.error(`❌ TWL Error:`, error);
+          result.translationWordLinks = [];
         })
       );
     }
@@ -633,10 +636,12 @@ export class ResourceAggregator {
 
         if (tsvData) {
           const links = this.parseTWLFromTSV(tsvData, reference);
+          console.log(`🔍 parseTWLFromTSV returned ${links.length} links`);
           if (links.length > 0) {
             logger.info(
               `Successfully fetched ${links.length} translation word links from ${resourceName}`
             );
+            console.log(`✅ Returning ${links.length} TWL links`);
             return links;
           }
         }
