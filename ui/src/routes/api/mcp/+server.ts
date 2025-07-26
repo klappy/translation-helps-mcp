@@ -225,14 +225,26 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				
 				// Import the unified handler with proper base URL
 				// FORCE REBUILD: All tools now use UnifiedMCPHandler (no duplicate formatting)
+				console.log('[MCP ENDPOINT] Tool call:', toolName, 'Args:', JSON.stringify(args));
+				
 				const { UnifiedMCPHandler } = await import('$lib/mcp/UnifiedMCPHandler');
 				const handler = new UnifiedMCPHandler(url.origin);
 				
 				try {
+					console.log('[MCP ENDPOINT] Using UnifiedMCPHandler for:', toolName);
 					const result = await handler.handleToolCall(toolName, args);
+					console.log('[MCP ENDPOINT] Result preview:', JSON.stringify(result).substring(0, 300));
 					return json(result);
 				} catch (error) {
-					console.error(`MCP tool error for ${toolName}:`, error);
+					console.error(`[MCP ENDPOINT] Tool error for ${toolName}:`, error);
+					// Special logging for translation notes
+					if (toolName === 'fetch_translation_notes') {
+						console.error('[MCP ENDPOINT] Translation notes error details:', {
+							errorMessage: error instanceof Error ? error.message : 'Unknown error',
+							errorStack: error instanceof Error ? error.stack : 'No stack',
+							args: args
+						});
+					}
 					return json({
 						content: [{
 							type: 'text',
