@@ -1,5 +1,5 @@
 name = "translation-helps-mcp"
-compatibility_date = "2025-01-15"
+compatibility_date = "2024-09-23"
 pages_build_output_dir = "ui/.svelte-kit/cloudflare"
 
 # Enable Node.js compatibility for fs, path, etc.
