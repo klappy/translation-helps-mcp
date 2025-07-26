@@ -121,6 +121,48 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 				content = 'Sorry, I encountered an error fetching the translation notes. Please try again.';
 			}
 		}
+		// Handle Translation Academy requests
+		else if (lowerMessage.includes('translation academy') || lowerMessage.includes('article:')) {
+			// Extract article ID from parentheses or after colon
+			let articleId = '';
+			const parenMatch = message.match(/\(([^)]+)\)/);
+			const colonMatch = message.match(/article:\s*(\S+)/i);
+			
+			if (parenMatch) {
+				articleId = parenMatch[1];
+			} else if (colonMatch) {
+				articleId = colonMatch[1];
+			}
+			
+			if (articleId) {
+				// Call the Translation Academy endpoint directly
+				const taResponse = await fetch(`/api/fetch-translation-academy?articleId=${encodeURIComponent(articleId)}&language=en`);
+				
+				const toolStartTime = Date.now() - startTime;
+				
+				if (taResponse.ok) {
+					const taData = await taResponse.json();
+					
+					content = `# ${taData.title}\n\n${taData.content}\n\n[Translation Academy - ${articleId}]`;
+					
+					// Record tool usage
+					xrayData.tools.push({
+						id: 'tool-ta',
+						name: 'fetch_translation_academy',
+						params: { articleId, language: 'en' },
+						response: { title: taData.title },
+						duration: Date.now() - startTime - toolStartTime,
+						cached: false
+					});
+					xrayData.citations.push(`Translation Academy - ${articleId}`);
+					xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_translation_academy' });
+				} else {
+					content = `Could not find the Translation Academy article: ${articleId}`;
+				}
+			} else {
+				content = 'Please specify which Translation Academy article you\'d like to read.';
+			}
+		}
 		// Handle translation words requests
 		else if (lowerMessage.includes('mean') || lowerMessage.includes('word') || lowerMessage.includes('definition')) {
 			// Extract word - look for quoted words or specific biblical terms
