@@ -111,7 +111,14 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			
 			if (toolResponse.ok) {
 				const result = await toolResponse.json();
+				
+				// Debug logging
+				console.log('[CHAT DEBUG] MCP Response:', JSON.stringify(result).substring(0, 500));
+				
 				const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
+				
+				// Debug logging
+				console.log('[CHAT DEBUG] Formatted notes:', notesText.substring(0, 200));
 				
 				content = `Translation Notes for ${reference}:\n\n${notesText}\n\n[Translation Notes - ${reference}]`;
 				

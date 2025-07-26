@@ -224,6 +224,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				const args = body.params?.arguments || {};
 				
 				// Import the unified handler with proper base URL
+				// FORCE REBUILD: All tools now use UnifiedMCPHandler (no duplicate formatting)
 				const { UnifiedMCPHandler } = await import('$lib/mcp/UnifiedMCPHandler');
 				const handler = new UnifiedMCPHandler(url.origin);
 				
