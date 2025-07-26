@@ -85,7 +85,7 @@ class LoadTestRunner {
 
     const testsToRun = this.getTestsToRun();
 
-    let totalDuration = 0;
+    const totalDuration = 0;
     for (const testKey of testsToRun) {
       const test = TESTS[testKey];
       console.log(`\n📋 Running ${test.name}...`);

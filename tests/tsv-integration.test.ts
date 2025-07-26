@@ -1,7 +1,5 @@
 import { describe, test, expect, vi } from 'vitest';
 import { getTranslationNotes } from '../src/functions/translation-notes-service';
-import { getTranslationQuestions } from '../src/functions/translation-questions-service';
-import { getTranslationWords } from '../src/functions/translation-words-service';
 
 describe('TSV Integration Tests - Column Mapping Verification', () => {
   

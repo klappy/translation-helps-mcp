@@ -655,7 +655,7 @@ export class ResourceAggregator {
     let title = "";
     let content = "";
     let inFrontMatter = false;
-    let contentLines: string[] = [];
+    const contentLines: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
