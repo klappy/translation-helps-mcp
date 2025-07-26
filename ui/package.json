@@ -46,7 +46,6 @@
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.15.1",
 		"@neoconfetti/svelte": "^2.0.0",
-		"@sveltejs/adapter-netlify": "^5.0.0",
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
 		"@tailwindcss/vite": "^4.0.0",
