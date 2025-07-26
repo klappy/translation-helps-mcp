@@ -29,6 +29,9 @@
 		// Parse markdown to HTML
 		let html = marked.parse(content);
 		
+		// Handle RC links - convert to interactive elements
+		html = html.replace(/href="rc:([^"]+)"/g, 'href="#" data-rc-link="$1" onclick="return false;"');
+		
 		// Add Tailwind classes to HTML elements
 		html = html
 			// Headers
@@ -54,6 +57,20 @@
 		return html;
 	}
 	
+	// Handle RC link clicks
+	async function handleRCLinkClick(event) {
+		const link = event.target.closest('[data-rc-link]');
+		if (!link) return;
+		
+		const articleId = link.getAttribute('data-rc-link');
+		const articleName = link.textContent.replace('Learn more about ', '').replace('Learn more', '').trim();
+		
+		// Send a message asking about this article
+		const message = `Tell me about the Translation Academy article: ${articleName} (${articleId})`;
+		inputValue = message;
+		await sendMessage();
+	}
+	
 	// Welcome message
 	onMount(() => {
 		messages = [{
@@ -69,6 +86,14 @@ I can help you explore Bible passages and translation resources. I follow sacred
 Try asking me about a Bible verse, translation notes, or word meanings!`,
 			timestamp: new Date()
 		}];
+		
+		// Add event listener for RC links
+		document.addEventListener('click', handleRCLinkClick);
+	});
+	
+	onDestroy(() => {
+		// Clean up event listener
+		document.removeEventListener('click', handleRCLinkClick);
 	});
 	
 	// Auto-scroll to bottom
@@ -154,6 +179,24 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 	/* Additional markdown styling */
 	:global(.markdown-content) {
 		line-height: 1.6;
+	}
+	
+	/* RC Link styling */
+	:global(.markdown-content [data-rc-link]) {
+		background-color: rgba(59, 130, 246, 0.2);
+		padding: 0.125rem 0.5rem;
+		border-radius: 0.375rem;
+		text-decoration: none;
+		font-style: italic;
+		transition: all 0.2s;
+		display: inline-block;
+		margin: 0.125rem 0;
+	}
+	
+	:global(.markdown-content [data-rc-link]:hover) {
+		background-color: rgba(59, 130, 246, 0.4);
+		transform: translateY(-1px);
+		cursor: pointer;
 	}
 	
 	:global(.markdown-content > *:first-child) {

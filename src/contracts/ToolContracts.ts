@@ -70,7 +70,17 @@ export const ToolFormatters = {
       let unescapedContent = content.replace(/\\n/g, '\n');
       
       // Handle special reference links [[rc:///...]]
-      unescapedContent = unescapedContent.replace(/\[\[rc:\/\/\/([^\]]+)\]\]/g, '`$1`');
+      // Convert to clickable prompts for learning more
+      unescapedContent = unescapedContent.replace(/\[\[rc:\/\/\/([^\]]+)\]\]/g, (match, path) => {
+        // Extract the article ID from the path (e.g., "ta/man/translate/translate-names" -> "translate/translate-names")
+        const parts = path.split('/');
+        if (parts[0] === 'ta' && parts[1] === 'man') {
+          const articleId = parts.slice(2).join('/');
+          const articleName = parts[parts.length - 1].replace(/-/g, ' ');
+          return `📚 *[Learn more about ${articleName}](rc:${articleId})*`;
+        }
+        return `📚 *[Learn more](rc:${path})*`;
+      });
       
       // Format based on note type
       if (note.reference?.includes('Introduction') || note.reference?.includes('Chapter')) {
