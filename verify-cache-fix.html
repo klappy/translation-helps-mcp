@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache-Busting MCP Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0f0f0f;
+            color: #fff;
+        }
+        .test-box {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .success { border-color: #10b981; background: #064e3b; }
+        .error { border-color: #ef4444; background: #7f1d1d; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        pre {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .timestamp { color: #6b7280; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Cache-Busting MCP Verification</h1>
+    
+    <div class="test-box">
+        <h2>Issue Summary</h2>
+        <p>You typed "Notes Titus 2" but got:</p>
+        <ul>
+            <li>❌ Wrong reference: "Titus 1:1" instead of "Titus 2"</li>
+            <li>❌ Empty bullet points</li>
+        </ul>
+    </div>
+
+    <button onclick="testWithCacheBusting()">🚀 Test with Cache Busting</button>
+    <button onclick="testDirectAPIs()">🔍 Test Direct APIs</button>
+    <button onclick="clearAndReload()">🧹 Clear Cache & Reload</button>
+
+    <div id="results"></div>
+
+    <script>
+        const BASE_URL = 'https://emergency-investor-demo.translation-helps-mcp.pages.dev';
+        
+        function addResult(title, content, isSuccess = false) {
+            const div = document.createElement('div');
+            div.className = `test-box ${isSuccess ? 'success' : 'error'}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <div class="timestamp">Timestamp: ${new Date().toISOString()}</div>
+                ${content}
+            `;
+            document.getElementById('results').prepend(div);
+        }
+
+        async function testWithCacheBusting() {
+            const timestamp = Date.now();
+            const reference = 'Titus 2:1';
+            
+            try {
+                // Add cache-busting parameters
+                const response = await fetch(`${BASE_URL}/api/mcp?_cb=${timestamp}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    },
+                    body: JSON.stringify({
+                        method: 'tools/call',
+                        params: {
+                            name: 'fetch_translation_notes',
+                            arguments: {
+                                reference: reference,
+                                language: 'en',
+                                organization: 'unfoldingWord',
+                                _timestamp: timestamp
+                            }
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                const text = data.content?.[0]?.text || '';
+                
+                const hasEmptyBullets = /\*\*\d+\.\*\*\s*\n\n\*\*\d+\.\*\*/.test(text);
+                const hasContent = text.length > 100 && !text.includes('**1.** \n\n**2.**');
+                
+                addResult(
+                    `MCP Endpoint Test (${reference})`,
+                    `
+                        <p><strong>Cache Buster:</strong> ${timestamp}</p>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Has Empty Bullets:</strong> ${hasEmptyBullets ? '❌ YES' : '✅ NO'}</p>
+                        <p><strong>Has Real Content:</strong> ${hasContent ? '✅ YES' : '❌ NO'}</p>
+                        <p><strong>Text Length:</strong> ${text.length} chars</p>
+                        <pre>${text.substring(0, 500)}${text.length > 500 ? '...' : ''}</pre>
+                    `,
+                    hasContent && !hasEmptyBullets
+                );
+            } catch (error) {
+                addResult('MCP Endpoint Error', `<pre>${error.message}</pre>`, false);
+            }
+        }
+
+        async function testDirectAPIs() {
+            const tests = [
+                { ref: 'Titus 1:1', desc: 'Original failing reference' },
+                { ref: 'Titus 2:1', desc: 'Chapter you requested' },
+                { ref: 'John 3:16', desc: 'Different book' }
+            ];
+
+            for (const test of tests) {
+                try {
+                    const response = await fetch(
+                        `${BASE_URL}/api/fetch-translation-notes?reference=${encodeURIComponent(test.ref)}&language=en&organization=unfoldingWord&_cb=${Date.now()}`
+                    );
+                    const data = await response.json();
+                    
+                    const hasNotes = data.verseNotes && data.verseNotes.length > 0;
+                    const firstNote = data.verseNotes?.[0];
+                    
+                    addResult(
+                        `Direct API: ${test.ref}`,
+                        `
+                            <p>${test.desc}</p>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Has verseNotes:</strong> ${hasNotes ? '✅ YES' : '❌ NO'}</p>
+                            <p><strong>Note count:</strong> ${data.verseNotes?.length || 0}</p>
+                            ${firstNote?.note ? `<pre>First note: ${firstNote.note.substring(0, 200)}...</pre>` : ''}
+                        `,
+                        hasNotes
+                    );
+                } catch (error) {
+                    addResult(`Direct API Error: ${test.ref}`, `<pre>${error.message}</pre>`, false);
+                }
+            }
+        }
+
+        function clearAndReload() {
+            if (confirm('This will clear caches and reload. Continue?')) {
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => caches.delete(name));
+                    });
+                }
+                localStorage.clear();
+                sessionStorage.clear();
+                location.reload(true);
+            }
+        }
+
+        // Auto-test on load
+        setTimeout(() => {
+            testWithCacheBusting();
+        }, 1000);
+    </script>
+</body>
+</html>
