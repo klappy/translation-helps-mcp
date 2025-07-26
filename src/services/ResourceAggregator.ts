@@ -61,7 +61,7 @@ export interface AggregatedResources {
   translationNotes?: TranslationNote[];
   translationQuestions?: TranslationQuestion[];
   translationWords?: TranslationWord[];
-  translationWordLinks?: TranslationWordLink[];
+  translationWordLinks?: any[];
   timestamp: string;
 }
 
@@ -553,7 +553,7 @@ export class ResourceAggregator {
   private async fetchTranslationWordLinks(
     reference: ParsedReference,
     options: ResourceOptions
-  ): Promise<TranslationWordLink[]> {
+  ): Promise<any[]> {
     try {
       // STEP 1: Get resource metadata from catalog
       const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Words%20Links`;
