@@ -330,10 +330,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 							
 							// Format translation notes
 							let notesText = '';
-							if (data.notes && data.notes.length > 0) {
-								data.notes.forEach((note, index) => {
+							// Check for both 'notes' and 'verseNotes' fields (API response structure varies)
+							const notes = data.notes || data.verseNotes || [];
+							
+							if (notes.length > 0) {
+								notes.forEach((note, index) => {
 									// Check for Note field (capital N) as well as other common fields
-									const noteContent = note.Note || note.text || note.note || note.content || '';
+									const noteContent = note.Note || note.note || note.text || note.content || '';
 									notesText += `${index + 1}. ${noteContent}\n\n`;
 								});
 							} else {
