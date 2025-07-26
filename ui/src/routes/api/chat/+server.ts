@@ -79,11 +79,15 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		}
 		// Handle translation notes requests
 		else if (lowerMessage.includes('notes') || lowerMessage.includes('translation notes')) {
-			// Extract reference
+			// Extract reference - support both "Book Chapter:Verse" and "Book Chapter"
 			let reference = 'Titus 1:1'; // Default
-			const refMatch = message.match(/(\w+\s+\d+:\d+)/i);
-			if (refMatch) {
-				reference = refMatch[1];
+			const verseMatch = message.match(/(\w+\s+\d+:\d+)/i);
+			const chapterMatch = message.match(/(\w+\s+\d+)(?!:)/i);
+			
+			if (verseMatch) {
+				reference = verseMatch[1];
+			} else if (chapterMatch) {
+				reference = chapterMatch[1] + ':1'; // Default to verse 1 for chapter-only references
 			}
 			
 			// Call the MCP tool for translation notes
