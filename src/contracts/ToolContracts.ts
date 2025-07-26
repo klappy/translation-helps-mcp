@@ -87,8 +87,18 @@ export const ToolFormatters = {
         // Context notes (introductions) - show as markdown sections
         return `## ${note.reference}\n\n${unescapedContent}`;
       } else {
-        // Verse notes - show as numbered list
-        return `**${index + 1}.** ${unescapedContent}`;
+        // Verse notes - show with quote context when available
+        let noteText = '';
+        
+        // Add quote if present (Greek/Hebrew with English translation)
+        if (note.quote && note.quote.trim()) {
+          noteText = `**${note.quote}**: `;
+        }
+        
+        // Add the note content
+        noteText += unescapedContent;
+        
+        return `**${index + 1}.** ${noteText}`;
       }
     }).join('\n\n');
   },
