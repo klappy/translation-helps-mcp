@@ -6,6 +6,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { SACRED_TEXT_SYSTEM_PROMPT } from '../../../../../src/config/SacredTextConstraints.js';
 import { mcpHandler } from '$lib/mcp/UnifiedMCPHandler';
+import { MCPResponseAdapter } from '$lib/adapters/MCPResponseAdapter';
 
 // Real chat handler that uses MCP tools
 export const POST: RequestHandler = async ({ request, fetch }) => {
@@ -57,7 +58,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			
 			if (toolResponse.ok) {
 				const result = await toolResponse.json();
-				const questionsText = result.content?.[0]?.text || 'No translation questions found';
+				const questionsText = MCPResponseAdapter.formatTranslationQuestions(result, reference);
 				
 				content = `Translation Questions for ${reference}:\n\n${questionsText}\n\n[Translation Questions - ${reference}]`;
 				
@@ -106,7 +107,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			
 			if (toolResponse.ok) {
 				const result = await toolResponse.json();
-				const notesText = result.content?.[0]?.text || 'No translation notes found';
+				const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
 				
 				content = `Translation Notes for ${reference}:\n\n${notesText}\n\n[Translation Notes - ${reference}]`;
 				
@@ -201,7 +202,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 				
 				if (toolResponse.ok) {
 					const result = await toolResponse.json();
-					const wordText = result.content?.[0]?.text || 'Word definition not found';
+					const wordText = MCPResponseAdapter.formatTranslationWord(result, wordId);
 					
 					content = `${wordText}\n\n[Translation Words - ${wordId}]`;
 					
@@ -251,7 +252,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			
 			if (toolResponse.ok) {
 				const result = await toolResponse.json();
-				const scriptureText = result.content?.[0]?.text || 'Scripture not found';
+				const scriptureText = MCPResponseAdapter.formatScripture(result, reference);
 				
 				content = `Here's ${reference} from the ULT (Unfoldingword Literal Text):\n\n${scriptureText}\n\n[Scripture - ${reference} ULT]`;
 				
