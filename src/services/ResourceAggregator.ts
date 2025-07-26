@@ -583,19 +583,10 @@ export class ResourceAggregator {
 
         logger.debug(`Trying translation word links resource: ${resourceName}`);
 
-        // STEP 3: Get the ingredients array from resource metadata
-        const metadataUrl = `https://git.door43.org/api/v1/catalog/search?metadataType=rc&lang=${options.language}&owner=${options.organization}&name=${resourceName}`;
-        const metadataResponse = await fetch(metadataUrl);
-
-        if (!metadataResponse.ok) {
-          logger.warn(`Failed to get metadata for ${resourceName}`);
-          continue;
-        }
-
-        const metadataData = (await metadataResponse.json()) as { data?: any[] };
-        const resourceMetadata = metadataData.data?.[0];
-
-        if (!resourceMetadata || !resourceMetadata.ingredients) {
+        // STEP 3: Use ingredients directly from the resource (TWL resources have them)
+        const ingredients = resource.ingredients;
+        
+        if (!ingredients || ingredients.length === 0) {
           logger.warn(`No ingredients found for ${resourceName}`);
           continue;
         }
@@ -604,7 +595,7 @@ export class ResourceAggregator {
         const bookCode = this.getBookCode(reference.book);
 
         let targetFile = null;
-        for (const ingredient of resourceMetadata.ingredients) {
+        for (const ingredient of ingredients) {
           // Look for any file that contains the book code (flexible matching)
           const path = ingredient.path.toLowerCase();
           if (path.includes(bookCode.toLowerCase()) && path.includes(".tsv")) {
@@ -636,12 +627,10 @@ export class ResourceAggregator {
 
         if (tsvData) {
           const links = this.parseTWLFromTSV(tsvData, reference);
-          console.log(`🔍 parseTWLFromTSV returned ${links.length} links`);
           if (links.length > 0) {
             logger.info(
               `Successfully fetched ${links.length} translation word links from ${resourceName}`
             );
-            console.log(`✅ Returning ${links.length} TWL links`);
             return links;
           }
         }
@@ -1116,11 +1105,9 @@ export class ResourceAggregator {
     try {
       // Use the generic parseTSV to preserve exact structure
       const allRows = parseTSV(tsvData);
-      console.log(`🔍 parseTWLFromTSV: Got ${allRows.length} total rows`);
-      console.log(`🔍 parseTWLFromTSV: Reference:`, reference);
       
       // Filter rows based on reference
-      const filtered = allRows.filter(row => {
+      return allRows.filter(row => {
         const ref = row.Reference;
         if (!ref) return false;
         
@@ -1143,11 +1130,7 @@ export class ResourceAggregator {
           // Full chapter
           return chapterNum === reference.chapter;
         }
-      });
-      
-      console.log(`🔍 parseTWLFromTSV: Filtered to ${filtered.length} rows`);
-      
-      return filtered.map(row => ({
+      }).map(row => ({
         ...row,
         Reference: `${reference.book} ${row.Reference}` // Keep original field name
       }));
