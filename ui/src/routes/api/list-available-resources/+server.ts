@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 /**
  * SvelteKit API Route for list-available-resources
  * Auto-generated from shared handler with in-memory caching

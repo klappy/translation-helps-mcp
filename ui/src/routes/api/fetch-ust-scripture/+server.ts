@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 /**
  * SvelteKit API Route for fetch-ust-scripture
  * UST/GST Scripture Endpoint - Simplified text with word alignment
