@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 /**
  * Experimental MCP Endpoint
  * 

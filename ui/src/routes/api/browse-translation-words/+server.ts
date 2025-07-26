@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 /**
  * SvelteKit API Route for browse-translation-words
  * Auto-generated from shared handler with in-memory caching

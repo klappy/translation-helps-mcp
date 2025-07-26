@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 import type { RequestHandler } from '@sveltejs/kit';
 import { fetchTranslationAcademyHandler } from '../../../../../src/functions/handlers/fetch-translation-academy.js';
 

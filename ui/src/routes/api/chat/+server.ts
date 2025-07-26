@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { SACRED_TEXT_SYSTEM_PROMPT } from '../../../../../src/config/SacredTextConstraints.js';

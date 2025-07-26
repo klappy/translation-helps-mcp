@@ -1,3 +1,7 @@
+export const config = {
+	runtime: 'edge'
+};
+
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
