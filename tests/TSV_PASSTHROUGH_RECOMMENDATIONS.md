@@ -1,5 +1,9 @@
 # TSV Pass-through Recommendations
 
+## The Fundamental Principle: No Mapping Needed
+
+**TSV columns should pass through directly to JSON output. If you're writing mapping code, you're doing it wrong.**
+
 ## Executive Summary
 
 Currently, there is a **significant mismatch** between TSV data fields from DCS and the JSON responses returned by the API. The tests have identified:
@@ -78,6 +82,12 @@ Update the response objects to include all fields:
   response: string  // or keep as 'answer' but document it
 }
 ```
+
+## Why Tests Didn't Catch This
+
+1. **Tests were written to match the interface, not the source data** - Tests checked if the API returned fields like `note`, `quote`, etc. but didn't verify these matched the TSV
+2. **Mock data instead of real TSV** - Tests used fabricated data that matched the expected interface
+3. **No end-to-end validation** - Tests didn't fetch real TSV from DCS and compare to API output
 
 ## Long-term Recommendations
 
