@@ -23,13 +23,30 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Parse the reference and get translation word links
 		const parsedReference = parseReference(reference);
+		console.log('Requesting TWL for:', { reference, parsedReference });
+		
 		const result = await aggregator.aggregateResources(parsedReference, {
 			language,
 			organization,
-			resources: ['wordLinks']
+			resources: ['links']
 		});
 
-		return json(result);
+		// Log what we got
+		console.log('API Result:', {
+			hasResult: !!result,
+			hasTranslationWordLinks: !!result.translationWordLinks,
+			linksCount: result.translationWordLinks?.length || 0,
+			sampleLink: result.translationWordLinks?.[0]
+		});
+
+		// Return just the translation word links with metadata
+		return json({
+			links: result.translationWordLinks || [],
+			reference,
+			language,
+			organization,
+			timestamp: new Date().toISOString()
+		});
 	} catch (error) {
 		console.error('Error in fetch-translation-word-links:', error);
 		return json(

@@ -7,6 +7,7 @@
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
+import { parseTSV } from "../config/RouteGenerator";
 
 export interface TranslationNote {
   id: string;
@@ -83,25 +84,11 @@ export async function fetchTranslationNotes(
   if (cachedResponse.value) {
     console.log(`🚀 FAST cache hit for processed notes: ${responseKey}`);
 
-    // Separate verse notes from context notes
-    const allNotes = cachedResponse.value.translationNotes || [];
-    const verseNotes = allNotes.filter(
-      (note: TranslationNote) =>
-        !note.reference.includes("intro") && !note.reference.includes("front:"),
-    );
-    const contextNotes = allNotes.filter(
-      (note: TranslationNote) =>
-        note.reference.includes("intro") || note.reference.includes("front:"),
-    );
-
+    // Return cached response as-is
     return {
-      verseNotes: includeIntro ? verseNotes : allNotes,
-      contextNotes: includeIntro ? contextNotes : [],
-      citation: cachedResponse.value.citation,
+      ...cachedResponse.value,
       metadata: {
-        sourceNotesCount: allNotes.length,
-        verseNotesCount: verseNotes.length,
-        contextNotesCount: contextNotes.length,
+        ...cachedResponse.value.metadata,
         cached: true,
         responseTime: Date.now() - startTime,
       },
@@ -172,7 +159,7 @@ export async function fetchTranslationNotes(
     console.log(`✅ Cache hit for TN file (${tsvData.length} chars)`);
   }
 
-  // Parse the TSV data
+  // Parse the TSV data - automatic parsing preserves exact structure
   const notes = parseTNFromTSV(
     tsvData,
     parsedRef,
@@ -181,24 +168,9 @@ export async function fetchTranslationNotes(
   );
   console.log(`📝 Parsed ${notes.length} translation notes`);
 
-  // Separate verse notes from context notes
-  // Context notes include book-level (front:intro) and chapter-level (N:intro) notes
-  const verseNotes = notes.filter(
-    (note: TranslationNote) => {
-      const ref = note.reference.toLowerCase();
-      return !ref.includes("intro") && !ref.includes("front:");
-    }
-  );
-  const contextNotes = notes.filter(
-    (note: TranslationNote) => {
-      const ref = note.reference.toLowerCase();
-      return ref.includes("intro") || ref.includes("front:");
-    }
-  );
-
-  const result: TranslationNotesResult = {
-    verseNotes: includeIntro ? verseNotes : notes,
-    contextNotes: includeIntro ? contextNotes : [],
+  // Return the raw TSV structure without transformation
+  const result = {
+    notes: notes,  // Direct TSV structure, no renaming
     citation: {
       resource: resourceInfo.name,
       title: resourceInfo.title,
@@ -210,96 +182,57 @@ export async function fetchTranslationNotes(
       version: "master",
     },
     metadata: {
-      sourceNotesCount: notes.length,
-      verseNotesCount: verseNotes.length,
-      contextNotesCount: contextNotes.length,
+      totalNotesCount: notes.length,
       cached: false,
       responseTime: Date.now() - startTime,
     },
   };
 
-  // Cache the transformed response
-  await cache.setTransformedResponse(responseKey, {
-    translationNotes: [...result.verseNotes, ...result.contextNotes],
-    citation: result.citation,
-  });
-
-  console.log(`📝 Parsed ${notes.length} translation notes`);
+  // Cache the response
+  await cache.setTransformedResponse(responseKey, result);
 
   return result;
 }
 
 /**
- * Parse Translation Notes from TSV data
+ * Parse Translation Notes from TSV data - using automatic parsing
  */
 function parseTNFromTSV(
   tsvData: string,
   reference: { book: string; chapter: number; verse?: number },
   includeIntro: boolean,
   includeContext: boolean,
-): TranslationNote[] {
-  const lines = tsvData.split("\n").filter((line) => line.trim());
-  const notes: TranslationNote[] = [];
-  let noteId = 1;
-
-  // Log first line for debugging
-  if (lines.length > 0 && lines[0]) {
-    const firstCols = lines[0].split("\t");
-    console.log(`📋 First TSV line has ${firstCols.length} columns`);
-    console.log(`📋 Sample: ref="${firstCols[0]}", quote="${firstCols[3]}", col5="${firstCols[5]}", col6="${firstCols[6]?.substring(0, 50)}..."`);
-  }
-
-  for (const line of lines) {
-    const columns = line.split("\t");
-    if (columns.length < 7) continue; // Skip malformed lines
-
-    // TSV columns: reference, id, supportReference, quote, occurrence, note, occurrenceNote
-    const [ref, id, supportReference, quote, occurrence, note, occurrenceNote] = columns;
-
-    // Handle different reference formats
-    let include = false;
-    let noteRef = ref;
-
+): any[] {
+  // Use the generic parseTSV to preserve exact structure
+  const allRows = parseTSV(tsvData);
+  
+  // Filter rows based on reference
+  return allRows.filter(row => {
+    const ref = row.Reference;
+    if (!ref) return false;
+    
     if (ref.includes("front:intro")) {
-      // This is a book-level introduction note
-      include = includeIntro || includeContext;
-      noteRef = `${reference.book} Introduction`;
+      return includeIntro || includeContext;
     } else if (ref.match(/^\d+:intro$/)) {
-      // This is a chapter-level introduction note (e.g., "1:intro")
       const chapterMatch = ref.match(/^(\d+):intro$/);
       const chapterNum = parseInt(chapterMatch[1]);
-      include = (includeIntro || includeContext) && chapterNum === reference.chapter;
-      noteRef = `${reference.book} Chapter ${chapterNum} Introduction`;
+      return (includeIntro || includeContext) && chapterNum === reference.chapter;
     } else {
-      // Parse chapter:verse reference
       const refMatch = ref.match(/(\d+):(\d+)/);
       if (refMatch) {
         const chapterNum = parseInt(refMatch[1]);
         const verseNum = parseInt(refMatch[2]);
-
+        
         if (reference.verse) {
-          include =
-            chapterNum === reference.chapter && verseNum === reference.verse;
+          return chapterNum === reference.chapter && verseNum === reference.verse;
         } else {
-          include = chapterNum === reference.chapter;
+          return chapterNum === reference.chapter;
         }
-        noteRef = `${reference.book} ${chapterNum}:${verseNum}`;
       }
     }
-
-    if (include && occurrenceNote && occurrenceNote.trim()) {
-      notes.push({
-        id: id || `tn-${reference.book}-${noteId++}`,
-        reference: noteRef,
-        note: occurrenceNote.trim(), // The actual note content
-        quote: quote ? quote.trim() : undefined, // Now this is the actual Greek/Hebrew text!
-        occurrence: occurrence ? parseInt(occurrence) : undefined,
-        occurrences: undefined, // Not provided in standard format
-        markdown: occurrenceNote.trim(), // Keep original for compatibility
-        supportReference: supportReference ? supportReference.trim() : undefined, // The RC link
-      });
-    }
-  }
-
-  return notes;
+    return false;
+  }).map(row => ({
+    ...row,
+    Reference: `${reference.book} ${row.Reference}` // Keep original field name
+  }));
 }
