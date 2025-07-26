@@ -239,31 +239,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						}]
 					});
 				}
-
-				// TEMPORARILY COMMENTED OUT - Tool handlers require dependencies not available in UI build
-				// const handlers = {
-				// 	fetch_scripture: handleFetchScripture,
-				// 	get_context: handleGetContext,
-				// 	fetch_translation_notes: handleFetchTranslationNotes,
-				// 	fetch_translation_questions: handleFetchTranslationQuestions,
-				// 	get_words_for_reference: handleGetWordsForReference,
-				// 	get_translation_word: handleGetTranslationWord,
-				// 	browse_translation_words: handleBrowseTranslationWords,
-				// 	fetch_resources: handleFetchResources,
-				// 	search_resources: handleSearchResources,
-				// 	get_languages: handleGetLanguages,
-				// 	extract_references: handleExtractReferences
-				// };
-
-				// const handler = handlers[toolName];
-				// if (!handler) {
-				// 	throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
-				// }
-
-				// const result = await handler(args);
-				// return json(result);
-
-				// Handle tools by calling the dedicated endpoints
+				
+				// The code below is unreachable - all tools are handled by UnifiedMCPHandler above
+				/*
 				if (toolName === 'fetch_scripture') {
 					const params = new URLSearchParams({
 						reference: args.reference,
@@ -487,6 +465,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						text: 'Tool temporarily unavailable during refactoring. Please check back soon!'
 					}]
 				});
+				*/
 			}
 
 			case 'ping':
