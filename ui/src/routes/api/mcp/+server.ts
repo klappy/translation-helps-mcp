@@ -332,7 +332,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 							let notesText = '';
 							if (data.notes && data.notes.length > 0) {
 								data.notes.forEach((note, index) => {
-									notesText += `${index + 1}. ${note.text || note.note || note.content}\n\n`;
+									// Check for Note field (capital N) as well as other common fields
+									const noteContent = note.Note || note.text || note.note || note.content || '';
+									notesText += `${index + 1}. ${noteContent}\n\n`;
 								});
 							} else {
 								notesText = 'No translation notes found for this reference.';
