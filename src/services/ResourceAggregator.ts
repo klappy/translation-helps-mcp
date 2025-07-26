@@ -1116,9 +1116,11 @@ export class ResourceAggregator {
     try {
       // Use the generic parseTSV to preserve exact structure
       const allRows = parseTSV(tsvData);
+      console.log(`🔍 parseTWLFromTSV: Got ${allRows.length} total rows`);
+      console.log(`🔍 parseTWLFromTSV: Reference:`, reference);
       
       // Filter rows based on reference
-      return allRows.filter(row => {
+      const filtered = allRows.filter(row => {
         const ref = row.Reference;
         if (!ref) return false;
         
@@ -1141,7 +1143,11 @@ export class ResourceAggregator {
           // Full chapter
           return chapterNum === reference.chapter;
         }
-      }).map(row => ({
+      });
+      
+      console.log(`🔍 parseTWLFromTSV: Filtered to ${filtered.length} rows`);
+      
+      return filtered.map(row => ({
         ...row,
         Reference: `${reference.book} ${row.Reference}` // Keep original field name
       }));
