@@ -205,6 +205,7 @@ value3\tvalue4\tvalue5\textra`;
 1:1\trtc9\trc://*/ta/man/translate/figs-abstractnouns\tκατὰ πίστιν\t1\tThe words **faith** are abstract nouns.`;
       
       // Use private method through reflection (for testing)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const notes = (aggregator as any).parseTNFromTSV(tnTsv, reference, false);
       
       expect(notes).toHaveLength(1);
@@ -225,6 +226,7 @@ value3\tvalue4\tvalue5\textra`;
       const tqTsv = `Reference\tID\tTags\tQuote\tOccurrence\tQuestion\tResponse
 1:1\ty5pp\t\t\t\tWhat was Paul's purpose?\tTo establish faith.`;
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const questions = (aggregator as any).parseTQFromTSV(tqTsv, reference);
       
       expect(questions).toHaveLength(1);
@@ -245,6 +247,7 @@ value3\tvalue4\tvalue5\textra`;
       const twlTsv = `Reference\tID\tTags\tOrigWords\tOccurrence\tTWLink
 1:1\ttrr8\tname\tΠαῦλος\t1\trc://*/tw/dict/bible/names/paul`;
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const links = (aggregator as any).parseTWLFromTSV(twlTsv, reference);
       
       expect(links).toHaveLength(1);
@@ -276,6 +279,7 @@ val1\tval2`;
 val1\tval2\tval3`;
       
       const parsed = parseTSV(input);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { Col3, ...output } = parsed[0];
       
       const inputColumns = Object.keys(parsed[0]);

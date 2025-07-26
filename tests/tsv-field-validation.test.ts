@@ -13,7 +13,7 @@ describe('TSV Field Validation - Exact Field Mapping', () => {
 
   describe('Translation Notes Field Validation', () => {
     test('TN TSV has exactly 7 columns that must ALL be accessible', () => {
-      const tnHeaders = ['Reference', 'ID', 'Tags', 'SupportReference', 'Quote', 'Occurrence', 'Note'];
+      // const tnHeaders = ['Reference', 'ID', 'Tags', 'SupportReference', 'Quote', 'Occurrence', 'Note'];
       const sampleRow = '1:1\trtc9\trc://*/ta/man/translate/figs-abstractnouns\tκατὰ πίστιν\tThe words\t1\tare abstract nouns.';
       const values = sampleRow.split('\t');
       
@@ -67,7 +67,7 @@ describe('TSV Field Validation - Exact Field Mapping', () => {
         'Note': 'note'
       };
       
-      Object.entries(fieldMapping).forEach(([tsvField, jsonField]) => {
+      Object.entries(fieldMapping).forEach(([, jsonField]) => {
         expect(jsonField).toBeTruthy();
         expect(typeof jsonField).toBe('string');
       });
@@ -76,7 +76,7 @@ describe('TSV Field Validation - Exact Field Mapping', () => {
 
   describe('Translation Questions Field Validation', () => {
     test('TQ TSV has exactly 7 columns that must ALL be accessible', () => {
-      const tqHeaders = ['Reference', 'ID', 'Tags', 'Quote', 'Occurrence', 'Question', 'Response'];
+      // const tqHeaders = ['Reference', 'ID', 'Tags', 'Quote', 'Occurrence', 'Question', 'Response'];
       const sampleRow = '1:1\ty5pp\t\t\t\tWhat was Paul\'s purpose?\tTo establish faith.';
       const values = sampleRow.split('\t');
       
@@ -121,7 +121,7 @@ describe('TSV Field Validation - Exact Field Mapping', () => {
 
   describe('Translation Word Links Field Validation', () => {
     test('TWL TSV has exactly 6 columns that must ALL be accessible', () => {
-      const twlHeaders = ['Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink'];
+      // const twlHeaders = ['Reference', 'ID', 'Tags', 'OrigWords', 'Occurrence', 'TWLink'];
       const sampleRow = '1:1\ttrr8\tname\tΠαῦλος\t1\trc://*/tw/dict/bible/names/paul';
       const values = sampleRow.split('\t');
       
@@ -229,7 +229,7 @@ describe('TSV Field Validation - Exact Field Mapping', () => {
       };
 
       // Validate requirements
-      Object.entries(requirements).forEach(([type, req]) => {
+      Object.entries(requirements).forEach(([, req]) => {
         expect(req.requiredFields.length).toBe(req.tsvColumns);
         expect(req.jsonFields.length).toBe(req.tsvColumns);
         

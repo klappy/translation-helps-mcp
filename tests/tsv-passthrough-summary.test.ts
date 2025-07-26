@@ -31,15 +31,15 @@ describe('TSV Pass-through Issues Summary', () => {
       ]);
       
       // What SHOULD be in JSON response (with camelCase)
-      const idealJsonResponse = {
-        reference: tsvRow.Reference,
-        id: tsvRow.ID,
-        tags: tsvRow.Tags,
-        supportReference: tsvRow.SupportReference,
-        quote: tsvRow.Quote,
-        occurrence: tsvRow.Occurrence,
-        note: tsvRow.Note
-      };
+      // const idealJsonResponse = {
+      //   reference: tsvRow.Reference,
+      //   id: tsvRow.ID,
+      //   tags: tsvRow.Tags,
+      //   supportReference: tsvRow.SupportReference,
+      //   quote: tsvRow.Quote,
+      //   occurrence: tsvRow.Occurrence,
+      //   note: tsvRow.Note
+      // };
       
       // What's ACTUALLY in the current JSON response (❌ BAD - missing/wrong fields)
       const actualJsonResponse = {
@@ -68,15 +68,15 @@ describe('TSV Pass-through Issues Summary', () => {
       expect(Object.keys(tsvRow).length).toBe(7);
       
       // What SHOULD be in JSON (all fields, even empty ones)
-      const idealJsonResponse = {
-        reference: '1:1',
-        id: 'y5pp',
-        tags: '',      // Empty but should exist
-        quote: '',     // Empty but should exist  
-        occurrence: '', // Empty but should exist
-        question: 'What was Paul\'s purpose?',
-        response: 'To establish faith.'
-      };
+      // const idealJsonResponse = {
+      //   reference: '1:1',
+      //   id: 'y5pp',
+      //   tags: '',      // Empty but should exist
+      //   quote: '',     // Empty but should exist  
+      //   occurrence: '', // Empty but should exist
+      //   question: 'What was Paul\'s purpose?',
+      //   response: 'To establish faith.'
+      // };
       
       // What's ACTUALLY returned (only some fields)
       const actualJsonResponse = {
@@ -171,7 +171,7 @@ describe('TSV Pass-through Issues Summary', () => {
         'Translation Word Links': { tsvFields: 6, jsonFields: 6 }
       };
       
-      Object.entries(requirements).forEach(([type, req]) => {
+      Object.entries(requirements).forEach(([, req]) => {
         expect(req.jsonFields).toBe(req.tsvFields);
       });
     });
