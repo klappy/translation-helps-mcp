@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test MCP Translation Notes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .loading {
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+        }
+        pre {
+            white-space: pre-wrap;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>MCP Translation Notes Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Configuration</h2>
+        <p><strong>Deployment URL:</strong> https://emergency-investor-demo.translation-helps-mcp.pages.dev</p>
+        <p><strong>Reference:</strong> Titus 1:1</p>
+        <p><strong>Expected:</strong> Translation notes with actual content (not empty bullet points)</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Actions</h2>
+        <button onclick="testDirectAPI()">Test Direct API</button>
+        <button onclick="testMCPEndpoint()">Test MCP Endpoint</button>
+        <button onclick="openChatPage()">Open Chat Page</button>
+    </div>
+
+    <div id="direct-api-result" class="test-section loading">
+        <h3>Direct API Result</h3>
+        <p>Click "Test Direct API" to check the fetch-translation-notes endpoint</p>
+    </div>
+
+    <div id="mcp-result" class="test-section loading">
+        <h3>MCP Endpoint Result</h3>
+        <p>Click "Test MCP Endpoint" to check the unified MCP endpoint</p>
+    </div>
+
+    <script>
+        const BASE_URL = 'https://emergency-investor-demo.translation-helps-mcp.pages.dev';
+
+        async function testDirectAPI() {
+            const resultDiv = document.getElementById('direct-api-result');
+            resultDiv.className = 'test-section loading';
+            resultDiv.innerHTML = '<h3>Direct API Result</h3><p>Testing...</p>';
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/fetch-translation-notes?reference=Titus+1%3A1&language=en&organization=unfoldingWord`);
+                const data = await response.json();
+                
+                const hasNotes = data.verseNotes && data.verseNotes.length > 0;
+                const firstNote = data.verseNotes?.[0];
+                const hasContent = firstNote && firstNote.note && firstNote.note.length > 0;
+
+                resultDiv.className = hasContent ? 'test-section success' : 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>Direct API Result</h3>
+                    <p><strong>Status:</strong> ${hasContent ? '✅ SUCCESS' : '❌ FAILED'}</p>
+                    <p><strong>Has verseNotes:</strong> ${hasNotes ? 'Yes' : 'No'}</p>
+                    <p><strong>Number of notes:</strong> ${data.verseNotes?.length || 0}</p>
+                    ${firstNote ? `<p><strong>First note preview:</strong></p><pre>${firstNote.note?.substring(0, 200)}...</pre>` : ''}
+                `;
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `<h3>Direct API Result</h3><p>❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testMCPEndpoint() {
+            const resultDiv = document.getElementById('mcp-result');
+            resultDiv.className = 'test-section loading';
+            resultDiv.innerHTML = '<h3>MCP Endpoint Result</h3><p>Testing...</p>';
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/mcp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        method: 'tools/call',
+                        params: {
+                            name: 'fetch_translation_notes',
+                            arguments: {
+                                reference: 'Titus 1:1',
+                                language: 'en',
+                                organization: 'unfoldingWord'
+                            }
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                const text = data.content?.[0]?.text || '';
+                const hasContent = text.includes('faith') || text.includes('knowledge') || text.includes('truth');
+                const hasEmptyBullets = /\*\*1\.\*\*\s*\n/.test(text) || /\*\*1\.\*\*\s*$/.test(text);
+
+                resultDiv.className = hasContent && !hasEmptyBullets ? 'test-section success' : 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>MCP Endpoint Result</h3>
+                    <p><strong>Status:</strong> ${hasContent && !hasEmptyBullets ? '✅ SUCCESS - Notes have content!' : '❌ FAILED - Empty bullet points detected'}</p>
+                    <p><strong>Has content:</strong> ${hasContent ? 'Yes' : 'No'}</p>
+                    <p><strong>Has empty bullets:</strong> ${hasEmptyBullets ? 'Yes' : 'No'}</p>
+                    <p><strong>Response preview:</strong></p>
+                    <pre>${text.substring(0, 500)}...</pre>
+                `;
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `<h3>MCP Endpoint Result</h3><p>❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        function openChatPage() {
+            window.open(`${BASE_URL}/chat`, '_blank');
+        }
+
+        // Auto-run tests on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testDirectAPI();
+                testMCPEndpoint();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
