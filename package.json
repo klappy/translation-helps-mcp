@@ -46,7 +46,7 @@
     "chaos:safe": "cd tests/chaos && CHAOS_MODE=safe node run-all-chaos-tests.ts",
     "chaos:all": "cd tests/chaos && CHAOS_MODE=aggressive node run-all-chaos-tests.ts",
     "sync-version": "node scripts/sync-version.js",
-    "prepare": "node -e \"if (process.env.CI !== 'true' && process.env.CLOUDFLARE_PAGES !== '1') { require('child_process').execSync('husky', {stdio: 'inherit'}); }\""
+    "prepare": "node -e \"if (!process.env.CI && !process.env.CLOUDFLARE_PAGES) { require('child_process').execSync('husky', {stdio: 'inherit'}); }\""
   },
   "dependencies": {
     "@upstash/redis": "^1.28.0",
