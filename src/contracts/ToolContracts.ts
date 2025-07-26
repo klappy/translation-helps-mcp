@@ -88,17 +88,17 @@ export const ToolFormatters = {
         return `## ${note.reference}\n\n${unescapedContent}`;
       } else {
         // Verse notes - show with quote context when available
-        let noteText = '';
+        let formattedNote = `**${index + 1}.**`;
         
         // Add quote if present (Greek/Hebrew with English translation)
         if (note.quote && note.quote.trim()) {
-          noteText = `**${note.quote}**: `;
+          formattedNote += ` **${note.quote}**:`;
         }
         
-        // Add the note content
-        noteText += unescapedContent;
+        // Add the note content on the same line
+        formattedNote += ` ${unescapedContent}`;
         
-        return `**${index + 1}.** ${noteText}`;
+        return formattedNote;
       }
     }).join('\n\n');
   },
