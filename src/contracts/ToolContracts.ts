@@ -82,6 +82,17 @@ export const ToolFormatters = {
         return `📚 *[Learn more](rc:${path})*`;
       });
       
+      // Add support reference link if available
+      if (note.supportReference) {
+        const rcPath = note.supportReference.replace('rc://*/', '');
+        const parts = rcPath.split('/');
+        if (parts[0] === 'ta' && parts[1] === 'man') {
+          const articleId = parts.slice(2).join('/');
+          const articleName = parts[parts.length - 1].replace(/-/g, ' ');
+          unescapedContent += `\n📚 *[Learn more about ${articleName}](rc:${articleId})*`;
+        }
+      }
+      
       // Format based on note type
       if (note.reference?.includes('Introduction') || note.reference?.includes('Chapter')) {
         // Context notes (introductions) - show as markdown sections

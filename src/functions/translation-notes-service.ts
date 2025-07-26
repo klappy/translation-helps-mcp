@@ -253,7 +253,8 @@ function parseTNFromTSV(
     const columns = line.split("\t");
     if (columns.length < 7) continue; // Skip malformed lines
 
-    const [ref, , , quote, occurrence, note, markdownPayload] = columns;
+    // TSV columns: reference, id, supportReference, quote, occurrence, note, occurrenceNote
+    const [ref, id, supportReference, quote, occurrence, note, occurrenceNote] = columns;
 
     // Handle different reference formats
     let include = false;
@@ -286,16 +287,16 @@ function parseTNFromTSV(
       }
     }
 
-    if (include && markdownPayload && markdownPayload.trim()) {
+    if (include && occurrenceNote && occurrenceNote.trim()) {
       notes.push({
-        id: `tn-${reference.book}-${noteId++}`,
+        id: id || `tn-${reference.book}-${noteId++}`,
         reference: noteRef,
-        note: markdownPayload.trim(), // The actual note content is in the markdown field!
-        quote: quote ? quote.trim() : undefined,
+        note: occurrenceNote.trim(), // The actual note content
+        quote: quote ? quote.trim() : undefined, // Now this is the actual Greek/Hebrew text!
         occurrence: occurrence ? parseInt(occurrence) : undefined,
         occurrences: undefined, // Not provided in standard format
-        markdown: markdownPayload ? markdownPayload.trim() : undefined, // Keep original for compatibility
-        supportReference: undefined, // Could be extracted from note content
+        markdown: occurrenceNote.trim(), // Keep original for compatibility
+        supportReference: supportReference ? supportReference.trim() : undefined, // The RC link
       });
     }
   }
