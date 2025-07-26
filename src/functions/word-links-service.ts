@@ -6,6 +6,7 @@
 
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
+import { parseTSV } from "../config/RouteGenerator";
 
 export interface TranslationWordLink {
   word: string;
@@ -66,14 +67,13 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
 
   if (cachedResponse.value) {
     console.log(`🚀 FAST cache hit for processed word links: ${responseKey}`);
+    // Return cached response as-is
     return {
-      translationWordLinks: cachedResponse.value.translationWordLinks || [],
-      citation: cachedResponse.value.citation,
+      ...cachedResponse.value,
       metadata: {
-        responseTime: Date.now() - startTime,
+        ...cachedResponse.value.metadata,
         cached: true,
-        timestamp: new Date().toISOString(),
-        linksFound: cachedResponse.value.translationWordLinks?.length || 0,
+        responseTime: Date.now() - startTime,
       },
     };
   }
@@ -148,12 +148,13 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
     console.log(`✅ Cache hit for TWL file (${linksData.length} chars)`);
   }
 
-  // Parse the word links TSV
+  // Parse the word links TSV - automatic parsing preserves exact structure
   const wordLinks = parseWordLinksFromTSV(linksData, reference);
   console.log(`🔗 Parsed ${wordLinks.length} word links`);
 
-  const result: WordLinksResult = {
-    translationWordLinks: wordLinks,
+  // Return the raw TSV structure without transformation
+  const result = {
+    links: wordLinks,  // Direct TSV structure, no renaming
     citation: {
       resource: resource.name,
       organization,
@@ -169,76 +170,48 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
     },
   };
 
-  // Cache the transformed response
-  await cache.setTransformedResponse(responseKey, {
-    translationWordLinks: result.translationWordLinks,
-    citation: result.citation,
-  });
+  // Cache the response
+  await cache.setTransformedResponse(responseKey, result);
 
   return result;
 }
 
 /**
- * Parse word links from TSV data for a specific reference
+ * Parse word links from TSV data for a specific reference - using automatic parsing
  */
 function parseWordLinksFromTSV(
   tsvData: string,
   reference: { book: string; chapter: number; verse?: number; verseEnd?: number }
-): TranslationWordLink[] {
-  const lines = tsvData.split("\n");
-  const wordLinks: TranslationWordLink[] = [];
-
-  // Skip header line
-  if (lines.length > 0 && lines[0].startsWith("Reference")) {
-    lines.shift();
-  }
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-
-    const columns = line.split("\t");
-    if (columns.length < 5) continue;
-
-    const [ref, id, tags, supportReference, originalWords] = columns;
-
-    // Parse the reference
+): any[] {
+  // Use the generic parseTSV to preserve exact structure
+  const allRows = parseTSV(tsvData);
+  
+  // Filter rows based on reference
+  return allRows.filter(row => {
+    const ref = row.Reference;
+    if (!ref) return false;
+    
     const refMatch = ref.match(/(\d+):(\d+)/);
-    if (!refMatch) continue;
+    if (!refMatch) return false;
 
     const chapterNum = parseInt(refMatch[1]);
     const verseNum = parseInt(refMatch[2]);
 
     // Check if this word link is in our range
-    let include = false;
-
     if (reference.verse && reference.verseEnd) {
       // Verse range within same chapter
-      include =
-        chapterNum === reference.chapter &&
-        verseNum >= reference.verse &&
-        verseNum <= reference.verseEnd;
+      return chapterNum === reference.chapter &&
+             verseNum >= reference.verse &&
+             verseNum <= reference.verseEnd;
     } else if (reference.verse) {
       // Single verse
-      include = chapterNum === reference.chapter && verseNum === reference.verse;
+      return chapterNum === reference.chapter && verseNum === reference.verse;
     } else {
       // Full chapter
-      include = chapterNum === reference.chapter;
+      return chapterNum === reference.chapter;
     }
-
-    if (include && id) {
-      wordLinks.push({
-        word: id,
-        occurrences: 1,
-        twlid: id,
-        reference: `${reference.book} ${ref}`,
-        id,
-        tags,
-        origWords: originalWords,
-        occurrence: 1,
-      });
-    }
-  }
-
-  console.log(`🔗 Parsed ${wordLinks.length} word links`);
-  return wordLinks;
+  }).map(row => ({
+    ...row,
+    Reference: `${reference.book} ${row.Reference}` // Keep original field name
+  }));
 }
