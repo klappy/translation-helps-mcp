@@ -4,36 +4,11 @@ export const config = {
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { DynamicDataPipeline } from '$lib/core/DynamicDataPipeline';
 
 /**
- * Chat API Endpoint - Now with dynamic data handling
- * Maintains backward compatibility while using the new dynamic pipeline internally
+ * Truly Dynamic Chat Endpoint
+ * Just pass data through - let the LLM figure it out
  */
-
-// Tool patterns for determining which MCP tool to use
-const TOOL_PATTERNS = [
-	{ pattern: /scripture|verse|passage|text|bible/i, tool: 'fetch_scripture' },
-	{ pattern: /notes?|translation notes?/i, tool: 'fetch_translation_notes' },
-	{ pattern: /questions?|translation questions?/i, tool: 'fetch_translation_questions' },
-	{ pattern: /word|definition|term|meaning/i, tool: 'get_translation_word' },
-	{ pattern: /academy|article|learn|teaching|ta\s/i, tool: 'fetch_translation_academy' },
-];
-
-// Reference extraction with multiple formats
-function extractReference(message: string): string | null {
-	const patterns = [
-		/(\w+\s+\d+:\d+(?:-\d+)?)/i,  // Book Chapter:Verse
-		/(\w+\s+\d+)(?!:)/i,           // Book Chapter
-	];
-	
-	for (const pattern of patterns) {
-		const match = message.match(pattern);
-		if (match) return match[1];
-	}
-	
-	return null;
-}
 
 export const POST: RequestHandler = async ({ request, url }) => {
 	try {
@@ -43,111 +18,154 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			return json({ error: 'No message provided' });
 		}
 
-		// Determine which tool to use based on message content
-		let selectedTool = null;
-		for (const { pattern, tool } of TOOL_PATTERNS) {
-			if (pattern.test(message)) {
-				selectedTool = tool;
+		// Simple keyword detection
+		const lower = message.toLowerCase();
+		let toolName = '';
+		let endpoint = '';
+		
+		if (lower.includes('note')) {
+			toolName = 'fetch_translation_notes';
+			endpoint = '/api/fetch-translation-notes';
+		} else if (lower.includes('question')) {
+			toolName = 'fetch_translation_questions';
+			endpoint = '/api/fetch-translation-questions';
+		} else if (lower.includes('scripture') || lower.includes('verse')) {
+			toolName = 'fetch_scripture';
+			endpoint = '/api/fetch-scripture';
+		} else if (lower.includes('word') || lower.includes('definition')) {
+			toolName = 'get_translation_word';
+			endpoint = '/api/get-translation-word';
+		} else if (lower.includes('academy') || lower.includes('article')) {
+			toolName = 'fetch_translation_academy';
+			endpoint = '/api/fetch-translation-academy';
+		}
+
+		if (!endpoint) {
+			return json({
+				content: "I can help with scripture, notes, questions, word definitions, and articles. What would you like to know?"
+			});
+		}
+
+		// Extract reference if present (multiple formats)
+		let reference = null;
+		const patterns = [
+			/(\w+\s+\d+:\d+(?:-\d+)?)/i,  // Book Chapter:Verse
+			/(\w+\s+\d+)(?!:)/i,           // Book Chapter
+		];
+		
+		for (const pattern of patterns) {
+			const match = message.match(pattern);
+			if (match) {
+				reference = match[1];
+				// Add :1 if only chapter provided
+				if (!reference.includes(':')) {
+					reference += ':1';
+				}
 				break;
 			}
 		}
 
-		if (!selectedTool) {
-			return json({
-				content: "I can help with scripture, translation notes, questions, word definitions, and Translation Academy articles. Please specify what you're looking for."
-			});
-		}
-
-		// Build parameters dynamically
-		const params: any = {
-			language: 'en',
-			organization: 'unfoldingWord'
-		};
+		// Build URL with parameters
+		const apiUrl = new URL(endpoint, url.origin);
+		if (reference) apiUrl.searchParams.set('reference', reference);
+		apiUrl.searchParams.set('language', 'en');
+		apiUrl.searchParams.set('organization', 'unfoldingWord');
 		
-		// Extract reference if present
-		const reference = extractReference(message);
-		if (reference) {
-			params.reference = reference;
-		}
-		
-		// Tool-specific parameter extraction
-		if (selectedTool === 'fetch_translation_academy') {
-			// Handle RC links in the message
-			const rcMatch = message.match(/rc:([^\s\]]+)/);
-			if (rcMatch) {
-				params.articleId = rcMatch[1];
-			} else {
-				// Try to extract article name
-				const articleMatch = message.match(/about\s+(\S+)|article\s+(?:on\s+)?(\S+)/i);
-				if (articleMatch) {
-					params.articleId = articleMatch[1] || articleMatch[2];
-				}
-			}
-		} else if (selectedTool === 'get_translation_word') {
-			const wordMatch = message.match(/word\s+(\S+)|define\s+(\S+)|what\s+is\s+(\S+)/i);
+		// Add tool-specific params
+		if (toolName === 'get_translation_word') {
+			const wordMatch = message.match(/word\s+(\S+)|define\s+(\S+)|"([^"]+)"/i);
 			if (wordMatch) {
-				params.wordId = wordMatch[1] || wordMatch[2] || wordMatch[3];
+				apiUrl.searchParams.set('wordId', wordMatch[1] || wordMatch[2] || wordMatch[3]);
+			}
+		} else if (toolName === 'fetch_translation_academy') {
+			const articleMatch = message.match(/article\s+(\S+)|about\s+(\S+)|rc:([^\s\]]+)/i);
+			if (articleMatch) {
+				apiUrl.searchParams.set('articleId', articleMatch[1] || articleMatch[2] || articleMatch[3]);
 			}
 		}
 
-		// Use the dynamic MCP endpoint for data fetching
-		const mcpUrl = new URL('/api/mcp-dynamic', url.origin);
-		const mcpResponse = await fetch(mcpUrl.toString(), {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				method: 'tools/call',
-				params: {
-					name: selectedTool,
-					arguments: params
-				}
-			})
-		});
+		console.log('[CHAT] Calling:', apiUrl.toString());
 
-		if (!mcpResponse.ok) {
-			// Fallback to regular MCP endpoint if dynamic fails
-			const fallbackUrl = new URL('/api/mcp', url.origin);
-			const fallbackResponse = await fetch(fallbackUrl.toString(), {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					method: 'tools/call',
-					params: {
-						name: selectedTool,
-						arguments: params
-					}
-				})
-			});
-			
-			const fallbackData = await fallbackResponse.json();
+		// Just fetch the data directly
+		const response = await fetch(apiUrl.toString());
+		const data = await response.json();
+		
+		console.log('[CHAT] Raw response:', JSON.stringify(data).substring(0, 500));
+
+		// Extract ALL text content from the response, no matter the structure
+		const textContent = extractAllText(data);
+		
+		if (!textContent || textContent.trim().length === 0) {
 			return json({
-				content: fallbackData.content?.[0]?.text || 'No content found',
-				tool: selectedTool,
-				params
+				content: `No content found. The API returned: ${JSON.stringify(data).substring(0, 200)}...`,
+				debug: { url: apiUrl.toString(), response: data }
 			});
 		}
 
-		const mcpData = await mcpResponse.json();
-		
-		// Format the response for the chat interface
-		const content = mcpData.content?.[0]?.text || 'No content found';
-		
 		return json({
-			content,
-			tool: selectedTool,
-			params,
-			_dynamic: true, // Flag to indicate dynamic pipeline was used
-			_debug: mcpData._debug
+			content: textContent,
+			tool: toolName,
+			reference: reference
 		});
 
 	} catch (error) {
 		console.error('Chat error:', error);
-		
-		// Provide helpful error message
 		return json({
-			error: 'An error occurred processing your request',
-			details: error instanceof Error ? error.message : 'Unknown error',
-			suggestion: 'Try refreshing the page or rephrasing your request'
+			error: 'An error occurred',
+			details: error instanceof Error ? error.message : 'Unknown error'
 		});
 	}
 };
+
+/**
+ * Recursively extract ALL text from ANY data structure
+ * This is truly anti-fragile - it doesn't care about field names
+ */
+function extractAllText(data: any, collected: string[] = [], depth = 0): string {
+	if (depth > 10) return collected.join('\n\n'); // Prevent infinite recursion
+	
+	if (typeof data === 'string') {
+		// It's text! Add it if it's meaningful
+		if (data.trim().length > 0 && !data.startsWith('{') && !data.startsWith('[')) {
+			collected.push(data);
+		}
+	} else if (Array.isArray(data)) {
+		// Process each array item
+		data.forEach((item, index) => {
+			if (typeof item === 'object' && item !== null) {
+				// For objects in arrays, try to format them nicely
+				const itemText = extractAllText(item, [], depth + 1);
+				if (itemText) {
+					collected.push(`${index + 1}. ${itemText}`);
+				}
+			} else {
+				extractAllText(item, collected, depth + 1);
+			}
+		});
+	} else if (data && typeof data === 'object') {
+		// Process object fields
+		Object.entries(data).forEach(([key, value]) => {
+			// Skip meta fields and empty values
+			if (key.startsWith('_') || key === 'success' || key === 'error' || value === null || value === undefined) {
+				return;
+			}
+			
+			// Special handling for common patterns
+			if (key.toLowerCase().includes('title') && typeof value === 'string') {
+				collected.push(`## ${value}`);
+			} else if (key.toLowerCase().includes('content') || key.toLowerCase().includes('text') || key.toLowerCase().includes('note')) {
+				extractAllText(value, collected, depth + 1);
+			} else if (Array.isArray(value) && value.length > 0) {
+				// Handle arrays of notes/questions/etc
+				if (key.toLowerCase().includes('note') || key.toLowerCase().includes('question')) {
+					collected.push(`\n### ${key}:\n`);
+				}
+				extractAllText(value, collected, depth + 1);
+			} else {
+				extractAllText(value, collected, depth + 1);
+			}
+		});
+	}
+	
+	return collected.join('\n\n');
+}
