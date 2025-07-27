@@ -64,6 +64,8 @@
 	// Mobile menu state
 	let mobileMenuOpen = false;
 	let currentPath = '';
+	let isNavigating = false;
+	let navigationError = false;
 
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
@@ -71,6 +73,35 @@
 
 	function closeMobileMenu() {
 		mobileMenuOpen = false;
+		navigationError = false;
+	}
+
+	// Handle navigation with loading state
+	async function handleNavigation(e: MouseEvent, href: string) {
+		e.preventDefault();
+		
+		// Provide immediate visual feedback
+		isNavigating = true;
+		navigationError = false;
+		
+		try {
+			// Import navigation functions
+			const { goto } = await import('$app/navigation');
+			
+			// Navigate to the page
+			await goto(href);
+			
+			// Close menu on successful navigation
+			closeMobileMenu();
+		} catch (error) {
+			console.error('Navigation error:', error);
+			navigationError = true;
+			
+			// Try fallback navigation
+			window.location.href = href;
+		} finally {
+			isNavigating = false;
+		}
 	}
 
 	// Close mobile menu when route changes
@@ -369,19 +400,34 @@
 				class="absolute top-full right-0 left-0 z-50 border-b border-blue-500/30 bg-black/95 backdrop-blur-2xl md:hidden"
 			>
 				<div class="space-y-2 px-4 py-6">
+					{#if navigationError}
+						<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-red-300">
+							<p class="text-sm">Navigation error occurred. Retrying...</p>
+						</div>
+					{/if}
+					
 					{#each navItems as item}
 						<a
 							href={item.href}
+							on:click={(e) => handleNavigation(e, item.href)}
 							class="flex items-center space-x-3 rounded-xl p-3 transition-all duration-300 {$page
 								.url.pathname === item.href
 								? 'border border-white/20 bg-white/20 text-white'
-								: 'border border-transparent text-blue-200 hover:border-white/10 hover:bg-white/10 hover:text-white'} backdrop-blur-xl"
+								: 'border border-transparent text-blue-200 hover:border-white/10 hover:bg-white/10 hover:text-white'} backdrop-blur-xl {isNavigating ? 'pointer-events-none opacity-50' : ''}"
 						>
-							<svelte:component this={item.icon} class="h-5 w-5" />
+							<svelte:component this={item.icon} class="h-5 w-5 {isNavigating ? 'animate-spin' : ''}" />
 							<div>
-								<div class="font-medium">{item.label}</div>
+								<div class="font-medium">
+									{item.label}
+									{#if isNavigating}
+										<span class="ml-2 text-xs text-blue-300">(Loading...)</span>
+									{/if}
+								</div>
 								<div class="text-sm text-blue-300/70">{item.description}</div>
 							</div>
+							{#if $page.url.pathname === item.href}
+								<div class="ml-auto h-2 w-2 rounded-full bg-emerald-400"></div>
+							{/if}
 						</a>
 					{/each}
 
