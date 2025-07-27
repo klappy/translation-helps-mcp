@@ -140,24 +140,47 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 			
 			const data = await response.json();
 			
-			const assistantMessage = {
-				id: (Date.now() + 1).toString(),
-				role: 'assistant',
-				content: data.content,
-				timestamp: new Date(),
-				xrayData: data.xrayData
-			};
-			
-			messages = [...messages, assistantMessage];
-			currentXRayData = data.xrayData;
+			// Check if we got an error response
+			if (data.error) {
+				const errorMessage = {
+					id: (Date.now() + 1).toString(),
+					role: 'assistant',
+					content: `❌ Error: ${data.error}\n\nDetails: ${data.details || 'No additional details'}${data.suggestion ? '\n\nSuggestion: ' + data.suggestion : ''}`,
+					timestamp: new Date(),
+					isError: true
+				};
+				messages = [...messages, errorMessage];
+			} else if (data.debug && (!data.content || data.content === 'No content found')) {
+				// Show debug info when no content found
+				const debugMessage = {
+					id: (Date.now() + 1).toString(),
+					role: 'assistant',
+					content: `⚠️ No content found.\n\n**Debug Info:**\n- URL: ${data.debug.url}\n- Response: \`\`\`json\n${JSON.stringify(data.debug.response, null, 2).substring(0, 500)}...\n\`\`\`\n\nThis usually means the API structure has changed. The system should adapt automatically.`,
+					timestamp: new Date(),
+					isError: true
+				};
+				messages = [...messages, debugMessage];
+			} else {
+				const assistantMessage = {
+					id: (Date.now() + 1).toString(),
+					role: 'assistant',
+					content: data.content,
+					timestamp: new Date(),
+					xrayData: data.xrayData
+				};
+				
+				messages = [...messages, assistantMessage];
+				currentXRayData = data.xrayData;
+			}
 			
 		} catch (error) {
 			console.error('Chat error:', error);
 			const errorMessage = {
 				id: (Date.now() + 1).toString(),
 				role: 'assistant',
-				content: 'Sorry, I encountered an error. Please try again.',
-				timestamp: new Date()
+				content: `❌ Network error: ${error.message}\n\nPlease check your connection and try again.`,
+				timestamp: new Date(),
+				isError: true
 			};
 			messages = [...messages, errorMessage];
 		} finally {
