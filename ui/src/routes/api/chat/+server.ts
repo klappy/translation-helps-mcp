@@ -47,15 +47,38 @@ export const POST: RequestHandler = async ({ request, url, platform, fetch }) =>
 		});
 		
 		if (!apiKey) {
-			// Fallback for local development without API key
+			// Provide instructions for setting up the API key
 			return json({
-				content: await handleWithoutLLM(message, url, fetch),
-				warning: 'Running without OpenAI API key. Check Cloudflare Pages environment variables.',
-				debug: {
-					platform: !!platform,
-					env: !!platform?.env,
-					keys: platform?.env ? Object.keys(platform.env) : []
-				}
+				content: `## OpenAI API Key Required
+
+To enable the AI-powered chat features, you need to add your OpenAI API key as a secret in Cloudflare Pages.
+
+### Setup Instructions:
+
+1. **Go to your Cloudflare Pages project**
+   - Navigate to: [Cloudflare Dashboard](https://dash.cloudflare.com)
+   - Select your Pages project: \`translation-helps-mcp\`
+   - Go to Settings → Environment variables
+
+2. **Add the secret:**
+   - Click "Add variable"
+   - Variable name: \`OPENAI_API_KEY\`
+   - Value: Your OpenAI API key (starts with \`sk-\`)
+   - Environment: Production ✓ Preview ✓
+   - Click "Save"
+
+3. **Trigger a new deployment** to pick up the secret
+
+### Important Security Notes:
+- Never commit API keys to code
+- Always use Cloudflare secrets for sensitive data
+- The key that was exposed earlier should be revoked
+
+Once configured, the chat will use GPT-4o-mini to:
+- Understand your questions naturally
+- Select appropriate Bible study tools
+- Format responses conversationally`,
+				isSetupGuide: true
 			});
 		}
 
