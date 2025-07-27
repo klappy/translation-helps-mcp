@@ -91,16 +91,18 @@
 	// Welcome message
 	onMount(() => {
 		messages = [{
-			id: 'welcome',
+			id: '0',
 			role: 'assistant',
-			content: `Welcome to the Translation Helps AI Assistant! 🌟
-			
-I can help you explore Bible passages and translation resources. I follow sacred text constraints:
-• Scripture is quoted verbatim, character for character
-• I provide translation helps without interpretation
-• All resources are clearly cited
+			content: `Hello! I'm here to help you explore and understand the Bible. 
 
-Try asking me about a Bible verse, translation notes, or word meanings!`,
+You can ask me things like:
+• "Show me John 3:16"
+• "What does Titus 1 say about elders?"
+• "Explain the notes on Romans 8:28"
+• "What does 'agape' mean?"
+• "What questions should I consider for Genesis 1?"
+
+Just chat naturally - I'll understand what you're looking for! 😊`,
 			timestamp: new Date()
 		}];
 		
@@ -392,6 +394,36 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 			</div>
 		{/if}
 	</div>
+	
+	<!-- Quick suggestions -->
+	{#if messages.length <= 2}
+		<div class="mt-3 flex flex-wrap gap-2 px-4">
+			<button
+				on:click={() => { inputValue = "Show me John 3:16"; sendMessage(); }}
+				class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 hover:border-blue-500 hover:text-blue-400 transition-all"
+			>
+				📖 John 3:16
+			</button>
+			<button
+				on:click={() => { inputValue = "What does 'love' mean in the Bible?"; sendMessage(); }}
+				class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 hover:border-blue-500 hover:text-blue-400 transition-all"
+			>
+				💝 Define "love"
+			</button>
+			<button
+				on:click={() => { inputValue = "Explain the notes on Ephesians 2:8-9"; sendMessage(); }}
+				class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 hover:border-blue-500 hover:text-blue-400 transition-all"
+			>
+				📝 Notes on grace
+			</button>
+			<button
+				on:click={() => { inputValue = "What questions should I consider for Genesis 1?"; sendMessage(); }}
+				class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 hover:border-blue-500 hover:text-blue-400 transition-all"
+			>
+				❓ Study questions
+			</button>
+		</div>
+	{/if}
 </div>
 
 {#if showXRay && currentXRayData}
