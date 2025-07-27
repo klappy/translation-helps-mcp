@@ -28,13 +28,10 @@
 	function renderMarkdown(content) {
 		if (!content) return '';
 		
-		// Parse markdown to HTML
-		let html = marked.parse(content);
+		// First render the markdown
+		let html = marked(content);
 		
-		// Handle RC links - convert to interactive elements
-		html = html.replace(/href="rc:([^"]+)"/g, 'href="#" data-rc-link="$1" onclick="return false;"');
-		
-		// Add Tailwind classes to HTML elements
+		// Apply Tailwind classes to HTML elements
 		html = html
 			// Headers
 			.replace(/<h1>/g, '<h1 class="text-2xl font-bold mb-4 mt-6 text-gray-100">')
@@ -49,44 +46,89 @@
 			// Code
 			.replace(/<code>/g, '<code class="bg-gray-800 px-1 py-0.5 rounded text-sm">')
 			.replace(/<pre>/g, '<pre class="bg-gray-800 p-4 rounded-lg overflow-x-auto my-4">')
-			// Blockquotes
-			.replace(/<blockquote>/g, '<blockquote class="border-l-4 border-gray-600 pl-4 italic my-4">')
+			// Blockquotes (for scripture)
+			.replace(/<blockquote>/g, '<blockquote class="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-200">')
 			// Strong/Bold
-			.replace(/<strong>/g, '<strong class="font-bold">')
-			// Links
-			.replace(/<a href/g, '<a class="text-blue-400 hover:text-blue-300 underline" href');
+			.replace(/<strong>/g, '<strong class="font-bold text-white">')
+			// Horizontal rules
+			.replace(/<hr>/g, '<hr class="my-6 border-gray-700">')
+			// Regular links
+			.replace(/<a href="(?!rc:\/\/)/g, '<a class="text-blue-400 hover:text-blue-300 underline" href="');
+		
+		// Then make RC links clickable with special handling
+		html = html.replace(/<a href="(rc:\/\/[^"]+)">([^<]+)<\/a>/g, (match, href, text) => {
+			return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline cursor-pointer">${text}</a>`;
+		});
 		
 		return html;
 	}
 	
+	// After component updates, attach click handlers to RC links
+	afterUpdate(() => {
+		if (browser) {
+			// Remove old listeners
+			document.querySelectorAll('.rc-link').forEach(link => {
+				link.removeEventListener('click', handleRCLinkClickWrapper);
+			});
+			
+			// Add new listeners
+			document.querySelectorAll('.rc-link').forEach(link => {
+				link.addEventListener('click', handleRCLinkClickWrapper);
+			});
+		}
+	});
+	
+	// Wrapper function for RC link click handling
+	function handleRCLinkClickWrapper(event) {
+		const href = event.target.getAttribute('data-rc-link');
+		if (href) {
+			handleRCLinkClick(event, href);
+		}
+	}
+	
+	// Cleanup on destroy
+	onDestroy(() => {
+		if (browser) {
+			document.querySelectorAll('.rc-link').forEach(link => {
+				link.removeEventListener('click', handleRCLinkClickWrapper);
+			});
+		}
+	});
+	
 	// Handle RC link clicks
-	async function handleRCLinkClick(event) {
-		const link = event.target.closest('[data-rc-link]');
-		if (!link) return;
-		
+	async function handleRCLinkClick(event, href) {
 		event.preventDefault();
-		const articleId = link.getAttribute('data-rc-link');
-		const linkText = link.textContent.trim();
+		console.log('RC link clicked:', href);
 		
-		// Determine the type of link and create appropriate message
-		let message = '';
+		// Parse the RC link to understand what type of resource it is
+		const parts = href.replace('rc://', '').split('/');
 		
-		if (articleId.startsWith('words/')) {
-			// It's a word definition link
-			const word = articleId.replace('words/', '');
-			message = `What does the word "${word}" mean?`;
-		} else if (linkText.toLowerCase().includes('definition')) {
-			// It's a word link with "Definition:" prefix
-			const word = linkText.replace(/definition:\s*/i, '').trim();
-			message = `What does the word "${word}" mean?`;
+		let prompt = '';
+		
+		// Handle different types of RC links
+		if (href.includes('/tw/dict/') || href.includes('rc://words/')) {
+			// Translation Word link
+			const wordId = parts[parts.length - 1];
+			const word = wordId.replace(/-/g, ' ');
+			prompt = `Define the biblical term "${word}" and explain its significance`;
+		} else if (href.includes('/ta/man/')) {
+			// Translation Academy article
+			const articleId = parts[parts.length - 1];
+			const articleName = articleId.replace(/-/g, ' ');
+			prompt = `Show me the Translation Academy article about "${articleName}"`;
+		} else if (href.includes('/bible/')) {
+			// Bible reference link
+			const book = parts[parts.length - 2];
+			const chapter = parts[parts.length - 1];
+			prompt = `Show me ${book} ${chapter}`;
 		} else {
-			// It's a Translation Academy article
-			const articleName = linkText.replace('📚', '').replace('Learn more about', '').replace('Learn more', '').trim();
-			message = `Tell me about the Translation Academy article: ${articleName} (${articleId})`;
+			// Generic handling for other RC links
+			const resourceName = parts[parts.length - 1].replace(/-/g, ' ');
+			prompt = `Tell me about "${resourceName}"`;
 		}
 		
-		// Send the message
-		inputValue = message;
+		// Send the generated prompt
+		inputValue = prompt;
 		await sendMessage();
 	}
 	
