@@ -1484,9 +1484,10 @@
 
 							<div class="grid gap-4">
 								{#each mcpTools[selectedCategory] as tool}
-									<div
-										class="cursor-pointer rounded-lg bg-gray-700/30 p-6 transition-all hover:bg-gray-700/50"
+									<button
+										class="cursor-pointer rounded-lg bg-gray-700/30 p-6 transition-all hover:bg-gray-700/50 w-full text-left"
 										on:click={() => selectTool(tool)}
+										type="button"
 									>
 										<div class="flex items-start justify-between">
 											<div class="flex items-start gap-3">
@@ -1521,7 +1522,7 @@
 											</div>
 											<ExternalLink class="h-4 w-4 text-gray-400" />
 										</div>
-									</div>
+									</button>
 								{/each}
 							</div>
 						</div>
