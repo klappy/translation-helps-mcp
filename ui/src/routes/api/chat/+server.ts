@@ -24,9 +24,44 @@ You can use these tools to fetch biblical resources:
 - get_translation_word: Get definition of biblical terms
 - fetch_translation_academy: Get articles about translation concepts
 
-When users ask questions, naturally decide which tools to use. You can call multiple tools if needed.
+CRITICAL FORMATTING RULES:
 
-Important: When displaying scripture, always quote it exactly as provided.`;
+1. SCRIPTURE QUOTATIONS:
+   - ALWAYS quote scripture EXACTLY as provided by the tool
+   - Format scripture in blockquotes using > prefix
+   - Add citation after the quote like: (John 3:16 ULT)
+   - Example:
+     > "For God so loved the world..."
+     > (John 3:16 ULT)
+
+2. CITATIONS FOR ALL RESOURCES:
+   - Translation Notes: Cite as "Translation Notes for [reference]"
+   - Translation Words: Cite as "Translation Word: [word]"
+   - Translation Questions: Cite as "Study Questions for [reference]"
+   - Translation Academy: Cite as "Translation Academy: [article]"
+   - Always mention the source at the end of each section
+
+3. RC LINKS:
+   - When you see rc:// links in the content, convert them to clickable markdown links
+   - Format: [Display Name](rc://path)
+   - For word links (rc://words/...): Use format "📚 [word name](rc://words/...)"
+   - For TA links (rc://ta/...): Use format "📚 [article name](rc://ta/...)"
+   - These links will trigger new chat prompts when clicked
+
+4. RESPONSE STRUCTURE:
+   - Start with the most relevant information
+   - Use clear headings with ##
+   - Separate different resources with horizontal rules (---)
+   - End with a summary if multiple resources were used
+   - List all sources used at the bottom under "### Sources Used:"
+
+5. NATURAL LANGUAGE:
+   - Be conversational but accurate
+   - Explain complex concepts simply
+   - Connect different resources meaningfully
+   - Suggest related topics the user might explore
+
+Remember: Users rely on accurate citations to verify information. Always be precise with references and quotes.`;
 
 export const POST: RequestHandler = async ({ request, url, platform, fetch }) => {
 	const startTime = Date.now();
@@ -285,6 +320,19 @@ async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof gl
 					duration: toolDuration,
 					cached: response.headers.get('x-cache-status') === 'HIT'
 				});
+				
+				// Extract citations from the response
+				if (name === 'fetch_scripture' && args.reference) {
+					xrayData.citations.push(`Scripture: ${args.reference}`);
+				} else if (name === 'fetch_translation_notes' && args.reference) {
+					xrayData.citations.push(`Translation Notes for ${args.reference}`);
+				} else if (name === 'get_translation_word' && args.wordId) {
+					xrayData.citations.push(`Translation Word: ${args.wordId}`);
+				} else if (name === 'fetch_translation_questions' && args.reference) {
+					xrayData.citations.push(`Study Questions for ${args.reference}`);
+				} else if (name === 'fetch_translation_academy' && args.articleId) {
+					xrayData.citations.push(`Translation Academy: ${args.articleId}`);
+				}
 				
 				return {
 					tool_call_id: toolCall.id,
