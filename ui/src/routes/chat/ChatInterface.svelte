@@ -62,11 +62,28 @@
 		const link = event.target.closest('[data-rc-link]');
 		if (!link) return;
 		
+		event.preventDefault();
 		const articleId = link.getAttribute('data-rc-link');
-		const articleName = link.textContent.replace('Learn more about ', '').replace('Learn more', '').trim();
+		const linkText = link.textContent.trim();
 		
-		// Send a message asking about this article
-		const message = `Tell me about the Translation Academy article: ${articleName} (${articleId})`;
+		// Determine the type of link and create appropriate message
+		let message = '';
+		
+		if (articleId.startsWith('words/')) {
+			// It's a word definition link
+			const word = articleId.replace('words/', '');
+			message = `What does the word "${word}" mean?`;
+		} else if (linkText.toLowerCase().includes('definition')) {
+			// It's a word link with "Definition:" prefix
+			const word = linkText.replace(/definition:\s*/i, '').trim();
+			message = `What does the word "${word}" mean?`;
+		} else {
+			// It's a Translation Academy article
+			const articleName = linkText.replace('📚', '').replace('Learn more about', '').replace('Learn more', '').trim();
+			message = `Tell me about the Translation Academy article: ${articleName} (${articleId})`;
+		}
+		
+		// Send the message
 		inputValue = message;
 		await sendMessage();
 	}
