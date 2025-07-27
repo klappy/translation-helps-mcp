@@ -218,9 +218,6 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 			
 			const data = await response.json();
 			
-			// Remove loading message and add real response
-			messages = messages.filter(m => m.id !== loadingMessage.id);
-			
 			// Check if we got an error response
 			if (data.error) {
 				const errorMessage = {
