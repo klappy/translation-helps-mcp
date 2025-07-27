@@ -102,8 +102,23 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			});
 		}
 
+		// For translation notes, add formatting guidance
+		let formattedContent = textContent;
+		if (toolName === 'fetch_translation_notes' && textContent) {
+			// Add an example at the beginning to guide formatting
+			const formattingExample = `**Example format for notes:**
+1. **"quote text"** (translation): note content. 📚 [Learn more](rc://article-id)
+
+**Translation Notes for ${reference || 'the passage'}:**
+
+`;
+			
+			// Process RC links in the content
+			formattedContent = formattingExample + processRCLinks(textContent);
+		}
+
 		return json({
-			content: textContent,
+			content: formattedContent,
 			tool: toolName,
 			reference: reference
 		});
@@ -168,4 +183,32 @@ function extractAllText(data: any, collected: string[] = [], depth = 0): string 
 	}
 	
 	return collected.join('\n\n');
+}
+
+/**
+ * Process RC links to make them clickable in the chat
+ * Converts rc:// links to a format the chat understands
+ */
+function processRCLinks(text: string): string {
+	// Convert various RC link formats to markdown links
+	let processed = text;
+	
+	// Pattern 1: [[rc://*/ta/man/...]] -> clickable link
+	processed = processed.replace(/\[\[rc:\/\/\*?\/([^\]]+)\]\]/g, (match, path) => {
+		const articleId = path.replace('ta/man/', '');
+		const displayName = articleId.split('/').pop()?.replace(/-/g, ' ') || articleId;
+		return `📚 [Learn more about ${displayName}](rc://${articleId})`;
+	});
+	
+	// Pattern 2: Plain rc:// links
+	processed = processed.replace(/(?<!\[)rc:\/\/\*?\/([^\s\)]+)/g, (match, path) => {
+		const articleId = path.replace('ta/man/', '');
+		const displayName = articleId.split('/').pop()?.replace(/-/g, ' ') || articleId;
+		return `📚 [${displayName}](rc://${articleId})`;
+	});
+	
+	// Pattern 3: Already formatted [text](rc://...) - just add emoji
+	processed = processed.replace(/\[([^\]]+)\]\(rc:\/\/([^\)]+)\)/g, '📚 [$1](rc://$2)');
+	
+	return processed;
 }
