@@ -6,168 +6,337 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /**
- * Truly Dynamic Chat Endpoint
- * Just pass data through - let the LLM figure it out
+ * Natural Conversational Chat
+ * Uses context and natural language to intelligently select and use tools
  */
+
+interface ChatContext {
+	lastTool?: string;
+	lastReference?: string;
+	topic?: string;
+}
 
 export const POST: RequestHandler = async ({ request, url }) => {
 	try {
-		const { message } = await request.json();
+		const { message, history = [] } = await request.json();
 		
 		if (!message) {
 			return json({ error: 'No message provided' });
 		}
 
-		// Simple keyword detection
-		const lower = message.toLowerCase();
-		let toolName = '';
-		let endpoint = '';
+		// Build context from conversation history
+		const context = buildContext(history);
 		
-		if (lower.includes('note')) {
-			toolName = 'fetch_translation_notes';
-			endpoint = '/api/fetch-translation-notes';
-		} else if (lower.includes('question')) {
-			toolName = 'fetch_translation_questions';
-			endpoint = '/api/fetch-translation-questions';
-		} else if (lower.includes('scripture') || lower.includes('verse')) {
-			toolName = 'fetch_scripture';
-			endpoint = '/api/fetch-scripture';
-		} else if (lower.includes('word') || lower.includes('definition')) {
-			toolName = 'get_translation_word';
-			endpoint = '/api/get-translation-word';
-		} else if (lower.includes('academy') || lower.includes('article')) {
-			toolName = 'fetch_translation_academy';
-			endpoint = '/api/fetch-translation-academy';
-		}
-
-		if (!endpoint) {
+		// Natural language understanding
+		const intent = understandIntent(message, context);
+		
+		// If no clear intent, just have a conversation
+		if (!intent.tool) {
 			return json({
-				content: "I can help with scripture, notes, questions, word definitions, and articles. What would you like to know?"
+				content: generateConversationalResponse(message, context),
+				conversational: true
 			});
 		}
 
-		// Extract reference if present (multiple formats)
-		let reference = null;
-		const patterns = [
-			/(\w+\s+\d+:\d+(?:-\d+)?)/i,  // Book Chapter:Verse
-			/(\w+\s+\d+)(?!:)/i,           // Book Chapter
-		];
-		
-		for (const pattern of patterns) {
-			const match = message.match(pattern);
-			if (match) {
-				reference = match[1];
-				// Add :1 if only chapter provided
-				if (!reference.includes(':')) {
-					reference += ':1';
-				}
-				break;
-			}
-		}
+		// Build the API URL
+		const apiUrl = new URL(intent.endpoint, url.origin);
+		Object.entries(intent.params).forEach(([key, value]) => {
+			if (value) apiUrl.searchParams.set(key, String(value));
+		});
 
-		// Build URL with parameters
-		const apiUrl = new URL(endpoint, url.origin);
-		if (reference) apiUrl.searchParams.set('reference', reference);
-		apiUrl.searchParams.set('language', 'en');
-		apiUrl.searchParams.set('organization', 'unfoldingWord');
-		
-		// Add tool-specific params
-		if (toolName === 'get_translation_word') {
-			const wordMatch = message.match(/word\s+(\S+)|define\s+(\S+)|"([^"]+)"/i);
-			if (wordMatch) {
-				apiUrl.searchParams.set('wordId', wordMatch[1] || wordMatch[2] || wordMatch[3]);
-			}
-		} else if (toolName === 'fetch_translation_academy') {
-			const articleMatch = message.match(/article\s+(\S+)|about\s+(\S+)|rc:([^\s\]]+)/i);
-			if (articleMatch) {
-				apiUrl.searchParams.set('articleId', articleMatch[1] || articleMatch[2] || articleMatch[3]);
-			}
-		}
-
+		console.log('[CHAT] Natural intent:', intent);
 		console.log('[CHAT] Calling:', apiUrl.toString());
 
-		// Just fetch the data directly
+		// Fetch the data
 		const response = await fetch(apiUrl.toString());
 		const data = await response.json();
 		
-		console.log('[CHAT] Raw response:', JSON.stringify(data).substring(0, 500));
-
-		// Extract ALL text content from the response, no matter the structure
-		const textContent = extractAllText(data);
+		// Extract and format content naturally
+		const rawContent = extractAllText(data);
 		
-		if (!textContent || textContent.trim().length === 0) {
+		if (!rawContent || rawContent.trim().length === 0) {
 			return json({
-				content: `No content found. The API returned: ${JSON.stringify(data).substring(0, 200)}...`,
+				content: generateNoDataResponse(intent, context),
 				debug: { url: apiUrl.toString(), response: data }
 			});
 		}
 
-		// Process RC links for ALL content types to ensure seamless UX
-		let formattedContent = processRCLinks(textContent);
-		
-		// For translation notes, add formatting guidance
-		if (toolName === 'fetch_translation_notes' && textContent) {
-			// Add an example at the beginning to guide formatting
-			const formattingExample = `**Example format for notes:**
-1. **"quote text"** (translation): note content. 📚 [Learn more](rc://article-id)
-
-**Translation Notes for ${reference || 'the passage'}:**
-
-`;
-			formattedContent = formattingExample + formattedContent;
-		}
-		
-		// For translation words, add helpful context
-		if (toolName === 'get_translation_word' && textContent) {
-			// Add header for word definitions
-			const wordHeader = `**Translation Word${reference ? ' in ' + reference : ''}:**\n\n`;
-			formattedContent = wordHeader + formattedContent;
-		}
-		
-		// For scripture, check if it contains word links
-		if (toolName === 'fetch_scripture' && textContent) {
-			// Add header for scripture
-			const scriptureHeader = `**Scripture${reference ? ' - ' + reference : ''}:**\n\n`;
-			formattedContent = scriptureHeader + formattedContent;
-			
-			// If there are RC links in scripture, add a note
-			if (formattedContent.includes('](rc://')) {
-				formattedContent += '\n\n*Click any 📚 link above to learn more about specific words.*';
-			}
-		}
+		// Format content conversationally
+		const formattedContent = formatNaturally(rawContent, intent, context);
 
 		return json({
 			content: formattedContent,
-			tool: toolName,
-			reference: reference
+			tool: intent.tool,
+			reference: intent.params.reference,
+			natural: true
 		});
 
 	} catch (error) {
 		console.error('Chat error:', error);
 		return json({
-			error: 'An error occurred',
-			details: error instanceof Error ? error.message : 'Unknown error'
+			content: "I'm having trouble understanding that. Could you rephrase your question? I can help with Bible passages, translation notes, word meanings, and more.",
+			error: error instanceof Error ? error.message : 'Unknown error'
 		});
 	}
 };
 
 /**
- * Recursively extract ALL text from ANY data structure
- * This is truly anti-fragile - it doesn't care about field names
+ * Build context from conversation history
+ */
+function buildContext(history: any[]): ChatContext {
+	const context: ChatContext = {};
+	
+	// Look at recent messages to understand context
+	for (let i = history.length - 1; i >= Math.max(0, history.length - 5); i--) {
+		const msg = history[i];
+		if (msg.reference) context.lastReference = msg.reference;
+		if (msg.tool) context.lastTool = msg.tool;
+		
+		// Extract topic from content
+		const refMatch = msg.content?.match(/(\w+\s+\d+(?::\d+)?)/);
+		if (refMatch) context.lastReference = refMatch[1];
+	}
+	
+	return context;
+}
+
+/**
+ * Understand user intent from natural language
+ */
+function understandIntent(message: string, context: ChatContext) {
+	const lower = message.toLowerCase();
+	
+	// Extract any reference from the message
+	let reference = extractReference(message) || context.lastReference;
+	
+	// Natural patterns for different intents
+	const patterns = [
+		{
+			// Notes: "tell me about", "explain", "notes on", "what do the notes say"
+			match: /(tell me about|explain|notes|commentary|help me understand|what do.*say about)/i,
+			tool: 'fetch_translation_notes',
+			endpoint: '/api/fetch-translation-notes'
+		},
+		{
+			// Scripture: "show me", "read", "what does X say", "verse"
+			match: /(show me|read|what does.*say|verse|passage|scripture|quote)/i,
+			tool: 'fetch_scripture',
+			endpoint: '/api/fetch-scripture'
+		},
+		{
+			// Questions: "questions", "study questions", "discussion"
+			match: /(questions|study questions|discussion|what questions)/i,
+			tool: 'fetch_translation_questions',
+			endpoint: '/api/fetch-translation-questions'
+		},
+		{
+			// Words: "what does X mean", "define", "meaning of"
+			match: /(what does.*mean|define|meaning of|definition|what is\s+\w+)/i,
+			tool: 'get_translation_word',
+			endpoint: '/api/get-translation-word'
+		},
+		{
+			// Academy: "article", "teach me about", "translation principle"
+			match: /(article|teach.*about|translation.*principle|academy|how to translate)/i,
+			tool: 'fetch_translation_academy',
+			endpoint: '/api/fetch-translation-academy'
+		}
+	];
+
+	// Check each pattern
+	for (const pattern of patterns) {
+		if (pattern.match.test(message)) {
+			const params: any = {
+				language: 'en',
+				organization: 'unfoldingWord'
+			};
+			
+			if (reference && pattern.tool !== 'get_translation_word') {
+				params.reference = reference;
+			}
+			
+			// Special handling for words
+			if (pattern.tool === 'get_translation_word') {
+				const wordMatch = message.match(/(?:mean|define|meaning of|what is)\s+["']?(\w+)["']?/i);
+				if (wordMatch) {
+					params.wordId = wordMatch[1].toLowerCase();
+				}
+			}
+			
+			// Special handling for articles
+			if (pattern.tool === 'fetch_translation_academy') {
+				const articleMatch = message.match(/(?:article|about|rc:)\s*([^\s\)]+)/i);
+				if (articleMatch) {
+					params.articleId = articleMatch[1];
+				}
+			}
+			
+			return { tool: pattern.tool, endpoint: pattern.endpoint, params };
+		}
+	}
+
+	// Context-based inference
+	if (reference && !patterns.some(p => p.match.test(message))) {
+		// Default to showing scripture if they just mention a reference
+		return {
+			tool: 'fetch_scripture',
+			endpoint: '/api/fetch-scripture',
+			params: { reference, language: 'en', organization: 'unfoldingWord' }
+		};
+	}
+
+	// No clear intent
+	return { tool: null, endpoint: null, params: {} };
+}
+
+/**
+ * Generate a natural conversational response
+ */
+function generateConversationalResponse(message: string, context: ChatContext): string {
+	const responses = [
+		"I'd be happy to help you explore the Bible! You can ask me to show you verses, explain translation notes, define words, or answer study questions. What would you like to know?",
+		"I can help with scripture, translation notes, word meanings, and study materials. Just ask naturally - for example, 'Show me John 3:16' or 'What does agape mean?'",
+		"Feel free to ask about any Bible passage or translation topic. I'm here to help you understand God's Word better.",
+		`I'm here to assist with Bible study and translation. ${context.lastReference ? `Would you like to know more about ${context.lastReference}?` : 'What passage or topic interests you?'}`
+	];
+	
+	// Pick a response based on message characteristics
+	if (message.includes('?')) {
+		return responses[0];
+	} else if (message.length < 20) {
+		return responses[1];
+	} else {
+		return responses[Math.floor(Math.random() * responses.length)];
+	}
+}
+
+/**
+ * Generate a natural "no data" response
+ */
+function generateNoDataResponse(intent: any, context: ChatContext): string {
+	const { tool, params } = intent;
+	
+	if (tool === 'fetch_translation_notes') {
+		return `I couldn't find translation notes for ${params.reference || 'that passage'}. This might be because notes haven't been created for this specific verse yet. Would you like me to show you the scripture text instead?`;
+	} else if (tool === 'get_translation_word') {
+		return `I don't have a definition for "${params.wordId}" in my translation words database. This might be a less common term. Would you like me to search for related words or show you where this word appears in scripture?`;
+	} else {
+		return `I couldn't find the information you're looking for. Could you try rephrasing your question, or would you like to explore something else?`;
+	}
+}
+
+/**
+ * Format content naturally based on intent and context
+ */
+function formatNaturally(content: string, intent: any, context: ChatContext): string {
+	// Process RC links first
+	let formatted = processRCLinks(content);
+	
+	const { tool, params } = intent;
+	
+	// Natural introductions based on tool
+	if (tool === 'fetch_scripture') {
+		const intro = [
+			`Here's ${params.reference}:`,
+			`Let me show you ${params.reference}:`,
+			`${params.reference} says:`,
+			`The passage reads:`
+		][Math.floor(Math.random() * 4)];
+		
+		formatted = `${intro}\n\n${formatted}`;
+		
+		if (formatted.includes('](rc://')) {
+			formatted += '\n\n*I notice there are some key terms here. Click any 📚 link to explore their meanings.*';
+		}
+	} else if (tool === 'fetch_translation_notes') {
+		const intro = [
+			`Here are the translation notes for ${params.reference}:`,
+			`Let me share what the translators noted about ${params.reference}:`,
+			`The translation team provides these insights on ${params.reference}:`,
+			`Here's what might help in understanding ${params.reference}:`
+		][Math.floor(Math.random() * 4)];
+		
+		formatted = `${intro}\n\n${formatted}`;
+	} else if (tool === 'get_translation_word') {
+		if (!formatted.includes(params.wordId)) {
+			formatted = `**${params.wordId}**\n\n${formatted}`;
+		}
+		formatted += '\n\n*Click any 📚 links to explore related concepts.*';
+	} else if (tool === 'fetch_translation_questions') {
+		const intro = `Here are some study questions for ${params.reference}:`;
+		formatted = `${intro}\n\n${formatted}\n\n*These questions can help guide your study or discussion of this passage.*`;
+	}
+	
+	return formatted;
+}
+
+/**
+ * Extract reference from natural language
+ */
+function extractReference(message: string): string | null {
+	// Multiple patterns for natural reference extraction
+	const patterns = [
+		/(\w+\s+\d+:\d+(?:-\d+)?)/i,  // Book Chapter:Verse
+		/(\w+\s+\d+)(?!:)\b/i,         // Book Chapter
+		/(\w+\s+chapter\s+\d+)/i,      // Book chapter X
+		/((?:1|2|3|I|II|III)\s*\w+\s+\d+(?::\d+)?)/i, // Numbered books
+	];
+	
+	for (const pattern of patterns) {
+		const match = message.match(pattern);
+		if (match) {
+			let ref = match[1];
+			// Normalize "chapter" usage
+			ref = ref.replace(/\s+chapter\s+/i, ' ');
+			// Add :1 if only chapter
+			if (!ref.includes(':') && /\d+$/.test(ref)) {
+				ref += ':1';
+			}
+			return ref;
+		}
+	}
+	
+	return null;
+}
+
+/**
+ * Process RC links - kept from before but simplified
+ */
+function processRCLinks(text: string): string {
+	let processed = text;
+	
+	// Convert all RC link formats to clickable
+	processed = processed.replace(/\[\[rc:\/\/\*?\/([^\]]+)\]\]/g, (match, path) => {
+		const id = path.split('/').pop();
+		const name = id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+		return `📚 [${name}](rc://${path})`;
+	});
+	
+	processed = processed.replace(/(?<!\[)(?<!\()rc:\/\/\*?\/([^\s\)\]]+)/g, (match, path) => {
+		const id = path.split('/').pop();
+		const name = id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+		return `📚 [${name}](rc://${path})`;
+	});
+	
+	// Add emoji to existing markdown RC links
+	processed = processed.replace(/(?<!📚\s)\[([^\]]+)\]\(rc:\/\/([^\)]+)\)/g, '📚 [$1](rc://$2)');
+	
+	return processed;
+}
+
+/**
+ * Extract all text recursively - kept from before
  */
 function extractAllText(data: any, collected: string[] = [], depth = 0): string {
-	if (depth > 10) return collected.join('\n\n'); // Prevent infinite recursion
+	if (depth > 10) return collected.join('\n\n');
 	
 	if (typeof data === 'string') {
-		// It's text! Add it if it's meaningful
 		if (data.trim().length > 0 && !data.startsWith('{') && !data.startsWith('[')) {
 			collected.push(data);
 		}
 	} else if (Array.isArray(data)) {
-		// Process each array item
 		data.forEach((item, index) => {
 			if (typeof item === 'object' && item !== null) {
-				// For objects in arrays, try to format them nicely
 				const itemText = extractAllText(item, [], depth + 1);
 				if (itemText) {
 					collected.push(`${index + 1}. ${itemText}`);
@@ -177,20 +346,16 @@ function extractAllText(data: any, collected: string[] = [], depth = 0): string 
 			}
 		});
 	} else if (data && typeof data === 'object') {
-		// Process object fields
 		Object.entries(data).forEach(([key, value]) => {
-			// Skip meta fields and empty values
 			if (key.startsWith('_') || key === 'success' || key === 'error' || value === null || value === undefined) {
 				return;
 			}
 			
-			// Special handling for common patterns
 			if (key.toLowerCase().includes('title') && typeof value === 'string') {
 				collected.push(`## ${value}`);
 			} else if (key.toLowerCase().includes('content') || key.toLowerCase().includes('text') || key.toLowerCase().includes('note')) {
 				extractAllText(value, collected, depth + 1);
 			} else if (Array.isArray(value) && value.length > 0) {
-				// Handle arrays of notes/questions/etc
 				if (key.toLowerCase().includes('note') || key.toLowerCase().includes('question')) {
 					collected.push(`\n### ${key}:\n`);
 				}
@@ -202,76 +367,4 @@ function extractAllText(data: any, collected: string[] = [], depth = 0): string 
 	}
 	
 	return collected.join('\n\n');
-}
-
-/**
- * Process RC links to make them clickable in the chat
- * Converts rc:// links to a format the chat understands
- */
-function processRCLinks(text: string): string {
-	// Convert various RC link formats to markdown links
-	let processed = text;
-	
-	// Pattern 1: [[rc://*/ta/man/...]] -> clickable link
-	processed = processed.replace(/\[\[rc:\/\/\*?\/([^\]]+)\]\]/g, (match, path) => {
-		const articleId = extractArticleId(path);
-		const displayName = getDisplayName(articleId);
-		return `📚 [${displayName}](rc://${articleId})`;
-	});
-	
-	// Pattern 2: Plain rc:// links (not already in markdown)
-	processed = processed.replace(/(?<!\[)(?<!\()rc:\/\/\*?\/([^\s\)\]]+)/g, (match, path) => {
-		const articleId = extractArticleId(path);
-		const displayName = getDisplayName(articleId);
-		return `📚 [${displayName}](rc://${articleId})`;
-	});
-	
-	// Pattern 3: Already formatted [text](rc://...) - just add emoji if not present
-	processed = processed.replace(/(?<!📚\s)\[([^\]]+)\]\(rc:\/\/([^\)]+)\)/g, '📚 [$1](rc://$2)');
-	
-	// Pattern 4: Handle word links rc://en/tw/dict/... 
-	processed = processed.replace(/\[([^\]]+)\]\(rc:\/\/[^\/]*\/tw\/dict\/[^\/]+\/([^\)]+)\)/g, '📚 [$1](rc://words/$2)');
-	
-	return processed;
-}
-
-/**
- * Extract a clean article ID from various path formats
- */
-function extractArticleId(path: string): string {
-	// Remove common prefixes
-	let articleId = path
-		.replace(/^en\//, '')
-		.replace(/^ta\/man\//, '')
-		.replace(/^tw\/dict\/bible\//, '')
-		.replace(/^translate\//, '');
-	
-	// For word links, use a simpler format
-	if (path.includes('tw/dict')) {
-		const parts = path.split('/');
-		articleId = 'words/' + parts[parts.length - 1];
-	}
-	
-	return articleId;
-}
-
-/**
- * Generate a user-friendly display name from an article ID
- */
-function getDisplayName(articleId: string): string {
-	// Get the last part of the path
-	const parts = articleId.split('/');
-	const lastPart = parts[parts.length - 1];
-	
-	// Convert hyphens and underscores to spaces, capitalize words
-	const displayName = lastPart
-		.replace(/[-_]/g, ' ')
-		.replace(/\b\w/g, char => char.toUpperCase());
-	
-	// Add context for word definitions
-	if (articleId.startsWith('words/')) {
-		return `Definition: ${displayName}`;
-	}
-	
-	return displayName;
 }
