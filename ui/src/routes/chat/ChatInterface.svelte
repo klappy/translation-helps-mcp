@@ -5,6 +5,7 @@
 	import TranslationWord from '$lib/components/TranslationWord.svelte';
 	import XRayPanel from './XRayPanel.svelte';
 	import { marked } from 'marked';
+	import { browser } from '$app/environment';
 	
 	// Configure marked for safe HTML rendering
 	marked.setOptions({
@@ -106,13 +107,17 @@ Just chat naturally - I'll understand what you're looking for! 😊`,
 			timestamp: new Date()
 		}];
 		
-		// Add event listener for RC links
-		document.addEventListener('click', handleRCLinkClick);
+		// Add event listener for RC links - only in browser
+		if (browser) {
+			document.addEventListener('click', handleRCLinkClick);
+		}
 	});
 	
 	onDestroy(() => {
-		// Clean up event listener
-		document.removeEventListener('click', handleRCLinkClick);
+		// Clean up event listener - only in browser
+		if (browser) {
+			document.removeEventListener('click', handleRCLinkClick);
+		}
 	});
 	
 	// Auto-scroll to bottom
