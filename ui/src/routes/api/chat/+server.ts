@@ -51,33 +51,33 @@ export const POST: RequestHandler = async ({ request, url, platform, fetch }) =>
 			return json({
 				content: `## OpenAI API Key Required
 
-To enable the AI-powered chat features, you need to add your OpenAI API key as a secret in Cloudflare Pages.
+To enable the AI-powered chat features, you need to add your OpenAI API key as a **secret** in Cloudflare Pages.
 
-### Setup Instructions:
+### Option 1: Add via Dashboard (Easiest)
 
-1. **Go to your Cloudflare Pages project**
-   - Navigate to: [Cloudflare Dashboard](https://dash.cloudflare.com)
-   - Select your Pages project: \`translation-helps-mcp\`
-   - Go to Settings → Environment variables
-
-2. **Add the secret:**
-   - Click "Add variable"
+1. Go to your [Cloudflare Pages project](https://dash.cloudflare.com)
+2. Navigate to **Settings → Environment variables**
+3. Add as a **Secret** (encrypted):
    - Variable name: \`OPENAI_API_KEY\`
-   - Value: Your OpenAI API key (starts with \`sk-\`)
+   - Value: Your OpenAI API key
    - Environment: Production ✓ Preview ✓
-   - Click "Save"
+   - Click "Encrypt" and "Save"
 
-3. **Trigger a new deployment** to pick up the secret
+### Option 2: Add via Wrangler CLI
 
-### Important Security Notes:
-- Never commit API keys to code
-- Always use Cloudflare secrets for sensitive data
-- The key that was exposed earlier should be revoked
+Run this command in your project directory:
+\`\`\`bash
+npx wrangler pages secret put OPENAI_API_KEY
+\`\`\`
 
-Once configured, the chat will use GPT-4o-mini to:
-- Understand your questions naturally
-- Select appropriate Bible study tools
-- Format responses conversationally`,
+Then paste your API key when prompted (it will be hidden).
+
+### Why Secrets?
+- Regular env vars go in \`wrangler.toml\` (visible in code)
+- Secrets are encrypted and perfect for API keys
+- Cloudflare Pages supports both, but API keys must be secrets
+
+Once added, the chat will use GPT-4o-mini to provide natural, conversational Bible study assistance!`,
 				isSetupGuide: true
 			});
 		}
