@@ -102,8 +102,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			});
 		}
 
+		// Process RC links for ALL content types to ensure seamless UX
+		let formattedContent = processRCLinks(textContent);
+		
 		// For translation notes, add formatting guidance
-		let formattedContent = textContent;
 		if (toolName === 'fetch_translation_notes' && textContent) {
 			// Add an example at the beginning to guide formatting
 			const formattingExample = `**Example format for notes:**
@@ -112,9 +114,26 @@ export const POST: RequestHandler = async ({ request, url }) => {
 **Translation Notes for ${reference || 'the passage'}:**
 
 `;
+			formattedContent = formattingExample + formattedContent;
+		}
+		
+		// For translation words, add helpful context
+		if (toolName === 'get_translation_word' && textContent) {
+			// Add header for word definitions
+			const wordHeader = `**Translation Word${reference ? ' in ' + reference : ''}:**\n\n`;
+			formattedContent = wordHeader + formattedContent;
+		}
+		
+		// For scripture, check if it contains word links
+		if (toolName === 'fetch_scripture' && textContent) {
+			// Add header for scripture
+			const scriptureHeader = `**Scripture${reference ? ' - ' + reference : ''}:**\n\n`;
+			formattedContent = scriptureHeader + formattedContent;
 			
-			// Process RC links in the content
-			formattedContent = formattingExample + processRCLinks(textContent);
+			// If there are RC links in scripture, add a note
+			if (formattedContent.includes('](rc://')) {
+				formattedContent += '\n\n*Click any 📚 link above to learn more about specific words.*';
+			}
 		}
 
 		return json({
@@ -195,20 +214,64 @@ function processRCLinks(text: string): string {
 	
 	// Pattern 1: [[rc://*/ta/man/...]] -> clickable link
 	processed = processed.replace(/\[\[rc:\/\/\*?\/([^\]]+)\]\]/g, (match, path) => {
-		const articleId = path.replace('ta/man/', '');
-		const displayName = articleId.split('/').pop()?.replace(/-/g, ' ') || articleId;
-		return `📚 [Learn more about ${displayName}](rc://${articleId})`;
-	});
-	
-	// Pattern 2: Plain rc:// links
-	processed = processed.replace(/(?<!\[)rc:\/\/\*?\/([^\s\)]+)/g, (match, path) => {
-		const articleId = path.replace('ta/man/', '');
-		const displayName = articleId.split('/').pop()?.replace(/-/g, ' ') || articleId;
+		const articleId = extractArticleId(path);
+		const displayName = getDisplayName(articleId);
 		return `📚 [${displayName}](rc://${articleId})`;
 	});
 	
-	// Pattern 3: Already formatted [text](rc://...) - just add emoji
-	processed = processed.replace(/\[([^\]]+)\]\(rc:\/\/([^\)]+)\)/g, '📚 [$1](rc://$2)');
+	// Pattern 2: Plain rc:// links (not already in markdown)
+	processed = processed.replace(/(?<!\[)(?<!\()rc:\/\/\*?\/([^\s\)\]]+)/g, (match, path) => {
+		const articleId = extractArticleId(path);
+		const displayName = getDisplayName(articleId);
+		return `📚 [${displayName}](rc://${articleId})`;
+	});
+	
+	// Pattern 3: Already formatted [text](rc://...) - just add emoji if not present
+	processed = processed.replace(/(?<!📚\s)\[([^\]]+)\]\(rc:\/\/([^\)]+)\)/g, '📚 [$1](rc://$2)');
+	
+	// Pattern 4: Handle word links rc://en/tw/dict/... 
+	processed = processed.replace(/\[([^\]]+)\]\(rc:\/\/[^\/]*\/tw\/dict\/[^\/]+\/([^\)]+)\)/g, '📚 [$1](rc://words/$2)');
 	
 	return processed;
+}
+
+/**
+ * Extract a clean article ID from various path formats
+ */
+function extractArticleId(path: string): string {
+	// Remove common prefixes
+	let articleId = path
+		.replace(/^en\//, '')
+		.replace(/^ta\/man\//, '')
+		.replace(/^tw\/dict\/bible\//, '')
+		.replace(/^translate\//, '');
+	
+	// For word links, use a simpler format
+	if (path.includes('tw/dict')) {
+		const parts = path.split('/');
+		articleId = 'words/' + parts[parts.length - 1];
+	}
+	
+	return articleId;
+}
+
+/**
+ * Generate a user-friendly display name from an article ID
+ */
+function getDisplayName(articleId: string): string {
+	// Get the last part of the path
+	const parts = articleId.split('/');
+	const lastPart = parts[parts.length - 1];
+	
+	// Convert hyphens and underscores to spaces, capitalize words
+	const displayName = lastPart
+		.replace(/[-_]/g, ' ')
+		.replace(/\b\w/g, char => char.toUpperCase());
+	
+	// Add context for word definitions
+	if (articleId.startsWith('words/')) {
+		return `Definition: ${displayName}`;
+	}
+	
+	return displayName;
 }
