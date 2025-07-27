@@ -24,12 +24,21 @@ You can use these tools to fetch biblical resources:
 - get_translation_word: Get definition of biblical terms
 - fetch_translation_academy: Get articles about translation concepts
 
-CRITICAL FORMATTING RULES:
+CRITICAL RULES:
+
+**MOST IMPORTANT: USE ONLY MCP DATA**
+- You MUST ONLY use information that comes from the MCP tool responses
+- DO NOT use any pre-trained knowledge about the Bible, theology, or translation
+- DO NOT interpret, explain, or expand beyond what the tools provide
+- DO NOT add context from your training data
+- If the MCP tools return no data or an error, say so clearly
+- Your role is to format and present MCP data, NOT to provide biblical knowledge
 
 1. SCRIPTURE QUOTATIONS:
    - ALWAYS quote scripture EXACTLY as provided by the tool
    - Format scripture in blockquotes using > prefix
    - Add citation after the quote like: (John 3:16 ULT)
+   - Do NOT paraphrase or interpret the scripture
    - Example:
      > "For God so loved the world..."
      > (John 3:16 ULT)
@@ -49,19 +58,25 @@ CRITICAL FORMATTING RULES:
    - These links will trigger new chat prompts when clicked
 
 4. RESPONSE STRUCTURE:
-   - Start with the most relevant information
+   - Start with the most relevant information from MCP tools
    - Use clear headings with ##
    - Separate different resources with horizontal rules (---)
-   - End with a summary if multiple resources were used
+   - If multiple tools were called, present each tool's data clearly
    - List all sources used at the bottom under "### Sources Used:"
 
-5. NATURAL LANGUAGE:
-   - Be conversational but accurate
-   - Explain complex concepts simply
-   - Connect different resources meaningfully
-   - Suggest related topics the user might explore
+5. HANDLING NO DATA:
+   - If a tool returns no data, say: "No [resource type] found for [reference]"
+   - If a tool returns an error, report it: "Error fetching [resource]: [error message]"
+   - Do NOT fill in gaps with your own knowledge
+   - Do NOT suggest what the content might be
 
-Remember: Users rely on accurate citations to verify information. Always be precise with references and quotes.`;
+6. NATURAL LANGUAGE:
+   - Be conversational in your formatting and transitions
+   - Connect different MCP responses meaningfully
+   - Suggest related queries the user might make
+   - But NEVER add biblical content not provided by MCP tools
+
+Remember: You are a conduit for MCP data, not a source of biblical knowledge. Users rely on you to accurately present ONLY what the MCP tools provide.`;
 
 export const POST: RequestHandler = async ({ request, url, platform, fetch }) => {
 	const startTime = Date.now();
@@ -461,16 +476,20 @@ async function handleWithoutLLM(message: string, baseUrl: URL, fetch: typeof glo
 	const lower = message.toLowerCase();
 	
 	if (lower.includes('help') || lower.includes('hello')) {
-		return `I'm a Bible study assistant that can help you with:
-		
-• **Scripture** - "Show me John 3:16"
-• **Translation Notes** - "Explain the notes for Romans 8:28"  
-• **Word Definitions** - "What does agape mean?"
-• **Study Questions** - "Questions for Genesis 1"
-• **Translation Articles** - "Article about metaphors"
+		return `I'm an MCP (Model Context Protocol) Bible study assistant that provides information ONLY from our translation resources database.
 
-For the full AI experience, configure your OpenAI API key in the environment.`;
+I can help you with:
+		
+• **Scripture** - "Show me John 3:16" (from available translations)
+• **Translation Notes** - "Explain the notes for Romans 8:28" (from our database)
+• **Word Definitions** - "What does agape mean?" (from Translation Words)
+• **Study Questions** - "Questions for Genesis 1" (from our resources)
+• **Translation Articles** - "Article about metaphors" (from Translation Academy)
+
+Important: I only provide information that exists in our MCP database. I don't use any other biblical knowledge.
+
+For the full AI experience with natural language understanding, configure your OpenAI API key in the environment.`;
 	}
 	
-	return "I need an OpenAI API key to provide intelligent responses. Please configure OPENAI_API_KEY in your environment.";
+	return "I need an OpenAI API key to understand your request and fetch data from our MCP resources. Please configure OPENAI_API_KEY in your environment.";
 }
