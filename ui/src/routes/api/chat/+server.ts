@@ -6,11 +6,27 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /**
- * Smart Chat Endpoint
- * Gets data efficiently, formats naturally
+ * MCP + LLM Reference Implementation
+ * Shows how to properly integrate MCP tools with ChatGPT/Claude
  */
 
-export const POST: RequestHandler = async ({ request, url, fetch }) => {
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+// System prompt that teaches the LLM about available MCP tools
+const SYSTEM_PROMPT = `You are a helpful Bible study assistant with access to MCP (Model Context Protocol) tools.
+
+You can use these tools to fetch biblical resources:
+- fetch_scripture: Get Bible verse text
+- fetch_translation_notes: Get translation notes for a passage
+- fetch_translation_questions: Get study questions for a passage
+- get_translation_word: Get definition of biblical terms
+- fetch_translation_academy: Get articles about translation concepts
+
+When users ask questions, naturally decide which tools to use. You can call multiple tools if needed.
+
+Important: When displaying scripture, always quote it exactly as provided.`;
+
+export const POST: RequestHandler = async ({ request, url, platform }) => {
 	try {
 		const { message, history = [] } = await request.json();
 		
@@ -18,248 +34,192 @@ export const POST: RequestHandler = async ({ request, url, fetch }) => {
 			return json({ error: 'No message provided' });
 		}
 
-		// Parse what the user wants
-		const intent = parseUserIntent(message);
+		// Get OpenAI API key from environment
+		const apiKey = platform?.env?.OPENAI_API_KEY;
 		
-		// If no data needed, just respond conversationally
-		if (!intent.needsData) {
+		if (!apiKey) {
+			// Fallback for local development without API key
 			return json({
-				content: generateHelpfulResponse(message),
-				conversational: true
+				content: await handleWithoutLLM(message, url),
+				warning: 'Running without OpenAI API key. Add OPENAI_API_KEY to environment for full LLM experience.'
 			});
 		}
 
-		// Get the data
-		const apiUrl = new URL(intent.endpoint, url.origin);
-		Object.entries(intent.params).forEach(([key, value]) => {
-			if (value) apiUrl.searchParams.set(key, String(value));
+		// First, discover available MCP tools
+		const tools = await discoverMCPTools(url);
+		
+		// Build messages for OpenAI including tool definitions
+		const messages = [
+			{ role: 'system', content: SYSTEM_PROMPT },
+			...history.map(msg => ({
+				role: msg.role,
+				content: msg.content
+			})),
+			{ role: 'user', content: message }
+		];
+
+		// Call OpenAI with function calling
+		const openAIResponse = await fetch(OPENAI_API_URL, {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${apiKey}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				model: 'gpt-4o-mini',
+				messages,
+				tools: tools.map(tool => ({
+					type: 'function',
+					function: {
+						name: tool.name,
+						description: tool.description,
+						parameters: tool.inputSchema || {
+							type: 'object',
+							properties: {
+								reference: { type: 'string', description: 'Bible reference (e.g. John 3:16)' },
+								language: { type: 'string', description: 'Language code', default: 'en' },
+								wordId: { type: 'string', description: 'Word to define' },
+								articleId: { type: 'string', description: 'Article ID' }
+							}
+						}
+					}
+				})),
+				tool_choice: 'auto'
+			})
 		});
 
-		console.log('[CHAT] Fetching:', apiUrl.toString());
-		const response = await fetch(apiUrl.toString());
-		const data = await response.json();
-		
-		// Now format it naturally based on what we got
-		const content = formatResponseNaturally(data, intent, message);
-		
+		if (!openAIResponse.ok) {
+			throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+		}
+
+		const aiResponse = await openAIResponse.json();
+		const assistantMessage = aiResponse.choices[0].message;
+
+		// If the LLM wants to use tools
+		if (assistantMessage.tool_calls) {
+			const toolResults = await executeToolCalls(assistantMessage.tool_calls, url);
+			
+			// Send tool results back to OpenAI for final response
+			const finalResponse = await fetch(OPENAI_API_URL, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${apiKey}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					model: 'gpt-4o-mini',
+					messages: [
+						...messages,
+						assistantMessage,
+						...toolResults.map(result => ({
+							role: 'tool',
+							tool_call_id: result.tool_call_id,
+							content: JSON.stringify(result.content)
+						}))
+					]
+				})
+			});
+
+			const finalAIResponse = await finalResponse.json();
+			const finalContent = finalAIResponse.choices[0].message.content;
+
+			// Process RC links to make them clickable
+			const processedContent = makeRCLinksClickable(finalContent);
+
+			return json({
+				content: processedContent,
+				tool_calls: assistantMessage.tool_calls.map(tc => tc.function.name)
+			});
+		}
+
+		// No tools needed, just return the response
 		return json({
-			content,
-			tool: intent.tool,
-			reference: intent.params.reference
+			content: makeRCLinksClickable(assistantMessage.content)
 		});
 
 	} catch (error) {
 		console.error('Chat error:', error);
 		return json({
-			content: "I'm having trouble with that request. Could you try rephrasing it? I can help with Bible passages, translation notes, word meanings, and study questions.",
-			error: error instanceof Error ? error.message : 'Unknown error'
+			error: 'An error occurred',
+			details: error instanceof Error ? error.message : 'Unknown error'
 		});
 	}
 };
 
 /**
- * Parse user intent simply
+ * Discover available MCP tools from the server
  */
-function parseUserIntent(message: string) {
-	const lower = message.toLowerCase();
-	const refMatch = message.match(/(\w+\s+\d+(?::\d+)?)/i);
-	const reference = refMatch ? refMatch[1] : null;
-	
-	// Notes request
-	if (lower.includes('note') || lower.includes('explain') || lower.includes('tell me about')) {
-		return {
-			needsData: true,
-			tool: 'fetch_translation_notes',
-			endpoint: '/api/fetch-translation-notes',
-			params: { reference, language: 'en', organization: 'unfoldingWord' }
-		};
+async function discoverMCPTools(baseUrl: URL): Promise<any[]> {
+	try {
+		const mcpUrl = new URL('/api/mcp', baseUrl);
+		const response = await fetch(mcpUrl, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ method: 'tools/list' })
+		});
+
+		if (!response.ok) {
+			console.error('Failed to discover MCP tools');
+			return getDefaultTools();
+		}
+
+		const data = await response.json();
+		return data.tools || getDefaultTools();
+	} catch (error) {
+		console.error('Error discovering tools:', error);
+		return getDefaultTools();
 	}
-	
-	// Questions request
-	if (lower.includes('question') || lower.includes('study') || lower.includes('discuss')) {
-		return {
-			needsData: true,
-			tool: 'fetch_translation_questions',
-			endpoint: '/api/fetch-translation-questions',
-			params: { reference, language: 'en' }
-		};
-	}
-	
-	// Word definition
-	if (lower.includes('mean') || lower.includes('definition') || lower.includes('what is')) {
-		const wordMatch = message.match(/(?:mean|define|what is)\s+["']?(\w+)["']?/i);
-		return {
-			needsData: true,
-			tool: 'get_translation_word',
-			endpoint: '/api/get-translation-word',
-			params: { wordId: wordMatch?.[1]?.toLowerCase(), language: 'en' }
-		};
-	}
-	
-	// Article request
-	if (lower.includes('article') || lower.includes('academy')) {
-		const articleMatch = message.match(/(?:article|about|rc:)\s*([^\s\)]+)/i);
-		return {
-			needsData: true,
-			tool: 'fetch_translation_academy',
-			endpoint: '/api/fetch-translation-academy',
-			params: { articleId: articleMatch?.[1], language: 'en' }
-		};
-	}
-	
-	// Default to scripture if reference found
-	if (reference) {
-		return {
-			needsData: true,
-			tool: 'fetch_scripture',
-			endpoint: '/api/fetch-scripture',
-			params: { reference, language: 'en' }
-		};
-	}
-	
-	return { needsData: false };
 }
 
 /**
- * Format responses naturally based on the data
- * THIS is where we use intelligence instead of hardcoding
+ * Execute tool calls requested by the LLM
  */
-function formatResponseNaturally(data: any, intent: any, userMessage: string): string {
-	const { tool, params } = intent;
-	
-	// For scripture - preserve exact text
-	if (tool === 'fetch_scripture') {
-		const text = extractScriptureText(data);
-		if (!text) return "I couldn't find that scripture passage. Could you check the reference?";
-		
-		const intros = [
-			`Here's ${params.reference}:`,
-			`${params.reference} says:`,
-			`Let me share ${params.reference} with you:`
-		];
-		
-		let response = `${intros[Math.floor(Math.random() * intros.length)]}\n\n> ${text}`;
-		
-		// Process any RC links
-		response = makeRCLinksClickable(response);
-		
-		if (response.includes('](rc://')) {
-			response += '\n\n💡 *Click any 📚 link to learn more about key terms.*';
-		}
-		
-		return response;
-	}
-	
-	// For notes - summarize helpfully
-	if (tool === 'fetch_translation_notes') {
-		const notes = extractNotes(data);
-		if (!notes.length) return `I don't have translation notes for ${params.reference} yet. Would you like to see the scripture text instead?`;
-		
-		let response = `Here are the translation notes for ${params.reference}:\n\n`;
-		
-		notes.forEach((note, index) => {
-			const quote = note.quote || note.Quote || '';
-			const content = (note.text || note.note || note.Note || note.content || '').replace(/\\n/g, '\n').trim();
+async function executeToolCalls(toolCalls: any[], baseUrl: URL): Promise<any[]> {
+	const results = await Promise.all(
+		toolCalls.map(async (toolCall) => {
+			const { name, arguments: args } = toolCall.function;
 			
-			if (quote) {
-				response += `**${index + 1}.** **"${quote}"** — ${content}\n\n`;
-			} else {
-				response += `**${index + 1}.** ${content}\n\n`;
+			try {
+				const mcpUrl = new URL('/api/mcp', baseUrl);
+				const response = await fetch(mcpUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						method: 'tools/call',
+						params: {
+							name,
+							arguments: typeof args === 'string' ? JSON.parse(args) : args
+						}
+					})
+				});
+
+				const result = await response.json();
+				
+				// Extract the actual content from MCP response
+				const content = result.content?.[0]?.text || JSON.stringify(result);
+				
+				return {
+					tool_call_id: toolCall.id,
+					content
+				};
+			} catch (error) {
+				return {
+					tool_call_id: toolCall.id,
+					content: `Error calling ${name}: ${error}`
+				};
 			}
-		});
-		
-		return makeRCLinksClickable(response);
-	}
-	
-	// For words - clear definition
-	if (tool === 'get_translation_word') {
-		const word = data.word || data.data?.word || params.wordId;
-		const def = data.definition || data.content || data.data?.definition || data.data?.content || '';
-		
-		if (!def) return `I don't have a definition for "${word}" in my database. This might be a less common term.`;
-		
-		return makeRCLinksClickable(`**${word}**\n\n${def.replace(/\\n/g, '\n').trim()}`);
-	}
-	
-	// For questions - numbered list
-	if (tool === 'fetch_translation_questions') {
-		const questions = extractQuestions(data);
-		if (!questions.length) return `I don't have study questions for ${params.reference} yet.`;
-		
-		let response = `Here are some study questions for ${params.reference}:\n\n`;
-		questions.forEach((q, index) => {
-			response += `**${index + 1}.** ${q}\n\n`;
-		});
-		response += '*💭 Use these for personal study or group discussion.*';
-		
-		return response;
-	}
-	
-	// For academy - article content
-	if (tool === 'fetch_translation_academy') {
-		if (data.title && data.content) {
-			return makeRCLinksClickable(`# ${data.title}\n\n${data.content}`);
-		}
-		if (data.data?.title && data.data?.content) {
-			return makeRCLinksClickable(`# ${data.data.title}\n\n${data.data.content}`);
-		}
-		return "I couldn't find that Translation Academy article.";
-	}
-	
-	// Fallback
-	return "I found some data but I'm not sure how to present it. Try asking more specifically.";
+		})
+	);
+
+	return results;
 }
 
 /**
- * Extract scripture text exactly
- */
-function extractScriptureText(data: any): string {
-	if (typeof data.text === 'string') return data.text;
-	if (data.data?.text) return data.data.text;
-	if (data.verseObjects || data.data?.verseObjects) {
-		const objects = data.verseObjects || data.data.verseObjects;
-		return objects
-			.filter((obj: any) => obj.type === 'text' || obj.type === 'word')
-			.map((obj: any) => obj.text || '')
-			.join('');
-	}
-	return '';
-}
-
-/**
- * Extract notes from various formats
- */
-function extractNotes(data: any): any[] {
-	const notes = [];
-	const arrays = [
-		data?.verseNotes,
-		data?.contextNotes,
-		data?.notes,
-		data?.data?.verseNotes,
-		data?.data?.notes
-	].filter(arr => Array.isArray(arr));
-	
-	return arrays.flat();
-}
-
-/**
- * Extract questions
- */
-function extractQuestions(data: any): string[] {
-	let questions = [];
-	if (Array.isArray(data)) questions = data;
-	else if (data.questions) questions = data.questions;
-	else if (data.data?.questions) questions = data.data.questions;
-	
-	return questions
-		.map((q: any) => q.question || q.text || q)
-		.filter((q: any) => typeof q === 'string');
-}
-
-/**
- * Make RC links clickable
+ * Make RC links clickable in the response
  */
 function makeRCLinksClickable(text: string): string {
+	if (!text) return '';
+	
 	// [[rc://]] format
 	text = text.replace(/\[\[rc:\/\/\*?\/([^\]]+)\]\]/g, (match, path) => {
 		const name = path.split('/').pop().replace(/[-_]/g, ' ');
@@ -279,15 +239,91 @@ function makeRCLinksClickable(text: string): string {
 }
 
 /**
- * Generate helpful conversational responses
+ * Default tool definitions if discovery fails
  */
-function generateHelpfulResponse(message: string): string {
-	const responses = [
-		"I'd be happy to help you explore the Bible! You can ask me about any passage, translation notes, word meanings, or study questions.",
-		"I'm here to assist with your Bible study. What passage or topic would you like to explore?",
-		"Feel free to ask about scripture, translation helps, or biblical terms. What interests you?",
-		"I can help with Bible passages, translation notes, word definitions, and study materials. What would you like to know?"
+function getDefaultTools() {
+	return [
+		{
+			name: 'fetch_scripture',
+			description: 'Fetch Bible verse text',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					reference: { type: 'string', description: 'Bible reference like "John 3:16"' },
+					language: { type: 'string', default: 'en' }
+				},
+				required: ['reference']
+			}
+		},
+		{
+			name: 'fetch_translation_notes',
+			description: 'Get translation notes for a Bible passage',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					reference: { type: 'string', description: 'Bible reference' },
+					language: { type: 'string', default: 'en' }
+				},
+				required: ['reference']
+			}
+		},
+		{
+			name: 'fetch_translation_questions',
+			description: 'Get study questions for a Bible passage',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					reference: { type: 'string', description: 'Bible reference' },
+					language: { type: 'string', default: 'en' }
+				},
+				required: ['reference']
+			}
+		},
+		{
+			name: 'get_translation_word',
+			description: 'Get definition of a biblical term',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					wordId: { type: 'string', description: 'Word to define' },
+					language: { type: 'string', default: 'en' }
+				},
+				required: ['wordId']
+			}
+		},
+		{
+			name: 'fetch_translation_academy',
+			description: 'Get Translation Academy article',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					articleId: { type: 'string', description: 'Article ID' },
+					language: { type: 'string', default: 'en' }
+				},
+				required: ['articleId']
+			}
+		}
 	];
+}
+
+/**
+ * Fallback handler when no LLM API key is available
+ */
+async function handleWithoutLLM(message: string, baseUrl: URL): Promise<string> {
+	// Simple pattern matching fallback
+	const lower = message.toLowerCase();
 	
-	return responses[Math.floor(Math.random() * responses.length)];
+	if (lower.includes('help') || lower.includes('hello')) {
+		return `I'm a Bible study assistant that can help you with:
+		
+• **Scripture** - "Show me John 3:16"
+• **Translation Notes** - "Explain the notes for Romans 8:28"  
+• **Word Definitions** - "What does agape mean?"
+• **Study Questions** - "Questions for Genesis 1"
+• **Translation Articles** - "Article about metaphors"
+
+For the full AI experience, configure your OpenAI API key in the environment.`;
+	}
+	
+	return "I need an OpenAI API key to provide intelligent responses. Please configure OPENAI_API_KEY in your environment.";
 }
