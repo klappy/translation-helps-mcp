@@ -304,17 +304,48 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					}
 				}
 				else if (toolName === 'fetch_translation_notes') {
+					console.log('[MCP] fetch_translation_notes called with args:', args);
+					
+					// Ensure all parameters are strings
+					const reference = String(args.reference || '');
+					const language = String(args.language || 'en');
+					const organization = String(args.organization || 'unfoldingWord');
+					
+					if (!reference) {
+						return json({
+							content: [{
+								type: 'text',
+								text: 'Error: Bible reference is required for translation notes.'
+							}]
+						});
+					}
+					
 					const params = new URLSearchParams({
-						reference: args.reference,
-						language: args.language || 'en',
-						organization: args.organization || 'unfoldingWord'
+						reference,
+						language,
+						organization
 					});
+					
+					console.log('[MCP] Translation notes params:', params.toString());
 					
 					try {
 						// Call the underlying endpoint handler directly
 						const endpoint = await import('../fetch-translation-notes/+server.js');
-						const mockRequest = new Request(`http://localhost/api/fetch-translation-notes?${params}`);
-						const response = await endpoint.GET({ url: new URL(mockRequest.url), request: mockRequest });
+						const mockUrl = new URL(`http://localhost/api/fetch-translation-notes?${params}`);
+						const mockRequest = new Request(mockUrl.toString());
+						
+						// Create proper context for the endpoint
+						const context = {
+							url: mockUrl,
+							request: mockRequest,
+							params: {},
+							route: { id: '' },
+							platform: undefined
+						};
+						
+						const response = await endpoint.GET(context);
+						
+						console.log('[MCP] Translation notes response status:', response.status);
 						
 						if (response.ok) {
 							const data = await response.json();
@@ -325,8 +356,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 							const notes = data.notes || data.verseNotes || [];
 							
 							if (notes.length > 0) {
+								notesText = `Translation Notes for ${args.reference}:\n\n`;
 								notes.forEach((note, index) => {
-									// Check for Note field (capital N) as well as other common fields
 									const noteContent = note.Note || note.note || note.text || note.content || '';
 									notesText += `${index + 1}. ${noteContent}\n\n`;
 								});
@@ -341,14 +372,16 @@ export const POST: RequestHandler = async ({ request, url }) => {
 								}]
 							});
 						} else {
-							throw new Error('Failed to fetch translation notes');
+							const errorData = await response.json();
+							console.error('[MCP] Translation notes error response:', errorData);
+							throw new Error(`Failed to fetch translation notes: ${response.status} - ${errorData.error || 'Unknown error'}`);
 						}
 					} catch (error) {
 						console.error('Translation notes fetch error:', error);
 						return json({
 							content: [{
 								type: 'text',
-								text: 'Error fetching translation notes. Please try again.'
+								text: `Error fetching translation notes: ${error.message || 'Unknown error'}`
 							}]
 						});
 					}
