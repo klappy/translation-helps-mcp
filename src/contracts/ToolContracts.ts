@@ -48,15 +48,21 @@ export const ToolFormatters = {
   notes: (data: any): string => {
     let notes: any[] = [];
     
-    // Collect all notes (verseNotes and contextNotes)
-    if (data.verseNotes && Array.isArray(data.verseNotes)) {
-      notes = notes.concat(data.verseNotes);
+    // Collect all notes with flexible extraction
+    const possibleArrays = ['verseNotes', 'contextNotes', 'notes', 'Notes', 'VerseNotes'];
+    for (const field of possibleArrays) {
+      if (data[field] && Array.isArray(data[field])) {
+        notes = notes.concat(data[field]);
+      }
     }
-    if (data.contextNotes && Array.isArray(data.contextNotes)) {
-      notes = notes.concat(data.contextNotes);
-    }
-    if (data.notes && Array.isArray(data.notes)) {
-      notes = notes.concat(data.notes);
+    
+    // Also check nested data structures
+    if (data.data) {
+      for (const field of possibleArrays) {
+        if (data.data[field] && Array.isArray(data.data[field])) {
+          notes = notes.concat(data.data[field]);
+        }
+      }
     }
     
     if (notes.length === 0) {
@@ -69,10 +75,9 @@ export const ToolFormatters = {
       // Replace escaped newlines with actual newlines
       let unescapedContent = content.replace(/\\n/g, '\n');
       
-      // Handle special reference links [[rc:///...]]
-      // Convert to clickable prompts for learning more
-      unescapedContent = unescapedContent.replace(/\[\[rc:\/\/\/([^\]]+)\]\]/g, (match, path) => {
-        // Extract the article ID from the path (e.g., "ta/man/translate/translate-names" -> "translate/translate-names")
+      // Handle ALL rc:// reference links in various formats
+      // Pattern 1: [[rc:///...]] or [[rc://*/...]]
+      unescapedContent = unescapedContent.replace(/\[\[rc:\/\/\*?\/([^\]]+)\]\]/g, (match, path) => {
         const parts = path.split('/');
         if (parts[0] === 'ta' && parts[1] === 'man') {
           const articleId = parts.slice(2).join('/');
@@ -80,6 +85,19 @@ export const ToolFormatters = {
           return `📚 *[Learn more about ${articleName}](rc:${articleId})*`;
         }
         return `📚 *[Learn more](rc:${path})*`;
+      });
+      
+      // Pattern 2: Plain rc:// links not in brackets
+      unescapedContent = unescapedContent.replace(/(?<!\[)rc:\/\/\*?\/ta\/man\/([^\s\]]+)/g, (match, path) => {
+        const articleId = path.replace(/^translate\//, '');
+        const articleName = articleId.split('/').pop()?.replace(/-/g, ' ') || articleId;
+        return `📚 *[Learn more about ${articleName}](rc:${articleId})*`;
+      });
+      
+      // Pattern 3: Markdown style links [text](rc://...)
+      unescapedContent = unescapedContent.replace(/\[([^\]]+)\]\(rc:\/\/[^\/]*\/ta\/man\/([^\)]+)\)/g, (match, text, path) => {
+        const articleId = path.replace(/^translate\//, '');
+        return `📚 *[${text}](rc:${articleId})*`;
       });
       
       // Add support reference link if available
