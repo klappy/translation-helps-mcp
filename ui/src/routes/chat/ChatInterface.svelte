@@ -136,16 +136,18 @@
 		messages = [{
 			id: '0',
 			role: 'assistant',
-			content: `Hello! I'm here to help you explore and understand the Bible. 
+			content: `Hello! I'm an MCP Bible study assistant. I provide information exclusively from our translation resources database.
 
-You can ask me things like:
-• "Show me John 3:16"
-• "What does Titus 1 say about elders?"
-• "Explain the notes on Romans 8:28"
-• "What does 'agape' mean?"
-• "What questions should I consider for Genesis 1?"
+I can help you access:
+• **Scripture** - "Show me John 3:16"
+• **Translation Notes** - "What do the notes say about Titus 1?"
+• **Word Definitions** - "Define 'agape' from Translation Words"
+• **Study Questions** - "Questions for Genesis 1"
+• **Translation Academy** - "Article about metaphors"
 
-Just chat naturally - I'll understand what you're looking for! 😊`,
+Important: I only share what's available in our MCP database - no external biblical interpretations. All my responses come directly from unfoldingWord's translation resources.
+
+Just ask naturally - I'll fetch the exact resources you need! 📚`,
 			timestamp: new Date()
 		}];
 		
