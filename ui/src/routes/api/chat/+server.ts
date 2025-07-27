@@ -159,7 +159,35 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 				if (taResponse.ok) {
 					const taData = await taResponse.json();
 					
-					content = `# ${taData.title}\n\n${taData.content}\n\n[Translation Academy - ${articleId}]`;
+					// Handle the TA response structure
+					if (taData.success && taData.data?.modules) {
+						// Try to find a module matching the articleId
+						const modules = taData.data.modules;
+						let foundModule = null;
+						
+						// Search for exact match or partial match
+						for (const module of modules) {
+							if (module.id === articleId || 
+								module.id.includes(articleId) || 
+								articleId.includes(module.id)) {
+								foundModule = module;
+								break;
+							}
+						}
+						
+						if (foundModule) {
+							content = `# ${foundModule.title}\n\n${foundModule.description}\n\n${foundModule.content || 'Content not available'}\n\n[Translation Academy - ${articleId}]`;
+						} else {
+							// If no specific module found, list available modules
+							const moduleList = modules.map(m => `- **${m.title}**: ${m.description}`).join('\n');
+							content = `# Translation Academy\n\nCould not find article "${articleId}". Available modules:\n\n${moduleList}`;
+						}
+					} else if (taData.title && taData.content) {
+						// Fallback for direct article response
+						content = `# ${taData.title}\n\n${taData.content}\n\n[Translation Academy - ${articleId}]`;
+					} else {
+						content = `Could not parse Translation Academy response for: ${articleId}`;
+					}
 					
 					// Record tool usage
 					xrayData.tools.push({
