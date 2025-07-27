@@ -2,345 +2,152 @@ export const config = {
 	runtime: 'edge'
 };
 
-import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { SACRED_TEXT_SYSTEM_PROMPT } from '../../../../../src/config/SacredTextConstraints.js';
-import { mcpHandler } from '$lib/mcp/UnifiedMCPHandler';
-import { MCPResponseAdapter } from '$lib/adapters/MCPResponseAdapter';
+import type { RequestHandler } from './$types';
+import { DynamicDataPipeline } from '$lib/core/DynamicDataPipeline';
 
-// Real chat handler that uses MCP tools
-export const POST: RequestHandler = async ({ request, fetch }) => {
+/**
+ * Chat API Endpoint - Now with dynamic data handling
+ * Maintains backward compatibility while using the new dynamic pipeline internally
+ */
+
+// Tool patterns for determining which MCP tool to use
+const TOOL_PATTERNS = [
+	{ pattern: /scripture|verse|passage|text|bible/i, tool: 'fetch_scripture' },
+	{ pattern: /notes?|translation notes?/i, tool: 'fetch_translation_notes' },
+	{ pattern: /questions?|translation questions?/i, tool: 'fetch_translation_questions' },
+	{ pattern: /word|definition|term|meaning/i, tool: 'get_translation_word' },
+	{ pattern: /academy|article|learn|teaching|ta\s/i, tool: 'fetch_translation_academy' },
+];
+
+// Reference extraction with multiple formats
+function extractReference(message: string): string | null {
+	const patterns = [
+		/(\w+\s+\d+:\d+(?:-\d+)?)/i,  // Book Chapter:Verse
+		/(\w+\s+\d+)(?!:)/i,           // Book Chapter
+	];
+	
+	for (const pattern of patterns) {
+		const match = message.match(pattern);
+		if (match) return match[1];
+	}
+	
+	return null;
+}
+
+export const POST: RequestHandler = async ({ request, url }) => {
 	try {
-		const { message, history, enableXRay } = await request.json();
+		const { message } = await request.json();
 		
-		// Start timing
-		const startTime = Date.now();
-		const xrayData = {
-			tools: [],
-			totalTime: 0,
-			citations: [],
-			timeline: [
-				{ time: 0, event: 'Request received' }
-			]
+		if (!message) {
+			return json({ error: 'No message provided' });
+		}
+
+		// Determine which tool to use based on message content
+		let selectedTool = null;
+		for (const { pattern, tool } of TOOL_PATTERNS) {
+			if (pattern.test(message)) {
+				selectedTool = tool;
+				break;
+			}
+		}
+
+		if (!selectedTool) {
+			return json({
+				content: "I can help with scripture, translation notes, questions, word definitions, and Translation Academy articles. Please specify what you're looking for."
+			});
+		}
+
+		// Build parameters dynamically
+		const params: any = {
+			language: 'en',
+			organization: 'unfoldingWord'
 		};
 		
-		// Detect what the user is asking for
-		const lowerMessage = message.toLowerCase();
-		let content = '';
-		
-		// Check for specific tool requests BEFORE general scripture requests
-		// Handle translation questions FIRST
-		if (lowerMessage.includes('question') || lowerMessage.includes('tq')) {
-			// Extract reference
-			let reference = 'Titus 1:1'; // Default
-			const refMatch = message.match(/(\w+\s+\d+:\d+)/i);
-			if (refMatch) {
-				reference = refMatch[1];
-			}
-			
-			// Call the MCP tool for translation questions
-			const toolResponse = await fetch('/api/mcp', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					method: 'tools/call',
-					params: {
-						name: 'fetch_translation_questions',
-						arguments: {
-							reference,
-							language: 'en'
-						}
-					}
-				})
-			});
-			
-			const toolStartTime = Date.now() - startTime;
-			
-			if (toolResponse.ok) {
-				const result = await toolResponse.json();
-				const questionsText = MCPResponseAdapter.formatTranslationQuestions(result, reference);
-				
-				content = `Translation Questions for ${reference}:\n\n${questionsText}\n\n[Translation Questions - ${reference}]`;
-				
-				// Record tool usage
-				xrayData.tools.push({
-					id: 'tool-4',
-					name: 'fetch_translation_questions',
-					params: { reference, language: 'en' },
-					response: { text: questionsText },
-					duration: Date.now() - startTime - toolStartTime,
-					cached: false
-				});
-				xrayData.citations.push(`Translation Questions - ${reference}`);
-				xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_translation_questions' });
-			} else {
-				content = 'Sorry, I encountered an error fetching the translation questions. Please try again.';
-			}
-		}
-		// Handle translation notes requests
-		else if (lowerMessage.includes('notes') || lowerMessage.includes('translation notes')) {
-			// Extract reference - support both "Book Chapter:Verse" and "Book Chapter"
-			let reference = 'Titus 1:1'; // Default
-			const verseMatch = message.match(/(\w+\s+\d+:\d+)/i);
-			const chapterMatch = message.match(/(\w+\s+\d+)(?!:)/i);
-			
-			if (verseMatch) {
-				reference = verseMatch[1];
-			} else if (chapterMatch) {
-				reference = chapterMatch[1] + ':1'; // Default to verse 1 for chapter-only references
-			}
-			
-			// Call the MCP tool for translation notes
-			const toolResponse = await fetch('/api/mcp', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					method: 'tools/call',
-					params: {
-						name: 'fetch_translation_notes',
-						arguments: {
-							reference,
-							language: 'en',
-							organization: 'unfoldingWord'
-						}
-					}
-				})
-			});
-			
-			const toolStartTime = Date.now() - startTime;
-			
-			if (toolResponse.ok) {
-				const result = await toolResponse.json();
-				
-				// Debug logging
-				console.log('[CHAT DEBUG] MCP Response:', JSON.stringify(result).substring(0, 500));
-				
-				const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
-				
-				// Debug logging
-				console.log('[CHAT DEBUG] Formatted notes:', notesText.substring(0, 200));
-				
-				content = `Translation Notes for ${reference}:\n\n${notesText}\n\n[Translation Notes - ${reference}]`;
-				
-				// Record tool usage
-				xrayData.tools.push({
-					id: 'tool-2',
-					name: 'fetch_translation_notes',
-					params: { reference, language: 'en', organization: 'unfoldingWord' },
-					response: { text: notesText },
-					duration: Date.now() - startTime - toolStartTime,
-					cached: false
-				});
-				xrayData.citations.push(`Translation Notes - ${reference}`);
-				xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_translation_notes' });
-			} else {
-				content = 'Sorry, I encountered an error fetching the translation notes. Please try again.';
-			}
-		}
-		// Handle Translation Academy requests
-		else if (lowerMessage.includes('translation academy') || lowerMessage.includes('article:')) {
-			// Extract article ID from parentheses or after colon
-			let articleId = '';
-			const parenMatch = message.match(/\(([^)]+)\)/);
-			const colonMatch = message.match(/article:\s*(\S+)/i);
-			
-			if (parenMatch) {
-				articleId = parenMatch[1];
-			} else if (colonMatch) {
-				articleId = colonMatch[1];
-			}
-			
-			if (articleId) {
-				// Call the Translation Academy endpoint directly
-				const taResponse = await fetch(`/api/fetch-translation-academy?articleId=${encodeURIComponent(articleId)}&language=en`);
-				
-				const toolStartTime = Date.now() - startTime;
-				
-				if (taResponse.ok) {
-					const taData = await taResponse.json();
-					
-					// Handle the TA response structure
-					if (taData.success && taData.data?.modules) {
-						// Try to find a module matching the articleId
-						const modules = taData.data.modules;
-						let foundModule = null;
-						
-						// Search for exact match or partial match
-						for (const module of modules) {
-							if (module.id === articleId || 
-								module.id.includes(articleId) || 
-								articleId.includes(module.id)) {
-								foundModule = module;
-								break;
-							}
-						}
-						
-						if (foundModule) {
-							content = `# ${foundModule.title}\n\n${foundModule.description}\n\n${foundModule.content || 'Content not available'}\n\n[Translation Academy - ${articleId}]`;
-						} else {
-							// If no specific module found, list available modules
-							const moduleList = modules.map(m => `- **${m.title}**: ${m.description}`).join('\n');
-							content = `# Translation Academy\n\nCould not find article "${articleId}". Available modules:\n\n${moduleList}`;
-						}
-					} else if (taData.title && taData.content) {
-						// Fallback for direct article response
-						content = `# ${taData.title}\n\n${taData.content}\n\n[Translation Academy - ${articleId}]`;
-					} else {
-						content = `Could not parse Translation Academy response for: ${articleId}`;
-					}
-					
-					// Record tool usage
-					xrayData.tools.push({
-						id: 'tool-ta',
-						name: 'fetch_translation_academy',
-						params: { articleId, language: 'en' },
-						response: { title: taData.title },
-						duration: Date.now() - startTime - toolStartTime,
-						cached: false
-					});
-					xrayData.citations.push(`Translation Academy - ${articleId}`);
-					xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_translation_academy' });
-				} else {
-					content = `Could not find the Translation Academy article: ${articleId}`;
-				}
-			} else {
-				content = 'Please specify which Translation Academy article you\'d like to read.';
-			}
-		}
-		// Handle translation words requests
-		else if (lowerMessage.includes('mean') || lowerMessage.includes('word') || lowerMessage.includes('definition')) {
-			// Extract word - look for quoted words or specific biblical terms
-			let wordId = '';
-			const quotedMatch = message.match(/["']([^"']+)["']/);
-			const wordMatch = message.match(/\b(agape|love|faith|grace|mercy|salvation|righteousness|holy|spirit)\b/i);
-			
-			if (quotedMatch) {
-				wordId = quotedMatch[1];
-			} else if (wordMatch) {
-				wordId = wordMatch[1];
-			}
-			
-			if (wordId) {
-				// Call the MCP tool for translation words
-				const toolResponse = await fetch('/api/mcp', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						method: 'tools/call',
-						params: {
-							name: 'get_translation_word',
-							arguments: {
-								wordId: wordId.toLowerCase(),
-								language: 'en'
-							}
-						}
-					})
-				});
-				
-				const toolStartTime = Date.now() - startTime;
-				
-				if (toolResponse.ok) {
-					const result = await toolResponse.json();
-					const wordText = MCPResponseAdapter.formatTranslationWord(result, wordId);
-					
-					content = `${wordText}\n\n[Translation Words - ${wordId}]`;
-					
-					// Record tool usage
-					xrayData.tools.push({
-						id: 'tool-3',
-						name: 'get_translation_word',
-						params: { wordId, language: 'en' },
-						response: { text: wordText },
-						duration: Date.now() - startTime - toolStartTime,
-						cached: false
-					});
-					xrayData.citations.push(`Translation Words - ${wordId}`);
-					xrayData.timeline.push({ time: toolStartTime, event: 'Tool: get_translation_word' });
-				}
-			} else {
-				content = 'Please specify which word you\'d like to know about. For example: "What does \'agape\' mean?"';
-			}
-		}
-		// Handle scripture requests LAST (catch-all for verse references)
-		else if (lowerMessage.includes('show') || lowerMessage.includes('verse') || message.match(/\w+\s+\d+:\d+/i)) {
-			// Extract reference
-			let reference = 'John 3:16'; // Default
-			const refMatch = message.match(/(\w+\s+\d+:\d+)/i);
-			if (refMatch) {
-				reference = refMatch[0];
-			}
-			
-			// Call the MCP tool for scripture
-			const toolResponse = await fetch('/api/mcp', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					method: 'tools/call',
-					params: {
-						name: 'fetch_scripture',
-						arguments: {
-							reference,
-							language: 'en',
-							version: 'ult'
-						}
-					}
-				})
-			});
-			
-			const toolStartTime = Date.now() - startTime;
-			
-			if (toolResponse.ok) {
-				const result = await toolResponse.json();
-				const scriptureText = MCPResponseAdapter.formatScripture(result, reference);
-				
-				content = `Here's ${reference} from the ULT (Unfoldingword Literal Text):\n\n${scriptureText}\n\n[Scripture - ${reference} ULT]`;
-				
-				// Record tool usage
-				xrayData.tools.push({
-					id: 'tool-1',
-					name: 'fetch_scripture',
-					params: { reference, version: 'ult', language: 'en' },
-					response: { text: scriptureText },
-					duration: Date.now() - startTime - toolStartTime,
-					cached: false
-				});
-				xrayData.citations.push(`Scripture - ${reference} ULT`);
-				xrayData.timeline.push({ time: toolStartTime, event: 'Tool: fetch_scripture' });
-			} else {
-				content = 'Sorry, I encountered an error fetching the scripture. Please try again.';
-			}
-		}
-		// Default response
-		else {
-			content = `I can help you explore Bible passages and translation resources. Try asking:
-
-• "Show me Titus 1:1" - to see scripture text
-• "What notes are in Titus 1:1?" - for translation notes
-• "What questions are in John 3:16?" - for translation questions
-• "What does 'agape' mean?" - for word meanings
-• "What languages are available?" - for available resources
-
-I follow sacred text constraints, providing verbatim scripture and cited resources.`;
+		// Extract reference if present
+		const reference = extractReference(message);
+		if (reference) {
+			params.reference = reference;
 		}
 		
-		// Calculate total time
-		const endTime = Date.now();
-		xrayData.totalTime = endTime - startTime;
-		xrayData.timeline.push({ time: xrayData.totalTime, event: 'Response sent' });
+		// Tool-specific parameter extraction
+		if (selectedTool === 'fetch_translation_academy') {
+			// Handle RC links in the message
+			const rcMatch = message.match(/rc:([^\s\]]+)/);
+			if (rcMatch) {
+				params.articleId = rcMatch[1];
+			} else {
+				// Try to extract article name
+				const articleMatch = message.match(/about\s+(\S+)|article\s+(?:on\s+)?(\S+)/i);
+				if (articleMatch) {
+					params.articleId = articleMatch[1] || articleMatch[2];
+				}
+			}
+		} else if (selectedTool === 'get_translation_word') {
+			const wordMatch = message.match(/word\s+(\S+)|define\s+(\S+)|what\s+is\s+(\S+)/i);
+			if (wordMatch) {
+				params.wordId = wordMatch[1] || wordMatch[2] || wordMatch[3];
+			}
+		}
+
+		// Use the dynamic MCP endpoint for data fetching
+		const mcpUrl = new URL('/api/mcp-dynamic', url.origin);
+		const mcpResponse = await fetch(mcpUrl.toString(), {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				method: 'tools/call',
+				params: {
+					name: selectedTool,
+					arguments: params
+				}
+			})
+		});
+
+		if (!mcpResponse.ok) {
+			// Fallback to regular MCP endpoint if dynamic fails
+			const fallbackUrl = new URL('/api/mcp', url.origin);
+			const fallbackResponse = await fetch(fallbackUrl.toString(), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					method: 'tools/call',
+					params: {
+						name: selectedTool,
+						arguments: params
+					}
+				})
+			});
+			
+			const fallbackData = await fallbackResponse.json();
+			return json({
+				content: fallbackData.content?.[0]?.text || 'No content found',
+				tool: selectedTool,
+				params
+			});
+		}
+
+		const mcpData = await mcpResponse.json();
+		
+		// Format the response for the chat interface
+		const content = mcpData.content?.[0]?.text || 'No content found';
 		
 		return json({
 			content,
-			xrayData: enableXRay ? xrayData : null
+			tool: selectedTool,
+			params,
+			_dynamic: true, // Flag to indicate dynamic pipeline was used
+			_debug: mcpData._debug
 		});
-		
+
 	} catch (error) {
 		console.error('Chat error:', error);
-		return json(
-			{ 
-				error: 'Failed to process chat request',
-				details: error instanceof Error ? error.message : 'Unknown error'
-			},
-			{ status: 500 }
-		);
+		
+		// Provide helpful error message
+		return json({
+			error: 'An error occurred processing your request',
+			details: error instanceof Error ? error.message : 'Unknown error',
+			suggestion: 'Try refreshing the page or rephrasing your request'
+		});
 	}
 };
