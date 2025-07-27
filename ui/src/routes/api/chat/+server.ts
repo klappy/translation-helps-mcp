@@ -238,33 +238,47 @@ function formatNaturally(content: string, intent: any, context: ChatContext): st
 	if (tool === 'fetch_scripture') {
 		const intro = [
 			`Here's ${params.reference}:`,
-			`Let me show you ${params.reference}:`,
 			`${params.reference} says:`,
-			`The passage reads:`
+			`The passage reads:`,
+			`Let me show you ${params.reference}:`
 		][Math.floor(Math.random() * 4)];
 		
-		formatted = `${intro}\n\n${formatted}`;
+		// Scripture should be in a clear quote block
+		formatted = `${intro}\n\n> ${formatted.trim()}`;
 		
+		// Add note about word links if present
 		if (formatted.includes('](rc://')) {
-			formatted += '\n\n*I notice there are some key terms here. Click any 📚 link to explore their meanings.*';
+			formatted += '\n\n*💡 Click any 📚 link to explore the meaning of key terms.*';
 		}
 	} else if (tool === 'fetch_translation_notes') {
+		// Notes are already well-formatted, just add intro
 		const intro = [
-			`Here are the translation notes for ${params.reference}:`,
-			`Let me share what the translators noted about ${params.reference}:`,
-			`The translation team provides these insights on ${params.reference}:`,
-			`Here's what might help in understanding ${params.reference}:`
-		][Math.floor(Math.random() * 4)];
+			`Here's what the translation team noted about ${params.reference}:`,
+			`The translators provide these insights on ${params.reference}:`,
+			`Translation notes for ${params.reference}:`
+		][Math.floor(Math.random() * 3)];
 		
 		formatted = `${intro}\n\n${formatted}`;
-	} else if (tool === 'get_translation_word') {
-		if (!formatted.includes(params.wordId)) {
-			formatted = `**${params.wordId}**\n\n${formatted}`;
+		
+		// Add helpful tip if RC links present
+		if (formatted.includes('](rc://')) {
+			formatted += '\n\n*💡 The 📚 links lead to helpful articles about translation concepts.*';
 		}
-		formatted += '\n\n*Click any 📚 links to explore related concepts.*';
+	} else if (tool === 'get_translation_word') {
+		// Word definitions are already clean, just ensure nice presentation
+		if (!formatted.toLowerCase().includes(params.wordId?.toLowerCase())) {
+			formatted = `**Definition of "${params.wordId}":**\n\n${formatted}`;
+		}
 	} else if (tool === 'fetch_translation_questions') {
-		const intro = `Here are some study questions for ${params.reference}:`;
-		formatted = `${intro}\n\n${formatted}\n\n*These questions can help guide your study or discussion of this passage.*`;
+		// Questions are already numbered, just add context
+		const intro = `Here are some study questions to consider for ${params.reference}:`;
+		formatted = `${intro}\n\n${formatted}\n\n*💭 These questions can help guide personal study or group discussion.*`;
+	} else if (tool === 'fetch_translation_academy') {
+		// Academy articles are already formatted with headers
+		// Just ensure clean presentation
+		if (!formatted.startsWith('#')) {
+			formatted = `## ${formatted}`;
+		}
 	}
 	
 	return formatted;
@@ -325,46 +339,307 @@ function processRCLinks(text: string): string {
 }
 
 /**
- * Extract all text recursively - kept from before
+ * Extract and format content intelligently based on data structure
  */
-function extractAllText(data: any, collected: string[] = [], depth = 0): string {
-	if (depth > 10) return collected.join('\n\n');
+function extractAllText(data: any, depth = 0): string {
+	// For scripture, preserve exact text
+	if (isScriptureData(data)) {
+		return extractScripture(data);
+	}
+	
+	// For translation notes, format them nicely
+	if (isTranslationNotes(data)) {
+		return formatTranslationNotes(data);
+	}
+	
+	// For translation words, create a clean definition
+	if (isTranslationWord(data)) {
+		return formatTranslationWord(data);
+	}
+	
+	// For translation questions, format as a numbered list
+	if (isTranslationQuestions(data)) {
+		return formatTranslationQuestions(data);
+	}
+	
+	// For translation academy, extract article content
+	if (isTranslationAcademy(data)) {
+		return formatTranslationAcademy(data);
+	}
+	
+	// Fallback to smart extraction
+	return smartExtract(data);
+}
+
+/**
+ * Check if data looks like scripture
+ */
+function isScriptureData(data: any): boolean {
+	return data?.verseObjects || data?.text || (data?.data?.text && data?.data?.verseObjects);
+}
+
+/**
+ * Extract scripture text exactly as provided
+ */
+function extractScripture(data: any): string {
+	// Direct text field
+	if (typeof data.text === 'string') return data.text;
+	
+	// Nested in data
+	if (data.data?.text) return data.data.text;
+	
+	// From verse objects
+	if (data.verseObjects || data.data?.verseObjects) {
+		const objects = data.verseObjects || data.data.verseObjects;
+		return objects
+			.filter((obj: any) => obj.type === 'text' || obj.type === 'word')
+			.map((obj: any) => obj.text || '')
+			.join('');
+	}
+	
+	return '';
+}
+
+/**
+ * Check if data contains translation notes
+ */
+function isTranslationNotes(data: any): boolean {
+	return data?.verseNotes || data?.contextNotes || data?.notes || 
+		   data?.data?.verseNotes || data?.data?.notes;
+}
+
+/**
+ * Format translation notes beautifully
+ */
+function formatTranslationNotes(data: any): string {
+	const notes = [];
+	
+	// Collect all note arrays
+	const noteArrays = [
+		data?.verseNotes,
+		data?.contextNotes,
+		data?.notes,
+		data?.data?.verseNotes,
+		data?.data?.notes
+	].filter(arr => Array.isArray(arr));
+	
+	// Flatten and process notes
+	const allNotes = noteArrays.flat();
+	
+	if (allNotes.length === 0) return 'No translation notes available for this passage.';
+	
+	// Group by type (verse notes vs context notes)
+	const verseNotes = allNotes.filter(n => !n.reference?.includes('Chapter') && !n.reference?.includes('Introduction'));
+	const contextNotes = allNotes.filter(n => n.reference?.includes('Chapter') || n.reference?.includes('Introduction'));
+	
+	// Format context notes first if any
+	if (contextNotes.length > 0) {
+		contextNotes.forEach(note => {
+			const title = note.reference || 'Context';
+			const content = extractNoteContent(note);
+			if (content) {
+				notes.push(`## ${title}\n\n${content}`);
+			}
+		});
+	}
+	
+	// Format verse notes
+	if (verseNotes.length > 0) {
+		const formattedVerseNotes = verseNotes
+			.map((note, index) => {
+				const content = extractNoteContent(note);
+				if (!content) return null;
+				
+				// Format with quote if available
+				const quote = note.quote || note.Quote;
+				if (quote && quote.trim()) {
+					return `**${index + 1}.** **"${quote}"** — ${content}`;
+				} else {
+					return `**${index + 1}.** ${content}`;
+				}
+			})
+			.filter(Boolean);
+			
+		if (formattedVerseNotes.length > 0) {
+			notes.push(formattedVerseNotes.join('\n\n'));
+		}
+	}
+	
+	return notes.join('\n\n');
+}
+
+/**
+ * Extract content from a note object
+ */
+function extractNoteContent(note: any): string {
+	let content = note.text || note.note || note.Note || note.content || '';
+	
+	// Unescape newlines
+	content = content.replace(/\\n/g, '\n');
+	
+	// Clean up excessive whitespace
+	content = content.replace(/\n{3,}/g, '\n\n').trim();
+	
+	return content;
+}
+
+/**
+ * Check if data is a translation word
+ */
+function isTranslationWord(data: any): boolean {
+	return data?.word || data?.definition || data?.content ||
+		   (data?.data && (data.data.word || data.data.definition));
+}
+
+/**
+ * Format translation word definition
+ */
+function formatTranslationWord(data: any): string {
+	const word = data.word || data.data?.word || '';
+	const definition = data.definition || data.content || data.data?.definition || data.data?.content || '';
+	
+	let result = '';
+	
+	if (word) {
+		result += `**${word}**\n\n`;
+	}
+	
+	if (definition) {
+		// Clean up the definition
+		let cleanDef = definition
+			.replace(/\\n/g, '\n')
+			.replace(/\n{3,}/g, '\n\n')
+			.trim();
+			
+		result += cleanDef;
+	}
+	
+	// Add examples if available
+	if (data.examples || data.data?.examples) {
+		const examples = data.examples || data.data.examples;
+		if (Array.isArray(examples) && examples.length > 0) {
+			result += '\n\n**Examples:**\n';
+			examples.forEach((ex: any) => {
+				if (ex.text) result += `• ${ex.text}\n`;
+			});
+		}
+	}
+	
+	return result || 'No definition available.';
+}
+
+/**
+ * Check if data contains translation questions
+ */
+function isTranslationQuestions(data: any): boolean {
+	return data?.questions || data?.data?.questions ||
+		   (Array.isArray(data) && data[0]?.question);
+}
+
+/**
+ * Format translation questions
+ */
+function formatTranslationQuestions(data: any): string {
+	let questions = [];
+	
+	if (Array.isArray(data)) {
+		questions = data;
+	} else if (data.questions) {
+		questions = data.questions;
+	} else if (data.data?.questions) {
+		questions = data.data.questions;
+	}
+	
+	if (!questions.length) return 'No study questions available for this passage.';
+	
+	return questions
+		.map((q: any, index: number) => {
+			const question = q.question || q.text || q;
+			if (typeof question === 'string') {
+				return `**${index + 1}.** ${question}`;
+			}
+			return null;
+		})
+		.filter(Boolean)
+		.join('\n\n');
+}
+
+/**
+ * Check if data is Translation Academy content
+ */
+function isTranslationAcademy(data: any): boolean {
+	return data?.title || data?.modules || data?.data?.modules ||
+		   (data?.success && (data?.data?.title || data?.data?.modules));
+}
+
+/**
+ * Format Translation Academy content
+ */
+function formatTranslationAcademy(data: any): string {
+	// Direct article
+	if (data.title && data.content) {
+		return `# ${data.title}\n\n${data.content}`;
+	}
+	
+	// Article in data field
+	if (data.data?.title && data.data?.content) {
+		return `# ${data.data.title}\n\n${data.data.content}`;
+	}
+	
+	// Module list
+	if (data.modules || data.data?.modules) {
+		const modules = data.modules || data.data.modules;
+		if (Array.isArray(modules) && modules.length > 0) {
+			// If only one module, show its content
+			if (modules.length === 1) {
+				const module = modules[0];
+				return `# ${module.title}\n\n${module.description || ''}\n\n${module.content || ''}`.trim();
+			}
+			
+			// Otherwise list available modules
+			return '# Available Topics\n\n' + modules
+				.map((m: any) => `• **${m.title}**: ${m.description || 'No description'}`)
+				.join('\n');
+		}
+	}
+	
+	return 'No content available.';
+}
+
+/**
+ * Smart extraction for unknown data types
+ */
+function smartExtract(data: any, collected: string[] = [], depth = 0): string {
+	if (depth > 5) return collected.join('\n\n');
 	
 	if (typeof data === 'string') {
 		if (data.trim().length > 0 && !data.startsWith('{') && !data.startsWith('[')) {
 			collected.push(data);
 		}
 	} else if (Array.isArray(data)) {
-		data.forEach((item, index) => {
-			if (typeof item === 'object' && item !== null) {
-				const itemText = extractAllText(item, [], depth + 1);
-				if (itemText) {
-					collected.push(`${index + 1}. ${itemText}`);
-				}
-			} else {
-				extractAllText(item, collected, depth + 1);
+		data.forEach(item => {
+			if (typeof item === 'string') {
+				collected.push(item);
+			} else if (typeof item === 'object' && item !== null) {
+				smartExtract(item, collected, depth + 1);
 			}
 		});
 	} else if (data && typeof data === 'object') {
-		Object.entries(data).forEach(([key, value]) => {
-			if (key.startsWith('_') || key === 'success' || key === 'error' || value === null || value === undefined) {
-				return;
+		// Look for content fields first
+		const contentFields = ['content', 'text', 'description', 'note', 'definition'];
+		for (const field of contentFields) {
+			if (data[field] && typeof data[field] === 'string') {
+				collected.push(data[field]);
 			}
-			
-			if (key.toLowerCase().includes('title') && typeof value === 'string') {
-				collected.push(`## ${value}`);
-			} else if (key.toLowerCase().includes('content') || key.toLowerCase().includes('text') || key.toLowerCase().includes('note')) {
-				extractAllText(value, collected, depth + 1);
-			} else if (Array.isArray(value) && value.length > 0) {
-				if (key.toLowerCase().includes('note') || key.toLowerCase().includes('question')) {
-					collected.push(`\n### ${key}:\n`);
-				}
-				extractAllText(value, collected, depth + 1);
-			} else {
-				extractAllText(value, collected, depth + 1);
+		}
+		
+		// Then recurse into other fields
+		Object.entries(data).forEach(([key, value]) => {
+			if (!key.startsWith('_') && !contentFields.includes(key) && value) {
+				smartExtract(value, collected, depth + 1);
 			}
 		});
 	}
 	
-	return collected.join('\n\n');
+	return collected.join('\n\n').trim();
 }
