@@ -5,7 +5,6 @@
 	import TranslationWord from '$lib/components/TranslationWord.svelte';
 	import XRayPanel from './XRayPanel.svelte';
 	import { marked } from 'marked';
-	import hljs from 'highlight.js/lib/core';
 	import { browser } from '$app/environment';
 	
 	// Configure marked for safe HTML rendering
