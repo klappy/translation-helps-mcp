@@ -26,7 +26,7 @@ When users ask questions, naturally decide which tools to use. You can call mult
 
 Important: When displaying scripture, always quote it exactly as provided.`;
 
-export const POST: RequestHandler = async ({ request, url, platform }) => {
+export const POST: RequestHandler = async ({ request, url, platform, fetch }) => {
 	try {
 		const { message, history = [] } = await request.json();
 		
@@ -34,19 +34,33 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			return json({ error: 'No message provided' });
 		}
 
-		// Get OpenAI API key from environment
-		const apiKey = platform?.env?.OPENAI_API_KEY;
+		// Get OpenAI API key from Cloudflare environment
+		// In Cloudflare Pages, env vars are available on platform.env
+		const env = platform?.env || {};
+		const apiKey = env.OPENAI_API_KEY;
+		
+		console.log('[CHAT] Environment check:', {
+			hasPlatform: !!platform,
+			hasEnv: !!platform?.env,
+			hasApiKey: !!apiKey,
+			envKeys: platform?.env ? Object.keys(platform.env) : []
+		});
 		
 		if (!apiKey) {
 			// Fallback for local development without API key
 			return json({
-				content: await handleWithoutLLM(message, url),
-				warning: 'Running without OpenAI API key. Add OPENAI_API_KEY to environment for full LLM experience.'
+				content: await handleWithoutLLM(message, url, fetch),
+				warning: 'Running without OpenAI API key. Check Cloudflare Pages environment variables.',
+				debug: {
+					platform: !!platform,
+					env: !!platform?.env,
+					keys: platform?.env ? Object.keys(platform.env) : []
+				}
 			});
 		}
 
 		// First, discover available MCP tools
-		const tools = await discoverMCPTools(url);
+		const tools = await discoverMCPTools(url, fetch);
 		
 		// Build messages for OpenAI including tool definitions
 		const messages = [
@@ -89,16 +103,25 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		});
 
 		if (!openAIResponse.ok) {
-			throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+			const errorText = await openAIResponse.text();
+			console.error('[CHAT] OpenAI API error:', openAIResponse.status, errorText);
+			throw new Error(`OpenAI API error: ${openAIResponse.status} - ${errorText}`);
 		}
 
 		const aiResponse = await openAIResponse.json();
 		const assistantMessage = aiResponse.choices[0].message;
 
+		console.log('[CHAT] OpenAI response:', {
+			hasToolCalls: !!assistantMessage.tool_calls,
+			toolCallCount: assistantMessage.tool_calls?.length || 0
+		});
+
 		// If the LLM wants to use tools
 		if (assistantMessage.tool_calls) {
-			const toolResults = await executeToolCalls(assistantMessage.tool_calls, url);
+			const toolResults = await executeToolCalls(assistantMessage.tool_calls, url, fetch);
 			
+			console.log('[CHAT] Tool results:', toolResults.length);
+
 			// Send tool results back to OpenAI for final response
 			const finalResponse = await fetch(OPENAI_API_URL, {
 				method: 'POST',
@@ -149,7 +172,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 /**
  * Discover available MCP tools from the server
  */
-async function discoverMCPTools(baseUrl: URL): Promise<any[]> {
+async function discoverMCPTools(baseUrl: URL, fetch: typeof globalThis.fetch): Promise<any[]> {
 	try {
 		const mcpUrl = new URL('/api/mcp', baseUrl);
 		const response = await fetch(mcpUrl, {
@@ -174,7 +197,7 @@ async function discoverMCPTools(baseUrl: URL): Promise<any[]> {
 /**
  * Execute tool calls requested by the LLM
  */
-async function executeToolCalls(toolCalls: any[], baseUrl: URL): Promise<any[]> {
+async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof globalThis.fetch): Promise<any[]> {
 	const results = await Promise.all(
 		toolCalls.map(async (toolCall) => {
 			const { name, arguments: args } = toolCall.function;
@@ -309,7 +332,7 @@ function getDefaultTools() {
 /**
  * Fallback handler when no LLM API key is available
  */
-async function handleWithoutLLM(message: string, baseUrl: URL): Promise<string> {
+async function handleWithoutLLM(message: string, baseUrl: URL, fetch: typeof globalThis.fetch): Promise<string> {
 	// Simple pattern matching fallback
 	const lower = message.toLowerCase();
 	
