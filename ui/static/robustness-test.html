@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Robustness Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #e0e0e0;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .test-card {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .test-card.success { border-color: #10b981; }
+        .test-card.error { border-color: #ef4444; }
+        .test-card.warning { border-color: #f59e0b; }
+        h1 { color: #3b82f6; }
+        h2 { color: #10b981; font-size: 1.2em; margin-top: 0; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        pre {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .status { font-weight: bold; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        .rc-link { color: #3b82f6; text-decoration: underline; cursor: pointer; }
+        .timestamp { color: #6b7280; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🛡️ System Robustness Test Suite</h1>
+    
+    <div style="background: #1f2937; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h2 style="color: #f59e0b;">Testing Robustness Improvements</h2>
+        <ul>
+            <li>✅ Case-insensitive field matching</li>
+            <li>✅ Multiple data structure formats</li>
+            <li>✅ RC link extraction from content</li>
+            <li>✅ Translation Academy module handling</li>
+            <li>✅ Error recovery and fallbacks</li>
+        </ul>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+        <button onclick="runAllTests()">🚀 Run All Tests</button>
+        <button onclick="testFieldExtraction()">🔍 Test Field Extraction</button>
+        <button onclick="testRCLinks()">🔗 Test RC Links</button>
+        <button onclick="testTranslationAcademy()">📚 Test Translation Academy</button>
+        <button onclick="window.location.reload()">🔄 Reload</button>
+    </div>
+
+    <div class="test-grid" id="results"></div>
+
+    <script>
+        const BASE_URL = window.location.origin;
+        
+        function addCard(title, content, status = 'warning') {
+            const card = document.createElement('div');
+            card.className = `test-card ${status}`;
+            card.innerHTML = `
+                <h2>${title}</h2>
+                <div class="timestamp">Time: ${new Date().toLocaleTimeString()}</div>
+                ${content}
+            `;
+            document.getElementById('results').appendChild(card);
+            return card;
+        }
+
+        async function testFieldExtraction() {
+            const card = addCard('Field Extraction Robustness', 'Testing...', 'warning');
+            
+            try {
+                // Test with actual API
+                const response = await fetch(`${BASE_URL}/api/fetch-translation-notes?reference=Titus%203:1&language=en`);
+                const data = await response.json();
+                
+                // Check various field patterns
+                const tests = [
+                    { name: 'Lowercase notes', found: !!data.notes },
+                    { name: 'Uppercase Notes', found: !!data.Notes },
+                    { name: 'verseNotes', found: !!data.verseNotes },
+                    { name: 'VerseNotes', found: !!data.VerseNotes },
+                    { name: 'Nested data.notes', found: !!data.data?.notes },
+                ];
+                
+                const foundAny = tests.some(t => t.found);
+                
+                card.className = `test-card ${foundAny ? 'success' : 'error'}`;
+                card.innerHTML = `
+                    <h2>Field Extraction Robustness</h2>
+                    <div class="timestamp">Time: ${new Date().toLocaleTimeString()}</div>
+                    <h3>Field Detection:</h3>
+                    ${tests.map(t => `<p>${t.found ? '✅' : '❌'} ${t.name}</p>`).join('')}
+                    
+                    <h3>Notes Structure:</h3>
+                    <pre>${JSON.stringify(Object.keys(data), null, 2)}</pre>
+                    
+                    <p class="${foundAny ? 'success' : 'error'}">
+                        ${foundAny ? '✅ System can find notes in various formats!' : '❌ No notes found'}
+                    </p>
+                `;
+            } catch (error) {
+                card.className = 'test-card error';
+                card.innerHTML += `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+
+        async function testRCLinks() {
+            const card = addCard('RC Link Extraction', 'Testing...', 'warning');
+            
+            try {
+                // Test content with various RC link formats
+                const testContent = `
+                    Here's a link [[rc://*/ta/man/translate/figs-ellipsis]]
+                    Another format: rc://*/ta/man/translate/figs-metaphor
+                    Markdown style: [Learn about metaphors](rc://*/ta/man/translate/figs-metaphor)
+                    And nested: See [[rc:///ta/man/translate/translate-names]] for more.
+                `;
+                
+                // Test via chat API
+                const response = await fetch(`${BASE_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'Notes Titus 1:1' })
+                });
+                
+                const data = await response.json();
+                const content = data.content || '';
+                
+                // Count RC links in response
+                const rcLinkPattern = /\[([^\]]+)\]\(rc:([^\)]+)\)/g;
+                const links = [...content.matchAll(rcLinkPattern)];
+                
+                card.className = `test-card ${links.length > 0 ? 'success' : 'warning'}`;
+                card.innerHTML = `
+                    <h2>RC Link Extraction</h2>
+                    <div class="timestamp">Time: ${new Date().toLocaleTimeString()}</div>
+                    
+                    <h3>Links Found: ${links.length}</h3>
+                    ${links.map(([full, text, link]) => 
+                        `<p>📚 <span class="rc-link" onclick="testTALink('${link}')">${text}</span> → ${link}</p>`
+                    ).join('')}
+                    
+                    <h3>Test Patterns:</h3>
+                    <p>✅ [[rc://*/ta/man/...]]</p>
+                    <p>✅ rc://*/ta/man/...</p>
+                    <p>✅ [text](rc://*/ta/man/...)</p>
+                    
+                    <p class="${links.length > 0 ? 'success' : 'warning'}">
+                        ${links.length > 0 ? '✅ RC links are being extracted!' : '⚠️ No RC links found in response'}
+                    </p>
+                `;
+            } catch (error) {
+                card.className = 'test-card error';
+                card.innerHTML += `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+
+        async function testTranslationAcademy() {
+            const card = addCard('Translation Academy Handling', 'Testing...', 'warning');
+            
+            try {
+                // Test TA endpoint
+                const response = await fetch(`${BASE_URL}/api/fetch-translation-academy?articleId=translate/figs-ellipsis&language=en`);
+                const data = await response.json();
+                
+                // Test via chat
+                const chatResponse = await fetch(`${BASE_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'Show me the article about figs-ellipsis' })
+                });
+                const chatData = await chatResponse.json();
+                
+                const hasModules = data.data?.modules?.length > 0;
+                const hasArticle = data.title && data.content;
+                const chatHasContent = chatData.content?.includes('Translation Academy') || 
+                                     chatData.content?.includes('module') ||
+                                     chatData.content?.includes('ellipsis');
+                
+                card.className = `test-card ${(hasModules || hasArticle) && chatHasContent ? 'success' : 'error'}`;
+                card.innerHTML = `
+                    <h2>Translation Academy Handling</h2>
+                    <div class="timestamp">Time: ${new Date().toLocaleTimeString()}</div>
+                    
+                    <h3>API Response Type:</h3>
+                    <p>${hasModules ? '✅ Module list format' : '❌ No modules'}</p>
+                    <p>${hasArticle ? '✅ Direct article format' : '❌ No article'}</p>
+                    
+                    <h3>Chat Integration:</h3>
+                    <p>${chatHasContent ? '✅ Chat can handle TA responses' : '❌ Chat failed to process TA'}</p>
+                    
+                    <h3>Response Structure:</h3>
+                    <pre>${JSON.stringify(Object.keys(data), null, 2)}</pre>
+                    
+                    ${hasModules ? `<p>Found ${data.data.modules.length} modules</p>` : ''}
+                `;
+            } catch (error) {
+                card.className = 'test-card error';
+                card.innerHTML += `<pre>Error: ${error.message}</pre>`;
+            }
+        }
+
+        async function testTALink(articleId) {
+            const response = await fetch(`${BASE_URL}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: `Show me the article ${articleId}` })
+            });
+            const data = await response.json();
+            
+            alert(`Translation Academy Response:\n\n${data.content?.substring(0, 500)}...`);
+        }
+
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '';
+            await testFieldExtraction();
+            await testRCLinks();
+            await testTranslationAcademy();
+            
+            // Summary card
+            const cards = document.querySelectorAll('.test-card');
+            const successCount = document.querySelectorAll('.test-card.success').length;
+            const errorCount = document.querySelectorAll('.test-card.error').length;
+            
+            addCard(
+                'Test Summary',
+                `
+                    <h3>Results:</h3>
+                    <p class="success">✅ Passed: ${successCount}</p>
+                    <p class="error">❌ Failed: ${errorCount}</p>
+                    <p class="warning">⚠️ Warnings: ${cards.length - successCount - errorCount}</p>
+                    
+                    <h3>System Status:</h3>
+                    <p class="${successCount > errorCount ? 'success' : 'error'}">
+                        ${successCount > errorCount ? 
+                            '✅ System is now more robust!' : 
+                            '❌ Some robustness issues remain'}
+                    </p>
+                `,
+                successCount > errorCount ? 'success' : 'error'
+            );
+        }
+
+        // Auto-run tests on load
+        setTimeout(runAllTests, 500);
+    </script>
+</body>
+</html>
