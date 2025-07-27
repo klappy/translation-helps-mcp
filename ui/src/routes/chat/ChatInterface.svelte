@@ -1,10 +1,11 @@
 <script>
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, afterUpdate } from 'svelte';
 	import { MessageSquare, Send, Sparkles, Eye, EyeOff, Clock, Database, Droplets, TrendingUp, User } from 'lucide-svelte';
 	import BibleVerse from '$lib/components/BibleVerse.svelte';
 	import TranslationWord from '$lib/components/TranslationWord.svelte';
 	import XRayPanel from './XRayPanel.svelte';
 	import { marked } from 'marked';
+	import hljs from 'highlight.js/lib/core';
 	import { browser } from '$app/environment';
 	
 	// Configure marked for safe HTML rendering
@@ -213,6 +214,17 @@ Just chat naturally - I'll understand what you're looking for! 😊`,
 		}
 	}
 	
+	// Show X-ray data for a message
+	function showXRayData(message) {
+		currentXRayData = message.xrayData;
+		showXRay = true;
+	}
+	
+	function closeXRay() {
+		showXRay = false;
+		currentXRayData = null;
+	}
+	
 	// Handle Enter key
 	function handleKeydown(event) {
 		if (event.key === 'Enter' && !event.shiftKey) {
@@ -330,7 +342,7 @@ Just chat naturally - I'll understand what you're looking for! 😊`,
 							<div class="mt-2 text-xs text-gray-400">
 								<button
 									class="flex items-center space-x-1 hover:text-gray-300"
-									on:click={() => currentXRayData = currentXRayData === message.xrayData ? null : message.xrayData}
+									on:click={() => showXRayData(message)}
 								>
 									<TrendingUp class="h-3 w-3" />
 									<span>X-ray: {message.xrayData.totalTime}ms</span>
@@ -434,6 +446,6 @@ Just chat naturally - I'll understand what you're looking for! 😊`,
 {#if showXRay && currentXRayData}
 	<XRayPanel
 		data={currentXRayData}
-		on:close={() => showXRay = false}
+		on:close={closeXRay}
 	/>
 {/if}

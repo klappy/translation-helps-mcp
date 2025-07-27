@@ -29,6 +29,14 @@ When users ask questions, naturally decide which tools to use. You can call mult
 Important: When displaying scripture, always quote it exactly as provided.`;
 
 export const POST: RequestHandler = async ({ request, url, platform, fetch }) => {
+	const startTime = Date.now();
+	const xrayData = {
+		tools: [],
+		timeline: [{ time: 0, event: 'Request received' }],
+		totalTime: 0,
+		citations: []
+	};
+	
 	try {
 		const { message, history = [] } = await request.json();
 		
@@ -89,7 +97,9 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 		}
 
 		// First, discover available MCP tools
+		xrayData.timeline.push({ time: Date.now() - startTime, event: 'Discovering MCP tools' });
 		const tools = await discoverMCPTools(url, fetch);
+		xrayData.timeline.push({ time: Date.now() - startTime, event: `Found ${tools.length} tools` });
 		
 		// Build messages for OpenAI including tool definitions
 		const messages = [
@@ -102,6 +112,7 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 		];
 
 		// Call OpenAI with function calling
+		xrayData.timeline.push({ time: Date.now() - startTime, event: 'Calling OpenAI API' });
 		const openAIResponse = await fetch(OPENAI_API_URL, {
 			method: 'POST',
 			headers: {
@@ -130,7 +141,7 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 				tool_choice: 'auto'
 			})
 		});
-
+		
 		if (!openAIResponse.ok) {
 			const errorText = await openAIResponse.text();
 			console.error('[CHAT] OpenAI API error:', openAIResponse.status, errorText);
@@ -139,6 +150,7 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 
 		const aiResponse = await openAIResponse.json();
 		const assistantMessage = aiResponse.choices[0].message;
+		xrayData.timeline.push({ time: Date.now() - startTime, event: 'OpenAI response received' });
 
 		console.log('[CHAT] OpenAI response:', {
 			hasToolCalls: !!assistantMessage.tool_calls,
@@ -147,11 +159,13 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 
 		// If the LLM wants to use tools
 		if (assistantMessage.tool_calls) {
-			const toolResults = await executeToolCalls(assistantMessage.tool_calls, url, fetch);
+			xrayData.timeline.push({ time: Date.now() - startTime, event: `Executing ${assistantMessage.tool_calls.length} tool calls` });
+			const toolResults = await executeToolCalls(assistantMessage.tool_calls, url, fetch, xrayData, startTime);
 			
 			console.log('[CHAT] Tool results:', toolResults.length);
 
 			// Send tool results back to OpenAI for final response
+			xrayData.timeline.push({ time: Date.now() - startTime, event: 'Getting final response from OpenAI' });
 			const finalResponse = await fetch(OPENAI_API_URL, {
 				method: 'POST',
 				headers: {
@@ -178,22 +192,32 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 			// Process RC links to make them clickable
 			const processedContent = makeRCLinksClickable(finalContent);
 
+			xrayData.totalTime = Date.now() - startTime;
+			xrayData.timeline.push({ time: xrayData.totalTime, event: 'Response ready' });
+
 			return json({
 				content: processedContent,
-				tool_calls: assistantMessage.tool_calls.map(tc => tc.function.name)
+				tool_calls: assistantMessage.tool_calls.map(tc => tc.function.name),
+				xrayData
 			});
 		}
 
 		// No tools needed, just return the response
+		xrayData.totalTime = Date.now() - startTime;
 		return json({
-			content: makeRCLinksClickable(assistantMessage.content)
+			content: makeRCLinksClickable(assistantMessage.content),
+			xrayData
 		});
 
 	} catch (error) {
 		console.error('Chat error:', error);
+		xrayData.totalTime = Date.now() - startTime;
+		xrayData.timeline.push({ time: xrayData.totalTime, event: `Error: ${error.message}` });
+		
 		return json({
 			error: 'An error occurred',
-			details: error instanceof Error ? error.message : 'Unknown error'
+			details: error instanceof Error ? error.message : 'Unknown error',
+			xrayData
 		});
 	}
 };
@@ -226,10 +250,11 @@ async function discoverMCPTools(baseUrl: URL, fetch: typeof globalThis.fetch): P
 /**
  * Execute tool calls requested by the LLM
  */
-async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof globalThis.fetch): Promise<any[]> {
+async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof globalThis.fetch, xrayData: any, startTime: number): Promise<any[]> {
 	const results = await Promise.all(
 		toolCalls.map(async (toolCall) => {
 			const { name, arguments: args } = toolCall.function;
+			const toolStartTime = Date.now();
 			
 			try {
 				const mcpUrl = new URL('/api/mcp', baseUrl);
@@ -246,15 +271,37 @@ async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof gl
 				});
 
 				const result = await response.json();
+				const toolDuration = Date.now() - toolStartTime;
 				
 				// Extract the actual content from MCP response
 				const content = result.content?.[0]?.text || JSON.stringify(result);
+				
+				// Add to X-ray data
+				xrayData.tools.push({
+					id: toolCall.id,
+					name,
+					params: typeof args === 'string' ? JSON.parse(args) : args,
+					response: content.substring(0, 200) + (content.length > 200 ? '...' : ''),
+					duration: toolDuration,
+					cached: response.headers.get('x-cache-status') === 'HIT'
+				});
 				
 				return {
 					tool_call_id: toolCall.id,
 					content
 				};
 			} catch (error) {
+				const toolDuration = Date.now() - toolStartTime;
+				xrayData.tools.push({
+					id: toolCall.id,
+					name,
+					params: typeof args === 'string' ? JSON.parse(args) : args,
+					response: `Error: ${error}`,
+					duration: toolDuration,
+					cached: false,
+					error: true
+				});
+				
 				return {
 					tool_call_id: toolCall.id,
 					content: `Error calling ${name}: ${error}`
