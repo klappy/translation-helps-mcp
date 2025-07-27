@@ -188,123 +188,59 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		inputValue = '';
 		isLoading = true;
 		
-		// Create a placeholder message for the assistant
-		const assistantMessage = {
+		// Add loading message immediately
+		const loadingMessage = {
 			id: (Date.now() + 1).toString(),
 			role: 'assistant',
-			content: '',
+			content: '⚡ Fetching...',
 			timestamp: new Date(),
-			isThinking: true,
-			reasoningSteps: []
+			isLoading: true
 		};
-		messages = [...messages, assistantMessage];
+		messages = [...messages, loadingMessage];
 		
 		scrollToBottom();
 		
+		// Call the chat API directly for fastest response
 		try {
-			// Start reasoning session
-			const startResponse = await fetch('/api/chat-reasoning', {
+			const response = await fetch('/api/chat', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					message: userMessage.content,
-					history: messages.slice(-6).filter(m => !m.isThinking).map(m => ({
-						role: m.role,
-						content: m.content
-					}))
+					history: messages.slice(0, -1), // Exclude current user message
+					enableXRay: true
 				})
 			});
 			
-			// Check if reasoning API is available
-			if (!startResponse.ok || !startResponse.headers.get('content-type')?.includes('json')) {
-				// Fallback to regular chat API
-				const msgIndex = messages.findIndex(m => m.id === assistantMessage.id);
-				messages[msgIndex] = {
-					...messages[msgIndex],
-					isThinking: false
-				};
-				
-				const response = await fetch('/api/chat', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						message: userMessage.content,
-						history: messages.slice(-6).filter(m => !m.isThinking).map(m => ({
-							role: m.role,
-							content: m.content
-						}))
-					})
-				});
-				
-				const data = await response.json();
-				
-				messages[msgIndex] = {
-					...messages[msgIndex],
-					content: data.content || data.error || 'No response',
-					isError: !!data.error,
-					xrayData: data.xrayData
-				};
-				messages = [...messages];
-				isLoading = false;
-				scrollToBottom();
-				return;
+			if (!response.ok) {
+				throw new Error('Failed to get response');
 			}
 			
-			const { sessionId } = await startResponse.json();
+			const data = await response.json();
 			
-			// Poll for updates
-			let pollCount = 0;
-			const maxPolls = 60; // 30 seconds max
-			
-			const pollInterval = setInterval(async () => {
-				try {
-					const statusResponse = await fetch(`/api/chat-reasoning?sessionId=${sessionId}`);
-					const status = await statusResponse.json();
-					
-					// Update reasoning steps
-					const msgIndex = messages.findIndex(m => m.id === assistantMessage.id);
-					if (msgIndex !== -1) {
-						messages[msgIndex] = {
-							...messages[msgIndex],
-							reasoningSteps: status.steps || []
-						};
-						messages = [...messages];
-					}
-					
-					// Check if complete
-					if (status.status === 'complete') {
-						clearInterval(pollInterval);
-						
-						// Update final message
-						messages[msgIndex] = {
-							...messages[msgIndex],
-							content: status.response || 'No response generated',
-							isThinking: false,
-							xrayData: status.xrayData
-						};
-						messages = [...messages];
-						isLoading = false;
-						scrollToBottom();
-					} else if (status.status === 'error' || pollCount++ > maxPolls) {
-						clearInterval(pollInterval);
-						
-						messages[msgIndex] = {
-							...messages[msgIndex],
-							content: status.error || 'Request timed out',
-							isThinking: false,
-							isError: true
-						};
-						messages = [...messages];
-						isLoading = false;
-					}
-				} catch (error) {
-					clearInterval(pollInterval);
-					console.error('Polling error:', error);
-					isLoading = false;
-				}
-			}, 500); // Poll every 500ms
+			// Check if we got an error response
+			if (data.error) {
+				const errorMessage = {
+					id: (Date.now() + 1).toString(),
+					role: 'assistant',
+					content: `❌ Error: ${data.error}\n\nDetails: ${data.details || 'No additional details'}${data.suggestion ? '\n\nSuggestion: ' + data.suggestion : ''}`,
+					timestamp: new Date(),
+					isError: true
+				};
+				messages = [...messages, errorMessage];
+			} else {
+				const assistantMessage = {
+					id: (Date.now() + 1).toString(),
+					role: 'assistant',
+					content: data.content || '',
+					timestamp: new Date(),
+					xrayData: data.xrayData,
+					isSetupGuide: data.isSetupGuide
+				};
+				
+				messages = [...messages, assistantMessage];
+				currentXRayData = data.xrayData;
+			}
 			
 		} catch (error) {
 			console.error('Chat error:', error);
@@ -316,6 +252,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 				isError: true
 			};
 			messages = [...messages, errorMessage];
+		} finally {
 			isLoading = false;
 			scrollToBottom();
 		}
@@ -457,40 +394,9 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 							: message.isError
 								? 'bg-red-900/30 text-red-100 border border-red-700/50'
 								: 'bg-blue-600 text-white'}">
-							{#if message.isThinking && message.reasoningSteps}
-								<div class="space-y-2">
-									<div class="flex items-center gap-2 text-sm">
-										<div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-										<span class="font-medium">Thinking...</span>
-									</div>
-									<div class="space-y-1 text-sm opacity-90">
-										{#each message.reasoningSteps as step}
-											<div class="flex items-start gap-2">
-												<span class="text-xs opacity-60">{step.timestamp}ms</span>
-												<span class="flex-1">
-													{#if step.type === 'thinking'}
-														💭 {step.content}
-													{:else if step.type === 'tools_selected'}
-														🔧 {step.content}
-													{:else if step.type === 'tool_executing'}
-														⚡ {step.content}
-													{:else if step.type === 'tool_completed'}
-														✅ {step.content}
-													{:else if step.type === 'tool_error'}
-														❌ {step.content}
-													{:else}
-														{step.content}
-													{/if}
-												</span>
-											</div>
-										{/each}
-									</div>
-								</div>
-							{:else if message.content}
-								<div class="markdown-content">
-									{@html renderMarkdown(message.content)}
-								</div>
-							{/if}
+							<div class="markdown-content">
+								{@html renderMarkdown(message.content)}
+							</div>
 						</div>
 						
 						{#if message.xrayData}
