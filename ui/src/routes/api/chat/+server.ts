@@ -8,6 +8,8 @@ import type { RequestHandler } from './$types';
 /**
  * MCP + LLM Reference Implementation
  * Shows how to properly integrate MCP tools with ChatGPT/Claude
+ * 
+ * Deployment: ${new Date().toISOString()}
  */
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -35,15 +37,19 @@ export const POST: RequestHandler = async ({ request, url, platform, fetch }) =>
 		}
 
 		// Get OpenAI API key from Cloudflare environment
-		// In Cloudflare Pages, env vars are available on platform.env
+		// In Cloudflare Pages, secrets are available on platform.env
 		const env = platform?.env || {};
-		const apiKey = env.OPENAI_API_KEY;
+		let apiKey = env.OPENAI_API_KEY;
 		
 		console.log('[CHAT] Environment check:', {
 			hasPlatform: !!platform,
 			hasEnv: !!platform?.env,
 			hasApiKey: !!apiKey,
-			envKeys: platform?.env ? Object.keys(platform.env) : []
+			envKeys: platform?.env ? Object.keys(platform.env).filter(k => !k.includes('KEY')) : [],
+			// Add more debug info
+			envType: typeof platform?.env,
+			keyLength: apiKey ? apiKey.length : 0,
+			keyPrefix: apiKey ? apiKey.substring(0, 7) + '...' : 'none'
 		});
 		
 		if (!apiKey) {
