@@ -1,6 +1,6 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
-	import { MessageSquare, Send, Sparkles, Eye, EyeOff, Clock, Database } from 'lucide-svelte';
+	import { MessageSquare, Send, Sparkles, Eye, EyeOff, Clock, Database, Droplets, TrendingUp, User } from 'lucide-svelte';
 	import BibleVerse from '$lib/components/BibleVerse.svelte';
 	import TranslationWord from '$lib/components/TranslationWord.svelte';
 	import XRayPanel from './XRayPanel.svelte';
@@ -280,61 +280,47 @@ Try asking me about a Bible verse, translation notes, or word meanings!`,
 
 <div class="flex h-full flex-col" style="background-color: #0f172a;">
 	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto px-4 py-6">
-		{#each messages as message}
-			<div class="mb-6 flex items-start gap-3 {message.role === 'user' ? 'flex-row-reverse' : ''}">
-				<div class="flex h-10 w-10 items-center justify-center rounded-lg {message.role === 'user' ? 'bg-blue-600' : 'bg-gray-700'}">
-					{#if message.role === 'user'}
-						<MessageSquare class="h-5 w-5 text-white" />
-					{:else}
-						<Sparkles class="h-5 w-5 text-white" />
+		{#each messages as message (message.id)}
+			<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4">
+				<div class="flex max-w-[80%] items-end space-x-2">
+					{#if message.role === 'assistant'}
+						<div class="flex-shrink-0">
+							<div class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-cyan-500">
+								<Droplets class="h-5 w-5 text-white" />
+							</div>
+						</div>
 					{/if}
-				</div>
-				
-				<div class="max-w-2xl">
-					<div class="rounded-lg px-4 py-3 {message.role === 'user' ? 'bg-gray-800 text-gray-100' : 'bg-blue-600 text-white'} {message.role === 'assistant' ? 'prose prose-invert max-w-none' : ''}">
-						{#if message.role === 'assistant'}
+					
+					<div>
+						<div class="rounded-2xl px-4 py-3 {message.role === 'user' 
+							? 'bg-gray-700 text-white' 
+							: message.isError
+								? 'bg-red-900/30 text-red-100 border border-red-700/50'
+								: 'bg-blue-600 text-white'}">
 							<div class="markdown-content">
 								{@html renderMarkdown(message.content)}
 							</div>
-						{:else}
-							{message.content}
-						{/if}
+						</div>
 						
 						{#if message.xrayData}
-							{#if message.xrayData.tools.length > 0}
-								<div class="mt-2 flex items-center gap-2 text-xs opacity-75">
-									<Clock class="h-3 w-3" />
-									{message.xrayData.totalTime}ms
-									{#if message.xrayData.tools[0].cached}
-										<Database class="h-3 w-3" />
-										Cached
-									{/if}
-								</div>
-							{/if}
-							
-							{#if message.xrayData.citations.length > 0}
-								<div class="mt-2 text-xs opacity-75">
-									📚 Sources: {message.xrayData.citations.join(', ')}
-								</div>
-							{/if}
+							<div class="mt-2 text-xs text-gray-400">
+								<button
+									class="flex items-center space-x-1 hover:text-gray-300"
+									on:click={() => currentXRayData = currentXRayData === message.xrayData ? null : message.xrayData}
+								>
+									<TrendingUp class="h-3 w-3" />
+									<span>X-ray: {message.xrayData.totalTime}ms</span>
+								</button>
+							</div>
 						{/if}
 					</div>
 					
-					<div class="mt-2 text-xs text-gray-500">
-						{message.timestamp.toLocaleTimeString()}
-					</div>
-					
-					{#if message.role === 'assistant' && message.xrayData && message.content}
-						<button
-							class="mt-2 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300"
-							on:click={() => {
-								currentXRayData = message.xrayData;
-								showXRay = true;
-							}}
-						>
-							<Eye class="h-3 w-3" />
-							View X-Ray ({message.xrayData.tools.length} tools, {message.xrayData.totalTime}ms)
-						</button>
+					{#if message.role === 'user'}
+						<div class="flex-shrink-0">
+							<div class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-600">
+								<User class="h-5 w-5 text-white" />
+							</div>
+						</div>
 					{/if}
 				</div>
 			</div>
