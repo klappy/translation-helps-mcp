@@ -111,106 +111,11 @@ async function processRequest(session: any, message: string, history: any[], pla
 			timestamp: Date.now() - session.startTime
 		});
 
-		const openAIResponse = await fetch(OPENAI_API_URL, {
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${apiKey}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				model: 'gpt-4o-mini',
-				messages,
-				tools: tools.map(tool => ({
-					type: 'function',
-					function: {
-						name: tool.name,
-						description: tool.description,
-						parameters: tool.inputSchema || {}
-					}
-				})),
-				tool_choice: 'auto'
-			})
-		});
+		try {
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-		if (!openAIResponse.ok) {
-			const errorText = await openAIResponse.text();
-			session.status = 'error';
-			session.error = `OpenAI API error: ${errorText}`;
-			return;
-		}
-
-		const aiResponse = await openAIResponse.json();
-		const assistantMessage = aiResponse.choices[0].message;
-
-		// Process tool calls if any
-		if (assistantMessage.tool_calls) {
-			const toolNames = assistantMessage.tool_calls.map(tc => tc.function.name);
-			session.steps.push({
-				type: 'tools_selected',
-				content: `I'll fetch: ${toolNames.join(', ')}`,
-				tools: toolNames,
-				timestamp: Date.now() - session.startTime
-			});
-
-			// Execute tools
-			const toolResults = [];
-			for (const toolCall of assistantMessage.tool_calls) {
-				const { name, arguments: args } = toolCall.function;
-				
-				session.steps.push({
-					type: 'tool_executing',
-					content: `Fetching ${name}...`,
-					tool: name,
-					timestamp: Date.now() - session.startTime
-				});
-
-				try {
-					const mcpUrl = new URL('/api/mcp', url);
-					const response = await fetch(mcpUrl, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							method: 'tools/call',
-							params: {
-								name,
-								arguments: typeof args === 'string' ? JSON.parse(args) : args
-							}
-						})
-					});
-
-					const result = await response.json();
-					const content = result.content?.[0]?.text || JSON.stringify(result);
-					
-					toolResults.push({
-						tool_call_id: toolCall.id,
-						content
-					});
-
-					session.steps.push({
-						type: 'tool_completed',
-						content: `Retrieved ${name} data`,
-						tool: name,
-						timestamp: Date.now() - session.startTime
-					});
-
-				} catch (error) {
-					session.steps.push({
-						type: 'tool_error',
-						content: `Error with ${name}: ${error}`,
-						tool: name,
-						timestamp: Date.now() - session.startTime
-					});
-				}
-			}
-
-			// Generate final response
-			session.steps.push({
-				type: 'thinking',
-				content: 'Formatting response...',
-				timestamp: Date.now() - session.startTime
-			});
-
-			const finalResponse = await fetch(OPENAI_API_URL, {
+			const openAIResponse = await fetch(OPENAI_API_URL, {
 				method: 'POST',
 				headers: {
 					'Authorization': `Bearer ${apiKey}`,
@@ -218,45 +123,193 @@ async function processRequest(session: any, message: string, history: any[], pla
 				},
 				body: JSON.stringify({
 					model: 'gpt-4o-mini',
-					messages: [
-						...messages,
-						assistantMessage,
-						...toolResults.map(result => ({
-							role: 'tool',
-							tool_call_id: result.tool_call_id,
-							content: JSON.stringify(result.content)
-						}))
-					]
-				})
+					messages,
+					tools: tools.map(tool => ({
+						type: 'function',
+						function: {
+							name: tool.name,
+							description: tool.description,
+							parameters: tool.inputSchema || {}
+						}
+					})),
+					tool_choice: 'auto'
+				}),
+				signal: controller.signal
 			});
 
-			const finalAIResponse = await finalResponse.json();
-			const finalContent = finalAIResponse.choices[0].message.content;
+			clearTimeout(timeout);
 
-			session.response = makeRCLinksClickable(finalContent);
-			session.xrayData = {
-				tools: assistantMessage.tool_calls.map(tc => ({
-					name: tc.function.name,
-					params: tc.function.arguments
-				})),
-				totalTime: Date.now() - session.startTime
-			};
+			if (!openAIResponse.ok) {
+				const errorText = await openAIResponse.text();
+				session.status = 'error';
+				session.error = `OpenAI API error: ${errorText}`;
+				return;
+			}
 
-		} else {
-			// No tools needed
-			session.response = makeRCLinksClickable(assistantMessage.content);
+			const aiResponse = await openAIResponse.json();
+			const assistantMessage = aiResponse.choices[0].message;
+
+			// Process tool calls if any
+			if (assistantMessage.tool_calls) {
+				const toolNames = assistantMessage.tool_calls.map(tc => tc.function.name);
+				session.steps.push({
+					type: 'tools_selected',
+					content: `I'll fetch: ${toolNames.join(', ')}`,
+					tools: toolNames,
+					timestamp: Date.now() - session.startTime
+				});
+
+				// Execute tools
+				const toolResults = [];
+				for (const toolCall of assistantMessage.tool_calls) {
+					const { name, arguments: args } = toolCall.function;
+					
+					session.steps.push({
+						type: 'tool_executing',
+						content: `Fetching ${name}...`,
+						tool: name,
+						timestamp: Date.now() - session.startTime
+					});
+
+					try {
+						const mcpUrl = new URL('/api/mcp', url);
+						const toolController = new AbortController();
+						const toolTimeout = setTimeout(() => toolController.abort(), 5000); // 5 second timeout per tool
+
+						const response = await fetch(mcpUrl, {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								method: 'tools/call',
+								params: {
+									name,
+									arguments: typeof args === 'string' ? JSON.parse(args) : args
+								}
+							}),
+							signal: toolController.signal
+						});
+
+						clearTimeout(toolTimeout);
+
+						if (!response.ok) {
+							throw new Error(`Tool returned ${response.status}`);
+						}
+
+						const result = await response.json();
+						const content = result.content?.[0]?.text || JSON.stringify(result);
+						
+						toolResults.push({
+							tool_call_id: toolCall.id,
+							content
+						});
+
+						session.steps.push({
+							type: 'tool_completed',
+							content: `Retrieved ${name} data`,
+							tool: name,
+							timestamp: Date.now() - session.startTime
+						});
+
+					} catch (error) {
+						session.steps.push({
+							type: 'tool_error',
+							content: `Error with ${name}: ${error.message || error}`,
+							tool: name,
+							timestamp: Date.now() - session.startTime
+						});
+						
+						// Continue with other tools even if one fails
+						toolResults.push({
+							tool_call_id: toolCall.id,
+							content: `Error: ${error.message || error}`
+						});
+					}
+				}
+
+				// Generate final response
+				session.steps.push({
+					type: 'thinking',
+					content: 'Formatting response...',
+					timestamp: Date.now() - session.startTime
+				});
+
+				const finalController = new AbortController();
+				const finalTimeout = setTimeout(() => finalController.abort(), 10000); // 10 second timeout
+
+				const finalResponse = await fetch(OPENAI_API_URL, {
+					method: 'POST',
+					headers: {
+						'Authorization': `Bearer ${apiKey}`,
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						model: 'gpt-4o-mini',
+						messages: [
+							...messages,
+							assistantMessage,
+							...toolResults.map(result => ({
+								role: 'tool',
+								tool_call_id: result.tool_call_id,
+								content: JSON.stringify(result.content)
+							}))
+						]
+					}),
+					signal: finalController.signal
+				});
+
+				clearTimeout(finalTimeout);
+
+				if (!finalResponse.ok) {
+					throw new Error(`Final response failed: ${finalResponse.status}`);
+				}
+
+				const finalAIResponse = await finalResponse.json();
+				const finalContent = finalAIResponse.choices[0].message.content;
+
+				session.response = makeRCLinksClickable(finalContent);
+				session.xrayData = {
+					tools: assistantMessage.tool_calls.map(tc => ({
+						name: tc.function.name,
+						params: tc.function.arguments
+					})),
+					totalTime: Date.now() - session.startTime
+				};
+
+			} else {
+				// No tools needed
+				session.response = makeRCLinksClickable(assistantMessage.content);
+			}
+
+			session.status = 'complete';
+			session.steps.push({
+				type: 'complete',
+				content: 'Response ready',
+				timestamp: Date.now() - session.startTime
+			});
+
+		} catch (error) {
+			if (error.name === 'AbortError') {
+				session.status = 'error';
+				session.error = 'Request timed out - OpenAI took too long to respond';
+			} else {
+				session.status = 'error';
+				session.error = error instanceof Error ? error.message : 'Unknown error';
+			}
+			session.steps.push({
+				type: 'error',
+				content: session.error,
+				timestamp: Date.now() - session.startTime
+			});
 		}
-
-		session.status = 'complete';
-		session.steps.push({
-			type: 'complete',
-			content: 'Response ready',
-			timestamp: Date.now() - session.startTime
-		});
 
 	} catch (error) {
 		session.status = 'error';
 		session.error = error instanceof Error ? error.message : 'Unknown error';
+		session.steps.push({
+			type: 'error',
+			content: session.error,
+			timestamp: Date.now() - session.startTime
+		});
 	}
 }
 
