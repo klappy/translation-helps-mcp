@@ -1,24 +1,24 @@
 /**
  * Route Generator
- * 
+ *
  * Auto-generates consistent API route handlers from endpoint configurations.
  * Handles transformations, error handling, performance tracking, and response formatting.
  */
 
-import type { 
-  EndpointConfig, 
-  ParamConfig, 
-  DataSourceConfig, 
-  TransformationType 
-} from './EndpointConfig.js';
-import type { 
-  PlatformHandler, 
-  PlatformRequest, 
-  PlatformResponse 
-} from '../functions/platform-adapter.js';
-import { unifiedCache } from '../functions/unified-cache.js';
-import { performanceMonitor } from '../functions/performance-monitor.js';
-import { DCSApiClient } from '../services/DCSApiClient.js';
+import { performanceMonitor } from "../functions/performance-monitor.js";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../functions/platform-adapter.js";
+import { unifiedCache } from "../functions/unified-cache.js";
+import { DCSApiClient } from "../services/DCSApiClient.js";
+import type {
+  DataSourceConfig,
+  EndpointConfig,
+  ParamConfig,
+  TransformationType,
+} from "./EndpointConfig.js";
 
 /**
  * Generated route handler configuration
@@ -49,7 +49,7 @@ export class RouteGenerationError extends Error {
     public field?: string
   ) {
     super(message);
-    this.name = 'RouteGenerationError';
+    this.name = "RouteGenerationError";
   }
 }
 
@@ -71,7 +71,9 @@ export class RouteGenerator {
     this.validateConfig(config);
 
     // Generate the handler function
-    const handler: PlatformHandler = async (request: PlatformRequest): Promise<PlatformResponse> => {
+    const handler: PlatformHandler = async (
+      request: PlatformRequest
+    ): Promise<PlatformResponse> => {
       const startTime = Date.now();
       const traceId = `${config.name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -80,23 +82,23 @@ export class RouteGenerator {
         const monitor = performanceMonitor.startRequest(config.name, traceId);
 
         // Enable DCS tracing for API endpoints
-        if (config.dataSource.type === 'dcs-api') {
-          this.dcsClient.enableTracing(traceId, `/api/${config.path.replace(/^\//, '')}`);
+        if (config.dataSource.type === "dcs-api") {
+          this.dcsClient.enableTracing(traceId, `/api/${config.path.replace(/^\//, "")}`);
         }
 
         // Handle CORS preflight
-        if (request.method === 'OPTIONS') {
+        if (request.method === "OPTIONS") {
           return this.generateCORSResponse();
         }
 
         // Parse and validate parameters
         const params = this.parseParameters(request, config.params);
         const validationErrors = this.validateParameters(params, config.params);
-        
+
         if (validationErrors.length > 0) {
           return this.generateErrorResponse(
             400,
-            'Parameter validation failed',
+            "Parameter validation failed",
             { errors: validationErrors },
             startTime
           );
@@ -105,20 +107,21 @@ export class RouteGenerator {
         // Check cache if enabled
         const cacheKey = this.generateCacheKey(config.name, params);
         let responseData: unknown = null;
-        let cacheStatus: 'hit' | 'miss' | 'bypass' = 'bypass';
+        let cacheStatus: "hit" | "miss" | "bypass" = "bypass";
 
         if (config.responseShape.performance.cacheable) {
-          const bypassCache = request.queryStringParameters['cache-bypass'] === 'true' ||
-                            request.headers['x-cache-bypass'] === 'true';
+          const bypassCache =
+            request.queryStringParameters["cache-bypass"] === "true" ||
+            request.headers["x-cache-bypass"] === "true";
 
           if (!bypassCache) {
             const cached = await unifiedCache.get(cacheKey);
             if (cached.value) {
               responseData = cached.value;
-              cacheStatus = 'hit';
+              cacheStatus = "hit";
               monitor.recordCacheHit();
             } else {
-              cacheStatus = 'miss';
+              cacheStatus = "miss";
               monitor.recordCacheMiss();
             }
           }
@@ -129,7 +132,7 @@ export class RouteGenerator {
           responseData = await this.fetchData(config, params, traceId);
 
           // Cache the result if cacheable
-          if (config.responseShape.performance.cacheable && cacheStatus !== 'bypass') {
+          if (config.responseShape.performance.cacheable && cacheStatus !== "bypass") {
             const ttl = config.dataSource.cacheTtl || 3600; // Default 1 hour
             await unifiedCache.set(cacheKey, responseData, ttl);
           }
@@ -157,7 +160,7 @@ export class RouteGenerator {
         monitor.complete(200, responseTime);
 
         // Disable DCS tracing
-        if (config.dataSource.type === 'dcs-api') {
+        if (config.dataSource.type === "dcs-api") {
           this.dcsClient.disableTracing();
         }
 
@@ -166,15 +169,14 @@ export class RouteGenerator {
           headers: this.generateHeaders(),
           body: JSON.stringify(response),
         };
-
       } catch (error) {
         const responseTime = Date.now() - startTime;
-        
+
         // Complete monitoring with error
         performanceMonitor.startRequest(config.name, traceId).complete(500, responseTime);
 
         // Disable DCS tracing on error
-        if (config.dataSource.type === 'dcs-api') {
+        if (config.dataSource.type === "dcs-api") {
           this.dcsClient.disableTracing();
         }
 
@@ -182,11 +184,11 @@ export class RouteGenerator {
 
         return this.generateErrorResponse(
           500,
-          'Internal server error',
-          { 
-            message: error instanceof Error ? error.message : 'Unknown error',
+          "Internal server error",
+          {
+            message: error instanceof Error ? error.message : "Unknown error",
             endpoint: config.name,
-            traceId 
+            traceId,
           },
           responseTime
         );
@@ -205,22 +207,26 @@ export class RouteGenerator {
    */
   private validateConfig(config: EndpointConfig): void {
     if (!config.name) {
-      throw new RouteGenerationError('Endpoint name is required', 'unknown', 'name');
+      throw new RouteGenerationError("Endpoint name is required", "unknown", "name");
     }
 
     if (!config.path) {
-      throw new RouteGenerationError('Endpoint path is required', config.name, 'path');
+      throw new RouteGenerationError("Endpoint path is required", config.name, "path");
     }
 
     if (!config.dataSource) {
-      throw new RouteGenerationError('Data source configuration is required', config.name, 'dataSource');
+      throw new RouteGenerationError(
+        "Data source configuration is required",
+        config.name,
+        "dataSource"
+      );
     }
 
-    if (config.dataSource.type === 'dcs-api' && !config.dataSource.dcsEndpoint) {
+    if (config.dataSource.type === "dcs-api" && !config.dataSource.dcsEndpoint) {
       throw new RouteGenerationError(
-        'DCS endpoint is required for dcs-api data sources',
+        "DCS endpoint is required for dcs-api data sources",
         config.name,
-        'dataSource.dcsEndpoint'
+        "dataSource.dcsEndpoint"
       );
     }
   }
@@ -228,13 +234,16 @@ export class RouteGenerator {
   /**
    * Parse request parameters according to configuration
    */
-  private parseParameters(request: PlatformRequest, paramConfigs: Record<string, ParamConfig>): ParsedParams {
+  private parseParameters(
+    request: PlatformRequest,
+    paramConfigs: Record<string, ParamConfig>
+  ): ParsedParams {
     const params: ParsedParams = {};
 
     // Handle both GET query parameters and POST body parameters
     let sourceParams: Record<string, string | undefined> = request.queryStringParameters;
 
-    if (request.method === 'POST' && request.body) {
+    if (request.method === "POST" && request.body) {
       try {
         const bodyParams = JSON.parse(request.body);
         // Query parameters take precedence over body parameters
@@ -257,22 +266,22 @@ export class RouteGenerator {
 
       // Parse based on type
       switch (paramConfig.type) {
-        case 'string':
+        case "string":
           params[paramName] = rawValue;
           break;
 
-        case 'boolean':
-          params[paramName] = rawValue === 'true';
+        case "boolean":
+          params[paramName] = rawValue === "true";
           break;
 
-        case 'number':
+        case "number":
           const numValue = Number(rawValue);
           params[paramName] = isNaN(numValue) ? undefined : numValue;
           break;
 
-        case 'array':
-          const delimiter = paramConfig.arrayDelimiter || ',';
-          params[paramName] = rawValue.split(delimiter).map(v => v.trim());
+        case "array":
+          const delimiter = paramConfig.arrayDelimiter || ",";
+          params[paramName] = rawValue.split(delimiter).map((v) => v.trim());
           break;
 
         default:
@@ -287,7 +296,7 @@ export class RouteGenerator {
    * Validate parsed parameters against configuration
    */
   private validateParameters(
-    params: ParsedParams, 
+    params: ParsedParams,
     paramConfigs: Record<string, ParamConfig>
   ): string[] {
     const errors: string[] = [];
@@ -296,7 +305,7 @@ export class RouteGenerator {
       const value = params[paramName];
 
       // Check required parameters
-      if (paramConfig.required && (value === undefined || value === null || value === '')) {
+      if (paramConfig.required && (value === undefined || value === null || value === "")) {
         errors.push(`Missing required parameter: ${paramName}`);
         continue;
       }
@@ -308,8 +317,8 @@ export class RouteGenerator {
 
       // Type-specific validation
       switch (paramConfig.type) {
-        case 'string':
-          if (typeof value !== 'string') {
+        case "string":
+          if (typeof value !== "string") {
             errors.push(`Parameter ${paramName} must be a string`);
           } else {
             // Pattern validation
@@ -327,13 +336,15 @@ export class RouteGenerator {
 
             // Options validation
             if (paramConfig.options && !paramConfig.options.includes(value)) {
-              errors.push(`Parameter ${paramName} must be one of: ${paramConfig.options.join(', ')}`);
+              errors.push(
+                `Parameter ${paramName} must be one of: ${paramConfig.options.join(", ")}`
+              );
             }
           }
           break;
 
-        case 'number':
-          if (typeof value !== 'number' || isNaN(value)) {
+        case "number":
+          if (typeof value !== "number" || isNaN(value)) {
             errors.push(`Parameter ${paramName} must be a valid number`);
           } else {
             if (paramConfig.min !== undefined && value < paramConfig.min) {
@@ -345,13 +356,13 @@ export class RouteGenerator {
           }
           break;
 
-        case 'boolean':
-          if (typeof value !== 'boolean') {
+        case "boolean":
+          if (typeof value !== "boolean") {
             errors.push(`Parameter ${paramName} must be a boolean`);
           }
           break;
 
-        case 'array':
+        case "array":
           if (!Array.isArray(value)) {
             errors.push(`Parameter ${paramName} must be an array`);
           }
@@ -368,9 +379,9 @@ export class RouteGenerator {
   private generateCacheKey(endpointName: string, params: ParsedParams): string {
     const sortedParams = Object.keys(params)
       .sort()
-      .map(key => `${key}=${JSON.stringify(params[key])}`)
-      .join('&');
-    
+      .map((key) => `${key}=${JSON.stringify(params[key])}`)
+      .join("&");
+
     return `${endpointName}:${sortedParams}`;
   }
 
@@ -383,17 +394,17 @@ export class RouteGenerator {
     traceId: string
   ): Promise<unknown> {
     switch (config.dataSource.type) {
-      case 'dcs-api': {
+      case "dcs-api": {
         return this.fetchFromDCS(config.dataSource, params, traceId);
       }
 
-      case 'computed': {
+      case "computed": {
         return this.computeData(config, params, null); // Pass null for dcsData
       }
 
-      case 'hybrid': {
+      case "hybrid": {
         // For hybrid, we might fetch from DCS and then do additional computation
-        const dcsData = config.dataSource.dcsEndpoint 
+        const dcsData = config.dataSource.dcsEndpoint
           ? await this.fetchFromDCS(config.dataSource, params, traceId)
           : null;
         return this.computeData(config, params, dcsData);
@@ -414,7 +425,7 @@ export class RouteGenerator {
     traceId: string
   ): Promise<unknown> {
     if (!dataSource.dcsEndpoint) {
-      throw new Error('DCS endpoint is required for dcs-api data sources');
+      throw new Error("DCS endpoint is required for dcs-api data sources");
     }
 
     // Replace parameters in the endpoint URL
@@ -427,7 +438,7 @@ export class RouteGenerator {
 
     // Make the API call using DCS client
     const response = await this.dcsClient.fetchResource(endpoint);
-    
+
     // Add trace information
     const traces = this.dcsClient.getTraces();
     return {
@@ -447,7 +458,7 @@ export class RouteGenerator {
     // This is a placeholder for computed data logic
     // In the actual implementation, we would have specific computation logic
     // based on the endpoint type and parameters
-    
+
     throw new Error(`Computed data source not yet implemented for endpoint: ${config.name}`);
   }
 
@@ -464,27 +475,27 @@ export class RouteGenerator {
     }
 
     switch (transformation) {
-      case 'usfm-to-text': {
+      case "usfm-to-text": {
         return this.transformUSFMToText(data, params);
       }
 
-      case 'tsv-parse': {
+      case "tsv-parse": {
         return this.parseTSV(data);
       }
 
-      case 'markdown-assemble': {
+      case "markdown-assemble": {
         return this.assembleMarkdown(data);
       }
 
-      case 'json-passthrough': {
+      case "json-passthrough": {
         return data;
       }
 
-      case 'array-flatten': {
+      case "array-flatten": {
         return this.flattenArray(data);
       }
 
-      case 'reference-parse': {
+      case "reference-parse": {
         return this.parseReferences(data);
       }
 
@@ -508,26 +519,26 @@ export class RouteGenerator {
    * Parse TSV data
    */
   private parseTSV(data: unknown): unknown {
-    if (typeof data !== 'string') {
+    if (typeof data !== "string") {
       return data;
     }
 
-    const lines = data.split('\n').filter(line => line.trim());
+    const lines = data.split("\n").filter((line) => line.trim());
     if (lines.length === 0) {
       return [];
     }
 
-    const headers = lines[0].split('\t');
+    const headers = lines[0].split("\t");
     const result = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split('\t');
+      const values = lines[i].split("\t");
       const row: Record<string, string> = {};
-      
+
       for (let j = 0; j < headers.length; j++) {
-        row[headers[j]] = values[j] || '';
+        row[headers[j]] = values[j] || "";
       }
-      
+
       result.push(row);
     }
 
@@ -563,14 +574,17 @@ export class RouteGenerator {
   /**
    * Build consistent response format
    */
-  private buildResponse(data: unknown, metadata: {
-    responseTime: number;
-    cacheStatus: 'hit' | 'miss' | 'bypass';
-    success: boolean;
-    status: number;
-    traceId: string;
-    endpointName: string;
-  }): unknown {
+  private buildResponse(
+    data: unknown,
+    metadata: {
+      responseTime: number;
+      cacheStatus: "hit" | "miss" | "bypass";
+      success: boolean;
+      status: number;
+      traceId: string;
+      endpointName: string;
+    }
+  ): unknown {
     return {
       ...data,
       _metadata: {
@@ -592,7 +606,7 @@ export class RouteGenerator {
     return {
       statusCode: 200,
       headers: this.generateHeaders(),
-      body: '',
+      body: "",
     };
   }
 
@@ -628,11 +642,12 @@ export class RouteGenerator {
    */
   private generateHeaders(): Record<string, string> {
     return {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Cache-Control': 'public, max-age=300', // 5 minutes default
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Cache-Control": "public, max-age=300", // 5 minutes default
     };
   }
 }
@@ -645,22 +660,22 @@ export const generateHandler = (config: EndpointConfig) => routeGenerator.genera
 
 // Export the TSV parsing function for use elsewhere
 export function parseTSV(tsvData: string): Array<Record<string, string>> {
-  const lines = tsvData.split('\n').filter(line => line.trim());
+  const lines = tsvData.split("\n").filter((line) => line.trim());
   if (lines.length === 0) {
     return [];
   }
 
-  const headers = lines[0].split('\t');
+  const headers = lines[0].split("\t");
   const result = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split('\t');
+    const values = lines[i].split("\t");
     const row: Record<string, string> = {};
-    
+
     for (let j = 0; j < headers.length; j++) {
-      row[headers[j]] = values[j] || '';
+      row[headers[j]] = values[j] || "";
     }
-    
+
     result.push(row);
   }
 

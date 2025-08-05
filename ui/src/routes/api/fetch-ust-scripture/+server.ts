@@ -4,12 +4,28 @@ export const config = {
 
 /**
  * SvelteKit API Route for fetch-ust-scripture
- * UST/GST Scripture Endpoint - Simplified text with word alignment
+ * Generated from EndpointConfig using the new configuration system
  */
 
-import { fetchUSTScriptureHandler } from '$lib/../../../src/functions/handlers/fetch-ust-scripture';
 import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
+import { getEndpointConfig } from '$lib/../../../src/config/endpoints/index';
+import { routeGenerator } from '$lib/../../../src/config/RouteGenerator';
 
-export const GET = createSvelteKitHandler(fetchUSTScriptureHandler);
-export const POST = createSvelteKitHandler(fetchUSTScriptureHandler);
-export const OPTIONS = createSvelteKitHandler(fetchUSTScriptureHandler);
+// Get the endpoint configuration
+const endpointConfig = getEndpointConfig('fetch-ust-scripture');
+
+if (!endpointConfig) {
+  throw new Error('fetch-ust-scripture endpoint configuration not found');
+}
+
+if (!endpointConfig.enabled) {
+  throw new Error('fetch-ust-scripture endpoint is disabled');
+}
+
+// Generate the handler from configuration
+const { handler: configuredHandler } = routeGenerator.generateHandler(endpointConfig);
+
+// Wrap with SvelteKit adapter
+export const GET = createSvelteKitHandler(configuredHandler);
+export const POST = createSvelteKitHandler(configuredHandler);
+export const OPTIONS = createSvelteKitHandler(configuredHandler);

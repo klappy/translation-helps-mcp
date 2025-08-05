@@ -259,7 +259,7 @@
         "id": 5,
         "title": "Implement Core Endpoints via Config",
         "description": "Migrate core endpoints to configuration system with proper data transformation",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           4
         ],
@@ -271,7 +271,7 @@
             "id": 1,
             "title": "Implement Scripture Endpoints",
             "description": "Configure scripture endpoints with USFM to text transformation",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "Implement configs for:\n- fetch-scripture (accepts reference ranges)\n- fetch-ult-scripture\n- fetch-ust-scripture\nHandle:\n- Verse, verse ranges, pericopes, chapters\n- USFM to clean text extraction\n- Proper error messages for invalid references",
             "testStrategy": "Returns clean scripture text for all reference types"
@@ -585,7 +585,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T17:12:40.714Z"
+      "updated": "2025-08-05T17:37:42.627Z"
     }
   }
 }

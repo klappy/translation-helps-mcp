@@ -57,39 +57,29 @@ class ConfigurationRegistry {
    */
   register(config: EndpointConfig): void {
     if (!this.initialized) {
-      throw new Error(
-        "Registry must be initialized before registering endpoints",
-      );
+      throw new Error("Registry must be initialized before registering endpoints");
     }
 
     // Validate the configuration
     const validationResult = this.validateConfig(config);
     if (!validationResult.valid) {
-      const errorMessages = validationResult.errors
-        .map((err) => err.message)
-        .join(", ");
-      throw new Error(
-        `Invalid endpoint configuration for '${config.name}': ${errorMessages}`,
-      );
+      const errorMessages = validationResult.errors.map((err) => err.message).join(", ");
+      throw new Error(`Invalid endpoint configuration for '${config.name}': ${errorMessages}`);
     }
 
     // Check for duplicate paths
     const existingEndpoint = Object.values(this.registry.endpoints).find(
-      (endpoint) =>
-        endpoint.path === config.path && endpoint.name !== config.name,
+      (endpoint) => endpoint.path === config.path && endpoint.name !== config.name
     );
 
     if (existingEndpoint) {
       throw new Error(
-        `Duplicate path '${config.path}' found. Already used by endpoint '${existingEndpoint.name}'`,
+        `Duplicate path '${config.path}' found. Already used by endpoint '${existingEndpoint.name}'`
       );
     }
 
     // Check for duplicate names
-    if (
-      this.registry.endpoints[config.name] &&
-      this.registry.endpoints[config.name] !== config
-    ) {
+    if (this.registry.endpoints[config.name] && this.registry.endpoints[config.name] !== config) {
       throw new Error(`Endpoint with name '${config.name}' already exists`);
     }
 
@@ -132,11 +122,9 @@ class ConfigurationRegistry {
   /**
    * Get endpoints by category
    */
-  getByCategory(
-    category: "core" | "extended" | "experimental",
-  ): EndpointConfig[] {
+  getByCategory(category: "core" | "extended" | "experimental"): EndpointConfig[] {
     return Object.values(this.registry.endpoints).filter(
-      (endpoint) => endpoint.category === category,
+      (endpoint) => endpoint.category === category
     );
   }
 
@@ -145,7 +133,7 @@ class ConfigurationRegistry {
    */
   getByTag(tag: string): EndpointConfig[] {
     return Object.values(this.registry.endpoints).filter(
-      (endpoint) => endpoint.tags && endpoint.tags.includes(tag),
+      (endpoint) => endpoint.tags && endpoint.tags.includes(tag)
     );
   }
 
@@ -153,27 +141,21 @@ class ConfigurationRegistry {
    * Get enabled endpoints only
    */
   getEnabled(): EndpointConfig[] {
-    return Object.values(this.registry.endpoints).filter(
-      (endpoint) => endpoint.enabled,
-    );
+    return Object.values(this.registry.endpoints).filter((endpoint) => endpoint.enabled);
   }
 
   /**
    * Get all endpoint paths
    */
   getPaths(): string[] {
-    return Object.values(this.registry.endpoints).map(
-      (endpoint) => endpoint.path,
-    );
+    return Object.values(this.registry.endpoints).map((endpoint) => endpoint.path);
   }
 
   /**
    * Check if a path is already registered
    */
   isPathRegistered(path: string): boolean {
-    return Object.values(this.registry.endpoints).some(
-      (endpoint) => endpoint.path === path,
-    );
+    return Object.values(this.registry.endpoints).some((endpoint) => endpoint.path === path);
   }
 
   /**
@@ -250,15 +232,9 @@ class ConfigurationRegistry {
     // Validate parameters
     if (config.params && typeof config.params === "object") {
       for (const [paramName, paramConfig] of Object.entries(config.params)) {
-        const paramErrors = this.validateParamConfig(
-          paramName,
-          paramConfig,
-          config.name,
-        );
+        const paramErrors = this.validateParamConfig(paramName, paramConfig, config.name);
         errors.push(...paramErrors.filter((err) => err.severity === "error"));
-        warnings.push(
-          ...paramErrors.filter((err) => err.severity === "warning"),
-        );
+        warnings.push(...paramErrors.filter((err) => err.severity === "warning"));
       }
     }
 
@@ -271,16 +247,9 @@ class ConfigurationRegistry {
         severity: "error",
       });
     } else {
-      const dataSourceErrors = this.validateDataSourceConfig(
-        config.dataSource,
-        config.name,
-      );
-      errors.push(
-        ...dataSourceErrors.filter((err) => err.severity === "error"),
-      );
-      warnings.push(
-        ...dataSourceErrors.filter((err) => err.severity === "warning"),
-      );
+      const dataSourceErrors = this.validateDataSourceConfig(config.dataSource, config.name);
+      errors.push(...dataSourceErrors.filter((err) => err.severity === "error"));
+      warnings.push(...dataSourceErrors.filter((err) => err.severity === "warning"));
     }
 
     // Validate response shape
@@ -292,10 +261,7 @@ class ConfigurationRegistry {
         severity: "error",
       });
     } else {
-      const shapeErrors = this.validateResponseShape(
-        config.responseShape,
-        config.name,
-      );
+      const shapeErrors = this.validateResponseShape(config.responseShape, config.name);
       errors.push(...shapeErrors.filter((err) => err.severity === "error"));
       warnings.push(...shapeErrors.filter((err) => err.severity === "warning"));
     }
@@ -340,7 +306,7 @@ class ConfigurationRegistry {
   private validateParamConfig(
     paramName: string,
     paramConfig: ParamConfig,
-    endpointName: string,
+    endpointName: string
   ): ConfigValidationError[] {
     const errors: ConfigValidationError[] = [];
 
@@ -362,10 +328,7 @@ class ConfigurationRegistry {
       });
     }
 
-    if (
-      !paramConfig.description ||
-      typeof paramConfig.description !== "string"
-    ) {
+    if (!paramConfig.description || typeof paramConfig.description !== "string") {
       errors.push({
         endpoint: endpointName,
         field: `params.${paramName}.description`,
@@ -391,7 +354,7 @@ class ConfigurationRegistry {
    */
   private validateDataSourceConfig(
     dataSource: DataSourceConfig,
-    endpointName: string,
+    endpointName: string
   ): ConfigValidationError[] {
     const errors: ConfigValidationError[] = [];
 
@@ -433,7 +396,7 @@ class ConfigurationRegistry {
    */
   private validateResponseShape(
     responseShape: ResponseShape,
-    endpointName: string,
+    endpointName: string
   ): ConfigValidationError[] {
     const errors: ConfigValidationError[] = [];
 
@@ -533,16 +496,15 @@ class ConfigurationRegistry {
         acc[endpoint.category] = (acc[endpoint.category] || 0) + 1;
         return acc;
       },
-      {} as Record<string, number>,
+      {} as Record<string, number>
     );
 
     const dataSourceTypes = endpoints.reduce(
       (acc, endpoint) => {
-        acc[endpoint.dataSource.type] =
-          (acc[endpoint.dataSource.type] || 0) + 1;
+        acc[endpoint.dataSource.type] = (acc[endpoint.dataSource.type] || 0) + 1;
         return acc;
       },
-      {} as Record<string, number>,
+      {} as Record<string, number>
     );
 
     return {
@@ -590,9 +552,7 @@ class ConfigurationRegistry {
       ...registryData.defaults,
     };
 
-    console.log(
-      `📥 Imported ${Object.keys(registryData.endpoints).length} endpoints`,
-    );
+    console.log(`📥 Imported ${Object.keys(registryData.endpoints).length} endpoints`);
   }
 }
 
@@ -603,13 +563,11 @@ export const endpointRegistry = new ConfigurationRegistry();
 endpointRegistry.initialize();
 
 // Export utility functions
-export const registerEndpoint = (config: EndpointConfig) =>
-  endpointRegistry.register(config);
+export const registerEndpoint = (config: EndpointConfig) => endpointRegistry.register(config);
 export const getEndpoint = (name: string) => endpointRegistry.get(name);
 export const getAllEndpoints = () => endpointRegistry.getAll();
-export const getEndpointsByCategory = (
-  category: "core" | "extended" | "experimental",
-) => endpointRegistry.getByCategory(category);
+export const getEndpointsByCategory = (category: "core" | "extended" | "experimental") =>
+  endpointRegistry.getByCategory(category);
 export const validateEndpointConfig = (config: EndpointConfig) =>
   endpointRegistry.validateConfig(config);
 export const getRegistryStats = () => endpointRegistry.getStats();
