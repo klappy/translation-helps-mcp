@@ -74,129 +74,97 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
  * Fetch Scripture - Generic scripture endpoint
  */
 export const FETCH_SCRIPTURE_CONFIG: EndpointConfig = {
-  ...SCRIPTURE_BASE_CONFIG,
   name: "fetch-scripture",
   path: "/fetch-scripture",
-  title: "Fetch Scripture Text",
+  title: "Fetch Scripture",
   description:
-    "Retrieve scripture text for any reference with support for verses, ranges, and chapters",
-
-  params: {
-    ...SCRIPTURE_BASE_CONFIG.params!,
-    resource: {
-      type: "string",
-      required: false,
-      default: "ult",
-      description: "Scripture resource type",
-      example: "ult",
-      options: ["ult", "ust", "ulb", "udb"],
-    },
-  },
-
+    "Retrieve scripture text from multiple translations in any supported language",
+  category: "core",
+  responseShape: SCRIPTURE_SHAPE,
+  params: SCRIPTURE_PARAMS,
   dataSource: {
-    ...SCRIPTURE_BASE_CONFIG.dataSource!,
+    type: "dcs-api",
     dcsEndpoint:
       "/api/v1/repos/{organization}/{language}_{resource}/contents/{book}/{chapter}.usfm",
+    transformation: "usfm-to-text",
+    cacheTtl: 3600,
   },
-
+  enabled: true,
+  tags: ["scripture", "bible", "text", "core"],
   examples: [
     {
-      name: "Single Verse",
-      description: "Fetch a single verse from John 3:16",
+      title: "John 3:16 (Most famous verse)",
+      description: "Fetch the most well-known Bible verse in English",
       params: {
         reference: "John 3:16",
         language: "en",
         organization: "unfoldingWord",
-        resource: "ult",
-        format: "text",
       },
-      expectedContent: {
-        contains: ["God so loved the world", "eternal life"],
-        minLength: 50,
-        fields: {
-          scripture: { text: "string" },
-          language: "en",
-          organization: "unfoldingWord",
-        },
-      },
-    },
-    {
-      name: "Verse Range",
-      description: "Fetch multiple verses from Romans 8:28-30",
-      params: {
-        reference: "Romans 8:28-30",
-        language: "en",
-        organization: "unfoldingWord",
-        resource: "ult",
-        format: "text",
-      },
-      expectedContent: {
-        contains: [
-          "all things work together",
-          "called according to",
-          "predestined",
+      expectedResponse: {
+        scriptures: [
+          {
+            text: "16 For God so loved the world, that he gave his One and Only Son, so that everyone believing in him would not perish but would have eternal life.",
+            translation: "unfoldingWord® Literal Text",
+            citation: {
+              resource: "en_ult",
+              organization: "unfoldingWord",
+              language: "en",
+              url: "https://git.door43.org/unfoldingWord/en_ult",
+              version: "master",
+            },
+          },
         ],
-        minLength: 200,
-        fields: {
-          scripture: { text: "string" },
-        },
-      },
-    },
-    {
-      name: "Entire Chapter",
-      description: "Fetch the complete Psalm 23",
-      params: {
-        reference: "Psalm 23",
         language: "en",
         organization: "unfoldingWord",
-        resource: "ult",
-        format: "text",
-      },
-      expectedContent: {
-        contains: [
-          "The LORD is my shepherd",
-          "valley of the shadow",
-          "goodness and mercy",
-        ],
-        minLength: 400,
-        fields: {
-          scripture: { text: "string" },
+        metadata: {
+          translationsFound: 4,
+          filesFound: 4,
+          responseTime: 245,
+          cacheStatus: "miss",
         },
       },
     },
     {
-      name: "With Alignment Data",
-      description: "Fetch John 1:1 with word alignment in USFM format",
-      params: {
-        reference: "John 1:1",
-        language: "en",
-        organization: "unfoldingWord",
-        resource: "ult",
-        format: "usfm",
-        includeAlignment: true,
-      },
-      expectedContent: {
-        contains: ['\\w In|x-occurrence="1"', "beginning", "Word"],
-        fields: {
-          scripture: { usfm: "string", alignment: "object" },
-        },
-      },
-    },
-    {
-      name: "Spanish Scripture",
-      description: "Fetch Genesis 1:1 in Spanish",
+      title: "Genesis 1:1 (Creation beginning)",
+      description: "Fetch the very first verse of the Bible",
       params: {
         reference: "Genesis 1:1",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+      expectedResponse: {
+        scriptures: [
+          {
+            text: "1 In the beginning, God created the heavens and the earth.",
+            translation: "unfoldingWord® Literal Text",
+            citation: {
+              resource: "en_ult",
+              organization: "unfoldingWord",
+              language: "en",
+            },
+          },
+        ],
+        language: "en",
+        organization: "unfoldingWord",
+      },
+    },
+    {
+      title: "Psalm 23:1-4 (Multi-verse passage)",
+      description: "Fetch multiple verses from the famous Shepherd Psalm",
+      params: {
+        reference: "Psalm 23:1-4",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+    },
+    {
+      title: "Romans 8:28 (Spanish translation)",
+      description:
+        "Fetch scripture in Spanish to demonstrate multi-language support",
+      params: {
+        reference: "Romans 8:28",
         language: "es",
         organization: "unfoldingWord",
-        resource: "ult",
-        format: "text",
-      },
-      expectedContent: {
-        contains: ["En el principio", "Dios", "creó"],
-        fields: {
-          language: "es",
-        },
       },
     },
   ],

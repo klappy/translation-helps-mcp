@@ -74,24 +74,21 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
     "Retrieve comprehension and checking questions for scripture passages",
   category: "core",
   responseShape: TRANSLATION_QUESTIONS_SHAPE,
-
   params: REFERENCE_PARAMS,
-
   dataSource: {
     type: "dcs-api",
     dcsEndpoint:
       "/api/v1/repos/{organization}/{language}_tq/contents/{book}/{chapter}.md",
     transformation: "markdown-assemble",
-    cacheTtl: 7200, // 2 hours
+    cacheTtl: 7200,
   },
-
   enabled: true,
   tags: ["translation", "questions", "checking", "core"],
-
   examples: [
     {
-      name: "Basic Questions",
-      description: "Get translation questions for John 3:16",
+      name: "John 3:16 Questions",
+      description:
+        "Get comprehension questions for the most famous Bible verse",
       params: {
         reference: "John 3:16",
         language: "en",
@@ -99,31 +96,61 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
       },
       expectedContent: {
         contains: [
-          "Why did God give his Son?",
-          "What must a person do",
+          "How did God show he loved the world",
+          "giving his Only Son",
           "eternal life",
         ],
         minLength: 100,
         fields: {
-          questions: "array",
-          reference: "John 3:16",
-          language: "en",
+          translationQuestions: "array",
+          citation: "object",
+          metadata: "object",
         },
       },
     },
     {
-      name: "Chapter Questions",
-      description: "Get questions for an entire chapter",
+      name: "Genesis 1:1 Questions",
+      description: "Comprehension questions about the creation account",
       params: {
-        reference: "Romans 8",
+        reference: "Genesis 1:1",
         language: "en",
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["Spirit", "law", "condemnation"],
-        minLength: 500,
+        contains: ["created", "beginning", "God"],
+        minLength: 50,
         fields: {
-          questions: "array",
+          translationQuestions: "array",
+        },
+      },
+    },
+    {
+      name: "Romans 8:28 Questions",
+      description: "Questions about God's sovereignty and providence",
+      params: {
+        reference: "Romans 8:28",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["work together", "good", "called"],
+        fields: {
+          translationQuestions: "array",
+        },
+      },
+    },
+    {
+      name: "Spanish Questions",
+      description: "Translation questions in Spanish for Beatitudes",
+      params: {
+        reference: "Matthew 5:3",
+        language: "es",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["bienaventurados", "pobres"],
+        fields: {
+          language: "es",
         },
       },
     },

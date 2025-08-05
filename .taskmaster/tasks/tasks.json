@@ -327,7 +327,7 @@
             "id": 4,
             "title": "Add Real Data Examples",
             "description": "Pull examples from endpoint configurations",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [1],
             "details": "For each endpoint:\n- Show real parameter examples\n- Display actual response data\n- Multiple examples for complex endpoints\n- Copy-to-clipboard functionality\n- From configuration, not hardcoded",
             "testStrategy": "Examples use real data from resources"
@@ -511,7 +511,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T18:38:08.577Z"
+      "updated": "2025-08-05T18:43:01.915Z"
     }
   }
 }
