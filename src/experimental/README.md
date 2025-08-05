@@ -10,21 +10,50 @@ This directory contains experimental features that are:
 
 ## What's in the Lab?
 
-### AI-Powered Features
+### 🚧 Debug & Test API Routes (Moved from Core)
+**Location:** `api-routes/`
+
+- **debug-titus/** - Debug endpoint returning massive catalog data (working but debug-only)
+- **test-twl/** - Test endpoint for translation word links (working but test-only)
+- **mcp-experimental/** - Experimental MCP protocol endpoint
+- **mcp-dynamic/** - Dynamic MCP features
+- **chat-dynamic/** - Dynamic chat endpoint features
+
+### 🤖 AI-Powered Features
 - **ai-content-summarizer.ts** - AI-powered content summarization (currently using mock responses)
 - **ai-quality-checker.ts** - AI quality assessment (currently using mock responses)
 
-### Advanced Features (Good Ideas, Poor Execution)
-- **resource-aggregator.ts** - Duplicate resource aggregation implementation
+### 📦 Unused/Duplicate Features
+- **resource-aggregator.ts** - Alternative resource aggregation implementation (not used by core)
+- **resource-aggregator-unused.ts** - Duplicate from core functions (moved here, unused)
+- **resource-recommendations.ts** - Alternative recommendations (experimental version)
+- **resource-recommender.ts** - Alternative recommender engine (experimental version)
+
+### 🗄️ Deprecated Features  
 - **cache-warmer.ts** - Deprecated cache warming system
 - **automated-content-ingestion.ts** - Automated content discovery and ingestion
+
+## Core vs Experimental Clarification
+
+**✅ CORE (Working in Production):**
+- Main resource endpoints (`/api/fetch-scripture`, `/api/fetch-translation-notes`, etc.)
+- Resource recommendations endpoint (`/api/resource-recommendations`) - Uses `src/functions/resource-recommender.ts`
+- Unified cache system
+- Performance monitoring
+- X-ray transparency
+
+**🧪 EXPERIMENTAL (Moved Here):**
+- Debug endpoints (working but not production-appropriate)
+- Test endpoints (working but for testing only)
+- Alternative implementations (may or may not work)
+- AI features (mock implementations)
 
 ## Promotion Criteria
 
 For a feature to move from experimental to core, it must:
 
 1. **Get explicit approval** from project maintainers
-2. **Get partner approval** from stakeholders
+2. **Get partner approval** from stakeholders  
 3. **Meet performance benchmarks**:
    - Response time < 500ms for 95th percentile
    - Cache hit ratio > 80%
@@ -56,11 +85,11 @@ const feature = new ExperimentalFeature({
 });
 ```
 
-### MCP Endpoint
+### API Endpoints
 
-Experimental features are exposed via a separate MCP endpoint:
-- Production: `/api/mcp`
-- Experimental: `/api/mcp-experimental`
+Experimental features are accessible via:
+- Debug/Test endpoints: Moved to experimental but still accessible for development
+- Experimental MCP: `/api/mcp-experimental` (moved to experimental directory)
 
 ## Migration Path
 
@@ -69,20 +98,24 @@ When a feature is approved for core:
 1. Remove `-experimental` suffix from filename
 2. Move to appropriate core directory
 3. Update all imports
-4. Remove experimental warnings
+4. Remove experimental warnings  
 5. Add to core endpoint configuration
 6. Update documentation
 7. Announce in changelog
 
 ## Current Status
 
-| Feature | Status | Progress | Notes |
+| Feature | Status | Location | Notes |
 |---------|--------|----------|-------|
-| AI Content Summarizer | 🔬 Experimental | Mock only | Needs real AI integration |
-| AI Quality Checker | 🔬 Experimental | Mock only | Needs real AI integration |
-| Resource Aggregator | ❌ Deprecated | N/A | Duplicate of core implementation |
-| Cache Warmer | ❌ Deprecated | N/A | Feature removed from roadmap |
-| Automated Ingestion | 🔬 Experimental | 30% | Needs webhook implementation |
+| Debug Titus | 🔧 Debug Only | `api-routes/debug-titus/` | Working but debug output |
+| Test TWL | 🧪 Test Only | `api-routes/test-twl/` | Working test endpoint |
+| MCP Experimental | 🔬 Experimental | `api-routes/mcp-experimental/` | Experimental MCP features |
+| AI Content Summarizer | 🔬 Experimental | Root | Mock only |
+| AI Quality Checker | 🔬 Experimental | Root | Mock only |
+| Resource Aggregator (Alt) | 🔬 Experimental | Root | Alternative implementation |
+| Resource Aggregator (Unused) | ❌ Unused | Root | Moved from core, unused |
+| Cache Warmer | ❌ Deprecated | Root | Feature removed from roadmap |
+| Automated Ingestion | 🔬 Experimental | Root | 30% complete |
 
 ## Contact
 
