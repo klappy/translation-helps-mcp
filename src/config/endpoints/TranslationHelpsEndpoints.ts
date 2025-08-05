@@ -7,10 +7,10 @@
 
 import type { EndpointConfig } from "../EndpointConfig.js";
 import {
+  TRANSLATION_ACADEMY_SHAPE,
   TRANSLATION_NOTES_SHAPE,
   TRANSLATION_QUESTIONS_SHAPE,
   TRANSLATION_WORDS_SHAPE,
-  TRANSLATION_ACADEMY_SHAPE,
   TRANSLATION_WORD_LINKS_SHAPE,
 } from "../ResponseShapes.js";
 
