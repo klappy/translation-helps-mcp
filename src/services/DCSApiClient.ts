@@ -812,4 +812,12 @@ export class DCSApiClient {
 
     return { cacheStatus: "UNKNOWN" };
   }
+
+  /**
+   * Fetch resource from an arbitrary DCS endpoint
+   * This method handles the generic endpoint calls used by RouteGenerator
+   */
+  public async fetchResource(endpoint: string): Promise<DCSResponse<unknown>> {
+    return this.makeRequest<unknown>(endpoint);
+  }
 }

@@ -71,6 +71,11 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
 };
 
 /**
+ * Reference to scripture parameters for reuse
+ */
+const SCRIPTURE_PARAMS = SCRIPTURE_BASE_CONFIG.params!;
+
+/**
  * Fetch Scripture - Generic scripture endpoint
  */
 export const FETCH_SCRIPTURE_CONFIG: EndpointConfig = {
