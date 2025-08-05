@@ -29,7 +29,7 @@
 	} as const;
 
 	// State
-	let selectedCategory: AllCategory = 'overview';
+	let selectedCategory: string = 'overview';
 	let selectedEndpoint: any = null;
 	let coreEndpoints: any[] = [];
 	let extendedEndpoints: any[] = [];
@@ -37,6 +37,8 @@
 	let copiedExample: number | null = null;
 	let performanceData: Record<string, any> = {};
 	let loadingError: any = null;
+	let apiResult: any = null;
+	let isLoading: boolean = false;
 
 	// Load endpoints from configuration
 	onMount(async () => {
@@ -197,6 +199,9 @@
 		// Transform endpoint config to ApiTester format
 		selectedEndpoint = transformEndpointForTesting(endpoint);
 		selectedCategory = 'endpoint-detail';
+		// Clear previous results when selecting new endpoint
+		apiResult = null;
+		isLoading = false;
 	}
 
 	// Transform endpoint config to format expected by ApiTester
@@ -294,6 +299,10 @@
 		
 		console.log(`🧪 Testing endpoint: ${endpoint.name}`, formData);
 		
+		// Set loading state
+		isLoading = true;
+		apiResult = null;
+		
 		try {
 			// Build query string from formData
 			const params = new URLSearchParams();
@@ -319,12 +328,17 @@
 			const responseData = await response.json();
 			console.log(`✅ Response received:`, responseData);
 			
+			// Set the result for display
+			apiResult = responseData;
+			
 			// Process response and extract performance data
 			handleApiResponse(endpoint, responseData);
 			
 		} catch (error: any) {
 			console.error(`❌ API test failed for ${endpoint.name}:`, error);
 			loadingError = `Failed to test ${endpoint.name}: ${error.message || error}`;
+		} finally {
+			isLoading = false;
 		}
 	}
 </script>
@@ -524,6 +538,8 @@
 						<h3 class="mb-4 text-lg font-semibold text-white">Parameters</h3>
 						<ApiTester
 							endpoint={selectedEndpoint}
+							loading={isLoading}
+							result={apiResult}
 							on:test={handleApiTest}
 						/>
 					</div>

@@ -45,10 +45,10 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     resource: {
       type: "string",
       required: false,
-      default: "ult",
-      description: "Scripture resource type",
-      example: "ult",
-      options: ["ult", "ust"],
+      default: "all",
+      description: "Scripture resource type(s) - single resource (ult, ust), comma-separated (ult,ust), or 'all' for all available",
+      example: "all",
+      options: ["ult", "ust", "all", "ult,ust"],
     },
     format: {
       type: "string",
