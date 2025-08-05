@@ -309,7 +309,7 @@
             "id": 2,
             "title": "Add Performance Visibility",
             "description": "Show performance metrics for each request",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [1],
             "details": "Display:\n- Response time\n- Cache hit/miss\n- Data source (cache/API)\n- Request size\n- Stack trace for debugging\nMake it xray visibility for debugging",
             "testStrategy": "Full visibility into request performance"
@@ -318,7 +318,7 @@
             "id": 3,
             "title": "Implement Experimental Lab Tab",
             "description": "Add separate section for experimental features",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [1],
             "details": "Create lower tab/section:\n- Clearly marked 'Experimental'\n- Separate from core\n- Warning about stability\n- Same UI patterns\n- Don't clutter main menu",
             "testStrategy": "Experimental features isolated but accessible"
@@ -511,7 +511,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T18:36:15.246Z"
+      "updated": "2025-08-05T18:38:08.577Z"
     }
   }
 }
