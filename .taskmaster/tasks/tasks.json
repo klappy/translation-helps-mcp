@@ -132,7 +132,7 @@
         "id": 3,
         "title": "Code Audit & Cleanup",
         "description": "Remove deprecated code, fix endpoints returning empty/bogus data, eliminate duplicate functionality",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
         "details": "1. Remove code that returns empty/bogus data\n2. Fix experimental endpoints claiming to work but don't\n3. Remove duplicate implementations\n4. PRESERVE the working cascading cache system (DCS API → Files → Response)\n5. KEEP the xray transparency features that work\n6. Move only BROKEN experimental features to lab\n7. Clean up imports and dependencies\n8. Fix any code that hangs waiting for input\n9. Remove interactive commands from build/test scripts",
@@ -180,7 +180,7 @@
             "id": 5,
             "title": "Update Test Suite",
             "description": "Fix tests to validate REAL data, not just 200 OK",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               4
@@ -585,7 +585,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T16:43:25.961Z"
+      "updated": "2025-08-05T16:51:21.930Z"
     }
   }
 }

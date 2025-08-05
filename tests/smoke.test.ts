@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:5173";
+const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8174";
 const TIMEOUT = 15000; // Shorter timeout for smoke tests
 
 async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
@@ -87,13 +87,15 @@ describe("Smoke Tests - Quick Health Check", () => {
       ]);
 
       // Remove timestamps and response times for comparison
-      const normalizeTimestamps = (obj: any) => {
-        const normalized = JSON.parse(JSON.stringify(obj));
-        if (normalized.responseTime) delete normalized.responseTime;
-        if (normalized.metadata?.timestamp) delete normalized.metadata.timestamp;
-        if (normalized.metadata?.cacheExpiresAt) delete normalized.metadata.cacheExpiresAt;
-        if (normalized.metadata?.cacheTtlSeconds) delete normalized.metadata.cacheTtlSeconds;
-        if (normalized.timestamp) delete normalized.timestamp;
+      const normalizeTimestamps = (obj: unknown) => {
+        const normalized = JSON.parse(JSON.stringify(obj)) as Record<string, unknown>;
+        if ('responseTime' in normalized) delete normalized.responseTime;
+        if (normalized.metadata && typeof normalized.metadata === 'object' && normalized.metadata !== null) {
+          const metadata = normalized.metadata as Record<string, unknown>;
+          if ('timestamp' in metadata) delete metadata.timestamp;
+          if ('cacheExpiresAt' in metadata) delete metadata.cacheExpiresAt;
+          if ('cacheTtlSeconds' in metadata) delete metadata.cacheTtlSeconds;
+        }
         return normalized;
       };
 
