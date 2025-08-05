@@ -1,336 +1,328 @@
 /**
- * Context Endpoint Configurations
- * 
- * Defines configurations for combined resource fetching endpoints.
+ * Context Endpoint Configurations (Extended Tier)
+ *
+ * These endpoints intelligently aggregate and curate multiple core resources
+ * to provide LLM-optimized context and reduce API round-trips.
+ *
+ * Extended tier focuses on value-added combinations of core data.
  */
 
-import type { EndpointConfig } from '../EndpointConfig';
+import type { EndpointConfig } from "../EndpointConfig.js";
+import { CONTEXT_SHAPE, REFERENCES_SHAPE } from "../ResponseShapes.js";
 
 /**
- * Get Context endpoint
+ * Common parameters for context endpoints
  */
-export const GetContextEndpoint: EndpointConfig = {
-  name: 'get-context',
-  path: '/api/get-context',
-  category: 'core',
-  description: 'Get comprehensive context for a Bible reference including notes, words, and scripture',
+const CONTEXT_PARAMS = {
+  reference: {
+    type: "string" as const,
+    required: true,
+    description:
+      'Scripture reference (e.g., "John 3:16", "Genesis 1", "Psalm 23")',
+    example: "John 3:16",
+    pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(?::\\d+(?:-\\d+)?)?$",
+    min: 3,
+    max: 50,
+  },
+  language: {
+    type: "string" as const,
+    required: false,
+    default: "en",
+    description: "Language code for the context resources",
+    example: "en",
+    options: ["en", "es", "fr", "sw", "hi", "ar", "zh", "pt"],
+  },
+  organization: {
+    type: "string" as const,
+    required: false,
+    default: "unfoldingWord",
+    description: "Organization providing the resources",
+    example: "unfoldingWord",
+    options: ["unfoldingWord", "Door43-Catalog"],
+  },
+};
+
+/**
+ * Get Context - Intelligently curated context for LLM consumption
+ */
+export const GET_CONTEXT_CONFIG: EndpointConfig = {
+  name: "get-context",
+  path: "/get-context",
+  title: "Get Context",
+  description:
+    "Get intelligently curated context combining scripture, translation notes, and linked resources optimized for LLM consumption",
+  category: "extended",
+  responseShape: CONTEXT_SHAPE,
+
   params: {
-    reference: {
-      type: 'string',
-      required: true,
-      description: 'Bible reference',
-      validation: {
-        pattern: '^[A-Za-z0-9\\s]+\\s+\\d+(:\\d+(-\\d+)?)?$'
-      }
-    },
-    language: {
-      type: 'string',
-      required: false,
-      default: 'en',
-      description: 'Language code'
-    },
-    organization: {
-      type: 'string',
-      required: false,
-      default: 'unfoldingWord',
-      description: 'Organization name'
-    },
-    includeRawData: {
-      type: 'boolean',
-      required: false,
-      default: false,
-      description: 'Include raw USFM and TSV data'
-    },
-    maxTokens: {
-      type: 'number',
-      required: false,
-      description: 'Maximum tokens for context (for AI applications)'
-    },
-    deepAnalysis: {
-      type: 'boolean',
+    ...CONTEXT_PARAMS,
+    includeScripture: {
+      type: "boolean" as const,
       required: false,
       default: true,
-      description: 'Perform deep analysis of surrounding context'
-    }
+      description: "Include scripture text from multiple translations",
+      example: true,
+    },
+    includeBookIntro: {
+      type: "boolean" as const,
+      required: false,
+      default: true,
+      description:
+        "Include book-level introduction and context from translation notes",
+      example: true,
+    },
+    includeChapterIntro: {
+      type: "boolean" as const,
+      required: false,
+      default: true,
+      description: "Include chapter-level introduction and context",
+      example: true,
+    },
+    includeParsedLinks: {
+      type: "boolean" as const,
+      required: false,
+      default: true,
+      description:
+        "Parse and surface linked translation words and academy articles for follow-up",
+      example: true,
+    },
+    scriptureContext: {
+      type: "string" as const,
+      required: false,
+      default: "verse",
+      description: "Amount of scripture context to include",
+      example: "verse",
+      options: ["verse", "passage", "chapter"],
+    },
+    translations: {
+      type: "string" as const,
+      required: false,
+      default: "ult,ust",
+      description:
+        "Comma-separated list of translations to include (ult, ust, etc.)",
+      example: "ult,ust",
+    },
   },
+
   dataSource: {
-    type: 'computed'
+    type: "computed",
+    cacheTtl: 7200, // 2 hours (same as translation notes)
   },
-  responseShape: {
-    type: 'context',
-    fields: {
-      reference: {
-        type: 'string',
-        description: 'The reference being analyzed'
-      },
-      scripture: {
-        type: 'object',
-        description: 'Scripture text for the reference'
-      },
-      notes: {
-        type: 'array',
-        description: 'Translation notes for the reference'
-      },
-      words: {
-        type: 'array',
-        description: 'Translation words linked to the reference'
-      },
-      questions: {
-        type: 'array',
-        description: 'Comprehension questions',
-        optional: true
-      },
-      bookIntro: {
-        type: 'object',
-        description: 'Book introduction',
-        optional: true
-      },
-      chapterIntro: {
-        type: 'object',
-        description: 'Chapter introduction',
-        optional: true
-      },
-      metadata: {
-        type: 'object',
-        description: 'Analysis metadata'
-      }
-    }
-  },
+
+  enabled: true,
+  tags: ["context", "aggregation", "llm-optimized", "extended"],
+
   examples: [
     {
-      params: { reference: 'John 3:16' },
-      response: {
-        reference: 'John 3:16',
-        scripture: {
-          ult: 'For God so loved the world...',
-          ust: 'God loved the people of the world so much...'
+      name: "Verse Context",
+      description:
+        "Get rich context for a specific verse with multiple translations and curated notes",
+      params: {
+        reference: "John 3:16",
+        language: "en",
+        organization: "unfoldingWord",
+        includeScripture: true,
+        includeBookIntro: true,
+        includeChapterIntro: true,
+        includeParsedLinks: true,
+        scriptureContext: "verse",
+        translations: "ult,ust",
+      },
+      expectedContent: {
+        contains: [
+          "context",
+          "scripture",
+          "translations",
+          "notes",
+          "linkedResources",
+        ],
+        minLength: 800,
+        fields: {
+          context: "object",
+          scripture: "object",
+          notes: "object",
+          linkedResources: "array",
+          metadata: "object",
         },
-        notes: [
-          {
-            quote: 'For God so loved',
-            note: 'This emphasizes the great love of God...'
-          }
-        ],
-        words: [
-          {
-            term: 'love',
-            definition: 'To love is to act consistently...'
-          },
-          {
-            term: 'believe',
-            definition: 'To believe is to trust...'
-          }
-        ],
-        metadata: {
-          notesFound: 1,
-          wordsFound: 2,
-          tokenEstimate: 1500
-        }
-      }
-    }
-  ],
-  performance: {
-    expectedMs: 800,
-    cacheStrategy: 'moderate'
-  }
-};
-
-/**
- * Get Words for Reference endpoint
- */
-export const GetWordsForReferenceEndpoint: EndpointConfig = {
-  name: 'get-words-for-reference',
-  path: '/api/get-words-for-reference',
-  category: 'core',
-  description: 'Get all translation word articles for words in a verse',
-  params: {
-    reference: {
-      type: 'string',
-      required: true,
-      description: 'Bible reference',
-      validation: {
-        pattern: '^[A-Za-z0-9\\s]+\\s+\\d+(:\\d+(-\\d+)?)?$'
-      }
+      },
     },
-    language: {
-      type: 'string',
-      required: false,
-      default: 'en',
-      description: 'Language code'
-    },
-    organization: {
-      type: 'string',
-      required: false,
-      default: 'unfoldingWord',
-      description: 'Organization name'
-    }
-  },
-  dataSource: {
-    type: 'computed'
-  },
-  responseShape: {
-    type: 'words',
-    fields: {
-      words: {
-        type: 'array',
-        description: 'Array of translation word articles'
-      },
-      reference: {
-        type: 'string',
-        description: 'The reference'
-      },
-      language: {
-        type: 'string',
-        description: 'Language code'
-      },
-      totalWords: {
-        type: 'number',
-        description: 'Total number of words found'
-      }
-    }
-  },
-  examples: [
     {
-      params: { reference: 'John 3:16' },
-      response: {
-        words: [
-          {
-            term: 'love',
-            title: 'Love',
-            definition: 'To love is to act consistently...',
-            occurrence: 1
-          },
-          {
-            term: 'believe',
-            title: 'Believe',
-            definition: 'To believe is to trust...',
-            occurrence: 1
-          }
-        ],
-        reference: 'John 3:16',
-        language: 'en',
-        totalWords: 2
-      }
-    }
-  ],
-  performance: {
-    expectedMs: 600,
-    cacheStrategy: 'moderate'
-  }
-};
-
-/**
- * Fetch Resources endpoint (combined fetching)
- */
-export const FetchResourcesEndpoint: EndpointConfig = {
-  name: 'fetch-resources',
-  path: '/api/fetch-resources',
-  category: 'core',
-  description: 'Fetch multiple resource types in a single request',
-  params: {
-    reference: {
-      type: 'string',
-      required: true,
-      description: 'Bible reference'
-    },
-    language: {
-      type: 'string',
-      required: false,
-      default: 'en',
-      description: 'Language code'
-    },
-    organization: {
-      type: 'string',
-      required: false,
-      default: 'unfoldingWord',
-      description: 'Organization name'
-    },
-    resources: {
-      type: 'array',
-      required: false,
-      default: ['scripture', 'notes', 'questions', 'words'],
-      description: 'Resource types to fetch'
-    }
-  },
-  dataSource: {
-    type: 'computed'
-  },
-  responseShape: {
-    type: 'context',
-    fields: {
-      reference: {
-        type: 'string',
-        description: 'The reference'
+      name: "Chapter Context",
+      description: "Get comprehensive context for an entire chapter",
+      params: {
+        reference: "Romans 8",
+        language: "en",
+        organization: "unfoldingWord",
+        includeScripture: true,
+        includeBookIntro: true,
+        includeChapterIntro: true,
+        includeParsedLinks: true,
+        scriptureContext: "chapter",
+        translations: "ult,ust",
       },
-      scripture: {
-        type: 'object',
-        description: 'Scripture text',
-        optional: true
-      },
-      translationNotes: {
-        type: 'array',
-        description: 'Translation notes',
-        optional: true
-      },
-      translationQuestions: {
-        type: 'array',
-        description: 'Comprehension questions',
-        optional: true
-      },
-      translationWords: {
-        type: 'array',
-        description: 'Translation words',
-        optional: true
-      },
-      metadata: {
-        type: 'object',
-        description: 'Request metadata'
-      }
-    }
-  },
-  examples: [
-    {
-      params: { 
-        reference: 'John 3:16',
-        resources: ['scripture', 'notes', 'words']
-      },
-      response: {
-        reference: 'John 3:16',
-        scripture: {
-          text: 'For God so loved the world...',
-          version: 'ult'
+      expectedContent: {
+        contains: ["context", "chapter", "introduction", "overview"],
+        minLength: 2000,
+        fields: {
+          context: "object",
+          chapterIntroduction: "string",
+          linkedResources: "array",
         },
-        translationNotes: [
-          {
-            quote: 'For God so loved',
-            note: 'This emphasizes...'
-          }
-        ],
-        translationWords: [
-          {
-            term: 'love',
-            definition: 'To love is...'
-          }
-        ],
-        metadata: {
-          resourcesRequested: 3,
-          resourcesFound: 3,
-          responseTime: 750
-        }
-      }
-    }
+      },
+    },
+    {
+      name: "Minimal Context",
+      description: "Get focused context without extra introductions",
+      params: {
+        reference: "Psalm 23:1",
+        language: "en",
+        organization: "unfoldingWord",
+        includeScripture: true,
+        includeBookIntro: false,
+        includeChapterIntro: false,
+        includeParsedLinks: false,
+        scriptureContext: "verse",
+        translations: "ult",
+      },
+      expectedContent: {
+        contains: ["context", "scripture", "notes"],
+        minLength: 200,
+        fields: {
+          context: "object",
+          scripture: "object",
+        },
+      },
+    },
   ],
-  performance: {
-    expectedMs: 1000,
-    cacheStrategy: 'moderate'
-  }
-};
+} as EndpointConfig;
 
 /**
- * All context endpoints
+ * Get Words for Reference - Translation words linked to a specific reference
  */
-export const ContextEndpoints = [
-  GetContextEndpoint,
-  GetWordsForReferenceEndpoint,
-  FetchResourcesEndpoint
-];
+export const GET_WORDS_FOR_REFERENCE_CONFIG: EndpointConfig = {
+  name: "get-words-for-reference",
+  path: "/get-words-for-reference",
+  title: "Get Words for Reference",
+  description:
+    "Get all translation word articles linked to a specific scripture reference, using translation word links for intelligent mapping",
+  category: "extended",
+  responseShape: REFERENCES_SHAPE,
+
+  params: {
+    ...CONTEXT_PARAMS,
+    includeDefinitions: {
+      type: "boolean" as const,
+      required: false,
+      default: true,
+      description: "Include full word definitions and explanations",
+      example: true,
+    },
+    includeOccurrences: {
+      type: "boolean" as const,
+      required: false,
+      default: true,
+      description: "Include word occurrence information from the reference",
+      example: true,
+    },
+    includeRelated: {
+      type: "boolean" as const,
+      required: false,
+      default: false,
+      description: "Include related translation words and cross-references",
+      example: false,
+    },
+    format: {
+      type: "string" as const,
+      required: false,
+      default: "structured",
+      description: "Response format for word data",
+      example: "structured",
+      options: ["structured", "summary", "definitions-only"],
+    },
+  },
+
+  dataSource: {
+    type: "computed",
+    cacheTtl: 10800, // 3 hours (same as word links)
+  },
+
+  enabled: true,
+  tags: ["words", "links", "aggregation", "extended"],
+
+  examples: [
+    {
+      name: "Words for Verse",
+      description: "Get all translation words linked to John 3:16",
+      params: {
+        reference: "John 3:16",
+        language: "en",
+        organization: "unfoldingWord",
+        includeDefinitions: true,
+        includeOccurrences: true,
+        includeRelated: false,
+        format: "structured",
+      },
+      expectedContent: {
+        contains: ["words", "love", "world", "believe", "eternal", "life"],
+        minLength: 500,
+        fields: {
+          words: "array",
+          reference: "John 3:16",
+          wordCount: "number",
+          metadata: "object",
+        },
+      },
+    },
+    {
+      name: "Summary Format",
+      description: "Get concise summaries of key words in a passage",
+      params: {
+        reference: "Romans 8:28-30",
+        language: "en",
+        organization: "unfoldingWord",
+        includeDefinitions: true,
+        includeOccurrences: false,
+        includeRelated: false,
+        format: "summary",
+      },
+      expectedContent: {
+        contains: ["words", "summary", "predestined", "called"],
+        minLength: 300,
+        fields: {
+          words: "array",
+          format: "summary",
+        },
+      },
+    },
+    {
+      name: "Definitions Only",
+      description: "Get just the core definitions without extra metadata",
+      params: {
+        reference: "Ephesians 2:8-9",
+        language: "en",
+        organization: "unfoldingWord",
+        includeDefinitions: true,
+        includeOccurrences: false,
+        includeRelated: false,
+        format: "definitions-only",
+      },
+      expectedContent: {
+        contains: ["grace", "faith", "works", "definitions"],
+        minLength: 200,
+        fields: {
+          definitions: "array",
+        },
+      },
+    },
+  ],
+} as EndpointConfig;
+
+/**
+ * All Context Endpoint Configurations (Extended Tier)
+ */
+export const CONTEXT_ENDPOINTS = [
+  GET_CONTEXT_CONFIG,
+  GET_WORDS_FOR_REFERENCE_CONFIG,
+] as const;
+
+export default CONTEXT_ENDPOINTS;

@@ -4,14 +4,48 @@ export const config = {
 
 /**
  * SvelteKit API Route for get-context
- * Auto-generated from shared handler with in-memory caching
+ * Extended tier configuration-based endpoint
  */
 
-import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
-import { getContextHandler } from '$lib/../../../src/functions/handlers/get-context';
-import { MemoryCacheAdapter } from '$lib/../../../src/functions/caches/memory-cache';
+import { routeGenerator } from '$lib/../../../src/config/RouteGenerator';
+import { endpointRegistry, initializeAllEndpoints } from '$lib/../../../src/config/endpoints/index';
+import {
+	createSvelteKitHandler,
+	type PlatformHandler
+} from '$lib/../../../src/functions/platform-adapter';
 
-const cache = new MemoryCacheAdapter();
-export const GET = createSvelteKitHandler(getContextHandler, cache);
-export const POST = createSvelteKitHandler(getContextHandler, cache);
-export const OPTIONS = createSvelteKitHandler(getContextHandler, cache);
+// Initialize endpoints including Extended tier Context endpoints
+try {
+	initializeAllEndpoints();
+} catch (error) {
+	console.error('Failed to initialize endpoints:', error);
+}
+
+// Get the endpoint configuration
+const endpointConfig = endpointRegistry.get('get-context');
+
+if (!endpointConfig) {
+	throw new Error('get-context endpoint configuration not found');
+}
+
+if (!endpointConfig.enabled) {
+	throw new Error('get-context endpoint is disabled');
+}
+
+console.log(`🧠 get-context endpoint category: ${endpointConfig.category}`);
+
+// Generate the handler from configuration
+let configuredHandler: PlatformHandler;
+
+try {
+	const generatedHandler = routeGenerator.generateHandler(endpointConfig);
+	configuredHandler = generatedHandler.handler;
+} catch (error) {
+	console.error('Failed to generate handler:', error);
+	throw error;
+}
+
+// Export handlers
+export const GET = createSvelteKitHandler(configuredHandler);
+export const POST = createSvelteKitHandler(configuredHandler);
+export const OPTIONS = createSvelteKitHandler(configuredHandler);

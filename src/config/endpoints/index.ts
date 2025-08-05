@@ -10,6 +10,7 @@ import { endpointRegistry } from "../EndpointRegistry.js";
 import { SCRIPTURE_ENDPOINTS } from "./ScriptureEndpoints.js";
 import { TRANSLATION_HELPS_ENDPOINTS } from "./TranslationHelpsEndpoints.js";
 import { DISCOVERY_ENDPOINTS } from "./DiscoveryEndpoints.js";
+import { CONTEXT_ENDPOINTS } from "./ContextEndpoints.js";
 
 /**
  * Register all scripture endpoints
@@ -75,16 +76,42 @@ function registerDiscoveryEndpoints(): void {
 }
 
 /**
+ * Register all context endpoints (Extended tier)
+ */
+function registerContextEndpoints(): void {
+  console.log("🧠 Registering Context endpoints (Extended tier)...");
+
+  for (const config of CONTEXT_ENDPOINTS) {
+    try {
+      endpointRegistry.register(config);
+      console.log(
+        `✅ Registered: ${config.name} (${config.path}) [${config.category}]`,
+      );
+    } catch (error) {
+      console.error(`❌ Failed to register ${config.name}:`, error);
+      throw error;
+    }
+  }
+
+  console.log(
+    `🧠 Context endpoints registered: ${CONTEXT_ENDPOINTS.length} total`,
+  );
+}
+
+/**
  * Initialize all endpoint configurations
  */
 export function initializeAllEndpoints(): void {
   console.log("🏗️ Initializing all endpoint configurations...");
 
   try {
-    // Register all endpoint categories
+    // Register Core tier endpoints
     registerScriptureEndpoints();
     registerTranslationHelpsEndpoints();
     registerDiscoveryEndpoints();
+
+    // Register Extended tier endpoints
+    registerContextEndpoints();
 
     // Print registry stats
     const stats = endpointRegistry.getStats();
@@ -162,9 +189,10 @@ export function isEndpointAvailable(name: string): boolean {
  * Export all endpoint arrays for direct access
  */
 export {
+  DISCOVERY_ENDPOINTS,
   SCRIPTURE_ENDPOINTS,
   TRANSLATION_HELPS_ENDPOINTS,
-  DISCOVERY_ENDPOINTS,
+  CONTEXT_ENDPOINTS,
 };
 
 /**
