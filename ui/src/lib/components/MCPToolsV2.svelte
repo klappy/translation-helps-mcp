@@ -1,45 +1,52 @@
-<script>
+<script lang="ts">
 	import {
 		Activity,
 		Beaker,
-		BookOpen,
 		Check,
 		ChevronRight,
 		Copy,
 		Database,
 		Info,
-		Languages,
-		Link,
-		Search
+		Link
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
-	import { endpointRegistry, initializeAllEndpoints } from '../../../../src/config/endpoints/index';
 	import ApiTester from './ApiTester.svelte';
 	import PerformanceMetrics from './PerformanceMetrics.svelte';
 
+	// Dynamic imports to avoid SSR issues
+	let endpointRegistry: any;
+	let initializeAllEndpoints: any;
+
 	// Categories aligned with three-tier architecture
+	type CoreCategory = 'core' | 'extended' | 'experimental';
+	type AllCategory = 'overview' | 'health' | CoreCategory | 'endpoint-detail';
 	const categoryConfig = {
 		overview: { name: 'Overview', icon: Info },
 		health: { name: 'Health Status', icon: Activity },
 		core: { name: 'Core Endpoints', icon: Database },
 		extended: { name: 'Extended Features', icon: Link },
 		experimental: { name: 'Experimental Lab', icon: Beaker }
-	};
+	} as const;
 
 	// State
-	let selectedCategory = 'overview';
-	let selectedEndpoint = null;
-	let coreEndpoints = [];
-	let extendedEndpoints = [];
-	let experimentalEndpoints = [];
-	let copiedExample = null;
-	let performanceData = {};
-	let loadingError = null;
+	let selectedCategory: AllCategory = 'overview';
+	let selectedEndpoint: any = null;
+	let coreEndpoints: any[] = [];
+	let extendedEndpoints: any[] = [];
+	let experimentalEndpoints: any[] = [];
+	let copiedExample: number | null = null;
+	let performanceData: Record<string, any> = {};
+	let loadingError: any = null;
 
 	// Load endpoints from configuration
 	onMount(async () => {
 		try {
 			console.log('🔧 Initializing MCP Tools with real endpoint configurations...');
+			
+			// Dynamic import to avoid SSR issues with cross-project imports
+			const endpointModule = await import('../../../../src/config/endpoints/index');
+			endpointRegistry = endpointModule.endpointRegistry;
+			initializeAllEndpoints = endpointModule.initializeAllEndpoints;
 			
 			// Initialize all endpoint configurations
 			initializeAllEndpoints();
@@ -64,7 +71,7 @@
 	});
 
 	// Load endpoint configurations from registry
-	async function loadEndpointConfigs(category) {
+	async function loadEndpointConfigs(category: CoreCategory) {
 		try {
 			if (category === 'experimental') {
 				// Manual experimental endpoints list (not yet in configuration system)
@@ -159,7 +166,7 @@
 	}
 
 	// Get endpoints by three-tier architecture category
-	function getEndpointsByCategory(category) {
+	function getEndpointsByCategory(category: CoreCategory) {
 		switch (category) {
 			case 'core':
 				return coreEndpoints;
@@ -173,7 +180,7 @@
 	}
 
 	// Copy example to clipboard
-	async function copyExample(example, index) {
+	async function copyExample(example: any, index: number) {
 		try {
 			await navigator.clipboard.writeText(JSON.stringify(example.params, null, 2));
 			copiedExample = index;
@@ -186,13 +193,49 @@
 	}
 
 	// Handle endpoint selection
-	function selectEndpoint(endpoint) {
-		selectedEndpoint = endpoint;
+	function selectEndpoint(endpoint: any) {
+		// Transform endpoint config to ApiTester format
+		selectedEndpoint = transformEndpointForTesting(endpoint);
 		selectedCategory = 'endpoint-detail';
 	}
 
+	// Transform endpoint config to format expected by ApiTester
+	function transformEndpointForTesting(endpoint: any) {
+		const transformed = {
+			...endpoint,
+			parameters: [],
+			example: null
+		};
+
+		// Convert params object to parameters array
+		if (endpoint.params) {
+			transformed.parameters = Object.entries(endpoint.params).map(([name, config]: [string, any]) => ({
+				name,
+				type: config.type,
+				required: config.required || false,
+				description: config.description || '',
+				default: config.default,
+				options: config.options,
+				example: config.example,
+				min: config.min,
+				max: config.max,
+				pattern: config.pattern
+			}));
+		}
+
+		// Use first example for default values
+		if (endpoint.examples && endpoint.examples.length > 0) {
+			transformed.example = {
+				request: endpoint.examples[0].params || {},
+				response: endpoint.examples[0].expectedResponse || endpoint.examples[0].expectedContent || {}
+			};
+		}
+
+		return transformed;
+	}
+
 	// Handle API response
-	function handleApiResponse(endpoint, response) {
+	function handleApiResponse(endpoint: any, response: any) {
 		const metadata = response.metadata || {};
 		const xrayTrace = metadata.xrayTrace || {};
 		
@@ -244,41 +287,47 @@
 		
 		console.log(`📊 Performance data captured for ${endpoint.name}:`, performanceData[endpoint.name]);
 	}
+
+	// Handle API test requests from ApiTester component
+	async function handleApiTest(event: any) {
+		const { endpoint, formData } = event.detail;
+		
+		console.log(`🧪 Testing endpoint: ${endpoint.name}`, formData);
+		
+		try {
+			// Build query string from formData
+			const params = new URLSearchParams();
+			Object.entries(formData).forEach(([key, value]) => {
+				if (value !== null && value !== undefined && value !== '') {
+					params.append(key, String(value));
+				}
+			});
+			
+			const queryString = params.toString();
+			const url = `/api${endpoint.path}${queryString ? `?${queryString}` : ''}`;
+			
+			console.log(`🚀 Making request to: ${url}`);
+			
+			const response = await fetch(url, {
+				method: 'GET',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				}
+			});
+			
+			const responseData = await response.json();
+			console.log(`✅ Response received:`, responseData);
+			
+			// Process response and extract performance data
+			handleApiResponse(endpoint, responseData);
+			
+		} catch (error: any) {
+			console.error(`❌ API test failed for ${endpoint.name}:`, error);
+			loadingError = `Failed to test ${endpoint.name}: ${error.message || error}`;
+		}
+	}
 </script>
-
-<style>
-	.category-card {
-		@apply cursor-pointer rounded-lg border border-gray-700 bg-gray-800/50 p-6 transition-all hover:border-blue-500/50 hover:bg-gray-800;
-	}
-
-	.category-card.selected {
-		@apply border-blue-500 bg-gray-800;
-	}
-
-	.endpoint-card {
-		@apply cursor-pointer rounded-lg border border-gray-700 bg-gray-800/30 p-4 transition-all hover:border-blue-500/30 hover:bg-gray-800/50;
-	}
-
-	.endpoint-card.selected {
-		@apply border-blue-500 bg-gray-800/70;
-	}
-
-	.example-card {
-		@apply rounded-lg border border-gray-700 bg-gray-900/50 p-4;
-	}
-
-	.tab-button {
-		@apply rounded-t-lg border-b-2 px-6 py-3 font-medium transition-all;
-	}
-
-	.tab-button.active {
-		@apply border-blue-500 text-blue-400;
-	}
-
-	.tab-button:not(.active) {
-		@apply border-transparent text-gray-400 hover:text-gray-300;
-	}
-</style>
 
 <div class="mx-auto max-w-7xl px-4 py-8">
 	<!-- Header -->
@@ -306,6 +355,25 @@
 			🧪 Experimental Lab
 		</button>
 	</div>
+
+	<!-- Error Display -->
+	{#if loadingError}
+		<div class="mb-6 rounded-lg border border-red-500/30 bg-red-900/10 p-4">
+			<div class="flex items-start space-x-3">
+				<div class="mt-1 h-5 w-5 text-red-400">⚠️</div>
+				<div>
+					<h3 class="text-lg font-semibold text-red-400">Error</h3>
+					<p class="mt-1 text-sm text-red-300">{loadingError}</p>
+					<button
+						class="mt-2 text-xs text-red-400 underline hover:text-red-300"
+						on:click={() => loadingError = null}
+					>
+						Dismiss
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Main Content -->
 	<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -396,10 +464,10 @@
 			{:else if selectedCategory && selectedCategory !== 'overview' && selectedCategory !== 'health'}
 				<!-- Endpoints for Selected Category -->
 				<h3 class="mb-4 text-lg font-semibold text-white">
-					{categoryConfig[selectedCategory]?.name} Endpoints
+					{categoryConfig[selectedCategory as keyof typeof categoryConfig]?.name} Endpoints
 				</h3>
 				<div class="space-y-3">
-					{#each getEndpointsByCategory(selectedCategory) as endpoint}
+					{#each getEndpointsByCategory(selectedCategory as CoreCategory) as endpoint}
 						<div
 							class="endpoint-card"
 							class:selected={selectedEndpoint === endpoint}
@@ -420,7 +488,7 @@
 								class="category-card"
 								class:selected={selectedCategory === key}
 								on:click={() => {
-									selectedCategory = key;
+									selectedCategory = key as AllCategory;
 									selectedEndpoint = null;
 								}}
 							>
@@ -456,7 +524,7 @@
 						<h3 class="mb-4 text-lg font-semibold text-white">Parameters</h3>
 						<ApiTester
 							endpoint={selectedEndpoint}
-							onResponse={(response) => handleApiResponse(selectedEndpoint, response)}
+							on:test={handleApiTest}
 						/>
 					</div>
 
@@ -590,7 +658,156 @@
 					<h2 class="mb-4 text-2xl font-bold text-white">API Health Status</h2>
 					<p class="text-gray-300">Real-time monitoring of all endpoints coming soon...</p>
 				</div>
+			{:else if selectedCategory === 'core'}
+				<!-- Core Endpoints -->
+				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+					<h2 class="mb-4 text-2xl font-bold text-white">Core Endpoints</h2>
+					<p class="mb-6 text-gray-300">Production-ready endpoints for scripture, translation helps, and resource discovery</p>
+					
+					{#if coreEndpoints.length > 0}
+						<div class="grid gap-4 sm:grid-cols-2">
+							{#each coreEndpoints as endpoint}
+								<div class="endpoint-card" on:click={() => selectEndpoint(endpoint)}>
+									<div class="mb-2 flex items-start justify-between">
+										<h3 class="font-semibold text-white">{endpoint.title || endpoint.name}</h3>
+										<span class="text-xs text-blue-400">{endpoint.path}</span>
+									</div>
+									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
+									<div class="flex items-center justify-between text-xs">
+										<span class="text-gray-500">{Object.keys(endpoint.params || {}).length} parameters</span>
+										{#if endpoint.examples?.length > 0}
+											<span class="text-green-400">{endpoint.examples.length} example{endpoint.examples.length !== 1 ? 's' : ''}</span>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-gray-400">Loading core endpoints...</p>
+					{/if}
+				</div>
+
+			{:else if selectedCategory === 'extended'}
+				<!-- Extended Endpoints -->
+				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+					<h2 class="mb-4 text-2xl font-bold text-white">Extended Features</h2>
+					<p class="mb-6 text-gray-300">Intelligent features that combine resources for enhanced workflows</p>
+					
+					{#if extendedEndpoints.length > 0}
+						<div class="grid gap-4 sm:grid-cols-2">
+							{#each extendedEndpoints as endpoint}
+								<div class="endpoint-card" on:click={() => selectEndpoint(endpoint)}>
+									<div class="mb-2 flex items-start justify-between">
+										<h3 class="font-semibold text-white">{endpoint.title || endpoint.name}</h3>
+										<span class="text-xs text-blue-400">{endpoint.path}</span>
+									</div>
+									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
+									<div class="flex items-center justify-between text-xs">
+										<span class="text-gray-500">{Object.keys(endpoint.params || {}).length} parameters</span>
+										{#if endpoint.examples?.length > 0}
+											<span class="text-green-400">{endpoint.examples.length} example{endpoint.examples.length !== 1 ? 's' : ''}</span>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-gray-400">Loading extended endpoints...</p>
+					{/if}
+				</div>
+
+			{:else if selectedCategory === 'experimental'}
+				<!-- Experimental Endpoints -->
+				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+					<h2 class="mb-4 text-2xl font-bold text-white">🧪 Experimental Lab</h2>
+					<p class="mb-6 text-gray-300">Test cutting-edge features in a separate, clearly marked section</p>
+					
+					{#if experimentalEndpoints.length > 0}
+						<div class="grid gap-4 sm:grid-cols-2">
+							{#each experimentalEndpoints as endpoint}
+								<div class="endpoint-card border-purple-500/30" on:click={() => selectEndpoint(endpoint)}>
+									<div class="mb-2 flex items-start justify-between">
+										<h3 class="font-semibold text-white">🧪 {endpoint.title || endpoint.name}</h3>
+										<span class="text-xs text-purple-400">{endpoint.path}</span>
+									</div>
+									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
+									<div class="flex items-center justify-between text-xs">
+										<span class="text-gray-500">{Object.keys(endpoint.params || {}).length} parameters</span>
+										{#if endpoint.examples?.length > 0}
+											<span class="text-green-400">{endpoint.examples.length} example{endpoint.examples.length !== 1 ? 's' : ''}</span>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-gray-400">Loading experimental endpoints...</p>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	</div>
 </div>
+
+<style>
+	.category-card {
+		cursor: pointer;
+		border-radius: 0.5rem;
+		border: 1px solid rgb(55 65 81 / 1);
+		background-color: rgb(31 41 55 / 0.5);
+		padding: 1.5rem;
+		transition: all 300ms;
+	}
+
+	.category-card:hover {
+		border-color: rgb(59 130 246 / 0.5);
+		background-color: rgb(31 41 55 / 1);
+	}
+
+	.category-card.selected {
+		border-color: rgb(59 130 246 / 1);
+		background-color: rgb(31 41 55 / 1);
+	}
+
+	.endpoint-card {
+		cursor: pointer;
+		border-radius: 0.5rem;
+		border: 1px solid rgb(55 65 81 / 1);
+		background-color: rgb(31 41 55 / 0.3);
+		padding: 1rem;
+		transition: all 300ms;
+	}
+
+	.endpoint-card:hover {
+		border-color: rgb(59 130 246 / 0.3);
+		background-color: rgb(31 41 55 / 0.5);
+	}
+
+	.endpoint-card.selected {
+		border-color: rgb(59 130 246 / 1);
+		background-color: rgb(31 41 55 / 0.7);
+	}
+
+	.tab-button {
+		border-top-left-radius: 0.5rem;
+		border-top-right-radius: 0.5rem;
+		border-bottom: 2px solid;
+		padding: 0.75rem 1.5rem;
+		font-weight: 500;
+		transition: all 300ms;
+	}
+
+	.tab-button.active {
+		border-color: rgb(59 130 246 / 1);
+		color: rgb(96 165 250 / 1);
+	}
+
+	.tab-button:not(.active) {
+		border-color: transparent;
+		color: rgb(156 163 175 / 1);
+	}
+
+	.tab-button:not(.active):hover {
+		color: rgb(209 213 219 / 1);
+	}
+</style>
