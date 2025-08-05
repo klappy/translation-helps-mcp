@@ -202,8 +202,7 @@ export { endpointRegistry };
 
 // Auto-initialize when this module is imported
 // (Can be disabled by setting NODE_ENV to 'test')
-// TEMPORARILY DISABLED: Causing issues in SvelteKit/Cloudflare environment
-// if (typeof process === "undefined" || process.env.NODE_ENV !== "test") {
-//   initializeAllEndpoints();
-//   validateAllEndpoints();
-// }
+if (typeof process === "undefined" || process.env.NODE_ENV !== "test") {
+  initializeAllEndpoints();
+  validateAllEndpoints();
+}
