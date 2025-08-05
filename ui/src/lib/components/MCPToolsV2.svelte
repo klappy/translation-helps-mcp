@@ -46,7 +46,8 @@
 			console.log('🔧 Initializing MCP Tools with real endpoint configurations...');
 			
 			// Dynamic import to avoid SSR issues with cross-project imports
-			const endpointModule = await import('../../../../src/config/endpoints/index');
+			// @ts-ignore - importing compiled JS module
+			const endpointModule = await import('../../../../dist/src/config/endpoints/index');
 			endpointRegistry = endpointModule.endpointRegistry;
 			initializeAllEndpoints = endpointModule.initializeAllEndpoints;
 			
