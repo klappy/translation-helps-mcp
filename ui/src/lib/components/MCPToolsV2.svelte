@@ -119,11 +119,56 @@
 
 	// Handle API response
 	function handleApiResponse(endpoint, response) {
+		const metadata = response.metadata || {};
+		const xrayTrace = metadata.xrayTrace || {};
+		
 		performanceData[endpoint.name] = {
-			responseTime: response.metadata?.responseTime,
-			cached: response.metadata?.cached,
-			timestamp: new Date()
+			// Basic performance
+			responseTime: metadata.responseTime,
+			cached: metadata.cached,
+			cacheStatus: metadata.cacheStatus,
+			timestamp: new Date(),
+			
+			// X-ray trace data
+			traceId: xrayTrace.traceId,
+			mainEndpoint: xrayTrace.mainEndpoint,
+			totalDuration: xrayTrace.totalDuration,
+			
+			// Cache performance stats
+			cacheStats: xrayTrace.cacheStats ? {
+				hits: xrayTrace.cacheStats.hits,
+				misses: xrayTrace.cacheStats.misses,
+				total: xrayTrace.cacheStats.total,
+				hitRate: xrayTrace.cacheStats.hitRate
+			} : null,
+			
+			// Performance metrics
+			performance: xrayTrace.performance ? {
+				fastest: xrayTrace.performance.fastest,
+				slowest: xrayTrace.performance.slowest,
+				average: xrayTrace.performance.average
+			} : null,
+			
+			// API call details
+			calls: xrayTrace.calls || [],
+			
+			// Additional metadata
+			format: metadata.format,
+			translationsFound: metadata.translationsFound,
+			filesFound: metadata.filesFound,
+			booksFound: metadata.booksFound,
+			languagesFound: metadata.languagesFound,
+			
+			// Debug info
+			debug: {
+				cacheKey: metadata.cacheKey,
+				success: metadata.success,
+				status: metadata.status,
+				fullMetadata: metadata
+			}
 		};
+		
+		console.log(`📊 Performance data captured for ${endpoint.name}:`, performanceData[endpoint.name]);
 	}
 </script>
 
