@@ -4,28 +4,13 @@ export const config = {
 
 /**
  * SvelteKit API Route for fetch-scripture
- * Generated from EndpointConfig using the new configuration system
+ * TEMPORARILY REVERTED: Testing basic functionality before debugging config system
  */
 
-import { routeGenerator } from '$lib/../../../src/config/RouteGenerator';
-import { getEndpointConfig } from '$lib/../../../src/config/endpoints/index';
+import { fetchScriptureHandler } from '$lib/../../../src/functions/handlers/fetch-scripture';
 import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
 
-// Get the endpoint configuration
-const endpointConfig = getEndpointConfig('fetch-scripture');
-
-if (!endpointConfig) {
-	throw new Error('fetch-scripture endpoint configuration not found');
-}
-
-if (!endpointConfig.enabled) {
-	throw new Error('fetch-scripture endpoint is disabled');
-}
-
-// Generate the handler from configuration
-const { handler: configuredHandler } = routeGenerator.generateHandler(endpointConfig);
-
-// Wrap with SvelteKit adapter
-export const GET = createSvelteKitHandler(configuredHandler);
-export const POST = createSvelteKitHandler(configuredHandler);
-export const OPTIONS = createSvelteKitHandler(configuredHandler);
+// Use old handler temporarily while we debug the config system
+export const GET = createSvelteKitHandler(fetchScriptureHandler);
+export const POST = createSvelteKitHandler(fetchScriptureHandler);
+export const OPTIONS = createSvelteKitHandler(fetchScriptureHandler);
