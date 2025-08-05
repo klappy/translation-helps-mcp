@@ -82,7 +82,9 @@ class ConfigurationRegistry {
     const existing = this.registry.endpoints[config.name];
     if (existing) {
       if (existing.path !== config.path) {
-        throw new Error(`Endpoint with name '${config.name}' already exists with different path '${existing.path}' vs '${config.path}'`);
+        throw new Error(
+          `Endpoint with name '${config.name}' already exists with different path '${existing.path}' vs '${config.path}'`
+        );
       }
       // Same name and path - skip re-registration
       console.log(`📝 Skipping re-registration of: ${config.name} (${config.path})`);
