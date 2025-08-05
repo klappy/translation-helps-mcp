@@ -261,7 +261,7 @@
             "id": 3,
             "title": "Implement Translation Academy",
             "description": "Configure tA endpoints with ToC support",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "Implement:\n- fetch-translation-academy (article serving)\n- browse-translation-academy (ToC)\n- Direct linking from tN\n- Markdown parsing\n- Article categorization",
             "testStrategy": "Articles load correctly, ToC is browsable"
@@ -511,7 +511,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T17:54:08.792Z"
+      "updated": "2025-08-05T17:58:04.908Z"
     }
   }
 }
