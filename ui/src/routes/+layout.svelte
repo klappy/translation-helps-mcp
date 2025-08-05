@@ -15,11 +15,12 @@
 		Code,
 		Droplets,
 		ExternalLink,
+		FileText,
 		Github,
+		Info,
 		Menu,
 		MessageSquare,
-		Settings,
-		TestTube,
+		ScrollText,
 		TrendingUp,
 		X,
 		Zap
@@ -58,6 +59,24 @@
 			label: 'RAG Manifesto',
 			icon: Zap,
 			description: 'The right way to do Bible RAG'
+		},
+		{
+			href: '/changelog',
+			label: 'Changelog',
+			icon: ScrollText,
+			description: 'Latest updates and improvements'
+		},
+		{
+			href: '/whitepaper',
+			label: 'Whitepaper',
+			icon: FileText,
+			description: 'Detailed technical explanation'
+		},
+		{
+			href: '/about',
+			label: 'About',
+			icon: Info,
+			description: 'Learn more about The Aqueduct'
 		}
 	];
 
@@ -114,7 +133,7 @@
 
 	// Health monitoring lifecycle
 	onMount(() => {
-		startHealthMonitoring(30000); // Refresh every 30 seconds
+		startHealthMonitoring(); // Single check on page load
 	});
 
 	onDestroy(() => {

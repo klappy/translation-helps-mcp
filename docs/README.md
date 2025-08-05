@@ -1,44 +1,96 @@
 # Translation Helps MCP Documentation
 
-## Overview
 This directory contains comprehensive documentation for the Translation Helps MCP system.
 
-## Key Documents
+**Last Updated:** August 2025
+
+## 📖 **Core Documentation**
+
+### 🚀 [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)
+
+**Complete implementation guide** covering setup, deployment, best practices, and lessons learned. This is the primary "how to implement" reference with:
+
+- Quick start instructions
+- Core endpoint data shapes and flags
+- Performance optimization patterns
+- Version management
+- Real-world implementation wisdom
+
+### 🌐 [UW_TRANSLATION_RESOURCES_GUIDE.md](./UW_TRANSLATION_RESOURCES_GUIDE.md)
+
+**Comprehensive resource reference** explaining what the translation resources are, how they work conceptually, and their relationships. This is the primary "what resources are" reference covering:
+
+- Resource ecosystem concepts
+- Translation workflows
+- Technical specifications
+- Integration patterns
+
+## 🔧 **Technical References**
 
 ### 📋 [ARCHITECTURE_DECISIONS.md](./ARCHITECTURE_DECISIONS.md)
+
 Critical architectural decisions and lessons learned during development. **Read this first** to understand why the system is built the way it is and avoid repeating past mistakes.
 
 ### 🔧 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+
 Comprehensive troubleshooting guide for common issues, debugging techniques, and emergency fixes. Essential for operations and support.
 
 ### 🚀 [MCP_LLM_REFERENCE_IMPLEMENTATION.md](./MCP_LLM_REFERENCE_IMPLEMENTATION.md)
+
 Reference implementation guide for integrating MCP with Large Language Models. Shows best practices for creating a natural, conversational interface while maintaining data integrity.
 
-### 📦 [MCP_PROTOCOL.md](./MCP_PROTOCOL.md)
-Technical specification of the Model Context Protocol used in this system.
+### 🚀 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
 
-### 🌐 [API_REFERENCE.md](./API_REFERENCE.md)
-Complete API documentation for all endpoints.
+Production deployment guidance covering Cloudflare Pages setup, environment configuration, and monitoring.
 
-### 💾 [CACHING_STRATEGY.md](./CACHING_STRATEGY.md)
-Details about the caching implementation and performance optimizations.
+### 🔬 [EXPERIMENTAL_PROMOTION_CRITERIA.md](./EXPERIMENTAL_PROMOTION_CRITERIA.md)
 
-### 🔐 [CLOUDFLARE_SETUP.md](./CLOUDFLARE_SETUP.md)
-Guide for deploying to Cloudflare Pages.
+Defines requirements for promoting features from experimental to core production status.
 
-### 🏗️ [DYNAMIC_ARCHITECTURE.md](./DYNAMIC_ARCHITECTURE.md)
-(Deprecated) Previous attempt at dynamic data pipeline - kept for historical context.
+### 📊 [CODEBASE_AUDIT.md](./CODEBASE_AUDIT.md)
 
-## Quick Links
+Technical audit findings and recommendations for code quality improvements.
 
-- **Having Issues?** → Start with [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-- **Making Changes?** → Read [ARCHITECTURE_DECISIONS.md](./ARCHITECTURE_DECISIONS.md) first
-- **Building Integration?** → Follow [MCP_LLM_REFERENCE_IMPLEMENTATION.md](./MCP_LLM_REFERENCE_IMPLEMENTATION.md)
+## 📁 **Additional Resources**
 
-## Core Principles
+### 📈 [performance/](./performance/)
 
-1. **MCP-Only Data**: The system only provides data from MCP tools, no external knowledge
-2. **Dynamic Discovery**: Tools are discovered at runtime, not hardcoded
-3. **LLM-Driven Formatting**: Let the LLM format responses naturally
-4. **Transparency**: X-ray debugging shows exactly what's happening
-5. **Proper Citations**: Every piece of information is properly attributed
+Performance reports and optimization analysis.
+
+### 🧪 [quickstarts/](./quickstarts/)
+
+Quick-start guides for specific use cases and integration patterns.
+
+### 🧪 [testing/](./testing/)
+
+Testing documentation and test utilities.
+
+### 📦 [archive/](./archive/)
+
+Historical documentation and deprecated guides kept for reference.
+
+## 🚀 **Quick Start Paths**
+
+### **For Developers**
+
+1. **Understanding Resources** → [UW Translation Resources Guide](./UW_TRANSLATION_RESOURCES_GUIDE.md)
+2. **Implementation** → [Implementation Guide](./IMPLEMENTATION_GUIDE.md)
+3. **Deployment** → [Deployment Guide](./DEPLOYMENT_GUIDE.md)
+
+### **For Users**
+
+1. **Getting Started** → [Implementation Guide - Quick Start](./IMPLEMENTATION_GUIDE.md#-quick-start-5-minutes)
+2. **Troubleshooting** → [Troubleshooting Guide](./TROUBLESHOOTING.md)
+
+### **For Contributors**
+
+1. **Architecture** → [Architecture Decisions](./ARCHITECTURE_DECISIONS.md)
+2. **Experimental Features** → [Promotion Criteria](./EXPERIMENTAL_PROMOTION_CRITERIA.md)
+
+## 📋 **Documentation Principles**
+
+1. **Clear Separation**: "What resources are" (UW Guide) vs "How to implement" (Implementation Guide)
+2. **JSON by Default**: All examples show structured JSON responses with optional TSV for exact testing
+3. **Raw Data Preservation**: Core endpoints proxy Door43 content with minimal optional filtering
+4. **Experimental Distinction**: Advanced features live in separate lab environment
+5. **Comprehensive Examples**: Real-world scenarios with actual data shapes
