@@ -42,6 +42,14 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       example: "unfoldingWord",
       options: ["unfoldingWord", "Door43-Catalog"],
     },
+    resource: {
+      type: "string",
+      required: false,
+      default: "ult",
+      description: "Scripture resource type",
+      example: "ult",
+      options: ["ult", "ust"],
+    },
     format: {
       type: "string",
       required: false,
