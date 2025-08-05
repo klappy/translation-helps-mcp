@@ -3,6 +3,7 @@
 ## ⚠️ WARNING: EXPERIMENTAL CODE AHEAD ⚠️
 
 This directory contains experimental features that are:
+
 - **NOT production-ready**
 - **NOT guaranteed to work reliably**
 - **NOT covered by stability guarantees**
@@ -11,6 +12,7 @@ This directory contains experimental features that are:
 ## What's in the Lab?
 
 ### 🚧 Debug & Test API Routes (Moved from Core)
+
 **Location:** `api-routes/`
 
 - **debug-titus/** - Debug endpoint returning massive catalog data (working but debug-only)
@@ -20,40 +22,132 @@ This directory contains experimental features that are:
 - **chat-dynamic/** - Dynamic chat endpoint features
 
 ### 🤖 AI-Powered Features
+
 - **ai-content-summarizer.ts** - AI-powered content summarization (currently using mock responses)
 - **ai-quality-checker.ts** - AI quality assessment (currently using mock responses)
 
 ### 📦 Unused/Duplicate Features
+
 - **resource-aggregator.ts** - Alternative resource aggregation implementation (not used by core)
 - **resource-aggregator-unused.ts** - Duplicate from core functions (moved here, unused)
 - **resource-recommendations.ts** - Alternative recommendations (experimental version)
 - **resource-recommender.ts** - Alternative recommender engine (experimental version)
 
-### 🗄️ Deprecated Features  
+### 🗄️ Deprecated Features
+
 - **cache-warmer.ts** - Deprecated cache warming system
 - **automated-content-ingestion.ts** - Automated content discovery and ingestion
 
-## Core vs Experimental Clarification
+## Translation Helps MCP Architecture
 
-**✅ CORE (Working in Production):**
-- Main resource endpoints (`/api/fetch-scripture`, `/api/fetch-translation-notes`, etc.)
-- Resource recommendations endpoint (`/api/resource-recommendations`) - Uses `src/functions/resource-recommender.ts`
-- Unified cache system
-- Performance monitoring
-- X-ray transparency
+This project follows a **three-tier architecture** for organizing functionality:
 
-**🧪 EXPERIMENTAL (Moved Here):**
-- Debug endpoints (working but not production-appropriate)
-- Test endpoints (working but for testing only)
-- Alternative implementations (may or may not work)
-- AI features (mock implementations)
+### 🔧 **CORE - DCS Proxies** 
+*Clean, formatted versions of Door43 Content Service data*
+
+**Location:** `/api/` endpoints in production  
+**Purpose:** Direct proxies to DCS with minimal processing - JSON formatting, caching, error handling
+
+**Endpoints:**
+- `fetch-scripture` - Scripture text from ULT, UST, T4T, UEB translations
+- `fetch-translation-notes` - Verse-by-verse translation notes  
+- `fetch-translation-questions` - Comprehension questions for passages
+- `fetch-translation-academy` - Translation Academy articles
+- `get-translation-word` - Individual translation word definitions
+- `fetch-translation-word-links` - Links between verses and translation words
+- `get-languages` - Available languages list
+- `get-available-books` - Available books per language/organization
+- `list-available-resources` - Resource catalog from DCS
+
+**Characteristics:**
+- Response time: <100ms (with caching)
+- Data format: JSON (default) with optional TSV for exact DCS content
+- No cross-resource bridging - one DCS resource per call
+- Minimal business logic - just formatting and performance optimization
+
+### 🚀 **EXTENDED - Value-Added Bridging**
+*Production-ready features that combine multiple DCS resources intelligently*
+
+**Location:** `/api/` endpoints in production  
+**Purpose:** Save developers from making multiple chained calls by combining DCS data with smart logic
+
+**Endpoints:**
+- `resource-recommendations` - AI-powered recommendations for which resources to use for a passage
+- `fetch-resources` - Aggregates multiple translation resources (notes, questions, etc.) in one call
+- `resource-catalog` - Enhanced catalog with metadata and usage statistics
+
+**Characteristics:**
+- Response time: <500ms 
+- Combines 2-10 DCS API calls into single response
+- Adds business logic and intelligence
+- Production-ready with comprehensive testing
+- Includes performance monitoring and caching
+
+### 🧪 **EXPERIMENTAL - LLM-Powered Crazy Ideas**
+*Advanced features using AI/LLM for heavy lifting*
+
+**Location:** `src/experimental/` directory  
+**Purpose:** Experimental features that use LLMs to do complex reasoning and provide intelligent responses
+
+**Features:**
+
+#### 🤖 AI-Powered Content Processing
+- `ai-content-summarizer.ts` - LLM-powered content summarization (mock implementation)
+- `ai-quality-checker.ts` - AI quality assessment for translations (mock implementation)
+
+#### 💬 LLM Chat Interfaces  
+- `chat` - AI Bible assistant with context awareness
+- `chat-reasoning` - Chat with visible reasoning process
+- `chat-stream` - Streaming chat responses
+- `chat-dynamic` - Dynamic chat with adaptive responses (moved to `api-routes/`)
+
+#### 🔬 Advanced MCP Features
+- `mcp-experimental` - Experimental MCP protocol extensions (moved to `api-routes/`)
+- `mcp-dynamic` - Dynamic MCP tool generation (moved to `api-routes/`)
+
+#### 🛠️ Debug & Development Tools
+- `debug-titus` - Debug endpoint with massive catalog data output (moved to `api-routes/`)
+- `test-twl` - Test endpoint for translation word links (moved to `api-routes/`)
+
+#### 📦 Alternative Implementations
+- `resource-aggregator.ts` - Alternative resource aggregation (not used by production)
+- `resource-aggregator-unused.ts` - Duplicate from core (moved here, unused)
+- `resource-recommendations.ts` - Alternative recommendations engine
+- `resource-recommender.ts` - Alternative recommender (experimental version)
+
+#### 🗄️ Deprecated Features
+- `cache-warmer.ts` - Deprecated cache warming system
+- `automated-content-ingestion.ts` - Automated content discovery (30% complete)
+
+**Characteristics:**
+- May use external LLM APIs (OpenAI, Claude, etc.)
+- Response times variable (500ms - 30s depending on LLM)
+- Heavy computational requirements
+- Mock implementations for cost control
+- Not guaranteed to work reliably
+
+---
+
+## Promotion Path Between Tiers
+
+### Experimental → Extended
+1. Replace mock LLM calls with efficient algorithms
+2. Achieve <500ms response times consistently  
+3. Add comprehensive testing and error handling
+4. Prove production stability over 30+ days
+
+### Extended → Core  
+Extended features generally stay extended unless they become simple DCS proxies.
+
+### Experimental → Core (Rare)
+Only if the feature becomes a simple DCS proxy with no cross-resource logic.
 
 ## Promotion Criteria
 
-For a feature to move from experimental to core, it must:
+For any feature to move up a tier, it must:
 
 1. **Get explicit approval** from project maintainers
-2. **Get partner approval** from stakeholders  
+2. **Get partner approval** from stakeholders
 3. **Meet performance benchmarks**:
    - Response time < 500ms for 95th percentile
    - Cache hit ratio > 80%
@@ -77,17 +171,18 @@ For a feature to move from experimental to core, it must:
 
 ```typescript
 // ⚠️ EXPERIMENTAL - DO NOT USE IN PRODUCTION
-import { ExperimentalFeature } from '../experimental/feature-experimental';
+import { ExperimentalFeature } from "../experimental/feature-experimental";
 
 // Must explicitly acknowledge experimental status
 const feature = new ExperimentalFeature({
-  acknowledgeExperimental: true
+  acknowledgeExperimental: true,
 });
 ```
 
 ### API Endpoints
 
 Experimental features are accessible via:
+
 - Debug/Test endpoints: Moved to experimental but still accessible for development
 - Experimental MCP: `/api/mcp-experimental` (moved to experimental directory)
 
@@ -98,24 +193,48 @@ When a feature is approved for core:
 1. Remove `-experimental` suffix from filename
 2. Move to appropriate core directory
 3. Update all imports
-4. Remove experimental warnings  
+4. Remove experimental warnings
 5. Add to core endpoint configuration
 6. Update documentation
 7. Announce in changelog
 
-## Current Status
+## Current Status by Tier
 
+### 🔧 CORE - DCS Proxies (Production)
+| Endpoint | Status | Response Time | Notes |
+|----------|--------|---------------|-------|
+| fetch-scripture | ✅ Production | 13-29ms | ULT, UST, T4T, UEB translations |
+| fetch-translation-notes | ✅ Production | <50ms | Verse-by-verse notes |
+| fetch-translation-questions | ✅ Production | <50ms | Comprehension questions |
+| get-translation-word | ✅ Production | <50ms | Individual word definitions |
+| fetch-translation-word-links | ✅ Production | <50ms | Verse-to-word mappings |
+| get-languages | ✅ Production | <30ms | Available languages |
+| get-available-books | ✅ Production | <30ms | Available books catalog |
+| list-available-resources | ✅ Production | <100ms | Resource catalog |
+
+### 🚀 EXTENDED - Value-Added Bridging (Production)
+| Endpoint | Status | Response Time | Notes |
+|----------|--------|---------------|-------|
+| resource-recommendations | ✅ Production | <200ms | Smart resource suggestions |
+| fetch-resources | ✅ Production | <300ms | Aggregated resource data |
+| resource-catalog | ✅ Production | <150ms | Enhanced catalog with metadata |
+
+### 🧪 EXPERIMENTAL - LLM-Powered Features
 | Feature | Status | Location | Notes |
 |---------|--------|----------|-------|
-| Debug Titus | 🔧 Debug Only | `api-routes/debug-titus/` | Working but debug output |
-| Test TWL | 🧪 Test Only | `api-routes/test-twl/` | Working test endpoint |
-| MCP Experimental | 🔬 Experimental | `api-routes/mcp-experimental/` | Experimental MCP features |
-| AI Content Summarizer | 🔬 Experimental | Root | Mock only |
-| AI Quality Checker | 🔬 Experimental | Root | Mock only |
-| Resource Aggregator (Alt) | 🔬 Experimental | Root | Alternative implementation |
-| Resource Aggregator (Unused) | ❌ Unused | Root | Moved from core, unused |
-| Cache Warmer | ❌ Deprecated | Root | Feature removed from roadmap |
-| Automated Ingestion | 🔬 Experimental | Root | 30% complete |
+| AI Content Summarizer | 🔬 Mock Only | Root | Needs real LLM integration |
+| AI Quality Checker | 🔬 Mock Only | Root | Needs real LLM integration |
+| Chat Assistant | 🚀 Working | `/api/chat` | Uses LLM for Bible Q&A |
+| Chat Reasoning | 🚀 Working | `/api/chat-reasoning` | Shows reasoning process |
+| Chat Stream | 🚀 Working | `/api/chat-stream` | Streaming responses |
+| Chat Dynamic | 🔬 Experimental | `api-routes/chat-dynamic/` | Adaptive responses |
+| MCP Experimental | 🔬 Experimental | `api-routes/mcp-experimental/` | Protocol extensions |
+| MCP Dynamic | 🔬 Experimental | `api-routes/mcp-dynamic/` | Dynamic tool generation |
+| Debug Titus | 🛠️ Debug Tool | `api-routes/debug-titus/` | Catalog debugging |
+| Test TWL | 🧪 Test Tool | `api-routes/test-twl/` | TWL testing |
+| Resource Aggregator (Alt) | ❌ Unused | Root | Alternative implementation |
+| Cache Warmer | ❌ Deprecated | Root | Removed from roadmap |
+| Automated Ingestion | 🔬 30% Complete | Root | Webhook implementation needed |
 
 ## Contact
 
