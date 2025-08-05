@@ -94,87 +94,62 @@ export const FETCH_SCRIPTURE_CONFIG: EndpointConfig = {
   responseShape: SCRIPTURE_SHAPE,
   params: SCRIPTURE_PARAMS,
   dataSource: {
-    type: "dcs-api",
-    dcsEndpoint:
-      "/api/v1/repos/{organization}/{language}_{resource}/contents/{book}/{chapter}.usfm",
-    transformation: "usfm-to-text",
+    type: "computed",
     cacheTtl: 3600,
   },
   enabled: true,
   tags: ["scripture", "bible", "text", "core"],
   examples: [
     {
-      title: "John 3:16 (Most famous verse)",
+      name: "John 3:16 (Most famous verse)",
       description: "Fetch the most well-known Bible verse in English",
       params: {
         reference: "John 3:16",
         language: "en",
         organization: "unfoldingWord",
       },
-      expectedResponse: {
-        scriptures: [
-          {
-            text: "16 For God so loved the world, that he gave his One and Only Son, so that everyone believing in him would not perish but would have eternal life.",
-            translation: "unfoldingWord® Literal Text",
-            citation: {
-              resource: "en_ult",
-              organization: "unfoldingWord",
-              language: "en",
-              url: "https://git.door43.org/unfoldingWord/en_ult",
-              version: "master",
-            },
-          },
-        ],
-        language: "en",
-        organization: "unfoldingWord",
-        metadata: {
-          translationsFound: 4,
-          filesFound: 4,
-          responseTime: 245,
-          cacheStatus: "miss",
-        },
+      expectedContent: {
+        contains: ["God so loved the world", "eternal life"],
+        minLength: 50,
       },
     },
     {
-      title: "Genesis 1:1 (Creation beginning)",
+      name: "Genesis 1:1 (Creation beginning)",
       description: "Fetch the very first verse of the Bible",
       params: {
         reference: "Genesis 1:1",
         language: "en",
         organization: "unfoldingWord",
       },
-      expectedResponse: {
-        scriptures: [
-          {
-            text: "1 In the beginning, God created the heavens and the earth.",
-            translation: "unfoldingWord® Literal Text",
-            citation: {
-              resource: "en_ult",
-              organization: "unfoldingWord",
-              language: "en",
-            },
-          },
-        ],
-        language: "en",
-        organization: "unfoldingWord",
+      expectedContent: {
+        contains: ["In the beginning", "God created", "heavens and the earth"],
+        minLength: 40,
       },
     },
     {
-      title: "Psalm 23:1-4 (Multi-verse passage)",
+      name: "Psalm 23:1-4 (Multi-verse passage)",
       description: "Fetch multiple verses from the famous Shepherd Psalm",
       params: {
         reference: "Psalm 23:1-4",
         language: "en",
         organization: "unfoldingWord",
       },
+      expectedContent: {
+        contains: ["The Lord is my shepherd", "valley of death"],
+        minLength: 200,
+      },
     },
     {
-      title: "Romans 8:28 (Spanish translation)",
+      name: "Romans 8:28 (Spanish translation)",
       description: "Fetch scripture in Spanish to demonstrate multi-language support",
       params: {
         reference: "Romans 8:28",
         language: "es",
         organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["Dios"],
+        minLength: 30,
       },
     },
   ],
