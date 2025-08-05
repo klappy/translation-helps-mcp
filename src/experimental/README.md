@@ -42,9 +42,11 @@ This directory contains experimental features that are:
 - **cache-warmer-functions.ts** - Deprecated cache warming system (moved from functions)
 
 ### 🧪 Moved Test Files
+
 Test files for the above unused utilities have been moved to `src/experimental/tests/`:
+
 - **tests/advanced-filter.test.ts** - Tests for the 636-line filtering system
-- **tests/request-coalescer.test.ts** - Tests for request coalescing functionality  
+- **tests/request-coalescer.test.ts** - Tests for request coalescing functionality
 - **tests/response-optimizer.test.ts** - Tests for response optimization middleware
 - **tests/compression-middleware.test.ts** - Tests for compression middleware
 - **tests/cache-warmer.test.ts** - Tests for deprecated cache warming system
