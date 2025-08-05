@@ -318,7 +318,7 @@
             "id": 3,
             "title": "Implement Experimental Lab Tab",
             "description": "Add separate section for experimental features",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [1],
             "details": "Create lower tab/section:\n- Clearly marked 'Experimental'\n- Separate from core\n- Warning about stability\n- Same UI patterns\n- Don't clutter main menu",
             "testStrategy": "Experimental features isolated but accessible"
@@ -336,7 +336,7 @@
             "id": 5,
             "title": "Ensure Mobile Responsiveness",
             "description": "Make MCP Tools work on all devices",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [1, 2, 3, 4],
             "details": "Implement:\n- Responsive parameter forms\n- Collapsible sections\n- Touch-friendly controls\n- Readable response display\n- Horizontal scroll for wide data",
             "testStrategy": "Works perfectly on mobile devices"
@@ -511,7 +511,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T18:47:41.520Z"
+      "updated": "2025-08-05T19:06:02.825Z"
     }
   }
 }
