@@ -1,20 +1,20 @@
 /**
  * Endpoint Configurations Index
- * 
+ *
  * Central registry and initialization point for all endpoint configurations.
  * Automatically registers configurations and provides utilities for
  * endpoint management.
  */
 
-import { endpointRegistry } from '../EndpointRegistry.js';
-import { SCRIPTURE_ENDPOINTS } from './ScriptureEndpoints.js';
+import { endpointRegistry } from "../EndpointRegistry.js";
+import { SCRIPTURE_ENDPOINTS } from "./ScriptureEndpoints.js";
 
 /**
  * Register all scripture endpoints
  */
 function registerScriptureEndpoints(): void {
-  console.log('📖 Registering Scripture endpoints...');
-  
+  console.log("📖 Registering Scripture endpoints...");
+
   for (const config of SCRIPTURE_ENDPOINTS) {
     try {
       endpointRegistry.register(config);
@@ -24,33 +24,34 @@ function registerScriptureEndpoints(): void {
       throw error;
     }
   }
-  
-  console.log(`📖 Scripture endpoints registered: ${SCRIPTURE_ENDPOINTS.length} total`);
+
+  console.log(
+    `📖 Scripture endpoints registered: ${SCRIPTURE_ENDPOINTS.length} total`,
+  );
 }
 
 /**
  * Initialize all endpoint configurations
  */
 export function initializeAllEndpoints(): void {
-  console.log('🏗️ Initializing all endpoint configurations...');
-  
+  console.log("🏗️ Initializing all endpoint configurations...");
+
   try {
     // Register all endpoint categories
     registerScriptureEndpoints();
-    
+
     // Print registry stats
     const stats = endpointRegistry.getStats();
-    console.log('📊 Registry Statistics:', {
+    console.log("📊 Registry Statistics:", {
       totalEndpoints: stats.totalEndpoints,
       enabledEndpoints: stats.enabledEndpoints,
       categories: stats.categories,
       dataSourceTypes: stats.dataSourceTypes,
     });
-    
-    console.log('✅ All endpoints initialized successfully!');
-    
+
+    console.log("✅ All endpoints initialized successfully!");
   } catch (error) {
-    console.error('❌ Failed to initialize endpoints:', error);
+    console.error("❌ Failed to initialize endpoints:", error);
     throw error;
   }
 }
@@ -59,32 +60,40 @@ export function initializeAllEndpoints(): void {
  * Validate all registered configurations
  */
 export function validateAllEndpoints(): void {
-  console.log('🔍 Validating all endpoint configurations...');
-  
+  console.log("🔍 Validating all endpoint configurations...");
+
   const validationResult = endpointRegistry.validateAll();
-  
+
   if (validationResult.errors.length > 0) {
-    console.error('❌ Configuration errors found:');
-    validationResult.errors.forEach(error => {
+    console.error("❌ Configuration errors found:");
+    validationResult.errors.forEach((error) => {
       console.error(`  - ${error.endpoint}.${error.field}: ${error.message}`);
     });
-    throw new Error(`Found ${validationResult.errors.length} configuration errors`);
+    throw new Error(
+      `Found ${validationResult.errors.length} configuration errors`,
+    );
   }
-  
+
   if (validationResult.warnings.length > 0) {
-    console.warn('⚠️ Configuration warnings:');
-    validationResult.warnings.forEach(warning => {
-      console.warn(`  - ${warning.endpoint}.${warning.field}: ${warning.message}`);
+    console.warn("⚠️ Configuration warnings:");
+    validationResult.warnings.forEach((warning) => {
+      console.warn(
+        `  - ${warning.endpoint}.${warning.field}: ${warning.message}`,
+      );
     });
   }
-  
-  console.log(`✅ All configurations valid! (${validationResult.warnings.length} warnings)`);
+
+  console.log(
+    `✅ All configurations valid! (${validationResult.warnings.length} warnings)`,
+  );
 }
 
 /**
  * Get all endpoints by category
  */
-export function getEndpointsByCategory(category: 'core' | 'extended' | 'experimental') {
+export function getEndpointsByCategory(
+  category: "core" | "extended" | "experimental",
+) {
   return endpointRegistry.getByCategory(category);
 }
 
@@ -115,7 +124,7 @@ export { endpointRegistry };
 
 // Auto-initialize when this module is imported
 // (Can be disabled by setting NODE_ENV to 'test')
-if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+if (typeof process === "undefined" || process.env.NODE_ENV !== "test") {
   initializeAllEndpoints();
   validateAllEndpoints();
 }
