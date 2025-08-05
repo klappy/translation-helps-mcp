@@ -4,6 +4,7 @@
 		Beaker,
 		BookOpen,
 		Check,
+		ChevronRight,
 		Copy,
 		Database,
 		Info,
@@ -16,14 +17,12 @@
 	import ApiTester from './ApiTester.svelte';
 	import PerformanceMetrics from './PerformanceMetrics.svelte';
 
-	// Categories with icons
+	// Categories aligned with three-tier architecture
 	const categoryConfig = {
 		overview: { name: 'Overview', icon: Info },
 		health: { name: 'Health Status', icon: Activity },
-		scripture: { name: 'Scripture', icon: BookOpen },
-		helps: { name: 'Translation Helps', icon: Languages },
-		discovery: { name: 'Discovery', icon: Search },
-		context: { name: 'Context & Aggregation', icon: Link },
+		core: { name: 'Core Endpoints', icon: Database },
+		extended: { name: 'Extended Features', icon: Link },
 		experimental: { name: 'Experimental Lab', icon: Beaker }
 	};
 
@@ -159,27 +158,18 @@
 		}
 	}
 
-	// Group endpoints by category using real configuration data
+	// Get endpoints by three-tier architecture category
 	function getEndpointsByCategory(category) {
-		if (category === 'experimental') {
-			return experimentalEndpoints;
+		switch (category) {
+			case 'core':
+				return coreEndpoints;
+			case 'extended':
+				return extendedEndpoints;
+			case 'experimental':
+				return experimentalEndpoints;
+			default:
+				return [];
 		}
-
-		// Map UI categories to our endpoint categories and filter by tags
-		const categoryEndpoints = {
-			scripture: coreEndpoints.filter(ep => ep.tags?.includes('scripture')),
-			helps: [...coreEndpoints, ...extendedEndpoints].filter(ep => 
-				ep.tags?.some(tag => ['translation', 'notes', 'words', 'questions', 'academy'].includes(tag))
-			),
-			discovery: coreEndpoints.filter(ep => 
-				ep.tags?.some(tag => ['discovery', 'languages', 'books', 'resources'].includes(tag))
-			),
-			context: extendedEndpoints.filter(ep => 
-				ep.tags?.some(tag => ['context', 'aggregation', 'llm-optimized'].includes(tag))
-			)
-		};
-
-		return categoryEndpoints[category] || [];
 	}
 
 	// Copy example to clipboard
@@ -438,14 +428,14 @@
 									<svelte:component this={config.icon} class="mt-1 h-5 w-5 text-blue-400" />
 									<div class="flex-1">
 										<h4 class="font-medium text-white">{config.name}</h4>
-										{#if key === 'scripture'}
-											<p class="mt-1 text-sm text-gray-400">ULT, UST, and general scripture fetching</p>
-										{:else if key === 'helps'}
-											<p class="mt-1 text-sm text-gray-400">Translation notes, words, and questions</p>
-										{:else if key === 'discovery'}
-											<p class="mt-1 text-sm text-gray-400">Languages, books, and resource availability</p>
-										{:else if key === 'context'}
-											<p class="mt-1 text-sm text-gray-400">Combined fetching and context analysis</p>
+										{#if key === 'overview'}
+											<p class="mt-1 text-sm text-gray-400">Start here for MCP Tools overview and documentation</p>
+										{:else if key === 'health'}
+											<p class="mt-1 text-sm text-gray-400">System status and endpoint health monitoring</p>
+										{:else if key === 'core'}
+											<p class="mt-1 text-sm text-gray-400">Fast, direct access to Door43 resources with minimal processing</p>
+										{:else if key === 'extended'}
+											<p class="mt-1 text-sm text-gray-400">Intelligent features that combine resources for enhanced workflows</p>
 										{/if}
 									</div>
 								</div>
