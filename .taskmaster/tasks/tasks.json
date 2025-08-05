@@ -119,7 +119,7 @@
         "id": 3,
         "title": "Code Audit & Cleanup",
         "description": "Remove deprecated code, fix endpoints returning empty/bogus data, eliminate duplicate functionality",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [],
         "priority": "high",
         "details": "1. Remove code that returns empty/bogus data\n2. Fix experimental endpoints claiming to work but don't\n3. Remove duplicate implementations\n4. PRESERVE the working cascading cache system (DCS API → Files → Response)\n5. KEEP the xray transparency features that work\n6. Move only BROKEN experimental features to lab\n7. Clean up imports and dependencies\n8. Fix any code that hangs waiting for input\n9. Remove interactive commands from build/test scripts",
@@ -129,7 +129,7 @@
             "id": 1,
             "title": "Fix Empty/Bogus Endpoints",
             "description": "Identify and fix endpoints returning empty or incorrect data",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "Audit all endpoints:\n- Test each with real parameters\n- Document which return empty/bogus data\n- Fix or remove broken endpoints\n- Ensure experimental endpoints don't claim to fetch resources they can't\nFocus on core resource fetching accuracy",
             "testStrategy": "Each endpoint returns real, accurate data or is removed"
@@ -511,7 +511,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T15:56:04.820Z"
+      "updated": "2025-08-05T16:07:19.803Z"
     }
   }
 }
