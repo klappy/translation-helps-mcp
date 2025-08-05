@@ -473,16 +473,26 @@
 					<!-- Examples -->
 					{#if selectedEndpoint.examples?.length > 0}
 						<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
-							<h3 class="mb-4 text-lg font-semibold text-white">Examples</h3>
+							<div class="mb-4 flex items-center justify-between">
+								<h3 class="text-lg font-semibold text-white">Real Data Examples</h3>
+								<span class="rounded-full bg-blue-900/30 px-3 py-1 text-xs font-medium text-blue-400">
+									{selectedEndpoint.examples.length} example{selectedEndpoint.examples.length !== 1 ? 's' : ''}
+								</span>
+							</div>
 							<div class="space-y-4">
 								{#each selectedEndpoint.examples as example, index}
-									<div class="example-card">
-										<div class="mb-2 flex items-start justify-between">
-											<h4 class="font-medium text-white">
-												{example.title || example.description || `Example ${index + 1}`}
-											</h4>
+									<div class="example-card border border-gray-600/50">
+										<div class="mb-3 flex items-start justify-between">
+											<div class="flex-1">
+												<h4 class="font-medium text-white">
+													{example.name || example.title || `Example ${index + 1}`}
+												</h4>
+												{#if example.description}
+													<p class="mt-1 text-sm text-gray-400">{example.description}</p>
+												{/if}
+											</div>
 											<button
-												class="flex items-center space-x-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-800 hover:text-white"
+												class="flex items-center space-x-1 rounded px-2 py-1 text-xs text-blue-400 hover:bg-blue-900/20 hover:text-blue-300"
 												on:click={() => copyExample(example, index)}
 											>
 												{#if copiedExample === index}
@@ -490,12 +500,48 @@
 													<span>Copied!</span>
 												{:else}
 													<Copy class="h-3 w-3" />
-													<span>Copy</span>
+													<span>Copy Params</span>
 												{/if}
 											</button>
 										</div>
-										<pre class="overflow-x-auto rounded bg-gray-900 p-3 text-sm">
-<code class="text-gray-300">{JSON.stringify(example.params, null, 2)}</code></pre>
+										
+										<!-- Parameters -->
+										<div class="mb-3">
+											<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Parameters</span>
+											<pre class="mt-1 overflow-x-auto rounded bg-gray-900 p-3 text-sm">
+<code class="text-green-400">{JSON.stringify(example.params, null, 2)}</code></pre>
+										</div>
+
+										<!-- Expected Content (if available) -->
+										{#if example.expectedContent}
+											<div class="mt-3 rounded bg-gray-900/50 p-3">
+												<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Expected Response</span>
+												<div class="mt-2 space-y-2">
+													{#if example.expectedContent.contains?.length > 0}
+														<div>
+															<span class="text-xs text-blue-400">Contains:</span>
+															<div class="mt-1 flex flex-wrap gap-1">
+																{#each example.expectedContent.contains as pattern}
+																	<span class="rounded bg-blue-900/20 px-2 py-0.5 text-xs text-blue-300">{pattern}</span>
+																{/each}
+															</div>
+														</div>
+													{/if}
+													{#if example.expectedContent.minLength}
+														<div>
+															<span class="text-xs text-gray-400">Min length: </span>
+															<span class="text-xs text-white">{example.expectedContent.minLength} chars</span>
+														</div>
+													{/if}
+													{#if example.expectedContent.fields}
+														<div>
+															<span class="text-xs text-gray-400">Fields: </span>
+															<code class="text-xs text-gray-300">{Object.keys(example.expectedContent.fields).join(', ')}</code>
+														</div>
+													{/if}
+												</div>
+											</div>
+										{/if}
 									</div>
 								{/each}
 							</div>
