@@ -27,12 +27,14 @@ This directory contains experimental features that are:
 - **ai-quality-checker.ts** - AI quality assessment (currently using mock responses)
 
 ### 📦 Unused/Duplicate Features
+
 - **resource-aggregator.ts** - Alternative resource aggregation implementation (not used by core)
 - **resource-aggregator-unused.ts** - Duplicate from core functions (moved here, unused)
 - **resource-recommendations.ts** - Alternative recommendations (experimental version)
 - **resource-recommender.ts** - Alternative recommender engine (experimental version)
 
 ### 🛠️ Unused Performance Utilities (Moved from Core)
+
 - **advanced-filter-unused.ts** - Sophisticated 636-line filtering system (not used by any endpoints)
 - **request-coalescer-unused.ts** - Request coalescing system to combine identical requests (384 lines, unused)
 - **response-optimizer-unused.ts** - Response optimization middleware (unused by endpoints)
@@ -48,15 +50,17 @@ This directory contains experimental features that are:
 
 This project follows a **three-tier architecture** for organizing functionality:
 
-### 🔧 **CORE - DCS Proxies** 
-*Clean, formatted versions of Door43 Content Service data*
+### 🔧 **CORE - DCS Proxies**
+
+_Clean, formatted versions of Door43 Content Service data_
 
 **Location:** `/api/` endpoints in production  
 **Purpose:** Direct proxies to DCS with minimal processing - JSON formatting, caching, error handling
 
 **Endpoints:**
+
 - `fetch-scripture` - Scripture text from ULT, UST, T4T, UEB translations
-- `fetch-translation-notes` - Verse-by-verse translation notes  
+- `fetch-translation-notes` - Verse-by-verse translation notes
 - `fetch-translation-questions` - Comprehension questions for passages
 - `fetch-translation-academy` - Translation Academy articles
 - `get-translation-word` - Individual translation word definitions
@@ -66,31 +70,36 @@ This project follows a **three-tier architecture** for organizing functionality:
 - `list-available-resources` - Resource catalog from DCS
 
 **Characteristics:**
+
 - Response time: <100ms (with caching)
 - Data format: JSON (default) with optional TSV for exact DCS content
 - No cross-resource bridging - one DCS resource per call
 - Minimal business logic - just formatting and performance optimization
 
 ### 🚀 **EXTENDED - Value-Added Bridging**
-*Production-ready features that combine multiple DCS resources intelligently*
+
+_Production-ready features that combine multiple DCS resources intelligently_
 
 **Location:** `/api/` endpoints in production  
 **Purpose:** Save developers from making multiple chained calls by combining DCS data with smart logic
 
 **Endpoints:**
+
 - `resource-recommendations` - AI-powered recommendations for which resources to use for a passage
 - `fetch-resources` - Aggregates multiple translation resources (notes, questions, etc.) in one call
 - `resource-catalog` - Enhanced catalog with metadata and usage statistics
 
 **Characteristics:**
-- Response time: <500ms 
+
+- Response time: <500ms
 - Combines 2-10 DCS API calls into single response
 - Adds business logic and intelligence
 - Production-ready with comprehensive testing
 - Includes performance monitoring and caching
 
 ### 🧪 **EXPERIMENTAL - LLM-Powered Crazy Ideas**
-*Advanced features using AI/LLM for heavy lifting*
+
+_Advanced features using AI/LLM for heavy lifting_
 
 **Location:** `src/experimental/` directory  
 **Purpose:** Experimental features that use LLMs to do complex reasoning and provide intelligent responses
@@ -98,34 +107,41 @@ This project follows a **three-tier architecture** for organizing functionality:
 **Features:**
 
 #### 🤖 AI-Powered Content Processing
+
 - `ai-content-summarizer.ts` - LLM-powered content summarization (mock implementation)
 - `ai-quality-checker.ts` - AI quality assessment for translations (mock implementation)
 
-#### 💬 LLM Chat Interfaces  
+#### 💬 LLM Chat Interfaces
+
 - `chat` - AI Bible assistant with context awareness
 - `chat-reasoning` - Chat with visible reasoning process
 - `chat-stream` - Streaming chat responses
 - `chat-dynamic` - Dynamic chat with adaptive responses (moved to `api-routes/`)
 
 #### 🔬 Advanced MCP Features
+
 - `mcp-experimental` - Experimental MCP protocol extensions (moved to `api-routes/`)
 - `mcp-dynamic` - Dynamic MCP tool generation (moved to `api-routes/`)
 
 #### 🛠️ Debug & Development Tools
+
 - `debug-titus` - Debug endpoint with massive catalog data output (moved to `api-routes/`)
 - `test-twl` - Test endpoint for translation word links (moved to `api-routes/`)
 
 #### 📦 Alternative Implementations
+
 - `resource-aggregator.ts` - Alternative resource aggregation (not used by production)
 - `resource-aggregator-unused.ts` - Duplicate from core (moved here, unused)
 - `resource-recommendations.ts` - Alternative recommendations engine
 - `resource-recommender.ts` - Alternative recommender (experimental version)
 
 #### 🗄️ Deprecated Features
+
 - `cache-warmer.ts` - Deprecated cache warming system
 - `automated-content-ingestion.ts` - Automated content discovery (30% complete)
 
 **Characteristics:**
+
 - May use external LLM APIs (OpenAI, Claude, etc.)
 - Response times variable (500ms - 30s depending on LLM)
 - Heavy computational requirements
@@ -137,15 +153,18 @@ This project follows a **three-tier architecture** for organizing functionality:
 ## Promotion Path Between Tiers
 
 ### Experimental → Extended
+
 1. Replace mock LLM calls with efficient algorithms
-2. Achieve <500ms response times consistently  
+2. Achieve <500ms response times consistently
 3. Add comprehensive testing and error handling
 4. Prove production stability over 30+ days
 
-### Extended → Core  
+### Extended → Core
+
 Extended features generally stay extended unless they become simple DCS proxies.
 
 ### Experimental → Core (Rare)
+
 Only if the feature becomes a simple DCS proxy with no cross-resource logic.
 
 ## Promotion Criteria
@@ -207,45 +226,48 @@ When a feature is approved for core:
 ## Current Status by Tier
 
 ### 🔧 CORE - DCS Proxies (Production)
-| Endpoint | Status | Response Time | Notes |
-|----------|--------|---------------|-------|
-| fetch-scripture | ✅ Production | 13-29ms | ULT, UST, T4T, UEB translations |
-| fetch-translation-notes | ✅ Production | <50ms | Verse-by-verse notes |
-| fetch-translation-questions | ✅ Production | <50ms | Comprehension questions |
-| get-translation-word | ✅ Production | <50ms | Individual word definitions |
-| fetch-translation-word-links | ✅ Production | <50ms | Verse-to-word mappings |
-| get-languages | ✅ Production | <30ms | Available languages |
-| get-available-books | ✅ Production | <30ms | Available books catalog |
-| list-available-resources | ✅ Production | <100ms | Resource catalog |
+
+| Endpoint                     | Status        | Response Time | Notes                           |
+| ---------------------------- | ------------- | ------------- | ------------------------------- |
+| fetch-scripture              | ✅ Production | 13-29ms       | ULT, UST, T4T, UEB translations |
+| fetch-translation-notes      | ✅ Production | <50ms         | Verse-by-verse notes            |
+| fetch-translation-questions  | ✅ Production | <50ms         | Comprehension questions         |
+| get-translation-word         | ✅ Production | <50ms         | Individual word definitions     |
+| fetch-translation-word-links | ✅ Production | <50ms         | Verse-to-word mappings          |
+| get-languages                | ✅ Production | <30ms         | Available languages             |
+| get-available-books          | ✅ Production | <30ms         | Available books catalog         |
+| list-available-resources     | ✅ Production | <100ms        | Resource catalog                |
 
 ### 🚀 EXTENDED - Value-Added Bridging (Production)
-| Endpoint | Status | Response Time | Notes |
-|----------|--------|---------------|-------|
-| resource-recommendations | ✅ Production | <200ms | Smart resource suggestions |
-| fetch-resources | ✅ Production | <300ms | Aggregated resource data |
-| resource-catalog | ✅ Production | <150ms | Enhanced catalog with metadata |
+
+| Endpoint                 | Status        | Response Time | Notes                          |
+| ------------------------ | ------------- | ------------- | ------------------------------ |
+| resource-recommendations | ✅ Production | <200ms        | Smart resource suggestions     |
+| fetch-resources          | ✅ Production | <300ms        | Aggregated resource data       |
+| resource-catalog         | ✅ Production | <150ms        | Enhanced catalog with metadata |
 
 ### 🧪 EXPERIMENTAL - LLM-Powered Features
-| Feature | Status | Location | Notes |
-|---------|--------|----------|-------|
-| AI Content Summarizer | 🔬 Mock Only | Root | Needs real LLM integration |
-| AI Quality Checker | 🔬 Mock Only | Root | Needs real LLM integration |
-| Chat Assistant | 🚀 Working | `/api/chat` | Uses LLM for Bible Q&A |
-| Chat Reasoning | 🚀 Working | `/api/chat-reasoning` | Shows reasoning process |
-| Chat Stream | 🚀 Working | `/api/chat-stream` | Streaming responses |
-| Chat Dynamic | 🔬 Experimental | `api-routes/chat-dynamic/` | Adaptive responses |
-| MCP Experimental | 🔬 Experimental | `api-routes/mcp-experimental/` | Protocol extensions |
-| MCP Dynamic | 🔬 Experimental | `api-routes/mcp-dynamic/` | Dynamic tool generation |
-| Debug Titus | 🛠️ Debug Tool | `api-routes/debug-titus/` | Catalog debugging |
-| Test TWL | 🧪 Test Tool | `api-routes/test-twl/` | TWL testing |
-| Advanced Filter | ❌ Unused | Root | 636-line filtering system (unused) |
-| Request Coalescer | ❌ Unused | Root | Request coalescing system (unused) |
-| Response Optimizer | ❌ Unused | Root | Response optimization (unused) |
-| Compression Middleware | ❌ Unused | Root | Compression middleware (unused) |
-| Cache Warmer (Functions) | ❌ Deprecated | Root | Cache warming from functions (moved) |
-| Resource Aggregator (Alt) | ❌ Unused | Root | Alternative implementation |
-| Cache Warmer | ❌ Deprecated | Root | Original cache warming system |
-| Automated Ingestion | 🔬 30% Complete | Root | Webhook implementation needed |
+
+| Feature                   | Status          | Location                       | Notes                                |
+| ------------------------- | --------------- | ------------------------------ | ------------------------------------ |
+| AI Content Summarizer     | 🔬 Mock Only    | Root                           | Needs real LLM integration           |
+| AI Quality Checker        | 🔬 Mock Only    | Root                           | Needs real LLM integration           |
+| Chat Assistant            | 🚀 Working      | `/api/chat`                    | Uses LLM for Bible Q&A               |
+| Chat Reasoning            | 🚀 Working      | `/api/chat-reasoning`          | Shows reasoning process              |
+| Chat Stream               | 🚀 Working      | `/api/chat-stream`             | Streaming responses                  |
+| Chat Dynamic              | 🔬 Experimental | `api-routes/chat-dynamic/`     | Adaptive responses                   |
+| MCP Experimental          | 🔬 Experimental | `api-routes/mcp-experimental/` | Protocol extensions                  |
+| MCP Dynamic               | 🔬 Experimental | `api-routes/mcp-dynamic/`      | Dynamic tool generation              |
+| Debug Titus               | 🛠️ Debug Tool   | `api-routes/debug-titus/`      | Catalog debugging                    |
+| Test TWL                  | 🧪 Test Tool    | `api-routes/test-twl/`         | TWL testing                          |
+| Advanced Filter           | ❌ Unused       | Root                           | 636-line filtering system (unused)   |
+| Request Coalescer         | ❌ Unused       | Root                           | Request coalescing system (unused)   |
+| Response Optimizer        | ❌ Unused       | Root                           | Response optimization (unused)       |
+| Compression Middleware    | ❌ Unused       | Root                           | Compression middleware (unused)      |
+| Cache Warmer (Functions)  | ❌ Deprecated   | Root                           | Cache warming from functions (moved) |
+| Resource Aggregator (Alt) | ❌ Unused       | Root                           | Alternative implementation           |
+| Cache Warmer              | ❌ Deprecated   | Root                           | Original cache warming system        |
+| Automated Ingestion       | 🔬 30% Complete | Root                           | Webhook implementation needed        |
 
 ## Contact
 
