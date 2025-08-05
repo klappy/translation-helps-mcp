@@ -233,7 +233,7 @@
         "id": 5,
         "title": "Implement Core Endpoints via Config",
         "description": "Migrate core endpoints to configuration system with proper data transformation",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [4],
         "priority": "high",
         "details": "Implement these core endpoints with proper transformations:\n1. Scripture endpoints (USFM to clean text)\n2. Translation Notes (TSV parsing, reference filtering)\n3. Translation Words (article assembly, ToC endpoint)\n4. Translation Words Links (verse-to-word bridge)\n5. Translation Questions (TSV parsing)\n6. Translation Academy (article serving, ToC endpoint)\n7. Discovery endpoints (languages, books per resource)\n8. Context endpoints (combined fetching)\n\nEach must handle real data transformations, not just pass through",
@@ -279,7 +279,7 @@
             "id": 5,
             "title": "Implement Context Endpoints",
             "description": "Configure combined resource fetching",
-            "status": "pending",
+            "status": "done",
             "dependencies": [1, 2, 3],
             "details": "get-context:\n- Fetch multiple resources for reference\n- Consistent response format\n- Efficient batching\n\nget-words-for-reference:\n- All tW articles for words in verse\n- Uses tWL for mapping",
             "testStrategy": "Combined fetching works efficiently"
@@ -511,7 +511,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T18:02:37.217Z"
+      "updated": "2025-08-05T18:23:57.978Z"
     }
   }
 }
