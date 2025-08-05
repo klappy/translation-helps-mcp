@@ -1,31 +1,31 @@
 /**
  * UI Generator
- * 
+ *
  * Auto-generates consistent UI components from endpoint configurations
  * for the MCP Tools page, ensuring uniform parameter inputs, examples,
  * response displays, and error handling across all endpoints.
  */
 
-import type { 
-  EndpointConfig, 
-  ParamConfig, 
+import type {
+  EndpointConfig,
+  ParamConfig,
   RealDataExample,
-  UIComponentConfig 
-} from './EndpointConfig.js';
+  UIComponentConfig,
+} from "./EndpointConfig.js";
 
 /**
  * Generated UI component structure
  */
 export interface GeneratedUIComponent {
   /** Component type identifier */
-  type: 'parameter-form' | 'example-selector' | 'response-display' | 'performance-metrics';
-  
+  type: "parameter-form" | "example-selector" | "response-display" | "performance-metrics";
+
   /** Component configuration */
   config: UIComponentConfig | ParameterFormConfig | ExampleSelectorConfig | ResponseDisplayConfig;
-  
+
   /** Associated endpoint configuration */
   endpointConfig: EndpointConfig;
-  
+
   /** Generated at timestamp */
   generatedAt: string;
 }
@@ -36,22 +36,22 @@ export interface GeneratedUIComponent {
 export interface ParameterFormConfig {
   /** Form field configurations */
   fields: FormFieldConfig[];
-  
+
   /** Form-level validation rules */
   validation: {
     /** Required field combinations */
     requiredCombinations?: string[][];
-    
+
     /** Conditional requirements */
     conditionalRequirements?: ConditionalRequirement[];
-    
+
     /** Cross-field validations */
     crossFieldValidations?: CrossFieldValidation[];
   };
-  
+
   /** Default values */
   defaults: Record<string, unknown>;
-  
+
   /** Form submission endpoint */
   submitEndpoint: string;
 }
@@ -62,58 +62,58 @@ export interface ParameterFormConfig {
 export interface FormFieldConfig {
   /** Field name (matches parameter name) */
   name: string;
-  
+
   /** Display label */
   label: string;
-  
+
   /** Field type for UI rendering */
-  type: 'text' | 'number' | 'select' | 'multiselect' | 'boolean' | 'textarea' | 'tags';
-  
+  type: "text" | "number" | "select" | "multiselect" | "boolean" | "textarea" | "tags";
+
   /** Help text or description */
   description: string;
-  
+
   /** Placeholder text */
   placeholder?: string;
-  
+
   /** Whether field is required */
   required: boolean;
-  
+
   /** Default value */
   defaultValue?: unknown;
-  
+
   /** Select options (for select/multiselect types) */
   options?: Array<{ value: string; label: string; description?: string }>;
-  
+
   /** Validation configuration */
   validation?: {
     /** Regex pattern for validation */
     pattern?: string;
-    
+
     /** Minimum/maximum values or lengths */
     min?: number;
     max?: number;
-    
+
     /** Custom validation message */
     message?: string;
   };
-  
+
   /** Conditional display rules */
   conditional?: {
     /** Show only when this field has these values */
     showWhen?: Record<string, unknown[]>;
-    
+
     /** Hide when this field has these values */
     hideWhen?: Record<string, unknown[]>;
   };
-  
+
   /** UI styling hints */
   styling?: {
     /** Width class (e.g., 'full', 'half', 'third') */
     width?: string;
-    
+
     /** Additional CSS classes */
     className?: string;
-    
+
     /** Icon to display */
     icon?: string;
   };
@@ -125,10 +125,10 @@ export interface FormFieldConfig {
 export interface ConditionalRequirement {
   /** When this field has these values */
   when: Record<string, unknown[]>;
-  
+
   /** These fields become required */
   require: string[];
-  
+
   /** Human-readable explanation */
   message: string;
 }
@@ -139,10 +139,10 @@ export interface ConditionalRequirement {
 export interface CrossFieldValidation {
   /** Fields involved in validation */
   fields: string[];
-  
+
   /** Validation function name */
   validator: string;
-  
+
   /** Error message for validation failure */
   message: string;
 }
@@ -153,13 +153,13 @@ export interface CrossFieldValidation {
 export interface ExampleSelectorConfig {
   /** Available examples */
   examples: ProcessedExample[];
-  
+
   /** Default selected example */
   defaultExample?: string;
-  
+
   /** Whether to show example descriptions */
   showDescriptions: boolean;
-  
+
   /** Whether to allow custom parameters */
   allowCustom: boolean;
 }
@@ -170,28 +170,28 @@ export interface ExampleSelectorConfig {
 export interface ProcessedExample {
   /** Unique identifier */
   id: string;
-  
+
   /** Display name */
   name: string;
-  
+
   /** Human-readable description */
   description: string;
-  
+
   /** Parameter values for this example */
   parameters: Record<string, unknown>;
-  
+
   /** Expected response characteristics */
   expectedResponse: {
     /** Response time estimate */
     estimatedMs: number;
-    
+
     /** Content validation hints */
     contentHints: string[];
-    
+
     /** Fields that should be present */
     expectedFields: string[];
   };
-  
+
   /** Tags for categorization */
   tags: string[];
 }
@@ -202,13 +202,13 @@ export interface ProcessedExample {
 export interface ResponseDisplayConfig {
   /** Response structure definition */
   structure: ResponseStructureConfig;
-  
+
   /** Performance display settings */
   performance: PerformanceDisplayConfig;
-  
+
   /** Error handling display */
   errorHandling: ErrorDisplayConfig;
-  
+
   /** Content formatting options */
   formatting: ContentFormattingConfig;
 }
@@ -219,16 +219,16 @@ export interface ResponseDisplayConfig {
 export interface ResponseStructureConfig {
   /** Primary data fields to highlight */
   primaryFields: string[];
-  
+
   /** Metadata fields to display */
   metadataFields: string[];
-  
+
   /** Fields to expand by default */
   expandedFields: string[];
-  
+
   /** Fields to hide initially */
   collapsedFields: string[];
-  
+
   /** Field display customizations */
   fieldCustomizations: Record<string, FieldDisplayCustomization>;
 }
@@ -239,16 +239,16 @@ export interface ResponseStructureConfig {
 export interface FieldDisplayCustomization {
   /** Custom label for field */
   label?: string;
-  
+
   /** Custom formatter function name */
   formatter?: string;
-  
+
   /** Icon to show next to field */
   icon?: string;
-  
+
   /** Color coding for field value */
-  colorScheme?: 'default' | 'success' | 'warning' | 'error' | 'info';
-  
+  colorScheme?: "default" | "success" | "warning" | "error" | "info";
+
   /** Whether field is copyable */
   copyable?: boolean;
 }
@@ -259,21 +259,21 @@ export interface FieldDisplayCustomization {
 export interface PerformanceDisplayConfig {
   /** Show response time */
   showResponseTime: boolean;
-  
+
   /** Show cache status */
   showCacheStatus: boolean;
-  
+
   /** Show performance metrics graph */
   showMetricsGraph: boolean;
-  
+
   /** Performance thresholds for color coding */
   thresholds: {
     /** Good performance threshold (ms) */
     good: number;
-    
+
     /** Warning threshold (ms) */
     warning: number;
-    
+
     /** Error threshold (ms) */
     error: number;
   };
@@ -285,13 +285,13 @@ export interface PerformanceDisplayConfig {
 export interface ErrorDisplayConfig {
   /** Show detailed error information */
   showDetails: boolean;
-  
+
   /** Show suggested solutions */
   showSuggestions: boolean;
-  
+
   /** Show retry options */
   showRetry: boolean;
-  
+
   /** Custom error message mappings */
   customMessages: Record<string, string>;
 }
@@ -304,28 +304,28 @@ export interface ContentFormattingConfig {
   json: {
     /** Indentation spaces */
     indent: number;
-    
+
     /** Whether to sort keys */
     sortKeys: boolean;
-    
+
     /** Maximum display length before truncation */
     maxLength?: number;
   };
-  
+
   /** Text formatting options */
   text: {
     /** Whether to preserve whitespace */
     preserveWhitespace: boolean;
-    
+
     /** Maximum lines before truncation */
     maxLines?: number;
   };
-  
+
   /** Array formatting options */
   arrays: {
     /** Maximum items to show initially */
     maxInitialItems: number;
-    
+
     /** Whether to show array length */
     showLength: boolean;
   };
@@ -335,7 +335,6 @@ export interface ContentFormattingConfig {
  * UI Generator Class
  */
 export class UIGenerator {
-  
   /**
    * Generate parameter form configuration from endpoint config
    */
@@ -347,7 +346,7 @@ export class UIGenerator {
     for (const [paramName, paramConfig] of Object.entries(config.params)) {
       const field = this.createFormField(paramName, paramConfig);
       fields.push(field);
-      
+
       if (paramConfig.default !== undefined) {
         defaults[paramName] = paramConfig.default;
       }
@@ -395,7 +394,7 @@ export class UIGenerator {
 
     // Add options for select fields
     if (paramConfig.options && paramConfig.options.length > 0) {
-      field.options = paramConfig.options.map(option => ({
+      field.options = paramConfig.options.map((option) => ({
         value: option,
         label: this.formatOptionLabel(option),
         description: this.generateOptionDescription(option, paramName),
@@ -410,47 +409,47 @@ export class UIGenerator {
    */
   private generateFieldLabel(paramName: string): string {
     return paramName
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .replace(/\b\w/g, str => str.toUpperCase());
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (str) => str.toUpperCase())
+      .replace(/\b\w/g, (str) => str.toUpperCase());
   }
 
   /**
    * Map parameter type to UI field type
    */
-  private mapParameterTypeToFieldType(paramConfig: ParamConfig): FormFieldConfig['type'] {
+  private mapParameterTypeToFieldType(paramConfig: ParamConfig): FormFieldConfig["type"] {
     switch (paramConfig.type) {
-      case 'boolean':
-        return 'boolean';
-      
-      case 'number':
-        return 'number';
-      
-      case 'array':
+      case "boolean":
+        return "boolean";
+
+      case "number":
+        return "number";
+
+      case "array":
         if (paramConfig.options) {
-          return 'multiselect';
+          return "multiselect";
         }
-        return 'tags';
-      
-      case 'string':
+        return "tags";
+
+      case "string":
         if (paramConfig.options) {
-          return 'select';
+          return "select";
         }
         if (paramConfig.max && paramConfig.max > 100) {
-          return 'textarea';
+          return "textarea";
         }
-        return 'text';
-      
+        return "text";
+
       default:
-        return 'text';
+        return "text";
     }
   }
 
   /**
    * Create field validation configuration
    */
-  private createFieldValidation(paramConfig: ParamConfig): FormFieldConfig['validation'] {
-    const validation: FormFieldConfig['validation'] = {};
+  private createFieldValidation(paramConfig: ParamConfig): FormFieldConfig["validation"] {
+    const validation: FormFieldConfig["validation"] = {};
 
     if (paramConfig.pattern) {
       validation.pattern = paramConfig.pattern;
@@ -466,9 +465,9 @@ export class UIGenerator {
 
     // Generate custom validation message
     if (paramConfig.options) {
-      validation.message = `Must be one of: ${paramConfig.options.join(', ')}`;
+      validation.message = `Must be one of: ${paramConfig.options.join(", ")}`;
     } else if (paramConfig.pattern) {
-      validation.message = 'Invalid format';
+      validation.message = "Invalid format";
     }
 
     return Object.keys(validation).length > 0 ? validation : undefined;
@@ -477,25 +476,28 @@ export class UIGenerator {
   /**
    * Create field styling configuration
    */
-  private createFieldStyling(paramName: string, paramConfig: ParamConfig): FormFieldConfig['styling'] {
-    const styling: FormFieldConfig['styling'] = {};
+  private createFieldStyling(
+    paramName: string,
+    paramConfig: ParamConfig
+  ): FormFieldConfig["styling"] {
+    const styling: FormFieldConfig["styling"] = {};
 
     // Determine width based on parameter characteristics
-    if (paramConfig.type === 'boolean') {
-      styling.width = 'third';
-    } else if (paramName === 'reference' || paramName === 'language') {
-      styling.width = 'half';
+    if (paramConfig.type === "boolean") {
+      styling.width = "third";
+    } else if (paramName === "reference" || paramName === "language") {
+      styling.width = "half";
     } else {
-      styling.width = 'full';
+      styling.width = "full";
     }
 
     // Add icons for common parameters
     const iconMap: Record<string, string> = {
-      reference: '📖',
-      language: '🌍',
-      organization: '🏢',
-      format: '📄',
-      version: '🏷️',
+      reference: "📖",
+      language: "🌍",
+      organization: "🏢",
+      format: "📄",
+      version: "🏷️",
     };
 
     if (iconMap[paramName]) {
@@ -510,8 +512,8 @@ export class UIGenerator {
    */
   private formatOptionLabel(option: string): string {
     return option
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (str) => str.toUpperCase())
       .trim();
   }
 
@@ -522,16 +524,16 @@ export class UIGenerator {
     // Common option descriptions
     const descriptions: Record<string, Record<string, string>> = {
       format: {
-        text: 'Plain text format',
-        usfm: 'USFM markup format',
-        json: 'JSON data format',
-        tsv: 'Tab-separated values',
+        text: "Plain text format",
+        usfm: "USFM markup format",
+        json: "JSON data format",
+        tsv: "Tab-separated values",
       },
       language: {
-        en: 'English',
-        es: 'Spanish',
-        fr: 'French',
-        sw: 'Swahili',
+        en: "English",
+        es: "Spanish",
+        fr: "French",
+        sw: "Swahili",
       },
     };
 
@@ -543,10 +545,10 @@ export class UIGenerator {
    */
   private detectRequiredCombinations(config: EndpointConfig): string[][] {
     const combinations: string[][] = [];
-    
+
     // Basic requirement: reference-based endpoints need a reference
     if (config.params.reference) {
-      combinations.push(['reference']);
+      combinations.push(["reference"]);
     }
 
     return combinations;
@@ -561,9 +563,9 @@ export class UIGenerator {
     // Example: If format is USFM, alignment might be available
     if (config.params.format && config.params.includeAlignment) {
       requirements.push({
-        when: { format: ['usfm'] },
+        when: { format: ["usfm"] },
         require: [],
-        message: 'Alignment data is available when format is USFM',
+        message: "Alignment data is available when format is USFM",
       });
     }
 
@@ -579,9 +581,9 @@ export class UIGenerator {
     // Example: Reference and language should be compatible
     if (config.params.reference && config.params.language) {
       validations.push({
-        fields: ['reference', 'language'],
-        validator: 'validateReferenceLanguageCompatibility',
-        message: 'Reference format should be compatible with selected language',
+        fields: ["reference", "language"],
+        validator: "validateReferenceLanguageCompatibility",
+        message: "Reference format should be compatible with selected language",
       });
     }
 
@@ -592,7 +594,7 @@ export class UIGenerator {
    * Generate example selector configuration
    */
   generateExampleSelector(config: EndpointConfig): ExampleSelectorConfig {
-    const processedExamples = config.examples.map((example, index) => 
+    const processedExamples = config.examples.map((example, index) =>
       this.processExample(example, index, config)
     );
 
@@ -607,7 +609,11 @@ export class UIGenerator {
   /**
    * Process a real data example for UI display
    */
-  private processExample(example: RealDataExample, index: number, config: EndpointConfig): ProcessedExample {
+  private processExample(
+    example: RealDataExample,
+    index: number,
+    config: EndpointConfig
+  ): ProcessedExample {
     return {
       id: `example-${index}`,
       name: example.name,
@@ -641,10 +647,10 @@ export class UIGenerator {
 
     if (example.params.reference) {
       const ref = String(example.params.reference);
-      if (ref.includes(':')) {
-        tags.push('verse-level');
+      if (ref.includes(":")) {
+        tags.push("verse-level");
       } else {
-        tags.push('chapter-level');
+        tags.push("chapter-level");
       }
     }
 
@@ -668,10 +674,10 @@ export class UIGenerator {
    */
   private createResponseStructureConfig(config: EndpointConfig): ResponseStructureConfig {
     const { structure } = config.responseShape;
-    
+
     return {
       primaryFields: structure.required.slice(0, 3), // First 3 required fields
-      metadataFields: ['_metadata', 'metadata'],
+      metadataFields: ["_metadata", "metadata"],
       expandedFields: structure.required,
       collapsedFields: structure.optional || [],
       fieldCustomizations: this.createFieldCustomizations(config),
@@ -681,51 +687,53 @@ export class UIGenerator {
   /**
    * Create field display customizations
    */
-  private createFieldCustomizations(config: EndpointConfig): Record<string, FieldDisplayCustomization> {
+  private createFieldCustomizations(
+    config: EndpointConfig
+  ): Record<string, FieldDisplayCustomization> {
     const customizations: Record<string, FieldDisplayCustomization> = {};
 
     // Common field customizations
     customizations._metadata = {
-      label: 'Response Metadata',
-      icon: '📊',
-      colorScheme: 'info',
+      label: "Response Metadata",
+      icon: "📊",
+      colorScheme: "info",
     };
 
     customizations.responseTime = {
-      label: 'Response Time',
-      formatter: 'formatDuration',
-      icon: '⏱️',
-      colorScheme: 'default',
+      label: "Response Time",
+      formatter: "formatDuration",
+      icon: "⏱️",
+      colorScheme: "default",
     };
 
     customizations.cacheStatus = {
-      label: 'Cache Status',
-      formatter: 'formatCacheStatus',
-      icon: '💾',
-      colorScheme: 'success',
+      label: "Cache Status",
+      formatter: "formatCacheStatus",
+      icon: "💾",
+      colorScheme: "success",
     };
 
     // Data-type specific customizations
     switch (config.responseShape.dataType) {
-      case 'scripture':
+      case "scripture":
         customizations.scripture = {
-          label: 'Scripture Text',
-          icon: '📖',
+          label: "Scripture Text",
+          icon: "📖",
           copyable: true,
         };
         break;
 
-      case 'translation-notes':
+      case "translation-notes":
         customizations.verseNotes = {
-          label: 'Verse Notes',
-          icon: '📝',
+          label: "Verse Notes",
+          icon: "📝",
         };
         break;
 
-      case 'languages':
+      case "languages":
         customizations.languages = {
-          label: 'Available Languages',
-          icon: '🌍',
+          label: "Available Languages",
+          icon: "🌍",
         };
         break;
     }
@@ -754,15 +762,17 @@ export class UIGenerator {
   /**
    * Create error display configuration
    */
-  private createErrorDisplayConfig(config: EndpointConfig): ErrorDisplayConfig {
+  private createErrorDisplayConfig(_config: EndpointConfig): ErrorDisplayConfig {
     return {
       showDetails: true,
       showSuggestions: true,
       showRetry: true,
       customMessages: {
-        'Missing reference parameter': 'Please provide a scripture reference (e.g., "John 3:16")',
-        'Invalid reference format': 'Reference should be in format "Book Chapter:Verse" (e.g., "Genesis 1:1")',
-        'Resource not found': 'The requested resource is not available for this language/organization',
+        "Missing reference parameter": 'Please provide a scripture reference (e.g., "John 3:16")',
+        "Invalid reference format":
+          'Reference should be in format "Book Chapter:Verse" (e.g., "Genesis 1:1")',
+        "Resource not found":
+          "The requested resource is not available for this language/organization",
       },
     };
   }
@@ -770,7 +780,7 @@ export class UIGenerator {
   /**
    * Create content formatting configuration
    */
-  private createContentFormattingConfig(config: EndpointConfig): ContentFormattingConfig {
+  private createContentFormattingConfig(_config: EndpointConfig): ContentFormattingConfig {
     return {
       json: {
         indent: 2,
@@ -808,7 +818,11 @@ export class UIGenerator {
 export const uiGenerator = new UIGenerator();
 
 // Export utility functions
-export const generateParameterForm = (config: EndpointConfig) => uiGenerator.generateParameterForm(config);
-export const generateExampleSelector = (config: EndpointConfig) => uiGenerator.generateExampleSelector(config);
-export const generateResponseDisplay = (config: EndpointConfig) => uiGenerator.generateResponseDisplay(config);
-export const generateCompleteUI = (config: EndpointConfig) => uiGenerator.generateCompleteUI(config);
+export const generateParameterForm = (config: EndpointConfig) =>
+  uiGenerator.generateParameterForm(config);
+export const generateExampleSelector = (config: EndpointConfig) =>
+  uiGenerator.generateExampleSelector(config);
+export const generateResponseDisplay = (config: EndpointConfig) =>
+  uiGenerator.generateResponseDisplay(config);
+export const generateCompleteUI = (config: EndpointConfig) =>
+  uiGenerator.generateCompleteUI(config);

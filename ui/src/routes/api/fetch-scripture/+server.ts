@@ -4,13 +4,28 @@ export const config = {
 
 /**
  * SvelteKit API Route for fetch-scripture
- * Auto-generated from shared handler with in-memory caching
+ * Generated from EndpointConfig using the new configuration system
  */
 
-import { fetchScriptureHandler } from '$lib/../../../src/functions/handlers/fetch-scripture';
 import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
+import { getEndpointConfig } from '$lib/../../../src/config/endpoints/index';
+import { routeGenerator } from '$lib/../../../src/config/RouteGenerator';
 
-// Remove duplicate caching - scripture service handles its own unified caching
-export const GET = createSvelteKitHandler(fetchScriptureHandler);
-export const POST = createSvelteKitHandler(fetchScriptureHandler);
-export const OPTIONS = createSvelteKitHandler(fetchScriptureHandler);
+// Get the endpoint configuration
+const endpointConfig = getEndpointConfig('fetch-scripture');
+
+if (!endpointConfig) {
+  throw new Error('fetch-scripture endpoint configuration not found');
+}
+
+if (!endpointConfig.enabled) {
+  throw new Error('fetch-scripture endpoint is disabled');
+}
+
+// Generate the handler from configuration
+const { handler: configuredHandler } = routeGenerator.generateHandler(endpointConfig);
+
+// Wrap with SvelteKit adapter
+export const GET = createSvelteKitHandler(configuredHandler);
+export const POST = createSvelteKitHandler(configuredHandler);
+export const OPTIONS = createSvelteKitHandler(configuredHandler);
