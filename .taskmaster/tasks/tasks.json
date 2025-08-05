@@ -252,7 +252,7 @@
             "id": 2,
             "title": "Implement Translation Helps",
             "description": "Configure tN, tW, tWL with proper transformations",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "details": "Translation Notes:\n- TSV parsing\n- Reference filtering\n- Link to tA articles\n\nTranslation Words:\n- Article assembly (title + parts)\n- Browse endpoint with ToC\n\nTranslation Words Links:\n- Verse-to-word mapping\n- Not a browsable resource",
             "testStrategy": "Each returns accurate transformed data"
@@ -511,7 +511,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T17:50:09.684Z"
+      "updated": "2025-08-05T17:54:08.792Z"
     }
   }
 }
