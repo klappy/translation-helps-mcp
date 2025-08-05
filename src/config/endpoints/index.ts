@@ -9,6 +9,7 @@
 import { endpointRegistry } from "../EndpointRegistry.js";
 import { SCRIPTURE_ENDPOINTS } from "./ScriptureEndpoints.js";
 import { TRANSLATION_HELPS_ENDPOINTS } from "./TranslationHelpsEndpoints.js";
+import { DISCOVERY_ENDPOINTS } from "./DiscoveryEndpoints.js";
 
 /**
  * Register all scripture endpoints
@@ -53,6 +54,27 @@ function registerTranslationHelpsEndpoints(): void {
 }
 
 /**
+ * Register all discovery endpoints
+ */
+function registerDiscoveryEndpoints(): void {
+  console.log("🔍 Registering Discovery endpoints...");
+
+  for (const config of DISCOVERY_ENDPOINTS) {
+    try {
+      endpointRegistry.register(config);
+      console.log(`✅ Registered: ${config.name} (${config.path})`);
+    } catch (error) {
+      console.error(`❌ Failed to register ${config.name}:`, error);
+      throw error;
+    }
+  }
+
+  console.log(
+    `🔍 Discovery endpoints registered: ${DISCOVERY_ENDPOINTS.length} total`,
+  );
+}
+
+/**
  * Initialize all endpoint configurations
  */
 export function initializeAllEndpoints(): void {
@@ -62,6 +84,7 @@ export function initializeAllEndpoints(): void {
     // Register all endpoint categories
     registerScriptureEndpoints();
     registerTranslationHelpsEndpoints();
+    registerDiscoveryEndpoints();
 
     // Print registry stats
     const stats = endpointRegistry.getStats();
@@ -138,7 +161,11 @@ export function isEndpointAvailable(name: string): boolean {
 /**
  * Export all endpoint arrays for direct access
  */
-export { SCRIPTURE_ENDPOINTS, TRANSLATION_HELPS_ENDPOINTS };
+export {
+  SCRIPTURE_ENDPOINTS,
+  TRANSLATION_HELPS_ENDPOINTS,
+  DISCOVERY_ENDPOINTS,
+};
 
 /**
  * Export registry utilities
