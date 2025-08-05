@@ -453,10 +453,10 @@ export class RouteGenerator {
     const response = await this.dcsClient.fetchResource(endpoint);
 
     // Add trace information
-    const traces = this.dcsClient.getTraces();
+    const trace = this.dcsClient.getTrace();
     return {
       data: response,
-      _trace: traces.length > 0 ? traces[traces.length - 1] : null,
+      _trace: trace,
     };
   }
 
