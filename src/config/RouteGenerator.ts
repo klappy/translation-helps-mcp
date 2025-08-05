@@ -78,9 +78,6 @@ export class RouteGenerator {
       const traceId = `${config.name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       try {
-        // Initialize performance monitoring
-        const monitor = performanceMonitor.startRequest(config.name, traceId);
-
         // Enable DCS tracing for API endpoints
         if (config.dataSource.type === "dcs-api") {
           this.dcsClient.enableTracing(traceId, `/api/${config.path.replace(/^\//, "")}`);
@@ -116,13 +113,11 @@ export class RouteGenerator {
 
           if (!bypassCache) {
             const cached = await unifiedCache.get(cacheKey);
-            if (cached.value) {
+            if (cached && cached.value) {
               responseData = cached.value;
               cacheStatus = "hit";
-              monitor.recordCacheHit();
             } else {
               cacheStatus = "miss";
-              monitor.recordCacheMiss();
             }
           }
         }
@@ -156,8 +151,17 @@ export class RouteGenerator {
           endpointName: config.name,
         });
 
-        // Complete monitoring
-        monitor.complete(200, responseTime);
+        // Complete monitoring - fixed
+        // Record performance metrics
+        performanceMonitor.recordMetrics({
+          endpoint: config.name,
+          method: request.method || "GET",
+          responseTime,
+          statusCode: 200,
+          contentSize: JSON.stringify(response).length,
+          cacheHit: cacheStatus === "hit",
+          compressed: false,
+        });
 
         // Disable DCS tracing
         if (config.dataSource.type === "dcs-api") {
@@ -172,8 +176,17 @@ export class RouteGenerator {
       } catch (error) {
         const responseTime = Date.now() - startTime;
 
-        // Complete monitoring with error
-        performanceMonitor.startRequest(config.name, traceId).complete(500, responseTime);
+        // Complete monitoring with error - fixed
+        // Record error metrics
+        performanceMonitor.recordMetrics({
+          endpoint: config.name,
+          method: request.method || "GET",
+          responseTime,
+          statusCode: 500,
+          contentSize: 0,
+          cacheHit: false,
+          compressed: false,
+        });
 
         // Disable DCS tracing on error
         if (config.dataSource.type === "dcs-api") {
