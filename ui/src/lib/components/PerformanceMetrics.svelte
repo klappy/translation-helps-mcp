@@ -1,26 +1,41 @@
 <script>
-	import { Activity, Clock, Database, Server, TrendingUp, Zap } from 'lucide-svelte';
+	import { Activity, Clock, Database, Server, TrendingUp, Zap, Eye, Link, BarChart3 } from 'lucide-svelte';
 	
 	export let data = {};
 	
 	// Format response time
 	function formatTime(ms) {
-		if (!ms) return 'N/A';
+		if (!ms && ms !== 0) return 'N/A';
 		if (ms < 1000) return `${ms}ms`;
 		return `${(ms / 1000).toFixed(2)}s`;
 	}
 	
 	// Get performance color
 	function getPerformanceColor(ms) {
-		if (!ms) return 'text-gray-400';
+		if (!ms && ms !== 0) return 'text-gray-400';
 		if (ms < 200) return 'text-green-400';
 		if (ms < 500) return 'text-yellow-400';
 		return 'text-red-400';
 	}
 	
 	// Get cache color
-	function getCacheColor(cached) {
-		return cached ? 'text-green-400' : 'text-orange-400';
+	function getCacheColor(status) {
+		if (status === 'hit') return 'text-green-400';
+		if (status === 'miss') return 'text-orange-400';
+		if (status === 'bypass') return 'text-purple-400';
+		return 'text-gray-400';
+	}
+	
+	// Get cache status display
+	function getCacheStatus(status, cached) {
+		if (status) return status.toUpperCase();
+		return cached ? 'HIT' : 'MISS';
+	}
+	
+	// Format percentage
+	function formatPercentage(rate) {
+		if (!rate && rate !== 0) return 'N/A';
+		return `${(rate * 100).toFixed(1)}%`;
 	}
 </script>
 
@@ -41,11 +56,11 @@
 				{formatTime(data.responseTime)}
 			</div>
 			<div class="mt-1 text-xs text-gray-500">
-				{#if data.responseTime && data.responseTime < 200}
+				{#if data.responseTime !== undefined && data.responseTime < 200}
 					Excellent
-				{:else if data.responseTime && data.responseTime < 500}
+				{:else if data.responseTime !== undefined && data.responseTime < 500}
 					Good
-				{:else if data.responseTime}
+				{:else if data.responseTime !== undefined}
 					Needs optimization
 				{:else}
 					No data
@@ -59,52 +74,90 @@
 				<span class="text-sm text-gray-400">Cache Status</span>
 				<Database class="h-4 w-4 text-gray-500" />
 			</div>
-			<div class="text-2xl font-bold {getCacheColor(data.cached)}">
-				{data.cached ? 'HIT' : 'MISS'}
+			<div class="text-2xl font-bold {getCacheColor(data.cacheStatus)}">
+				{getCacheStatus(data.cacheStatus, data.cached)}
 			</div>
 			<div class="mt-1 text-xs text-gray-500">
-				{data.cached ? 'Served from cache' : 'Fresh from source'}
+				{#if data.cacheStatus === 'hit'}
+					Served from cache
+				{:else if data.cacheStatus === 'miss'}
+					Fresh from source
+				{:else if data.cacheStatus === 'bypass'}
+					Cache bypassed
+				{:else}
+					Cache data
+				{/if}
 			</div>
 		</div>
-		
-		<!-- Data Source -->
-		{#if data.dataSource}
+
+		<!-- X-ray Trace ID -->
+		{#if data.traceId}
 			<div class="rounded-lg bg-gray-900/50 p-4">
 				<div class="mb-2 flex items-center justify-between">
-					<span class="text-sm text-gray-400">Data Source</span>
-					<Server class="h-4 w-4 text-gray-500" />
+					<span class="text-sm text-gray-400">Trace ID</span>
+					<Eye class="h-4 w-4 text-gray-500" />
 				</div>
-				<div class="text-lg font-medium text-white">
-					{data.dataSource}
+				<div class="text-xs font-mono text-blue-400 break-all">
+					{data.traceId}
 				</div>
 				<div class="mt-1 text-xs text-gray-500">
-					Origin server
+					X-ray debugging
 				</div>
 			</div>
 		{/if}
-		
-		<!-- Request Size -->
-		{#if data.requestSize}
-			<div class="rounded-lg bg-gray-900/50 p-4">
-				<div class="mb-2 flex items-center justify-between">
-					<span class="text-sm text-gray-400">Request Size</span>
-					<TrendingUp class="h-4 w-4 text-gray-500" />
-				</div>
-				<div class="text-lg font-medium text-white">
-					{data.requestSize}
-				</div>
-			</div>
-		{/if}
-		
-		<!-- Cache Performance -->
-		{#if data.cacheHitRate !== undefined}
+
+		<!-- Cache Performance Stats -->
+		{#if data.cacheStats}
 			<div class="rounded-lg bg-gray-900/50 p-4">
 				<div class="mb-2 flex items-center justify-between">
 					<span class="text-sm text-gray-400">Cache Hit Rate</span>
 					<Zap class="h-4 w-4 text-gray-500" />
 				</div>
 				<div class="text-2xl font-bold text-blue-400">
-					{(data.cacheHitRate * 100).toFixed(1)}%
+					{formatPercentage(data.cacheStats.hitRate)}
+				</div>
+				<div class="mt-1 text-xs text-gray-500">
+					{data.cacheStats.hits} hits, {data.cacheStats.misses} misses
+				</div>
+			</div>
+		{/if}
+
+		<!-- Data Results Count -->
+		{#if data.translationsFound || data.filesFound || data.booksFound || data.languagesFound}
+			<div class="rounded-lg bg-gray-900/50 p-4">
+				<div class="mb-2 flex items-center justify-between">
+					<span class="text-sm text-gray-400">Results Found</span>
+					<BarChart3 class="h-4 w-4 text-gray-500" />
+				</div>
+				<div class="text-2xl font-bold text-white">
+					{data.translationsFound || data.filesFound || data.booksFound || data.languagesFound}
+				</div>
+				<div class="mt-1 text-xs text-gray-500">
+					{#if data.translationsFound}
+						Translations
+					{:else if data.filesFound}
+						Files
+					{:else if data.booksFound}
+						Books
+					{:else if data.languagesFound}
+						Languages
+					{/if}
+				</div>
+			</div>
+		{/if}
+
+		<!-- Total Duration (if different from response time) -->
+		{#if data.totalDuration !== undefined && data.totalDuration !== data.responseTime}
+			<div class="rounded-lg bg-gray-900/50 p-4">
+				<div class="mb-2 flex items-center justify-between">
+					<span class="text-sm text-gray-400">Total Duration</span>
+					<Clock class="h-4 w-4 text-gray-500" />
+				</div>
+				<div class="text-lg font-bold {getPerformanceColor(data.totalDuration)}">
+					{formatTime(data.totalDuration)}
+				</div>
+				<div class="mt-1 text-xs text-gray-500">
+					Full trace duration
 				</div>
 			</div>
 		{/if}
@@ -120,14 +173,55 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- API Calls Trace -->
+	{#if data.calls && data.calls.length > 0}
+		<div class="mt-6 rounded-lg bg-gray-900/50 p-4">
+			<div class="mb-3 flex items-center space-x-2">
+				<Link class="h-4 w-4 text-blue-400" />
+				<h4 class="text-sm font-medium text-white">API Call Trace</h4>
+			</div>
+			<div class="space-y-2">
+				{#each data.calls as call, index}
+					<div class="rounded bg-gray-800/50 p-3 text-xs">
+						<div class="flex items-center justify-between">
+							<span class="font-mono text-blue-400">{call.endpoint || `Call ${index + 1}`}</span>
+							<span class="text-gray-400">{formatTime(call.duration)}</span>
+						</div>
+						{#if call.url}
+							<div class="mt-1 font-mono text-gray-500 break-all">{call.url}</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 	
-	<!-- Additional Debug Info -->
+	<!-- Debug Information -->
 	{#if data.debug}
-		<div class="mt-4 rounded-lg bg-gray-900/50 p-4">
-			<h4 class="mb-2 text-sm font-medium text-gray-400">Debug Information</h4>
-			<pre class="overflow-x-auto text-xs text-gray-300">
-{JSON.stringify(data.debug, null, 2)}
-			</pre>
+		<div class="mt-6 rounded-lg bg-gray-900/50 p-4">
+			<div class="mb-3 flex items-center justify-between">
+				<h4 class="text-sm font-medium text-gray-400">Debug Information</h4>
+				<button 
+					class="text-xs text-blue-400 hover:text-blue-300"
+					on:click={() => data.showFullDebug = !data.showFullDebug}
+				>
+					{data.showFullDebug ? 'Hide' : 'Show'} Full Metadata
+				</button>
+			</div>
+			
+			{#if data.debug.cacheKey}
+				<div class="mb-2">
+					<span class="text-xs text-gray-400">Cache Key:</span>
+					<div class="font-mono text-xs text-gray-300 break-all">{data.debug.cacheKey}</div>
+				</div>
+			{/if}
+			
+			{#if data.showFullDebug && data.debug.fullMetadata}
+				<pre class="overflow-x-auto text-xs text-gray-300 bg-gray-800/50 p-3 rounded">
+{JSON.stringify(data.debug.fullMetadata, null, 2)}
+				</pre>
+			{/if}
 		</div>
 	{/if}
 </div>

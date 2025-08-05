@@ -300,7 +300,7 @@
             "id": 1,
             "title": "Implement Core Section",
             "description": "Create main section for core endpoints",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "details": "Structure:\n- Scripture section\n- Translation Helps section\n- Discovery section\n- Context section\n\nUse configuration to auto-populate\nClear categorization\nNo experimental features here",
             "testStrategy": "Core endpoints clearly organized"
@@ -309,7 +309,7 @@
             "id": 2,
             "title": "Add Performance Visibility",
             "description": "Show performance metrics for each request",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [1],
             "details": "Display:\n- Response time\n- Cache hit/miss\n- Data source (cache/API)\n- Request size\n- Stack trace for debugging\nMake it xray visibility for debugging",
             "testStrategy": "Full visibility into request performance"
@@ -511,7 +511,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T18:32:03.265Z"
+      "updated": "2025-08-05T18:36:15.246Z"
     }
   }
 }
