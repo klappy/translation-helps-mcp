@@ -19,8 +19,7 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     reference: {
       type: "string",
       required: true,
-      description:
-        'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
+      description: 'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
       example: "John 3:16",
       pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(?::\\d+(?:-\\d+)?)?$",
       min: 3,
@@ -46,7 +45,8 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       type: "string",
       required: false,
       default: "all",
-      description: "Scripture resource type(s) - single resource (ult, ust), comma-separated (ult,ust), or 'all' for all available",
+      description:
+        "Scripture resource type(s) - single resource (ult, ust), comma-separated (ult,ust), or 'all' for all available",
       example: "all",
       options: ["ult", "ust", "all", "ult,ust"],
     },
@@ -62,8 +62,7 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       type: "boolean",
       required: false,
       default: false,
-      description:
-        "Include word alignment data (only available with USFM format)",
+      description: "Include word alignment data (only available with USFM format)",
       example: false,
     },
   },
@@ -90,8 +89,7 @@ export const FETCH_SCRIPTURE_CONFIG: EndpointConfig = {
   name: "fetch-scripture",
   path: "/fetch-scripture",
   title: "Fetch Scripture",
-  description:
-    "Retrieve scripture text from multiple translations in any supported language",
+  description: "Retrieve scripture text from multiple translations in any supported language",
   category: "core",
   responseShape: SCRIPTURE_SHAPE,
   params: SCRIPTURE_PARAMS,
@@ -172,8 +170,7 @@ export const FETCH_SCRIPTURE_CONFIG: EndpointConfig = {
     },
     {
       title: "Romans 8:28 (Spanish translation)",
-      description:
-        "Fetch scripture in Spanish to demonstrate multi-language support",
+      description: "Fetch scripture in Spanish to demonstrate multi-language support",
       params: {
         reference: "Romans 8:28",
         language: "es",
@@ -191,13 +188,11 @@ export const FETCH_ULT_SCRIPTURE_CONFIG: EndpointConfig = {
   name: "fetch-ult-scripture",
   path: "/fetch-ult-scripture",
   title: "Fetch ULT Scripture",
-  description:
-    "Retrieve Unlocked Literal Text (ULT) scripture with word-for-word accuracy",
+  description: "Retrieve Unlocked Literal Text (ULT) scripture with word-for-word accuracy",
 
   dataSource: {
     ...SCRIPTURE_BASE_CONFIG.dataSource!,
-    dcsEndpoint:
-      "/api/v1/repos/{organization}/{language}_ult/contents/{book}/{chapter}.usfm",
+    dcsEndpoint: "/api/v1/repos/{organization}/{language}_ult/contents/{book}/{chapter}.usfm",
   },
 
   examples: [
@@ -211,11 +206,7 @@ export const FETCH_ULT_SCRIPTURE_CONFIG: EndpointConfig = {
         format: "text",
       },
       expectedContent: {
-        contains: [
-          "For God loved the world in this way",
-          "gave",
-          "only begotten Son",
-        ],
+        contains: ["For God loved the world in this way", "gave", "only begotten Son"],
         minLength: 80,
         fields: {
           scripture: { translation: "ULT" },
@@ -255,8 +246,7 @@ export const FETCH_UST_SCRIPTURE_CONFIG: EndpointConfig = {
 
   dataSource: {
     ...SCRIPTURE_BASE_CONFIG.dataSource!,
-    dcsEndpoint:
-      "/api/v1/repos/{organization}/{language}_ust/contents/{book}/{chapter}.usfm",
+    dcsEndpoint: "/api/v1/repos/{organization}/{language}_ust/contents/{book}/{chapter}.usfm",
   },
 
   examples: [

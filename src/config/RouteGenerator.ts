@@ -520,7 +520,7 @@ export class RouteGenerator {
 
     // Replace parameters in the endpoint URL
     let endpoint = dataSource.dcsEndpoint;
-    
+
     // If there's a reference parameter, parse it and add book/chapter to params
     const expandedParams = { ...params };
     if (params.reference && typeof params.reference === "string") {
@@ -536,43 +536,42 @@ export class RouteGenerator {
     // Handle multiple resources
     const resourceParam = expandedParams.resource as string;
     if (resourceParam === "all" || resourceParam?.includes(",")) {
-      const resources = resourceParam === "all" 
-        ? ["ult", "ust"] 
-        : resourceParam.split(",").map(r => r.trim());
-      
+      const resources =
+        resourceParam === "all" ? ["ult", "ust"] : resourceParam.split(",").map((r) => r.trim());
+
       const results = [];
       for (const resource of resources) {
         const resourceParams = { ...expandedParams, resource };
         let resourceEndpoint = dataSource.dcsEndpoint;
-        
+
         for (const [key, value] of Object.entries(resourceParams)) {
           if (value !== undefined) {
             resourceEndpoint = resourceEndpoint.replace(`{${key}}`, String(value));
           }
         }
-        
+
         try {
           const resourceResponse = await this.dcsClient.fetchResource(resourceEndpoint);
           results.push({
             resource,
-            ...resourceResponse
+            ...resourceResponse,
           });
         } catch (error) {
           // Continue with other resources if one fails
           results.push({
             resource,
             success: false,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }
-      
+
       const trace = this.dcsClient.getTrace();
       return {
         data: {
           success: true,
           resources: results,
-          total: results.length
+          total: results.length,
         },
         _trace: trace,
       };
