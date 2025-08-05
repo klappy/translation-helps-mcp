@@ -5,7 +5,7 @@
         "id": 1,
         "title": "Documentation Cleanup & Consolidation",
         "description": "Archive old docs, consolidate overlapping content, remove empty/aspirational docs, fix time-travel dates, and ensure 1:1 match with implementation",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
         "details": "1. Create /docs/archive/ directory\n2. Move outdated documentation:\n   - Old PRDs (anything before 2025)\n   - Deprecated guides\n   - Experimental feature docs\n   - Cache warming docs\n3. Consolidate overlapping guides:\n   - Merge TRANSLATION_HELPS_COMPLETE_GUIDE.md with IMPLEMENTATION_GUIDE.md\n   - Update UW_TRANSLATION_RESOURCES_GUIDE.md to be the single source of truth\n   - Merge deployment guides\n4. Delete empty/incomplete docs:\n   - Developer Portal content (it's 10% complete)\n   - Placeholder guides\n5. Fix all time-travel dates (no more 2023 references)\n6. Document actual resource data shapes for each endpoint",
@@ -15,7 +15,7 @@
             "id": 1,
             "title": "Create Archive Structure",
             "description": "Set up /docs/archive/ directory and subdirectories for organized storage",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "mkdir -p docs/archive/{old-prds,deprecated-guides,experimental-features,cache-warming}\nCreate README.md in archive explaining the archival structure\nDocument why each item was archived",
             "testStrategy": "Verify directory structure exists and README is clear"
@@ -24,7 +24,7 @@
             "id": 2,
             "title": "Archive Outdated Documentation",
             "description": "Move all deprecated and outdated documentation to archive, fix time-travel dates",
-            "status": "pending",
+            "status": "done",
             "dependencies": [1],
             "details": "Move files:\n- Old PRDs (anything mentioning 2023 or earlier)\n- CACHE_WARMING_*.md files\n- Performance monitoring guides\n- AI feature documentation\n- Any guides referencing removed features\nSearch and replace all dates that are before project start (2 weeks ago)",
             "testStrategy": "Verify all outdated docs are in archive, no time-travel dates remain"
@@ -33,7 +33,7 @@
             "id": 3,
             "title": "Consolidate Core Guides",
             "description": "Merge overlapping documentation into single authoritative sources",
-            "status": "pending",
+            "status": "done",
             "dependencies": [2],
             "details": "Actions:\n- Keep UW_TRANSLATION_RESOURCES_GUIDE.md as primary reference\n- Extract useful parts from TRANSLATION_HELPS_COMPLETE_GUIDE.md\n- Update IMPLEMENTATION_GUIDE.md with practical implementation details\n- Create clear separation of 'what resources are' vs 'how to implement'\n- Document tWL as the bridge between verses and tW articles\n- Add ToC information for tA and tW resources",
             "testStrategy": "Review merged docs for completeness, verify tWL is properly explained"
@@ -42,7 +42,7 @@
             "id": 4,
             "title": "Document Resource Data Shapes",
             "description": "Create clear documentation of actual data returned by each endpoint",
-            "status": "pending",
+            "status": "done",
             "dependencies": [3],
             "details": "For each resource type, document:\n- Actual data structure returned\n- Transformations applied (USFM to text, TSV parsing, etc.)\n- Example responses with REAL data\n- Parameter effects on response shape\n- How tWL links verses to tW articles\n- How tN links to tA articles",
             "testStrategy": "Each endpoint has complete data documentation with examples"
@@ -51,7 +51,7 @@
             "id": 5,
             "title": "Update Documentation Index",
             "description": "Update main README and docs index to reflect new structure",
-            "status": "pending",
+            "status": "done",
             "dependencies": [4],
             "details": "Update:\n- Main README.md with correct doc links\n- docs/README.md with new structure\n- Remove broken links\n- Add clear navigation\n- Update any doc references in code\n- Add 'Last Updated' dates to all docs",
             "testStrategy": "Click all documentation links, verify they work, check dates are current"
@@ -62,7 +62,7 @@
         "id": 2,
         "title": "Remove Deprecated UI Pages",
         "description": "Delete unused/confusing UI pages and focus on MCP Tools page as single interface",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
         "details": "Remove these routes completely:\n- /api-docs/* (MCP Tools has 100% coverage)\n- /test/* (black box, nobody knows what it does)\n- /api-test/* (duplicate of test)\n- /developer-portal/* (10% complete, full of empty content)\n- /pricing/* (not relevant)\n- /sverdle/* (demo app)\n- /mobile-test/* (if unused)\n\nKeep only:\n- Home\n- MCP Tools (primary interface)\n- Changelog\n- Whitepaper\n- About",
@@ -72,7 +72,7 @@
             "id": 1,
             "title": "Remove API Docs Route",
             "description": "Delete /api-docs route since MCP Tools provides better coverage",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "Delete:\n- ui/src/routes/api-docs/+page.svelte\n- ui/src/routes/api-docs/+page.ts\n- Any api-docs specific components\nRemove from navigation in +layout.svelte\nNote: MCP Tools page already has everything API Docs tried to show",
             "testStrategy": "Verify /api-docs returns 404, MCP Tools has all functionality"
@@ -81,7 +81,7 @@
             "id": 2,
             "title": "Remove Test Pages",
             "description": "Delete /test (useless black box) and related test pages",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "Delete:\n- ui/src/routes/test/* (nobody knows what this does)\n- ui/src/routes/api-test/*\n- ui/src/routes/mobile-test/*\nRemove from navigation\nEnsure MCP Tools provides all needed testing functionality",
             "testStrategy": "Verify all test routes return 404"
@@ -90,7 +90,7 @@
             "id": 3,
             "title": "Remove Developer Portal",
             "description": "Delete developer portal that's 10% complete",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "Delete:\n- ui/src/routes/developer-portal/*\nRemove from navigation\nNote: Either nuke it or elude to it coming later (we choose nuke)\nMove any useful content to main docs",
             "testStrategy": "Verify /developer-portal returns 404"
@@ -99,7 +99,7 @@
             "id": 4,
             "title": "Remove Pricing and Sverdle",
             "description": "Delete irrelevant pricing page and demo Sverdle app",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "Delete:\n- ui/src/routes/pricing/*\n- ui/src/routes/sverdle/*\nRemove from navigation\nClean up any Sverdle-specific assets\nNote: Project is 2 weeks old, no bookmarks exist",
             "testStrategy": "Verify both routes return 404"
@@ -108,7 +108,7 @@
             "id": 5,
             "title": "Update Navigation & E2E Tests",
             "description": "Clean up navigation menu and update E2E tests",
-            "status": "pending",
+            "status": "done",
             "dependencies": [1, 2, 3, 4],
             "details": "In +layout.svelte:\n- Remove all deleted route links\n- Keep only: Home, MCP Tools, Changelog, Whitepaper, About\nUpdate E2E tests:\n- Remove tests for deleted pages\n- Add comprehensive MCP Tools tests\n- Verify no broken links",
             "testStrategy": "Run full E2E test suite, manually verify navigation"
@@ -509,7 +509,9 @@
       "version": "1.0.0",
       "createdAt": "2025-01-24T00:00:00Z",
       "lastModified": "2025-01-24T00:00:00Z",
-      "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation"
+      "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
+      "created": "2025-08-05T15:01:18.526Z",
+      "updated": "2025-08-05T15:56:04.820Z"
     }
   }
 }

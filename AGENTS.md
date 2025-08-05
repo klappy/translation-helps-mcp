@@ -56,9 +56,10 @@ This guide helps AI agents efficiently navigate the `translation-helps-mcp` docu
    - Cloudflare Workers, serverless deployment, production setup
    - Use for: Production deployment, hosting questions
 
-7. **[`docs/TRANSLATION_HELPS_COMPLETE_GUIDE.md`](docs/TRANSLATION_HELPS_COMPLETE_GUIDE.md)** - Project Wisdom
-   - Lessons learned, best practices, design decisions
-   - Use for: Understanding project history and design rationale
+7. **[`docs/IMPLEMENTATION_GUIDE.md`](docs/IMPLEMENTATION_GUIDE.md)** - Complete Implementation Guide
+   - **Best Practices & Lessons Learned** - Hard-won implementation wisdom
+   - **Core Endpoint Data Shapes** - Exact response formats and flags
+   - **Version Management** - Single source of truth approach
 
 ### **📋 REFERENCE FILES**
 

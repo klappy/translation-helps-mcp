@@ -12,6 +12,7 @@ This directory contains archived documentation that is no longer actively mainta
 ## Why Archive?
 
 Documents are moved here when they:
+
 - Reference dates before the project started (anything before January 2025)
 - Describe features that have been removed
 - Contain outdated information that could confuse new developers
@@ -21,4 +22,4 @@ Documents are moved here when they:
 
 These documents are kept for historical reference only. For current documentation, see the main `/docs` directory.
 
-Last updated: January 2025
+Last updated: August 2025

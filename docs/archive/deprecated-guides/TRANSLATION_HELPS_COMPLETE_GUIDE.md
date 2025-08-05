@@ -13,7 +13,9 @@ The #1 discovery that took WEEKS to figure out:
 const filePath = `tn_${bookId}.tsv`; // WRONG! Could be 01-GEN.tsv
 
 // ✅ ALWAYS - Trust the ingredients
-const ingredient = resourceData.ingredients.find((ing) => ing.identifier === bookId);
+const ingredient = resourceData.ingredients.find(
+  (ing) => ing.identifier === bookId,
+);
 const filePath = ingredient?.path || fallbackPath;
 ```
 
@@ -105,11 +107,15 @@ const langs = await fetch(`${BASE_URL}/list/languages?owner=${org}`);
 // Response: { data: [{ lc: "en", ln: "English" }] }
 
 // 3. List resources
-const resources = await fetch(`${BASE_URL}/list/subjects?owner=${org}&lang=${lang}`);
+const resources = await fetch(
+  `${BASE_URL}/list/subjects?owner=${org}&lang=${lang}`,
+);
 // Response: { data: ["Translation Notes", "Translation Questions"] }
 
 // 4. Search with metadata (THE KEY API)
-const results = await fetch(`${BASE_URL}/search?metadataType=rc&lang=${lang}&subject=Bible`);
+const results = await fetch(
+  `${BASE_URL}/search?metadataType=rc&lang=${lang}&subject=Bible`,
+);
 // Response includes ingredients array!
 ```
 
@@ -141,12 +147,22 @@ if (!validateCleanText(verseText)) {
 // File format: Always TSV with specific columns
 const parseTN = (tsvContent) => {
   return parseTSV(tsvContent, {
-    columns: ["Reference", "ID", "Tags", "SupportReference", "Quote", "Occurrence", "Note"],
+    columns: [
+      "Reference",
+      "ID",
+      "Tags",
+      "SupportReference",
+      "Quote",
+      "Occurrence",
+      "Note",
+    ],
   });
 };
 
 // Filter by verse
-const notes = allNotes.filter((note) => note.Reference === `${chapter}:${verse}`);
+const notes = allNotes.filter(
+  (note) => note.Reference === `${chapter}:${verse}`,
+);
 ```
 
 #### Translation Questions (TQ)
@@ -155,7 +171,15 @@ const notes = allNotes.filter((note) => note.Reference === `${chapter}:${verse}`
 // File format: TSV with Reference, ID, Tags, Quote, Occurrence, Question, Response
 const parseTQ = (tsvContent) => {
   return parseTSV(tsvContent, {
-    columns: ["Reference", "ID", "Tags", "Quote", "Occurrence", "Question", "Response"],
+    columns: [
+      "Reference",
+      "ID",
+      "Tags",
+      "Quote",
+      "Occurrence",
+      "Question",
+      "Response",
+    ],
   });
 };
 ```
@@ -175,7 +199,9 @@ const article = await fetchTWArticle(rcLink);
 
 ```javascript
 // TWL provides rc:// links for words in verses
-const links = twlData.filter((link) => link.Reference === `${chapter}:${verse}`);
+const links = twlData.filter(
+  (link) => link.Reference === `${chapter}:${verse}`,
+);
 // Each link has: Reference, TWLink (rc:// URI)
 ```
 
