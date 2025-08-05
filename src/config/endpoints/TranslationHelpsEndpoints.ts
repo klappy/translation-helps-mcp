@@ -295,6 +295,75 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
 } as EndpointConfig;
 
 /**
+ * Browse Translation Academy (Table of Contents)
+ */
+export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
+  name: "browse-translation-academy",
+  path: "/browse-translation-academy",
+  title: "Browse Translation Academy",
+  description:
+    "Browse available Translation Academy modules and categories (Table of Contents)",
+  category: "core",
+  responseShape: TRANSLATION_ACADEMY_SHAPE,
+
+  params: {
+    language: REFERENCE_PARAMS.language,
+    organization: REFERENCE_PARAMS.organization,
+    category: {
+      type: "string" as const,
+      required: false,
+      description: "Filter by specific category",
+      example: "translate",
+      options: ["process", "translate", "checking", "audio", "gateway"],
+    },
+  },
+
+  dataSource: {
+    type: "dcs-api",
+    dcsEndpoint: "/api/v1/repos/{organization}/{language}_ta/contents",
+    transformation: "json-passthrough",
+    cacheTtl: 43200, // 12 hours (very stable TOC data)
+  },
+
+  enabled: true,
+  tags: ["translation", "academy", "browse", "toc", "core"],
+
+  examples: [
+    {
+      name: "All Categories",
+      description: "Browse all Translation Academy categories and modules",
+      params: {
+        language: "en",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["categories", "modules", "process", "translate"],
+        minLength: 200,
+        fields: {
+          categories: "array",
+          totalModules: "number",
+        },
+      },
+    },
+    {
+      name: "Translation Category",
+      description: "Browse modules in the translation category",
+      params: {
+        language: "en",
+        organization: "unfoldingWord",
+        category: "translate",
+      },
+      expectedContent: {
+        contains: ["translate", "metaphor", "idiom"],
+        fields: {
+          categories: "array",
+        },
+      },
+    },
+  ],
+} as EndpointConfig;
+
+/**
  * Fetch Translation Word Links (tWL) - Links between verses and translation words
  */
 export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
@@ -424,6 +493,7 @@ export const TRANSLATION_HELPS_ENDPOINTS = [
   FETCH_TRANSLATION_QUESTIONS_CONFIG,
   GET_TRANSLATION_WORD_CONFIG,
   FETCH_TRANSLATION_ACADEMY_CONFIG,
+  BROWSE_TRANSLATION_ACADEMY_CONFIG,
   FETCH_TRANSLATION_WORD_LINKS_CONFIG,
   FETCH_TRANSLATION_NOTES_CONFIG,
 ] as const;

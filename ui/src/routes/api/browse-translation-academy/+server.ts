@@ -3,7 +3,7 @@ export const config = {
 };
 
 /**
- * SvelteKit API Route for fetch-translation-academy
+ * SvelteKit API Route for browse-translation-academy
  * Configuration-based endpoint using the new system
  */
 
@@ -22,14 +22,14 @@ try {
 }
 
 // Get the endpoint configuration
-const endpointConfig = endpointRegistry.get('fetch-translation-academy');
+const endpointConfig = endpointRegistry.get('browse-translation-academy');
 
 if (!endpointConfig) {
-	throw new Error('fetch-translation-academy endpoint configuration not found');
+	throw new Error('browse-translation-academy endpoint configuration not found');
 }
 
 if (!endpointConfig.enabled) {
-	throw new Error('fetch-translation-academy endpoint is disabled');
+	throw new Error('browse-translation-academy endpoint is disabled');
 }
 
 // Generate the handler from configuration
