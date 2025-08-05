@@ -7,10 +7,10 @@
  */
 
 import { endpointRegistry } from "../EndpointRegistry.js";
+import { CONTEXT_ENDPOINTS } from "./ContextEndpoints.js";
+import { DISCOVERY_ENDPOINTS } from "./DiscoveryEndpoints.js";
 import { SCRIPTURE_ENDPOINTS } from "./ScriptureEndpoints.js";
 import { TRANSLATION_HELPS_ENDPOINTS } from "./TranslationHelpsEndpoints.js";
-import { DISCOVERY_ENDPOINTS } from "./DiscoveryEndpoints.js";
-import { CONTEXT_ENDPOINTS } from "./ContextEndpoints.js";
 
 /**
  * Register all scripture endpoints
@@ -189,10 +189,10 @@ export function isEndpointAvailable(name: string): boolean {
  * Export all endpoint arrays for direct access
  */
 export {
+  CONTEXT_ENDPOINTS,
   DISCOVERY_ENDPOINTS,
   SCRIPTURE_ENDPOINTS,
   TRANSLATION_HELPS_ENDPOINTS,
-  CONTEXT_ENDPOINTS,
 };
 
 /**

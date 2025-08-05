@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { generateUIByCategory } from '../../../../src/config/UIGenerator';
+	import { endpointRegistry, initializeAllEndpoints } from '../../../../src/config/endpoints/index';
 	import ApiTester from './ApiTester.svelte';
 	import PerformanceMetrics from './PerformanceMetrics.svelte';
 	import {
@@ -32,43 +32,70 @@
 	let selectedCategory = 'overview';
 	let selectedEndpoint = null;
 	let coreEndpoints = [];
+	let extendedEndpoints = [];
 	let experimentalEndpoints = [];
 	let copiedExample = null;
 	let performanceData = {};
+	let loadingError = null;
 
 	// Load endpoints from configuration
 	onMount(async () => {
 		try {
-			// In a real implementation, this would import from the config
-			// For now, we'll simulate the structure
+			console.log('🔧 Initializing MCP Tools with real endpoint configurations...');
+			
+			// Initialize all endpoint configurations
+			initializeAllEndpoints();
+			
+			// Load core endpoints (category: 'core')
 			coreEndpoints = await loadEndpointConfigs('core');
+			console.log(`✅ Loaded ${coreEndpoints.length} core endpoints`);
+			
+			// Load extended endpoints (category: 'extended') 
+			extendedEndpoints = await loadEndpointConfigs('extended');
+			console.log(`✅ Loaded ${extendedEndpoints.length} extended endpoints`);
+			
+			// Load experimental endpoints (category: 'experimental')
 			experimentalEndpoints = await loadEndpointConfigs('experimental');
+			console.log(`✅ Loaded ${experimentalEndpoints.length} experimental endpoints`);
+			
+			console.log('🎉 MCP Tools successfully connected to configuration system!');
 		} catch (error) {
-			console.error('Failed to load endpoint configurations:', error);
+			console.error('❌ Failed to load endpoint configurations:', error);
+			loadingError = error instanceof Error ? error.message : String(error);
 		}
 	});
 
-	// Simulate loading endpoint configs
+	// Load endpoint configurations from registry
 	async function loadEndpointConfigs(category) {
-		// This would actually use generateUIByCategory
-		return [];
+		try {
+			return endpointRegistry.getByCategory(category);
+		} catch (error) {
+			console.error(`Failed to load ${category} endpoints:`, error);
+			return [];
+		}
 	}
 
-	// Group endpoints by category
+	// Group endpoints by category using real configuration data
 	function getEndpointsByCategory(category) {
 		if (category === 'experimental') {
 			return experimentalEndpoints;
 		}
 
-		const categoryMap = {
-			scripture: ['fetch-scripture', 'fetch-ult-scripture', 'fetch-ust-scripture'],
-			helps: ['fetch-translation-notes', 'fetch-translation-words', 'fetch-translation-questions'],
-			discovery: ['get-languages', 'get-available-books', 'list-available-resources'],
-			context: ['get-context', 'fetch-resources', 'get-words-for-reference']
+		// Map UI categories to our endpoint categories and filter by tags
+		const categoryEndpoints = {
+			scripture: coreEndpoints.filter(ep => ep.tags?.includes('scripture')),
+			helps: [...coreEndpoints, ...extendedEndpoints].filter(ep => 
+				ep.tags?.some(tag => ['translation', 'notes', 'words', 'questions', 'academy'].includes(tag))
+			),
+			discovery: coreEndpoints.filter(ep => 
+				ep.tags?.some(tag => ['discovery', 'languages', 'books', 'resources'].includes(tag))
+			),
+			context: extendedEndpoints.filter(ep => 
+				ep.tags?.some(tag => ['context', 'aggregation', 'llm-optimized'].includes(tag))
+			)
 		};
 
-		const endpointNames = categoryMap[category] || [];
-		return coreEndpoints.filter(ep => endpointNames.includes(ep.name));
+		return categoryEndpoints[category] || [];
 	}
 
 	// Copy example to clipboard
@@ -87,7 +114,7 @@
 	// Handle endpoint selection
 	function selectEndpoint(endpoint) {
 		selectedEndpoint = endpoint;
-		selectedCategory = null;
+		selectedCategory = 'endpoint-detail';
 	}
 
 	// Handle API response
