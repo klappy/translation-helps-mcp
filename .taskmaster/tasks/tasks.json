@@ -25,7 +25,9 @@
             "title": "Archive Outdated Documentation",
             "description": "Move all deprecated and outdated documentation to archive, fix time-travel dates",
             "status": "done",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "Move files:\n- Old PRDs (anything mentioning 2023 or earlier)\n- CACHE_WARMING_*.md files\n- Performance monitoring guides\n- AI feature documentation\n- Any guides referencing removed features\nSearch and replace all dates that are before project start (2 weeks ago)",
             "testStrategy": "Verify all outdated docs are in archive, no time-travel dates remain"
           },
@@ -34,7 +36,9 @@
             "title": "Consolidate Core Guides",
             "description": "Merge overlapping documentation into single authoritative sources",
             "status": "done",
-            "dependencies": [2],
+            "dependencies": [
+              2
+            ],
             "details": "Actions:\n- Keep UW_TRANSLATION_RESOURCES_GUIDE.md as primary reference\n- Extract useful parts from TRANSLATION_HELPS_COMPLETE_GUIDE.md\n- Update IMPLEMENTATION_GUIDE.md with practical implementation details\n- Create clear separation of 'what resources are' vs 'how to implement'\n- Document tWL as the bridge between verses and tW articles\n- Add ToC information for tA and tW resources",
             "testStrategy": "Review merged docs for completeness, verify tWL is properly explained"
           },
@@ -43,7 +47,9 @@
             "title": "Document Resource Data Shapes",
             "description": "Create clear documentation of actual data returned by each endpoint",
             "status": "done",
-            "dependencies": [3],
+            "dependencies": [
+              3
+            ],
             "details": "For each resource type, document:\n- Actual data structure returned\n- Transformations applied (USFM to text, TSV parsing, etc.)\n- Example responses with REAL data\n- Parameter effects on response shape\n- How tWL links verses to tW articles\n- How tN links to tA articles",
             "testStrategy": "Each endpoint has complete data documentation with examples"
           },
@@ -52,7 +58,9 @@
             "title": "Update Documentation Index",
             "description": "Update main README and docs index to reflect new structure",
             "status": "done",
-            "dependencies": [4],
+            "dependencies": [
+              4
+            ],
             "details": "Update:\n- Main README.md with correct doc links\n- docs/README.md with new structure\n- Remove broken links\n- Add clear navigation\n- Update any doc references in code\n- Add 'Last Updated' dates to all docs",
             "testStrategy": "Click all documentation links, verify they work, check dates are current"
           }
@@ -109,7 +117,12 @@
             "title": "Update Navigation & E2E Tests",
             "description": "Clean up navigation menu and update E2E tests",
             "status": "done",
-            "dependencies": [1, 2, 3, 4],
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
             "details": "In +layout.svelte:\n- Remove all deleted route links\n- Keep only: Home, MCP Tools, Changelog, Whitepaper, About\nUpdate E2E tests:\n- Remove tests for deleted pages\n- Add comprehensive MCP Tools tests\n- Verify no broken links",
             "testStrategy": "Run full E2E test suite, manually verify navigation"
           }
@@ -156,8 +169,10 @@
             "id": 4,
             "title": "Clean Up Service Files",
             "description": "Remove unused services but keep working cache/performance",
-            "status": "in-progress",
-            "dependencies": [3],
+            "status": "done",
+            "dependencies": [
+              3
+            ],
             "details": "Keep:\n- DCSApiClient (core)\n- Scripture service\n- Translation helps services\n- CASCADING CACHE SYSTEM\n- Performance monitoring\n- Xray transparency\n\nRemove only:\n- Broken aggregators\n- Non-working recommenders",
             "testStrategy": "TypeScript compiles, performance features remain"
           },
@@ -166,7 +181,10 @@
             "title": "Update Test Suite",
             "description": "Fix tests to validate REAL data, not just 200 OK",
             "status": "pending",
-            "dependencies": [1, 4],
+            "dependencies": [
+              1,
+              4
+            ],
             "details": "Update all tests to:\n- Check actual scripture text returned\n- Validate tN content matches reference\n- Verify tW definitions are complete\n- Ensure tWL properly links verses to words\n- Test with real verse ranges, pericopes, chapters\n- Remove tests that just check status codes\n- ADD tests for cache performance",
             "testStrategy": "Tests validate actual resource content and performance"
           }
@@ -196,7 +214,9 @@
             "title": "Create Response Shape Registry",
             "description": "Define consistent shapes for resource types",
             "status": "pending",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "Define shapes for:\n- Scripture (text, reference, version)\n- Translation Notes (notes array with reference filtering)\n- Translation Words (assembled articles)\n- Translation Words Links (verse-to-word mappings)\n- Discovery endpoints (lists with metadata)\nEnsure same resource type uses same shape across endpoints",
             "testStrategy": "Same resources have consistent shapes"
           },
@@ -205,7 +225,9 @@
             "title": "Build Configuration Registry",
             "description": "Create system to manage and validate configs",
             "status": "pending",
-            "dependencies": [2],
+            "dependencies": [
+              2
+            ],
             "details": "Create src/config/EndpointRegistry.ts:\n- Central registry for all configs\n- Validation for required fields\n- Type checking for params\n- Prevent duplicate paths\n- Export for use across app",
             "testStrategy": "Registry prevents configuration errors"
           },
@@ -214,7 +236,9 @@
             "title": "Create Route Generator",
             "description": "Auto-generate API routes from configurations",
             "status": "pending",
-            "dependencies": [3],
+            "dependencies": [
+              3
+            ],
             "details": "Build system to:\n- Read endpoint configs\n- Generate consistent route handlers\n- Apply transformations (USFM to text, etc.)\n- Handle errors uniformly\n- Add performance tracking\n- Return consistent response format",
             "testStrategy": "Generated routes match manual implementations"
           },
@@ -223,7 +247,9 @@
             "title": "Create UI Generator for MCP Tools",
             "description": "Generate consistent UI from configurations",
             "status": "pending",
-            "dependencies": [3],
+            "dependencies": [
+              3
+            ],
             "details": "Generate for MCP Tools page:\n- Parameter inputs with proper types\n- Real data examples\n- Response displays\n- Performance metrics\n- Error states\n- Loading states\nAll from configuration",
             "testStrategy": "UI consistency across all endpoints"
           }
@@ -234,7 +260,9 @@
         "title": "Implement Core Endpoints via Config",
         "description": "Migrate core endpoints to configuration system with proper data transformation",
         "status": "pending",
-        "dependencies": [4],
+        "dependencies": [
+          4
+        ],
         "priority": "high",
         "details": "Implement these core endpoints with proper transformations:\n1. Scripture endpoints (USFM to clean text)\n2. Translation Notes (TSV parsing, reference filtering)\n3. Translation Words (article assembly, ToC endpoint)\n4. Translation Words Links (verse-to-word bridge)\n5. Translation Questions (TSV parsing)\n6. Translation Academy (article serving, ToC endpoint)\n7. Discovery endpoints (languages, books per resource)\n8. Context endpoints (combined fetching)\n\nEach must handle real data transformations, not just pass through",
         "testStrategy": "Each endpoint returns properly transformed uW data, tests use real resource content",
@@ -280,7 +308,11 @@
             "title": "Implement Context Endpoints",
             "description": "Configure combined resource fetching",
             "status": "pending",
-            "dependencies": [1, 2, 3],
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
             "details": "get-context:\n- Fetch multiple resources for reference\n- Consistent response format\n- Efficient batching\n\nget-words-for-reference:\n- All tW articles for words in verse\n- Uses tWL for mapping",
             "testStrategy": "Combined fetching works efficiently"
           }
@@ -291,7 +323,9 @@
         "title": "Update MCP Tools Page for 100% Coverage",
         "description": "Make MCP Tools the primary interface with complete visibility and consistent UX",
         "status": "pending",
-        "dependencies": [5],
+        "dependencies": [
+          5
+        ],
         "priority": "high",
         "details": "MCP Tools page requirements:\n1. Full parameter editing with validation\n2. Performance metrics display\n3. Cache hit/miss visibility\n4. Full response with syntax highlighting\n5. Consistent UI across all endpoints\n6. Experimental lab in separate section (lower tab)\n7. Real data examples from config\n8. No more manual endpoint UI code\n\nThis is how humans understand what's available to AI!",
         "testStrategy": "Every endpoint works perfectly via MCP Tools, consistent UX, mobile responsive",
@@ -310,7 +344,9 @@
             "title": "Add Performance Visibility",
             "description": "Show performance metrics for each request",
             "status": "pending",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "Display:\n- Response time\n- Cache hit/miss\n- Data source (cache/API)\n- Request size\n- Stack trace for debugging\nMake it xray visibility for debugging",
             "testStrategy": "Full visibility into request performance"
           },
@@ -319,7 +355,9 @@
             "title": "Implement Experimental Lab Tab",
             "description": "Add separate section for experimental features",
             "status": "pending",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "Create lower tab/section:\n- Clearly marked 'Experimental'\n- Separate from core\n- Warning about stability\n- Same UI patterns\n- Don't clutter main menu",
             "testStrategy": "Experimental features isolated but accessible"
           },
@@ -328,7 +366,9 @@
             "title": "Add Real Data Examples",
             "description": "Pull examples from endpoint configurations",
             "status": "pending",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "For each endpoint:\n- Show real parameter examples\n- Display actual response data\n- Multiple examples for complex endpoints\n- Copy-to-clipboard functionality\n- From configuration, not hardcoded",
             "testStrategy": "Examples use real data from resources"
           },
@@ -337,7 +377,12 @@
             "title": "Ensure Mobile Responsiveness",
             "description": "Make MCP Tools work on all devices",
             "status": "pending",
-            "dependencies": [1, 2, 3, 4],
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
             "details": "Implement:\n- Responsive parameter forms\n- Collapsible sections\n- Touch-friendly controls\n- Readable response display\n- Horizontal scroll for wide data",
             "testStrategy": "Works perfectly on mobile devices"
           }
@@ -348,7 +393,9 @@
         "title": "Create Lab Environment Structure",
         "description": "Set up experimental features in separate room of the house",
         "status": "pending",
-        "dependencies": [3],
+        "dependencies": [
+          3
+        ],
         "priority": "medium",
         "details": "Create clear separation for experimental features:\n1. Different room in house (not different house)\n2. Shows on MCP Tools page as lower section/tab\n3. Separate MCP endpoint for lab features\n4. Clear experimental warnings\n5. Features that need approval before core promotion:\n   - AI quality checking\n   - AI summarization\n   - Smart endpoint inference\n   - Advanced caching\n   - Resource recommendations\n   - Automated ingestion",
         "testStrategy": "Experimental features completely isolated, require explicit approval for promotion",
@@ -367,7 +414,9 @@
             "title": "Move AI Features to Lab",
             "description": "Relocate AI features that aren't battle-tested",
             "status": "pending",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "Move:\n- ai-content-summarizer.ts\n- ai-quality-checker.ts\n- Any AI inference features\nAdd warnings about experimental status\nDocument approval process for core promotion",
             "testStrategy": "AI features work but clearly experimental"
           },
@@ -376,7 +425,9 @@
             "title": "Move Advanced Features",
             "description": "Relocate poorly executed good ideas",
             "status": "pending",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "Move these 'good ideas poorly executed':\n- Resource recommendations\n- Advanced caching strategies\n- Smart endpoint inference\n- Automated content ingestion\n- Language coverage (needs better implementation)",
             "testStrategy": "Features available but not in core"
           },
@@ -385,7 +436,10 @@
             "title": "Create Lab MCP Endpoint",
             "description": "Separate MCP server endpoint for experimental",
             "status": "pending",
-            "dependencies": [2, 3],
+            "dependencies": [
+              2,
+              3
+            ],
             "details": "Create:\n- /api/mcp-experimental\n- Clear warnings in tool descriptions\n- Separate documentation\n- Note that LLMs might try to use these\n- Approval process for promotion",
             "testStrategy": "Lab endpoint works independently"
           },
@@ -394,7 +448,9 @@
             "title": "Document Promotion Criteria",
             "description": "Define how features graduate to core",
             "status": "pending",
-            "dependencies": [4],
+            "dependencies": [
+              4
+            ],
             "details": "Document requirements:\n- Your explicit approval required\n- Partner approval required\n- Performance benchmarks met\n- Real-world testing completed\n- Documentation complete\n- Tests with real data",
             "testStrategy": "Clear path from experimental to core"
           }
@@ -405,7 +461,14 @@
         "title": "Final Testing & Deployment",
         "description": "Comprehensive testing with REAL data and production deployment",
         "status": "pending",
-        "dependencies": [1, 2, 3, 5, 6, 7],
+        "dependencies": [
+          1,
+          2,
+          3,
+          5,
+          6,
+          7
+        ],
         "priority": "high",
         "details": "Testing requirements:\n1. REAL data validation (not just 200 OK)\n2. Performance <500ms for typical queries\n3. Actual scripture text validation\n4. Real tN, tW, tWL content checks\n5. No hanging commands or prompts\n6. Documentation matches implementation exactly\n7. Fix all deployment scripts to run unattended\n\n6-month vision:\n- Industry standard for uW resource access\n- Smart endpoints inferring user intent\n- Offline capability via .zip downloads",
         "testStrategy": "Every test validates real resource data, deployment completes without hanging",
@@ -424,7 +487,9 @@
             "title": "Performance Benchmarking",
             "description": "Ensure <500ms response for typical queries",
             "status": "pending",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "Benchmark:\n- Single verse: <200ms\n- Verse range: <300ms\n- Chapter: <500ms\n- With caching: <100ms\n- Concurrent requests handling\n- Memory usage under load",
             "testStrategy": "Meet all performance targets"
           },
@@ -433,7 +498,9 @@
             "title": "Fix Deployment Scripts",
             "description": "Ensure all scripts run without hanging",
             "status": "pending",
-            "dependencies": [1],
+            "dependencies": [
+              1
+            ],
             "details": "Update all scripts:\n- Add --yes to deployment prompts\n- Add --no-watch to test commands\n- Fix commit message automation\n- Remove any pause/wait commands\n- Test full deployment unattended",
             "testStrategy": "npm run deploy completes without interaction"
           },
@@ -442,7 +509,9 @@
             "title": "Documentation Final Review",
             "description": "Ensure docs match implementation exactly",
             "status": "pending",
-            "dependencies": [3],
+            "dependencies": [
+              3
+            ],
             "details": "Verify:\n- Every endpoint documented accurately\n- Response shapes match reality\n- Examples use real data\n- No outdated information\n- Clear core vs experimental\n- Updated changelog",
             "testStrategy": "Documentation 100% accurate"
           },
@@ -451,7 +520,9 @@
             "title": "Production Deployment",
             "description": "Deploy with confidence",
             "status": "pending",
-            "dependencies": [4],
+            "dependencies": [
+              4
+            ],
             "details": "Final deployment:\n- Run full test suite\n- Deploy to staging first\n- Smoke test all endpoints\n- Deploy to production\n- Monitor for 24 hours\n- Prepare rollback plan",
             "testStrategy": "Zero errors in production for 24 hours"
           }
@@ -462,7 +533,10 @@
         "title": "AI Assistant Chat Interface",
         "description": "Build the paramount showcase 'Taste and See' experience with sacred text constraints and full transparency",
         "status": "pending",
-        "dependencies": [5, 6],
+        "dependencies": [
+          5,
+          6
+        ],
         "priority": "critical",
         "details": "THE SHOWCASE - This is what partners will see first!\n\nCore Requirements:\n1. Sacred Text Constraints:\n   - Scripture quoted VERBATIM (character for character)\n   - NO interpretation of scripture allowed\n   - Resources can be reworded but must cite sources\n   - All responses must cite resource titles used\n\n2. Clean Chat Interface:\n   - First-class, polished UI (not cluttered)\n   - Progressive disclosure (simple → detailed)\n   - Mobile-responsive design\n\n3. X-Ray Tool Visibility:\n   - Show MCP tool discovery process\n   - Expandable tool call details\n   - Response time metrics\n   - Cache hit/miss indicators\n   - Like reasoning traces but for tool usage\n\n4. Transparency Features:\n   - New MCP endpoint: get-system-prompt\n   - Shows exact constraints and instructions\n   - Open source, open methodology\n   - Sets collaboration bar high\n\n5. Reference Implementation:\n   - Shows partners exactly how to integrate\n   - Demonstrates value proposition clearly\n   - 'Taste and See' moment for users",
         "testStrategy": "User acceptance testing with actual translators, performance metrics under 500ms, validate sacred text compliance",
@@ -511,7 +585,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T16:34:35.764Z"
+      "updated": "2025-08-05T16:43:25.961Z"
     }
   }
 }

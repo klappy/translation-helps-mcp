@@ -27,11 +27,17 @@ This directory contains experimental features that are:
 - **ai-quality-checker.ts** - AI quality assessment (currently using mock responses)
 
 ### 📦 Unused/Duplicate Features
-
 - **resource-aggregator.ts** - Alternative resource aggregation implementation (not used by core)
 - **resource-aggregator-unused.ts** - Duplicate from core functions (moved here, unused)
 - **resource-recommendations.ts** - Alternative recommendations (experimental version)
 - **resource-recommender.ts** - Alternative recommender engine (experimental version)
+
+### 🛠️ Unused Performance Utilities (Moved from Core)
+- **advanced-filter-unused.ts** - Sophisticated 636-line filtering system (not used by any endpoints)
+- **request-coalescer-unused.ts** - Request coalescing system to combine identical requests (384 lines, unused)
+- **response-optimizer-unused.ts** - Response optimization middleware (unused by endpoints)
+- **compression-middleware-unused.ts** - Compression middleware (unused by endpoints)
+- **cache-warmer-functions.ts** - Deprecated cache warming system (moved from functions)
 
 ### 🗄️ Deprecated Features
 
@@ -232,8 +238,13 @@ When a feature is approved for core:
 | MCP Dynamic | 🔬 Experimental | `api-routes/mcp-dynamic/` | Dynamic tool generation |
 | Debug Titus | 🛠️ Debug Tool | `api-routes/debug-titus/` | Catalog debugging |
 | Test TWL | 🧪 Test Tool | `api-routes/test-twl/` | TWL testing |
+| Advanced Filter | ❌ Unused | Root | 636-line filtering system (unused) |
+| Request Coalescer | ❌ Unused | Root | Request coalescing system (unused) |
+| Response Optimizer | ❌ Unused | Root | Response optimization (unused) |
+| Compression Middleware | ❌ Unused | Root | Compression middleware (unused) |
+| Cache Warmer (Functions) | ❌ Deprecated | Root | Cache warming from functions (moved) |
 | Resource Aggregator (Alt) | ❌ Unused | Root | Alternative implementation |
-| Cache Warmer | ❌ Deprecated | Root | Removed from roadmap |
+| Cache Warmer | ❌ Deprecated | Root | Original cache warming system |
 | Automated Ingestion | 🔬 30% Complete | Root | Webhook implementation needed |
 
 ## Contact
