@@ -1,5 +1,5 @@
 <script>
-	import { Activity, Clock, Database, Server, TrendingUp, Zap, Eye, Link, BarChart3 } from 'lucide-svelte';
+	import { Activity, BarChart3, Clock, Database, Eye, Link, Zap } from 'lucide-svelte';
 	
 	export let data = {};
 	

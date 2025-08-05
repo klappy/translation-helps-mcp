@@ -1,21 +1,20 @@
 <script>
+	import {
+		Activity,
+		Beaker,
+		BookOpen,
+		Check,
+		Copy,
+		Database,
+		Info,
+		Languages,
+		Link,
+		Search
+	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { endpointRegistry, initializeAllEndpoints } from '../../../../src/config/endpoints/index';
 	import ApiTester from './ApiTester.svelte';
 	import PerformanceMetrics from './PerformanceMetrics.svelte';
-	import {
-		Database,
-		Languages,
-		BookOpen,
-		Search,
-		Link,
-		Beaker,
-		Info,
-		Activity,
-		ChevronRight,
-		Copy,
-		Check
-	} from 'lucide-svelte';
 
 	// Categories with icons
 	const categoryConfig = {
@@ -68,6 +67,91 @@
 	// Load endpoint configurations from registry
 	async function loadEndpointConfigs(category) {
 		try {
+			if (category === 'experimental') {
+				// Manual experimental endpoints list (not yet in configuration system)
+				return [
+					{
+						name: 'resource-recommendations',
+						title: 'AI Resource Recommendations',
+						description: 'Intelligent, context-aware resource suggestions powered by AI',
+						path: '/api/resource-recommendations',
+						category: 'experimental',
+						tags: ['ai', 'recommendations', 'experimental'],
+						enabled: true,
+						examples: [
+							{
+								title: 'Get recommendations for John 3:16',
+								params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' }
+							}
+						],
+						experimental: {
+							warning: 'Uses experimental AI features. Results may vary.',
+							stability: 'alpha',
+							lastUpdated: '2024-01-01'
+						}
+					},
+					{
+						name: 'chat',
+						title: 'AI Chat Interface',
+						description: 'Interactive chat with translation helps AI assistant',
+						path: '/api/chat',
+						category: 'experimental',
+						tags: ['ai', 'chat', 'experimental'],
+						enabled: true,
+						examples: [
+							{
+								title: 'Ask about a Bible verse',
+								params: { message: 'What does John 3:16 mean?', context: 'translation' }
+							}
+						],
+						experimental: {
+							warning: 'AI responses are experimental and should be verified.',
+							stability: 'beta',
+							lastUpdated: '2024-01-01'
+						}
+					},
+					{
+						name: 'chat-stream',
+						title: 'Streaming AI Chat',
+						description: 'Real-time streaming chat responses from AI assistant',
+						path: '/api/chat-stream',
+						category: 'experimental',
+						tags: ['ai', 'chat', 'streaming', 'experimental'],
+						enabled: true,
+						examples: [
+							{
+								title: 'Stream a conversation',
+								params: { message: 'Explain the Trinity', stream: true }
+							}
+						],
+						experimental: {
+							warning: 'Streaming responses are experimental.',
+							stability: 'alpha',
+							lastUpdated: '2024-01-01'
+						}
+					},
+					{
+						name: 'mcp',
+						title: 'MCP Tools Server',
+						description: 'Model Context Protocol server for AI assistant integration',
+						path: '/api/mcp',
+						category: 'experimental',
+						tags: ['mcp', 'integration', 'experimental'],
+						enabled: true,
+						examples: [
+							{
+								title: 'Get available MCP tools',
+								params: { action: 'list-tools' }
+							}
+						],
+						experimental: {
+							warning: 'MCP integration is experimental.',
+							stability: 'beta',
+							lastUpdated: '2024-01-01'
+						}
+					}
+				];
+			}
 			return endpointRegistry.getByCategory(category);
 		} catch (error) {
 			console.error(`Failed to load ${category} endpoints:`, error);
@@ -268,21 +352,55 @@
 					{/if}
 				</div>
 			{:else if selectedCategory === 'experimental'}
+				<!-- Experimental Lab Header with Warning -->
+				<div class="mb-6 rounded-lg border border-orange-500/30 bg-orange-900/10 p-4">
+					<div class="flex items-start space-x-3">
+						<Beaker class="mt-1 h-5 w-5 text-orange-400" />
+						<div>
+							<h3 class="text-lg font-semibold text-orange-400">🧪 Experimental Lab</h3>
+							<p class="mt-1 text-sm text-orange-300">
+								These features are in active development and may be unstable. Use with caution in production environments.
+							</p>
+						</div>
+					</div>
+				</div>
+
 				<!-- Experimental Endpoints List -->
-				<h3 class="mb-4 text-lg font-semibold text-white">Experimental Features</h3>
 				<div class="space-y-3">
 					{#each experimentalEndpoints as endpoint}
 						<div
-							class="endpoint-card"
+							class="endpoint-card border-orange-500/20 hover:border-orange-500/40"
 							class:selected={selectedEndpoint === endpoint}
 							on:click={() => selectEndpoint(endpoint)}
 						>
-							<h4 class="font-medium text-white">{endpoint.name}</h4>
-							<p class="mt-1 text-sm text-gray-400">{endpoint.description}</p>
+							<div class="flex items-start justify-between">
+								<div class="flex-1">
+									<div class="flex items-center space-x-2">
+										<h4 class="font-medium text-white">{endpoint.title || endpoint.name}</h4>
+										{#if endpoint.experimental?.stability}
+											<span class="rounded-full px-2 py-0.5 text-xs font-medium
+												{endpoint.experimental.stability === 'alpha' ? 'bg-red-900/30 text-red-400' : 
+												 endpoint.experimental.stability === 'beta' ? 'bg-yellow-900/30 text-yellow-400' : 
+												 'bg-green-900/30 text-green-400'}">
+												{endpoint.experimental.stability}
+											</span>
+										{/if}
+									</div>
+									<p class="mt-1 text-sm text-gray-400">{endpoint.description}</p>
+									{#if endpoint.experimental?.warning}
+										<p class="mt-2 text-xs text-orange-400">⚠️ {endpoint.experimental.warning}</p>
+									{/if}
+								</div>
+								<ChevronRight class="h-4 w-4 text-gray-500" />
+							</div>
 						</div>
 					{/each}
 					{#if experimentalEndpoints.length === 0}
-						<p class="text-sm text-gray-500">No experimental features available</p>
+						<div class="rounded-lg border border-gray-700 bg-gray-800/30 p-6 text-center">
+							<Beaker class="mx-auto h-8 w-8 text-gray-500" />
+							<p class="mt-2 text-sm text-gray-500">No experimental features available</p>
+							<p class="mt-1 text-xs text-gray-600">Check back later for cutting-edge features!</p>
+						</div>
 					{/if}
 				</div>
 			{:else if selectedCategory && selectedCategory !== 'overview' && selectedCategory !== 'health'}
