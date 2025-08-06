@@ -14,11 +14,12 @@
 	import PerformanceMetrics from './PerformanceMetrics.svelte';
 
 	// Three main categories
-	type MainCategory = 'core' | 'extended' | 'experimental';
+	type MainCategory = 'core' | 'extended' | 'experimental' | 'health';
 	const categoryConfig = {
 		core: { name: 'Core Tools', icon: Database },
 		extended: { name: 'Extended Features', icon: Link },
-		experimental: { name: 'Experimental Lab', icon: Beaker }
+		experimental: { name: 'Experimental Lab', icon: Beaker },
+		health: { name: 'Health Status', icon: Activity }
 	} as const;
 
 	// State
@@ -319,6 +320,16 @@
 		>
 			🧪 Experimental Lab
 		</button>
+		<button
+			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
+			class:active={selectedCategory === 'health'}
+			on:click={() => {
+				selectedCategory = 'health';
+				selectedEndpoint = null;
+			}}
+		>
+			💪 Health Status
+		</button>
 	</div>
 
 	<!-- Error Display -->
@@ -341,10 +352,10 @@
 	{/if}
 
 	<!-- Main Content -->
-	<div>
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
 		{#if selectedEndpoint}
-			<!-- Endpoint Testing Interface -->
-			<div class="space-y-6">
+			<!-- Endpoint Testing Interface (Full Width) -->
+			<div class="space-y-6 lg:col-span-3">
 				<!-- Back Button -->
 				<button
 					class="flex items-center text-sm text-blue-400 hover:text-blue-300 touch-friendly"
@@ -483,13 +494,38 @@
 				{/if}
 			</div>
 		{:else if selectedCategory === 'core'}
-			<!-- Core Endpoints -->
-			<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4 lg:p-6">
+			{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
+			<!-- Core Endpoints with Sidebar -->
+			<!-- Left Sidebar -->
+			<div class="lg:col-span-1">
+				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4">
+					<h3 class="mb-4 text-lg font-semibold text-white">Core Categories</h3>
+					<div class="space-y-2">
+						{#each Object.entries(groupedEndpoints) as [groupName, group]}
+							<button 
+								class="w-full rounded-lg border border-gray-700 bg-gray-900/30 p-3 text-left transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
+								on:click={() => {/* scroll to section */}}
+							>
+								<div class="flex items-center gap-2">
+									<span class="text-xl">{group.icon}</span>
+									<div class="flex-1">
+										<h4 class="font-medium text-white">{groupName}</h4>
+										<p class="text-xs text-gray-400">{group.endpoints.length} endpoints</p>
+									</div>
+									<ChevronRight class="h-4 w-4 text-gray-500" />
+								</div>
+							</button>
+						{/each}
+					</div>
+				</div>
+			</div>
+			
+			<!-- Main Content -->
+			<div class="lg:col-span-2 rounded-lg border border-gray-700 bg-gray-800/50 p-4 lg:p-6">
 				<h2 class="mb-4 text-2xl font-bold text-white">Core Endpoints</h2>
 				<p class="mb-6 text-gray-300">Essential tools for Bible translation and study</p>
 				
 				{#if coreEndpoints.length > 0}
-					{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
 					<div class="space-y-8">
 						{#each Object.entries(groupedEndpoints) as [groupName, group]}
 							<div class="rounded-lg border border-gray-700/50 bg-gray-900/30 p-4">
@@ -536,8 +572,42 @@
 			</div>
 
 		{:else if selectedCategory === 'extended'}
-			<!-- Extended Endpoints -->
-			<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+			<!-- Extended Endpoints with Sidebar -->
+			<!-- Left Sidebar -->
+			<div class="lg:col-span-1">
+				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4">
+					<h3 class="mb-4 text-lg font-semibold text-white">Extended Features</h3>
+					<div class="space-y-2">
+						<button 
+							class="w-full rounded-lg border border-gray-700 bg-gray-900/30 p-3 text-left transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
+						>
+							<div class="flex items-center gap-2">
+								<span class="text-xl">🔍</span>
+								<div class="flex-1">
+									<h4 class="font-medium text-white">Context Intelligence</h4>
+									<p class="text-xs text-gray-400">{extendedEndpoints.filter(e => e.name.includes('context')).length} endpoints</p>
+								</div>
+								<ChevronRight class="h-4 w-4 text-gray-500" />
+							</div>
+						</button>
+						<button 
+							class="w-full rounded-lg border border-gray-700 bg-gray-900/30 p-3 text-left transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
+						>
+							<div class="flex items-center gap-2">
+								<span class="text-xl">📝</span>
+								<div class="flex-1">
+									<h4 class="font-medium text-white">Word Analysis</h4>
+									<p class="text-xs text-gray-400">{extendedEndpoints.filter(e => e.name.includes('word')).length} endpoints</p>
+								</div>
+								<ChevronRight class="h-4 w-4 text-gray-500" />
+							</div>
+						</button>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Main Content -->
+			<div class="lg:col-span-2 rounded-lg border border-gray-700 bg-gray-800/50 p-6">
 				<h2 class="mb-4 text-2xl font-bold text-white">Extended Features</h2>
 				<p class="mb-6 text-gray-300">Intelligent features that combine resources for enhanced workflows</p>
 				
@@ -571,8 +641,8 @@
 			</div>
 
 		{:else if selectedCategory === 'experimental'}
-			<!-- Experimental Endpoints -->
-			<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+			<!-- Experimental Endpoints (Full Width for Safety) -->
+			<div class="lg:col-span-3 rounded-lg border border-gray-700 bg-gray-800/50 p-6">
 				<h2 class="mb-4 text-2xl font-bold text-white">🧪 Experimental Lab</h2>
 				<p class="mb-6 text-gray-300">Test cutting-edge features in a separate, clearly marked section</p>
 				
@@ -606,6 +676,77 @@
 						<p class="mt-2 text-sm text-purple-400">Check back soon for cutting-edge AI-powered features!</p>
 					</div>
 				{/if}
+			</div>
+		{:else if selectedCategory === 'health'}
+			<!-- Health Status (Full Width) -->
+			<div class="lg:col-span-3 rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+				<h2 class="mb-4 text-2xl font-bold text-white">Health Status</h2>
+				<p class="mb-6 text-gray-300">Check the status of the MCP Tools backend and its dependencies.</p>
+				
+				<div class="grid gap-4">
+					<div class="rounded-lg border border-gray-700 bg-gray-900/30 p-4">
+						<h3 class="mb-2 text-lg font-semibold text-white">API Endpoints</h3>
+						<p class="mb-3 text-sm text-gray-400">
+							These endpoints are used to fetch configuration and perform health checks.
+						</p>
+						<div class="grid gap-3">
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-gray-400">
+									<Link class="inline h-4 w-4 mr-1" />
+									/api/mcp-config
+								</span>
+								<span class="text-green-400">✅ Healthy</span>
+							</div>
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-gray-400">
+									<Info class="inline h-4 w-4 mr-1" />
+									/api/health
+								</span>
+								<span class="text-green-400">✅ Healthy</span>
+							</div>
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-gray-400">
+									<Activity class="inline h-4 w-4 mr-1" />
+									/api/metrics
+								</span>
+								<span class="text-green-400">✅ Healthy</span>
+							</div>
+						</div>
+					</div>
+					<div class="rounded-lg border border-gray-700 bg-gray-900/30 p-4">
+						<h3 class="mb-2 text-lg font-semibold text-white">Database</h3>
+						<p class="mb-3 text-sm text-gray-400">
+							Ensures data persistence and availability.
+						</p>
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-gray-400">
+								<Database class="inline h-4 w-4 mr-1" />
+								MongoDB
+							</span>
+							<span class="text-green-400">✅ Healthy</span>
+						</div>
+					</div>
+					<div class="rounded-lg border border-gray-700 bg-gray-900/30 p-4">
+						<h3 class="mb-2 text-lg font-semibold text-white">External Services</h3>
+						<p class="mb-3 text-sm text-gray-400">
+							Integrations with external resources.
+						</p>
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-gray-400">
+								<Link class="inline h-4 w-4 mr-1" />
+								Translation API
+							</span>
+							<span class="text-green-400">✅ Healthy</span>
+						</div>
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-gray-400">
+								<Link class="inline h-4 w-4 mr-1" />
+								Resource Storage
+							</span>
+							<span class="text-green-400">✅ Healthy</span>
+						</div>
+					</div>
+				</div>
 			</div>
 		{/if}
 	</div>

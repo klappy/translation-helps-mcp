@@ -132,16 +132,34 @@
 							class="rounded border border-white/20 bg-white/10 text-purple-600 focus:border-purple-500 focus:outline-none"
 						/>
 					{:else if param.options}
-						<select
-							id="{endpoint.name}-{param.name}"
-							bind:value={formData[param.name]}
-							class="w-full rounded border border-white/20 bg-white/10 px-3 py-2 text-white focus:border-purple-500 focus:outline-none"
-						>
-							<option value="">Select {param.name}</option>
-							{#each param.options as option}
-								<option value={option}>{option}</option>
-							{/each}
-						</select>
+						<div class="relative">
+							<input
+								id="{endpoint.name}-{param.name}"
+								type="text"
+								bind:value={formData[param.name]}
+								placeholder={param.description || `Enter ${param.name}`}
+								list="{endpoint.name}-{param.name}-list"
+								class="w-full rounded border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+							/>
+							<datalist id="{endpoint.name}-{param.name}-list">
+								{#each param.options as option}
+									<option value={option}>{option}</option>
+								{/each}
+							</datalist>
+							{#if param.name === 'lang' || param.name === 'language'}
+								<p class="mt-1 text-xs text-gray-400">
+									Common: en, es, fr, de, pt, ru, zh, ar, hi, sw, id
+								</p>
+							{:else if param.name === 'org' || param.name === 'organization'}
+								<p class="mt-1 text-xs text-gray-400">
+									Common: unfoldingWord, Door43-Catalog, STR, BCS
+								</p>
+							{:else if param.name === 'resource'}
+								<p class="mt-1 text-xs text-gray-400">
+									Common: tn, tw, tq, ta, obs, ult, ust
+								</p>
+							{/if}
+						</div>
 					{:else}
 						<input
 							id="{endpoint.name}-{param.name}"
