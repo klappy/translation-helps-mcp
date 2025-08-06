@@ -351,23 +351,36 @@
 
 			if (response.ok) {
 				const data = await response.json();
-				// Check if endpoint is responding properly (even if underlying data is missing)
+				
+				// Antifragile 404 detection: recursively search entire response for any 404 indicators
+				function hasAny404(obj: any, visited = new Set()): boolean {
+					if (!obj || typeof obj !== 'object' || visited.has(obj)) return false;
+					visited.add(obj);
+					
+					// Check current level for 404 indicators
+					if (obj.statusCode === 404) return true;
+					if (obj.code === 'HTTP_404') return true;
+					if (obj.status === 404) return true;
+					if (typeof obj.message === 'string' && obj.message.includes('object does not exist')) return true;
+					if (typeof obj.error === 'string' && obj.error.toLowerCase().includes('not found')) return true;
+					
+					// Recursively check all properties
+					for (const value of Object.values(obj)) {
+						if (hasAny404(value, visited)) return true;
+					}
+					return false;
+				}
+				
+				// Check if endpoint is responding properly
 				if (data._metadata && data._metadata.success) {
-					// Check if the successful response actually contains errors in the data
-					if (data.data && data.data.resources) {
-						const hasErrors = data.data.resources.some((resource: any) => 
-							resource.error && (resource.error.code === 'HTTP_404' || resource.statusCode === 404)
-						);
-						if (hasErrors) {
-							healthStatus[healthKey] = { 
-								status: 'warning', 
-								message: 'Endpoint working but data not found (check file paths)' 
-							};
-						} else {
-							healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
-						}
+					const has404Issues = hasAny404(data);
+					
+					if (has404Issues) {
+						healthStatus[healthKey] = {
+							status: 'warning',
+							message: 'Endpoint working but data not found (check file paths)'
+						};
 					} else {
-						// No resources array, assume healthy if metadata says success
 						healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
 					}
 				} else if (data.data && data.data.success === false && data.data.statusCode === 404) {
