@@ -28,11 +28,13 @@
 	let coreEndpoints: any[] = [];
 	let extendedEndpoints: any[] = [];
 	let experimentalEndpoints: any[] = [];
-	let copiedExample: number | null = null;
-	let performanceData: Record<string, any> = {};
-	let loadingError: any = null;
+	let loadingError: string | null = null;
+	let isLoading = false;
 	let apiResult: any = null;
-	let isLoading: boolean = false;
+	let copiedExample: number | null = null;
+	let performanceData: any = {};
+	let healthStatus: Record<string, {status: 'checking' | 'healthy' | 'error' | 'unknown', message?: string}> = {};
+	let isCheckingHealth = false;
 
 	// Load endpoints from configuration
 	onMount(async () => {
@@ -277,6 +279,71 @@
 			isLoading = false;
 		}
 	}
+
+	// Check health of a specific endpoint
+	async function checkEndpointHealth(endpoint: any) {
+		const healthKey = endpoint.path;
+		healthStatus[healthKey] = { status: 'checking' };
+		
+		try {
+			// Create a simple test request
+			const testParams: any = {};
+			
+			// Add minimal required params for testing
+			if (endpoint.name === 'fetchScripture' || endpoint.name === 'fetchUltScripture' || endpoint.name === 'fetchUstScripture') {
+				testParams.reference = 'John 3:16';
+				testParams.outputFormat = 'text';
+			} else if (endpoint.name === 'fetchTranslationNotes') {
+				testParams.reference = 'John 3:16';
+			} else if (endpoint.name === 'fetchTranslationWords') {
+				testParams.reference = 'John 3:16';
+			} else if (endpoint.name === 'getTranslationWord') {
+				testParams.word = 'faith';
+			} else if (endpoint.name === 'browseTranslationWords' || endpoint.name === 'browseTranslationAcademy') {
+				// No params needed
+			} else if (endpoint.name === 'extractReferences') {
+				testParams.text = 'Check John 3:16';
+			} else if (endpoint.name === 'getAvailableBooks') {
+				testParams.resource = 'tn';
+			}
+			
+			const response = await fetch(endpoint.path, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(testParams)
+			});
+			
+			if (response.ok) {
+				const data = await response.json();
+				if (data.success !== false) {
+					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+				} else {
+					healthStatus[healthKey] = { status: 'error', message: data.error || 'Endpoint returned error' };
+				}
+			} else {
+				healthStatus[healthKey] = { status: 'error', message: `HTTP ${response.status}` };
+			}
+		} catch (error) {
+			healthStatus[healthKey] = { 
+				status: 'error', 
+				message: error instanceof Error ? error.message : 'Network error' 
+			};
+		}
+		
+		// Trigger reactivity
+		healthStatus = healthStatus;
+	}
+	
+	// Check all endpoints health
+	async function checkAllEndpointsHealth() {
+		isCheckingHealth = true;
+		const allEndpoints = [...coreEndpoints, ...extendedEndpoints, ...experimentalEndpoints];
+		
+		// Check all endpoints in parallel
+		await Promise.all(allEndpoints.map(endpoint => checkEndpointHealth(endpoint)));
+		
+		isCheckingHealth = false;
+	}
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8">
@@ -498,23 +565,29 @@
 			<!-- Core Endpoints with Sidebar -->
 			<!-- Left Sidebar -->
 			<div class="lg:col-span-1">
-				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4">
-					<h3 class="mb-4 text-lg font-semibold text-white">Core Categories</h3>
-					<div class="space-y-2">
+				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4 sticky top-4">
+					<h3 class="mb-4 text-lg font-semibold text-white">Core Endpoints</h3>
+					<div class="space-y-3">
 						{#each Object.entries(groupedEndpoints) as [groupName, group]}
-							<button 
-								class="w-full rounded-lg border border-gray-700 bg-gray-900/30 p-3 text-left transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
-								on:click={() => {/* scroll to section */}}
-							>
-								<div class="flex items-center gap-2">
-									<span class="text-xl">{group.icon}</span>
-									<div class="flex-1">
-										<h4 class="font-medium text-white">{groupName}</h4>
-										<p class="text-xs text-gray-400">{group.endpoints.length} endpoints</p>
-									</div>
-									<ChevronRight class="h-4 w-4 text-gray-500" />
+							<div>
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-400">
+									<span>{group.icon}</span>
+									{groupName}
+								</h4>
+								<div class="space-y-1">
+									{#each group.endpoints as endpoint}
+										<button
+											class="w-full rounded border border-gray-700/50 bg-gray-900/30 p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
+											class:bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
+											class:border-blue-500/50={selectedEndpoint?.name === endpoint.name}
+											on:click={() => selectEndpoint(endpoint)}
+										>
+											<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
+											<div class="text-xs text-gray-500 truncate">{endpoint.path}</div>
+										</button>
+									{/each}
 								</div>
-							</button>
+							</div>
 						{/each}
 					</div>
 				</div>
@@ -575,33 +648,20 @@
 			<!-- Extended Endpoints with Sidebar -->
 			<!-- Left Sidebar -->
 			<div class="lg:col-span-1">
-				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4">
-					<h3 class="mb-4 text-lg font-semibold text-white">Extended Features</h3>
-					<div class="space-y-2">
-						<button 
-							class="w-full rounded-lg border border-gray-700 bg-gray-900/30 p-3 text-left transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
-						>
-							<div class="flex items-center gap-2">
-								<span class="text-xl">🔍</span>
-								<div class="flex-1">
-									<h4 class="font-medium text-white">Context Intelligence</h4>
-									<p class="text-xs text-gray-400">{extendedEndpoints.filter(e => e.name.includes('context')).length} endpoints</p>
-								</div>
-								<ChevronRight class="h-4 w-4 text-gray-500" />
-							</div>
-						</button>
-						<button 
-							class="w-full rounded-lg border border-gray-700 bg-gray-900/30 p-3 text-left transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
-						>
-							<div class="flex items-center gap-2">
-								<span class="text-xl">📝</span>
-								<div class="flex-1">
-									<h4 class="font-medium text-white">Word Analysis</h4>
-									<p class="text-xs text-gray-400">{extendedEndpoints.filter(e => e.name.includes('word')).length} endpoints</p>
-								</div>
-								<ChevronRight class="h-4 w-4 text-gray-500" />
-							</div>
-						</button>
+				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4 sticky top-4">
+					<h3 class="mb-4 text-lg font-semibold text-white">Extended Endpoints</h3>
+					<div class="space-y-1">
+						{#each extendedEndpoints as endpoint}
+							<button
+								class="w-full rounded border border-gray-700/50 bg-gray-900/30 p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
+								class:bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
+								class:border-blue-500/50={selectedEndpoint?.name === endpoint.name}
+								on:click={() => selectEndpoint(endpoint)}
+							>
+								<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
+								<div class="text-xs text-gray-500 truncate">{endpoint.path}</div>
+							</button>
+						{/each}
 					</div>
 				</div>
 			</div>
@@ -681,71 +741,119 @@
 			<!-- Health Status (Full Width) -->
 			<div class="lg:col-span-3 rounded-lg border border-gray-700 bg-gray-800/50 p-6">
 				<h2 class="mb-4 text-2xl font-bold text-white">Health Status</h2>
-				<p class="mb-6 text-gray-300">Check the status of the MCP Tools backend and its dependencies.</p>
+				<p class="mb-6 text-gray-300">Live endpoint health checks - tests if each endpoint returns valid data</p>
 				
-				<div class="grid gap-4">
+				<div class="mb-4">
+					<button 
+						on:click={checkAllEndpointsHealth}
+						disabled={isCheckingHealth}
+						class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+					>
+						{#if isCheckingHealth}
+							<div class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+							Checking...
+						{:else}
+							<Activity class="h-4 w-4" />
+							Run Health Check
+						{/if}
+					</button>
+				</div>
+				
+				<div class="space-y-4">
+					<!-- Core Endpoints Health -->
 					<div class="rounded-lg border border-gray-700 bg-gray-900/30 p-4">
-						<h3 class="mb-2 text-lg font-semibold text-white">API Endpoints</h3>
-						<p class="mb-3 text-sm text-gray-400">
-							These endpoints are used to fetch configuration and perform health checks.
-						</p>
-						<div class="grid gap-3">
-							<div class="flex items-center justify-between text-sm">
-								<span class="text-gray-400">
-									<Link class="inline h-4 w-4 mr-1" />
-									/api/mcp-config
-								</span>
-								<span class="text-green-400">✅ Healthy</span>
-							</div>
-							<div class="flex items-center justify-between text-sm">
-								<span class="text-gray-400">
-									<Info class="inline h-4 w-4 mr-1" />
-									/api/health
-								</span>
-								<span class="text-green-400">✅ Healthy</span>
-							</div>
-							<div class="flex items-center justify-between text-sm">
-								<span class="text-gray-400">
-									<Activity class="inline h-4 w-4 mr-1" />
-									/api/metrics
-								</span>
-								<span class="text-green-400">✅ Healthy</span>
-							</div>
+						<h3 class="mb-3 text-lg font-semibold text-white">Core Endpoints</h3>
+						<div class="grid gap-2">
+							{#each coreEndpoints as endpoint}
+								{@const health = healthStatus[endpoint.path] || { status: 'unknown' }}
+								<div class="flex items-center justify-between rounded-lg bg-gray-800/50 p-3">
+									<div class="flex items-center gap-2">
+										<span class="text-sm font-medium text-gray-300">{endpoint.name}</span>
+										<code class="text-xs text-gray-500">{endpoint.path}</code>
+									</div>
+									<div class="flex items-center gap-2">
+										{#if health.status === 'checking'}
+											<div class="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></div>
+											<span class="text-xs text-blue-400">Checking...</span>
+										{:else if health.status === 'healthy'}
+											<Check class="h-4 w-4 text-green-400" />
+											<span class="text-xs text-green-400">Healthy</span>
+										{:else if health.status === 'error'}
+											<span class="text-red-400">❌</span>
+											<span class="text-xs text-red-400">{health.message || 'Error'}</span>
+										{:else}
+											<span class="text-gray-500">⚫</span>
+											<span class="text-xs text-gray-500">Not tested</span>
+										{/if}
+									</div>
+								</div>
+							{/each}
 						</div>
 					</div>
+
+					<!-- Extended Endpoints Health -->
 					<div class="rounded-lg border border-gray-700 bg-gray-900/30 p-4">
-						<h3 class="mb-2 text-lg font-semibold text-white">Database</h3>
-						<p class="mb-3 text-sm text-gray-400">
-							Ensures data persistence and availability.
-						</p>
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-gray-400">
-								<Database class="inline h-4 w-4 mr-1" />
-								MongoDB
-							</span>
-							<span class="text-green-400">✅ Healthy</span>
+						<h3 class="mb-3 text-lg font-semibold text-white">Extended Endpoints</h3>
+						<div class="grid gap-2">
+							{#each extendedEndpoints as endpoint}
+								{@const health = healthStatus[endpoint.path] || { status: 'unknown' }}
+								<div class="flex items-center justify-between rounded-lg bg-gray-800/50 p-3">
+									<div class="flex items-center gap-2">
+										<span class="text-sm font-medium text-gray-300">{endpoint.name}</span>
+										<code class="text-xs text-gray-500">{endpoint.path}</code>
+									</div>
+									<div class="flex items-center gap-2">
+										{#if health.status === 'checking'}
+											<div class="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></div>
+											<span class="text-xs text-blue-400">Checking...</span>
+										{:else if health.status === 'healthy'}
+											<Check class="h-4 w-4 text-green-400" />
+											<span class="text-xs text-green-400">Healthy</span>
+										{:else if health.status === 'error'}
+											<span class="text-red-400">❌</span>
+											<span class="text-xs text-red-400">{health.message || 'Error'}</span>
+										{:else}
+											<span class="text-gray-500">⚫</span>
+											<span class="text-xs text-gray-500">Not tested</span>
+										{/if}
+									</div>
+								</div>
+							{/each}
 						</div>
 					</div>
-					<div class="rounded-lg border border-gray-700 bg-gray-900/30 p-4">
-						<h3 class="mb-2 text-lg font-semibold text-white">External Services</h3>
-						<p class="mb-3 text-sm text-gray-400">
-							Integrations with external resources.
-						</p>
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-gray-400">
-								<Link class="inline h-4 w-4 mr-1" />
-								Translation API
-							</span>
-							<span class="text-green-400">✅ Healthy</span>
+
+					<!-- Experimental Endpoints Health -->
+					{#if experimentalEndpoints.length > 0}
+						<div class="rounded-lg border border-purple-700/30 bg-purple-900/10 p-4">
+							<h3 class="mb-3 text-lg font-semibold text-purple-300">🧪 Experimental Endpoints</h3>
+							<div class="grid gap-2">
+								{#each experimentalEndpoints as endpoint}
+									{@const health = healthStatus[endpoint.path] || { status: 'unknown' }}
+									<div class="flex items-center justify-between rounded-lg bg-purple-800/20 p-3">
+										<div class="flex items-center gap-2">
+											<span class="text-sm font-medium text-purple-300">{endpoint.name}</span>
+											<code class="text-xs text-purple-500">{endpoint.path}</code>
+										</div>
+										<div class="flex items-center gap-2">
+											{#if health.status === 'checking'}
+												<div class="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent"></div>
+												<span class="text-xs text-purple-400">Checking...</span>
+											{:else if health.status === 'healthy'}
+												<Check class="h-4 w-4 text-green-400" />
+												<span class="text-xs text-green-400">Healthy</span>
+											{:else if health.status === 'error'}
+												<span class="text-red-400">❌</span>
+												<span class="text-xs text-red-400">{health.message || 'Error'}</span>
+											{:else}
+												<span class="text-gray-500">⚫</span>
+												<span class="text-xs text-gray-500">Not tested</span>
+											{/if}
+										</div>
+									</div>
+								{/each}
+							</div>
 						</div>
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-gray-400">
-								<Link class="inline h-4 w-4 mr-1" />
-								Resource Storage
-							</span>
-							<span class="text-green-400">✅ Healthy</span>
-						</div>
-					</div>
+					{/if}
 				</div>
 			</div>
 		{/if}
