@@ -353,12 +353,27 @@
 				const data = await response.json();
 				// Check if endpoint is responding properly (even if underlying data is missing)
 				if (data._metadata && data._metadata.success) {
-					// Endpoint is working, even if underlying data source has issues
-					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+					// Check if the successful response actually contains errors in the data
+					if (data.data && data.data.resources) {
+						const hasErrors = data.data.resources.some((resource: any) => 
+							resource.error && (resource.error.code === 'HTTP_404' || resource.statusCode === 404)
+						);
+						if (hasErrors) {
+							healthStatus[healthKey] = { 
+								status: 'warning', 
+								message: 'Endpoint working but data not found (check file paths)' 
+							};
+						} else {
+							healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+						}
+					} else {
+						// No resources array, assume healthy if metadata says success
+						healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+					}
 				} else if (data.data && data.data.success === false && data.data.statusCode === 404) {
 					// Data not found in source, but endpoint is working
 					healthStatus[healthKey] = {
-						status: 'healthy',
+						status: 'warning',
 						message: 'Endpoint working (data not available)'
 					};
 				} else if (data.success !== false && !data.error) {
