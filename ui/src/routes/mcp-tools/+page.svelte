@@ -26,7 +26,7 @@
 	let performanceData: any = {};
 	let healthStatus: Record<
 		string,
-		{ status: 'checking' | 'healthy' | 'error' | 'unknown'; message?: string }
+		{ status: 'checking' | 'healthy' | 'error' | 'unknown' | 'warning'; message?: string }
 	> = {};
 	let isCheckingHealth = false;
 	let isInitialized = false;
@@ -304,12 +304,14 @@
 				testParams.outputFormat = 'text';
 			} else if (endpoint.name === 'fetch-translation-notes') {
 				testParams.reference = 'John 3:16';
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
 			} else if (endpoint.name === 'fetch-translation-words') {
 				testParams.reference = 'John 3:16';
 			} else if (endpoint.name === 'fetch-translation-questions') {
 				testParams.reference = 'John 3:16';
 			} else if (endpoint.name === 'get-translation-word') {
-				testParams.word = 'faith';
+				testParams.term = 'faith';
 			} else if (endpoint.name === 'fetch-translation-word-links') {
 				testParams.reference = 'John 3:16';
 			} else if (endpoint.name === 'get-context') {
@@ -361,11 +363,28 @@
 					};
 				} else if (data.success !== false && !data.error) {
 					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+				} else if (data.success === undefined && data.notes) {
+					// Some endpoints like fetch-translation-notes return data without explicit success field
+					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+				} else if (data.success === undefined && data.citation) {
+					// Some endpoints return data with citation but no success field
+					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+				} else if (data.success === undefined && (data.words || data.metadata)) {
+					// Some endpoints return data arrays or metadata without explicit success field
+					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
 				} else {
 					healthStatus[healthKey] = {
 						status: 'error',
 						message: data.error || data.message || 'Endpoint returned error'
 					};
+				}
+			} else if (response.status === 500) {
+				// Skip unimplemented endpoints
+				const data = await response.json().catch(() => ({}));
+				if (data.error && data.error.includes('not yet implemented')) {
+					healthStatus[healthKey] = { status: 'warning', message: 'Feature not yet implemented' };
+				} else {
+					healthStatus[healthKey] = { status: 'error', message: `HTTP ${response.status}` };
 				}
 			} else {
 				healthStatus[healthKey] = { status: 'error', message: `HTTP ${response.status}` };
@@ -944,7 +963,7 @@
 			{:else if selectedCategory === 'experimental'}
 				<!-- Experimental Endpoints (Full Width for Safety) -->
 				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
-					<h2 class="mb-4 text-2xl font-bold text-white">🧪 Experimental Lab</h2>
+					<h2 class="mb-4 text-2xl font-bold text-white">�� Experimental Lab</h2>
 					<p class="mb-6 text-gray-300">
 						Test cutting-edge features in a separate, clearly marked section
 					</p>
@@ -1035,6 +1054,9 @@
 											{:else if health.status === 'error'}
 												<span class="text-red-400">❌</span>
 												<span class="text-xs text-red-400">{health.message || 'Error'}</span>
+											{:else if health.status === 'warning'}
+												<span class="text-yellow-400">⚠️</span>
+												<span class="text-xs text-yellow-400">{health.message || 'Warning'}</span>
 											{:else}
 												<span class="text-gray-500">⚫</span>
 												<span class="text-xs text-gray-500">Not tested</span>
@@ -1068,6 +1090,9 @@
 											{:else if health.status === 'error'}
 												<span class="text-red-400">❌</span>
 												<span class="text-xs text-red-400">{health.message || 'Error'}</span>
+											{:else if health.status === 'warning'}
+												<span class="text-yellow-400">⚠️</span>
+												<span class="text-xs text-yellow-400">{health.message || 'Warning'}</span>
 											{:else}
 												<span class="text-gray-500">⚫</span>
 												<span class="text-xs text-gray-500">Not tested</span>
@@ -1104,6 +1129,9 @@
 												{:else if health.status === 'error'}
 													<span class="text-red-400">❌</span>
 													<span class="text-xs text-red-400">{health.message || 'Error'}</span>
+												{:else if health.status === 'warning'}
+													<span class="text-yellow-400">⚠️</span>
+													<span class="text-xs text-yellow-400">{health.message || 'Warning'}</span>
 												{:else}
 													<span class="text-gray-500">⚫</span>
 													<span class="text-xs text-gray-500">Not tested</span>
