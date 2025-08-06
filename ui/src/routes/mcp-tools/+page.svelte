@@ -351,14 +351,18 @@
 
 			if (response.ok) {
 				const data = await response.json();
-				
+
 				// Antifragile error detection: recursively search entire response for ANY error indicators
-				function hasAnyErrors(obj: any, visited = new Set()): { hasError: boolean; errorDetails: string[] } {
-					if (!obj || typeof obj !== 'object' || visited.has(obj)) return { hasError: false, errorDetails: [] };
+				function hasAnyErrors(
+					obj: any,
+					visited = new Set()
+				): { hasError: boolean; errorDetails: string[] } {
+					if (!obj || typeof obj !== 'object' || visited.has(obj))
+						return { hasError: false, errorDetails: [] };
 					visited.add(obj);
-					
+
 					const errors: string[] = [];
-					
+
 					// Check current level for ANY error indicators
 					if (obj.statusCode && obj.statusCode !== 200) {
 						errors.push(`statusCode: ${obj.statusCode}`);
@@ -370,51 +374,65 @@
 						errors.push(`status: ${obj.status}`);
 					}
 					if (obj.error) {
-						errors.push(`error: ${typeof obj.error === 'string' ? obj.error : JSON.stringify(obj.error)}`);
+						errors.push(
+							`error: ${typeof obj.error === 'string' ? obj.error : JSON.stringify(obj.error)}`
+						);
 					}
 					if (obj.message && typeof obj.message === 'string') {
 						const msg = obj.message.toLowerCase();
-						if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('failed') || msg.includes('error')) {
+						if (
+							msg.includes('not found') ||
+							msg.includes('does not exist') ||
+							msg.includes('failed') ||
+							msg.includes('error')
+						) {
 							errors.push(`message: ${obj.message}`);
 						}
 					}
 					if (obj.success === false) {
 						errors.push('success: false');
 					}
-					
+
 					// Recursively check all properties
 					for (const [key, value] of Object.entries(obj)) {
 						const nestedResult = hasAnyErrors(value, visited);
 						if (nestedResult.hasError) {
-							errors.push(...nestedResult.errorDetails.map(detail => `${key}.${detail}`));
+							errors.push(...nestedResult.errorDetails.map((detail) => `${key}.${detail}`));
 						}
 					}
-					
+
 					return { hasError: errors.length > 0, errorDetails: errors };
 				}
-				
+
 				// Check if endpoint is responding properly
 				if (data._metadata && data._metadata.success) {
 					const errorResult = hasAnyErrors(data);
-					
+
 					if (errorResult.hasError) {
 						const errorSummary = errorResult.errorDetails.slice(0, 3).join(', ');
-						const moreErrors = errorResult.errorDetails.length > 3 ? ` (+${errorResult.errorDetails.length - 3} more)` : '';
-						
+						const moreErrors =
+							errorResult.errorDetails.length > 3
+								? ` (+${errorResult.errorDetails.length - 3} more)`
+								: '';
+
 						healthStatus[healthKey] = {
 							status: 'warning',
 							message: `Endpoint working but underlying issues: ${errorSummary}${moreErrors}`
 						};
 					} else {
-						healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+						healthStatus[healthKey] = {
+							status: 'healthy',
+							message: 'Endpoint responding correctly'
+						};
 					}
 				} else if (data.data && data.data.success === false) {
 					// Data operation failed, but endpoint is working
 					const errorResult = hasAnyErrors(data.data);
-					const errorSummary = errorResult.errorDetails.length > 0 
-						? errorResult.errorDetails.slice(0, 2).join(', ')
-						: 'unknown issue';
-					
+					const errorSummary =
+						errorResult.errorDetails.length > 0
+							? errorResult.errorDetails.slice(0, 2).join(', ')
+							: 'unknown issue';
+
 					healthStatus[healthKey] = {
 						status: 'warning',
 						message: `Endpoint working (data issue: ${errorSummary})`
@@ -422,7 +440,7 @@
 				} else if (data.success !== false && !data.error) {
 					// Check for any hidden errors even in "successful" responses
 					const errorResult = hasAnyErrors(data);
-					
+
 					if (errorResult.hasError) {
 						const errorSummary = errorResult.errorDetails.slice(0, 2).join(', ');
 						healthStatus[healthKey] = {
@@ -430,12 +448,18 @@
 							message: `Response has issues: ${errorSummary}`
 						};
 					} else {
-						healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+						healthStatus[healthKey] = {
+							status: 'healthy',
+							message: 'Endpoint responding correctly'
+						};
 					}
-				} else if (data.success === undefined && (data.notes || data.citation || data.words || data.metadata)) {
+				} else if (
+					data.success === undefined &&
+					(data.notes || data.citation || data.words || data.metadata)
+				) {
 					// Some endpoints return data without explicit success field - check for hidden errors
 					const errorResult = hasAnyErrors(data);
-					
+
 					if (errorResult.hasError) {
 						const errorSummary = errorResult.errorDetails.slice(0, 2).join(', ');
 						healthStatus[healthKey] = {
@@ -443,7 +467,10 @@
 							message: `Data returned but with issues: ${errorSummary}`
 						};
 					} else {
-						healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+						healthStatus[healthKey] = {
+							status: 'healthy',
+							message: 'Endpoint responding correctly'
+						};
 					}
 				} else {
 					healthStatus[healthKey] = {
