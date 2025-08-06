@@ -292,39 +292,38 @@
 		healthStatus[healthKey] = { status: 'checking' };
 
 		try {
-			// Create a simple test request with query parameters
-			const testParams: any = {};
+			// Set test parameters based on endpoint
+			const testParams: Record<string, string | boolean> = {};
 
-			// Add minimal required params for testing
 			if (
-				endpoint.name === 'fetchScripture' ||
-				endpoint.name === 'fetchUltScripture' ||
-				endpoint.name === 'fetchUstScripture'
+				endpoint.name === 'fetch-scripture' ||
+				endpoint.name === 'fetch-ult-scripture' ||
+				endpoint.name === 'fetch-ust-scripture'
 			) {
 				testParams.reference = 'John 3:16';
 				testParams.outputFormat = 'text';
-			} else if (endpoint.name === 'fetchTranslationNotes') {
+			} else if (endpoint.name === 'fetch-translation-notes') {
 				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'fetchTranslationWords') {
+			} else if (endpoint.name === 'fetch-translation-words') {
 				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'fetchTranslationQuestions') {
+			} else if (endpoint.name === 'fetch-translation-questions') {
 				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'getTranslationWord') {
+			} else if (endpoint.name === 'get-translation-word') {
 				testParams.word = 'faith';
-			} else if (endpoint.name === 'fetchTranslationWordLinks') {
+			} else if (endpoint.name === 'fetch-translation-word-links') {
 				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'getContext') {
+			} else if (endpoint.name === 'get-context') {
 				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'getWordsForReference') {
+			} else if (endpoint.name === 'get-words-for-reference') {
 				testParams.reference = 'John 3:16';
 			} else if (
-				endpoint.name === 'browseTranslationWords' ||
-				endpoint.name === 'browseTranslationAcademy'
+				endpoint.name === 'browse-translation-words' ||
+				endpoint.name === 'browse-translation-academy'
 			) {
 				// No params needed
-			} else if (endpoint.name === 'extractReferences') {
+			} else if (endpoint.name === 'extract-references') {
 				testParams.text = 'Check John 3:16';
-			} else if (endpoint.name === 'getAvailableBooks') {
+			} else if (endpoint.name === 'get-available-books') {
 				testParams.resource = 'tn';
 			}
 
@@ -344,7 +343,7 @@
 			const response = await fetch(url, {
 				method: 'GET',
 				headers: {
-					'Accept': 'application/json'
+					Accept: 'application/json'
 				}
 			});
 
@@ -356,7 +355,10 @@
 					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
 				} else if (data.data && data.data.success === false && data.data.statusCode === 404) {
 					// Data not found in source, but endpoint is working
-					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint working (data not available)' };
+					healthStatus[healthKey] = {
+						status: 'healthy',
+						message: 'Endpoint working (data not available)'
+					};
 				} else if (data.success !== false && !data.error) {
 					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
 				} else {
@@ -393,8 +395,14 @@
 
 <svelte:head>
 	<title>MCP Tools - Translation Helps Interface</title>
-	<meta name="description" content="Complete visibility into all translation helps endpoints with real-time performance metrics." />
-	<meta name="keywords" content="MCP, Bible translation, translation tools, API, endpoints, performance metrics" />
+	<meta
+		name="description"
+		content="Complete visibility into all translation helps endpoints with real-time performance metrics."
+	/>
+	<meta
+		name="keywords"
+		content="MCP, Bible translation, translation tools, API, endpoints, performance metrics"
+	/>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl px-4 py-8">
