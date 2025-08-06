@@ -200,6 +200,27 @@ For any feature to move up a tier, it must:
    - Integration tests with real data
    - Load tests proving scalability
 
+### Specific Promotion Requirements by Feature
+
+#### AI Features (High Scrutiny Required)
+
+- **ai-content-summarizer.ts**: Replace mock responses with real LLM integration, achieve consistent <500ms response times, demonstrate cost-effectiveness
+- **ai-quality-checker.ts**: Replace mock responses with real LLM integration, validate accuracy against human expert reviews, prove reliability
+
+#### Advanced Features (Implementation Quality Focus)
+
+- **language-coverage-experimental.ts**: Remove hard-coded estimates, implement proper resource counting, test across multiple references, improve detection accuracy
+- **resource-recommendations.ts**: Validate recommendation quality against user feedback, optimize for performance
+- **automated-content-ingestion.ts**: Complete webhook implementation, add error handling, implement rate limiting
+
+#### MCP Experimental Tools
+
+- **mcp-experimental endpoint**: Each tool must individually meet all promotion criteria above before being moved to production MCP endpoint
+- All experimental tools must demonstrate real value over mock responses
+- Performance testing required under realistic load conditions
+
+**⚠️ IMPORTANT**: No experimental feature should be promoted without explicit written approval from both project maintainers AND implementation partners. This ensures quality control and prevents premature deployment of unstable features.
+
 ## Using Experimental Features
 
 ### In Development

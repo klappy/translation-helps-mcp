@@ -13,10 +13,6 @@
 	import ApiTester from './ApiTester.svelte';
 	import PerformanceMetrics from './PerformanceMetrics.svelte';
 
-	// Dynamic imports to avoid SSR issues
-	let endpointRegistry: any;
-	let initializeAllEndpoints: any;
-
 	// Categories aligned with three-tier architecture
 	type CoreCategory = 'core' | 'extended' | 'experimental';
 	type AllCategory = 'overview' | 'health' | CoreCategory | 'endpoint-detail';
@@ -45,25 +41,24 @@
 		try {
 			console.log('🔧 Initializing MCP Tools with real endpoint configurations...');
 			
-			// Dynamic import to avoid SSR issues with cross-project imports
-			// @ts-ignore - importing compiled JS module
-			const endpointModule = await import('../../../../dist/src/config/endpoints/index');
-			endpointRegistry = endpointModule.endpointRegistry;
-			initializeAllEndpoints = endpointModule.initializeAllEndpoints;
+			// Fetch endpoint configurations from API
+			const response = await fetch('/api/mcp-config');
+			const configData = await response.json();
 			
-			// Initialize all endpoint configurations
-			initializeAllEndpoints();
+			if (!configData.success) {
+				throw new Error(configData.message || 'Failed to load endpoint configurations');
+			}
 			
 			// Load core endpoints (category: 'core')
-			coreEndpoints = await loadEndpointConfigs('core');
+			coreEndpoints = configData.data.core || [];
 			console.log(`✅ Loaded ${coreEndpoints.length} core endpoints`);
 			
 			// Load extended endpoints (category: 'extended') 
-			extendedEndpoints = await loadEndpointConfigs('extended');
+			extendedEndpoints = configData.data.extended || [];
 			console.log(`✅ Loaded ${extendedEndpoints.length} extended endpoints`);
 			
 			// Load experimental endpoints (category: 'experimental')
-			experimentalEndpoints = await loadEndpointConfigs('experimental');
+			experimentalEndpoints = configData.data.experimental || [];
 			console.log(`✅ Loaded ${experimentalEndpoints.length} experimental endpoints`);
 			
 			console.log('🎉 MCP Tools successfully connected to configuration system!');
@@ -73,102 +68,7 @@
 		}
 	});
 
-	// Load endpoint configurations from registry
-	async function loadEndpointConfigs(category: CoreCategory) {
-		try {
-			if (category === 'experimental') {
-				// Manual experimental endpoints list (not yet in configuration system)
-				return [
-					{
-						name: 'resource-recommendations',
-						title: 'AI Resource Recommendations',
-						description: 'Intelligent, context-aware resource suggestions powered by AI',
-						path: '/api/resource-recommendations',
-						category: 'experimental',
-						tags: ['ai', 'recommendations', 'experimental'],
-						enabled: true,
-						examples: [
-							{
-								title: 'Get recommendations for John 3:16',
-								params: { reference: 'John 3:16', language: 'en', organization: 'unfoldingWord' }
-							}
-						],
-						experimental: {
-							warning: 'Uses experimental AI features. Results may vary.',
-							stability: 'alpha',
-							lastUpdated: '2024-01-01'
-						}
-					},
-					{
-						name: 'chat',
-						title: 'AI Chat Interface',
-						description: 'Interactive chat with translation helps AI assistant',
-						path: '/api/chat',
-						category: 'experimental',
-						tags: ['ai', 'chat', 'experimental'],
-						enabled: true,
-						examples: [
-							{
-								title: 'Ask about a Bible verse',
-								params: { message: 'What does John 3:16 mean?', context: 'translation' }
-							}
-						],
-						experimental: {
-							warning: 'AI responses are experimental and should be verified.',
-							stability: 'beta',
-							lastUpdated: '2024-01-01'
-						}
-					},
-					{
-						name: 'chat-stream',
-						title: 'Streaming AI Chat',
-						description: 'Real-time streaming chat responses from AI assistant',
-						path: '/api/chat-stream',
-						category: 'experimental',
-						tags: ['ai', 'chat', 'streaming', 'experimental'],
-						enabled: true,
-						examples: [
-							{
-								title: 'Stream a conversation',
-								params: { message: 'Explain the Trinity', stream: true }
-							}
-						],
-						experimental: {
-							warning: 'Streaming responses are experimental.',
-							stability: 'alpha',
-							lastUpdated: '2024-01-01'
-						}
-					},
-					{
-						name: 'mcp',
-						title: 'MCP Tools Server',
-						description: 'Model Context Protocol server for AI assistant integration',
-						path: '/api/mcp',
-						category: 'experimental',
-						tags: ['mcp', 'integration', 'experimental'],
-						enabled: true,
-						examples: [
-							{
-								title: 'Get available MCP tools',
-								params: { action: 'list-tools' }
-							}
-						],
-						experimental: {
-							warning: 'MCP integration is experimental.',
-							stability: 'beta',
-							lastUpdated: '2024-01-01'
-						}
-					}
-				];
-			}
-			return endpointRegistry.getByCategory(category);
-		} catch (error) {
-			console.error(`Failed to load ${category} endpoints:`, error);
-			return [];
-		}
-	}
-
-	// Get endpoints by three-tier architecture category
+	// Get endpoints by category from our loaded state
 	function getEndpointsByCategory(category: CoreCategory) {
 		switch (category) {
 			case 'core':
@@ -356,14 +256,14 @@
 	<!-- Tabs for Core vs Experimental -->
 	<div class="mb-6 flex border-b border-gray-700">
 		<button
-			class="tab-button"
+			class="tab-button touch-friendly"
 			class:active={selectedCategory !== 'experimental'}
 			on:click={() => selectedCategory = selectedCategory === 'experimental' ? 'overview' : selectedCategory}
 		>
 			Core Tools
 		</button>
 		<button
-			class="tab-button"
+			class="tab-button touch-friendly"
 			class:active={selectedCategory === 'experimental'}
 			on:click={() => selectedCategory = 'experimental'}
 		>
@@ -391,13 +291,13 @@
 	{/if}
 
 	<!-- Main Content -->
-	<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
 		<!-- Left Sidebar - Categories/Endpoints -->
 		<div class="lg:col-span-1">
 			{#if selectedEndpoint}
 				<!-- Endpoint Details -->
 				<button
-					class="mb-4 flex items-center text-sm text-blue-400 hover:text-blue-300"
+					class="mb-4 flex items-center text-sm text-blue-400 hover:text-blue-300 touch-friendly"
 					on:click={() => {
 						selectedEndpoint = null;
 						if (selectedCategory === null) selectedCategory = 'overview';
@@ -406,13 +306,13 @@
 					← Back to categories
 				</button>
 
-				<div class="rounded-lg border border-gray-700 bg-gray-800 p-6">
-					<h3 class="mb-2 text-xl font-semibold text-white">{selectedEndpoint.name}</h3>
+				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4 lg:p-6">
+					<h3 class="mb-2 text-lg lg:text-xl font-semibold text-white">{selectedEndpoint.name}</h3>
 					<p class="mb-4 text-sm text-gray-300">{selectedEndpoint.description}</p>
 
 					<div class="mb-4">
 						<span class="text-xs font-medium text-gray-400">ENDPOINT</span>
-						<code class="mt-1 block rounded bg-gray-900 px-3 py-2 text-sm text-green-400">
+						<code class="mt-1 block rounded bg-gray-900 px-3 py-2 text-xs lg:text-sm text-green-400 overflow-x-auto">
 							{selectedEndpoint.path}
 						</code>
 					</div>
@@ -547,17 +447,17 @@
 
 					<!-- Examples -->
 					{#if selectedEndpoint.examples?.length > 0}
-						<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
-							<div class="mb-4 flex items-center justify-between">
+						<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4 lg:p-6">
+							<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
 								<h3 class="text-lg font-semibold text-white">Real Data Examples</h3>
-								<span class="rounded-full bg-blue-900/30 px-3 py-1 text-xs font-medium text-blue-400">
+								<span class="rounded-full bg-blue-900/30 px-3 py-1 text-xs font-medium text-blue-400 self-start sm:self-auto">
 									{selectedEndpoint.examples.length} example{selectedEndpoint.examples.length !== 1 ? 's' : ''}
 								</span>
 							</div>
 							<div class="space-y-4">
 								{#each selectedEndpoint.examples as example, index}
-									<div class="example-card border border-gray-600/50">
-										<div class="mb-3 flex items-start justify-between">
+									<details class="example-card border border-gray-600/50 group" open={index === 0}>
+										<summary class="cursor-pointer p-4 hover:bg-gray-700/30 touch-friendly flex items-center justify-between">
 											<div class="flex-1">
 												<h4 class="font-medium text-white">
 													{example.name || example.title || `Example ${index + 1}`}
@@ -567,57 +467,59 @@
 												{/if}
 											</div>
 											<button
-												class="flex items-center space-x-1 rounded px-2 py-1 text-xs text-blue-400 hover:bg-blue-900/20 hover:text-blue-300"
-												on:click={() => copyExample(example, index)}
+												class="flex items-center space-x-1 rounded px-3 py-2 text-xs text-blue-400 hover:bg-blue-900/20 hover:text-blue-300 touch-friendly"
+												on:click|stopPropagation={() => copyExample(example, index)}
 											>
 												{#if copiedExample === index}
 													<Check class="h-3 w-3" />
-													<span>Copied!</span>
+													<span class="hidden sm:inline">Copied!</span>
 												{:else}
 													<Copy class="h-3 w-3" />
-													<span>Copy Params</span>
+													<span class="hidden sm:inline">Copy</span>
 												{/if}
 											</button>
-										</div>
+										</summary>
 										
-										<!-- Parameters -->
-										<div class="mb-3">
-											<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Parameters</span>
-											<pre class="mt-1 overflow-x-auto rounded bg-gray-900 p-3 text-sm">
+										<div class="border-t border-gray-600/50 p-4">
+											<!-- Parameters -->
+											<div class="mb-3">
+												<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Parameters</span>
+												<pre class="mt-1 overflow-x-auto rounded bg-gray-900 p-3 text-xs lg:text-sm whitespace-pre-wrap break-words">
 <code class="text-green-400">{JSON.stringify(example.params, null, 2)}</code></pre>
-										</div>
-
-										<!-- Expected Content (if available) -->
-										{#if example.expectedContent}
-											<div class="mt-3 rounded bg-gray-900/50 p-3">
-												<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Expected Response</span>
-												<div class="mt-2 space-y-2">
-													{#if example.expectedContent.contains?.length > 0}
-														<div>
-															<span class="text-xs text-blue-400">Contains:</span>
-															<div class="mt-1 flex flex-wrap gap-1">
-																{#each example.expectedContent.contains as pattern}
-																	<span class="rounded bg-blue-900/20 px-2 py-0.5 text-xs text-blue-300">{pattern}</span>
-																{/each}
-															</div>
-														</div>
-													{/if}
-													{#if example.expectedContent.minLength}
-														<div>
-															<span class="text-xs text-gray-400">Min length: </span>
-															<span class="text-xs text-white">{example.expectedContent.minLength} chars</span>
-														</div>
-													{/if}
-													{#if example.expectedContent.fields}
-														<div>
-															<span class="text-xs text-gray-400">Fields: </span>
-															<code class="text-xs text-gray-300">{Object.keys(example.expectedContent.fields).join(', ')}</code>
-														</div>
-													{/if}
-												</div>
 											</div>
-										{/if}
-									</div>
+
+											<!-- Expected Content (if available) -->
+											{#if example.expectedContent}
+												<div class="mt-3 rounded bg-gray-900/50 p-3">
+													<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Expected Response</span>
+													<div class="mt-2 space-y-2">
+														{#if example.expectedContent.contains?.length > 0}
+															<div>
+																<span class="text-xs text-blue-400">Contains:</span>
+																<div class="mt-1 flex flex-wrap gap-1">
+																	{#each example.expectedContent.contains as pattern}
+																		<span class="rounded bg-blue-900/20 px-2 py-0.5 text-xs text-blue-300">{pattern}</span>
+																	{/each}
+																</div>
+															</div>
+														{/if}
+														{#if example.expectedContent.minLength}
+															<div>
+																<span class="text-xs text-gray-400">Min length: </span>
+																<span class="text-xs text-white">{example.expectedContent.minLength} chars</span>
+															</div>
+														{/if}
+														{#if example.expectedContent.fields}
+															<div>
+																<span class="text-xs text-gray-400">Fields: </span>
+																<code class="text-xs text-gray-300">{Object.keys(example.expectedContent.fields).join(', ')}</code>
+															</div>
+														{/if}
+													</div>
+												</div>
+											{/if}
+										</div>
+									</details>
 								{/each}
 							</div>
 						</div>
@@ -774,6 +676,7 @@
 		background-color: rgb(31 41 55 / 0.5);
 		padding: 1.5rem;
 		transition: all 300ms;
+		min-height: 44px; /* Touch-friendly minimum */
 	}
 
 	.category-card:hover {
@@ -793,6 +696,7 @@
 		background-color: rgb(31 41 55 / 0.3);
 		padding: 1rem;
 		transition: all 300ms;
+		min-height: 44px; /* Touch-friendly minimum */
 	}
 
 	.endpoint-card:hover {
@@ -812,6 +716,10 @@
 		padding: 0.75rem 1.5rem;
 		font-weight: 500;
 		transition: all 300ms;
+		min-height: 44px; /* Touch-friendly minimum */
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.tab-button.active {
@@ -826,5 +734,31 @@
 
 	.tab-button:not(.active):hover {
 		color: rgb(209 213 219 / 1);
+	}
+
+	/* Touch-friendly interactive elements */
+	.touch-friendly {
+		min-height: 44px;
+		min-width: 44px;
+		cursor: pointer;
+		touch-action: manipulation;
+	}
+
+	/* Improve mobile scrolling for code blocks */
+	@media (max-width: 768px) {
+		pre {
+			font-size: 0.75rem;
+			line-height: 1.2;
+		}
+		
+		.tab-button {
+			padding: 0.75rem 1rem;
+			font-size: 0.875rem;
+		}
+		
+		/* Ensure proper touch targets on mobile */
+		button, .category-card, .endpoint-card {
+			min-height: 44px;
+		}
 	}
 </style>
