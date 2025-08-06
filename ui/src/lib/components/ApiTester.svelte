@@ -113,6 +113,7 @@
 	{#if endpoint.parameters && endpoint.parameters.length > 0}
 		<div class="mb-6 grid gap-4">
 			{#each endpoint.parameters as param}
+				{#if param.name !== 'includeAlignment'}
 				<div>
 					<label
 						for="{endpoint.name}-{param.name}"
@@ -132,49 +133,72 @@
 							class="rounded border border-white/20 bg-white/10 text-purple-600 focus:border-purple-500 focus:outline-none"
 						/>
 					{:else if param.options}
-						<div class="relative">
-							<input
+						<!-- Special handling for outputFormat - always use dropdown -->
+						{#if param.name === 'outputFormat'}
+							<select
 								id="{endpoint.name}-{param.name}"
-								type="text"
 								bind:value={formData[param.name]}
-								placeholder={param.description || `Enter ${param.name}`}
-								list="{endpoint.name}-{param.name}-list"
-								class="w-full rounded border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
-							/>
-							<datalist id="{endpoint.name}-{param.name}-list">
+								class="w-full rounded border border-white/20 bg-white/10 px-3 py-2 text-white focus:border-purple-500 focus:outline-none"
+							>
+								<option value="">Select output format</option>
 								{#each param.options as option}
 									<option value={option}>{option}</option>
 								{/each}
-							</datalist>
-							{#if param.name === 'lang' || param.name === 'language'}
-								<p class="mt-1 text-xs text-gray-400">
-									Common: en, es, fr, de, pt, ru, zh, ar, hi, sw, id
-								</p>
-								<!-- TODO: Future enhancement - fetch available languages from DCS API
-								     Endpoints needed:
-								     - GET /api/v1/catalog/languages
-								     - GET /api/v1/repos/search?lang=<code>
-								-->
-							{:else if param.name === 'org' || param.name === 'organization'}
-								<p class="mt-1 text-xs text-gray-400">
-									Common: unfoldingWord, Door43-Catalog, STR, BCS
-								</p>
-								<!-- TODO: Future enhancement - fetch organizations from DCS API
-								     Endpoints needed:
-								     - GET /api/v1/orgs
-								     - Filter by orgs that have translation resources
-								-->
-							{:else if param.name === 'resource'}
-								<p class="mt-1 text-xs text-gray-400">
-									Common: tn, tw, tq, ta, obs, ult, ust
-								</p>
-								<!-- TODO: Future enhancement - fetch resource types from DCS API
-								     Endpoints needed:
-								     - GET /api/v1/repos/search?topic=<resource_type>
-								     - Parse subject field from repos
-								-->
-							{/if}
-						</div>
+							</select>
+							<p class="mt-1 text-xs text-gray-400">
+								{#if param.options.includes('text')}
+									text = plain text, usfm = formatted scripture, json = structured data
+								{/if}
+							</p>
+						<!-- Skip includeAlignment - it's automatic with USFM -->
+						{:else if param.name === 'includeAlignment'}
+							<!-- Hidden - automatically handled by outputFormat selection -->
+						{:else}
+							<!-- All other parameters use text input with datalist -->
+							<div class="relative">
+								<input
+									id="{endpoint.name}-{param.name}"
+									type="text"
+									bind:value={formData[param.name]}
+									placeholder={param.description || `Enter ${param.name}`}
+									list="{endpoint.name}-{param.name}-list"
+									class="w-full rounded border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+								/>
+								<datalist id="{endpoint.name}-{param.name}-list">
+									{#each param.options as option}
+										<option value={option}>{option}</option>
+									{/each}
+								</datalist>
+								{#if param.name === 'lang' || param.name === 'language'}
+									<p class="mt-1 text-xs text-gray-400">
+										Common: en, es, fr, de, pt, ru, zh, ar, hi, sw, id
+									</p>
+									<!-- TODO: Future enhancement - fetch available languages from DCS API
+									     Endpoints needed:
+									     - GET /api/v1/catalog/languages
+									     - GET /api/v1/repos/search?lang=<code>
+									-->
+								{:else if param.name === 'org' || param.name === 'organization'}
+									<p class="mt-1 text-xs text-gray-400">
+										Common: unfoldingWord, Door43-Catalog, STR, BCS
+									</p>
+									<!-- TODO: Future enhancement - fetch organizations from DCS API
+									     Endpoints needed:
+									     - GET /api/v1/orgs
+									     - Filter by orgs that have translation resources
+									-->
+								{:else if param.name === 'resource'}
+									<p class="mt-1 text-xs text-gray-400">
+										Common: tn, tw, tq, ta, obs, ult, ust
+									</p>
+									<!-- TODO: Future enhancement - fetch resource types from DCS API
+									     Endpoints needed:
+									     - GET /api/v1/repos/search?topic=<resource_type>
+									     - Parse subject field from repos
+									-->
+								{/if}
+							</div>
+						{/if}
 					{:else}
 						<input
 							id="{endpoint.name}-{param.name}"
@@ -189,6 +213,7 @@
 						<p class="mt-1 text-xs text-gray-400">{param.description}</p>
 					{/if}
 				</div>
+				{/if}
 			{/each}
 		</div>
 	{/if}
