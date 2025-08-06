@@ -13,19 +13,16 @@
 	import ApiTester from './ApiTester.svelte';
 	import PerformanceMetrics from './PerformanceMetrics.svelte';
 
-	// Categories aligned with three-tier architecture
-	type CoreCategory = 'core' | 'extended' | 'experimental';
-	type AllCategory = 'overview' | 'health' | CoreCategory | 'endpoint-detail';
+	// Three main categories
+	type MainCategory = 'core' | 'extended' | 'experimental';
 	const categoryConfig = {
-		overview: { name: 'Overview', icon: Info },
-		health: { name: 'Health Status', icon: Activity },
-		core: { name: 'Core Endpoints', icon: Database },
+		core: { name: 'Core Tools', icon: Database },
 		extended: { name: 'Extended Features', icon: Link },
 		experimental: { name: 'Experimental Lab', icon: Beaker }
 	} as const;
 
 	// State
-	let selectedCategory: string = 'overview';
+	let selectedCategory: MainCategory = 'core';
 	let selectedEndpoint: any = null;
 	let coreEndpoints: any[] = [];
 	let extendedEndpoints: any[] = [];
@@ -69,7 +66,7 @@
 	});
 
 	// Get endpoints by category from our loaded state
-	function getEndpointsByCategory(category: CoreCategory) {
+	function getEndpointsByCategory(category: MainCategory) {
 		switch (category) {
 			case 'core':
 				return coreEndpoints;
@@ -80,6 +77,44 @@
 			default:
 				return [];
 		}
+	}
+
+	// Group core endpoints by subcategory
+	function groupCoreEndpoints(endpoints: any[]) {
+		const groups: Record<string, any[]> = {
+			scripture: [],
+			translationHelps: [],
+			discovery: []
+		};
+
+		endpoints.forEach(endpoint => {
+			const name = endpoint.name.toLowerCase();
+			if (name.includes('scripture') || name.includes('ult') || name.includes('ust')) {
+				groups.scripture.push(endpoint);
+			} else if (name.includes('translation')) {
+				groups.translationHelps.push(endpoint);
+			} else {
+				groups.discovery.push(endpoint);
+			}
+		});
+
+		return {
+			'Scripture Resources': {
+				icon: '📖',
+				description: 'Access Bible texts in original and simplified languages',
+				endpoints: groups.scripture
+			},
+			'Translation Helps': {
+				icon: '📚',
+				description: 'Questions, notes, word definitions, and study materials',
+				endpoints: groups.translationHelps
+			},
+			'Discovery & Meta': {
+				icon: '🔍',
+				description: 'Explore available languages, books, and resources',
+				endpoints: groups.discovery
+			}
+		};
 	}
 
 	// Copy example to clipboard
@@ -99,7 +134,6 @@
 	function selectEndpoint(endpoint: any) {
 		// Transform endpoint config to ApiTester format
 		selectedEndpoint = transformEndpointForTesting(endpoint);
-		selectedCategory = 'endpoint-detail';
 		// Clear previous results when selecting new endpoint
 		apiResult = null;
 		isLoading = false;
@@ -253,19 +287,35 @@
 		</p>
 	</div>
 
-	<!-- Tabs for Core vs Experimental -->
-	<div class="mb-6 flex border-b border-gray-700">
+	<!-- Three Main Tabs -->
+	<div class="mb-6 flex space-x-1 rounded-lg bg-gray-800 p-1">
 		<button
-			class="tab-button touch-friendly"
-			class:active={selectedCategory !== 'experimental'}
-			on:click={() => selectedCategory = selectedCategory === 'experimental' ? 'overview' : selectedCategory}
+			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
+			class:active={selectedCategory === 'core'}
+			on:click={() => {
+				selectedCategory = 'core';
+				selectedEndpoint = null;
+			}}
 		>
 			Core Tools
 		</button>
 		<button
-			class="tab-button touch-friendly"
+			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
+			class:active={selectedCategory === 'extended'}
+			on:click={() => {
+				selectedCategory = 'extended';
+				selectedEndpoint = null;
+			}}
+		>
+			Extended Features
+		</button>
+		<button
+			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
 			class:active={selectedCategory === 'experimental'}
-			on:click={() => selectedCategory = 'experimental'}
+			on:click={() => {
+				selectedCategory = 'experimental';
+				selectedEndpoint = null;
+			}}
 		>
 			🧪 Experimental Lab
 		</button>
@@ -291,380 +341,273 @@
 	{/if}
 
 	<!-- Main Content -->
-	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-		<!-- Left Sidebar - Categories/Endpoints -->
-		<div class="lg:col-span-1">
-			{#if selectedEndpoint}
-				<!-- Endpoint Details -->
+	<div>
+		{#if selectedEndpoint}
+			<!-- Endpoint Testing Interface -->
+			<div class="space-y-6">
+				<!-- Back Button -->
 				<button
-					class="mb-4 flex items-center text-sm text-blue-400 hover:text-blue-300 touch-friendly"
+					class="flex items-center text-sm text-blue-400 hover:text-blue-300 touch-friendly"
 					on:click={() => {
 						selectedEndpoint = null;
-						if (selectedCategory === null) selectedCategory = 'overview';
 					}}
 				>
-					← Back to categories
+					← Back to {categoryConfig[selectedCategory as keyof typeof categoryConfig]?.name || 'endpoints'}
 				</button>
 
+				<!-- Endpoint Details Card -->
 				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4 lg:p-6">
 					<h3 class="mb-2 text-lg lg:text-xl font-semibold text-white">{selectedEndpoint.name}</h3>
 					<p class="mb-4 text-sm text-gray-300">{selectedEndpoint.description}</p>
 
-					<div class="mb-4">
-						<span class="text-xs font-medium text-gray-400">ENDPOINT</span>
-						<code class="mt-1 block rounded bg-gray-900 px-3 py-2 text-xs lg:text-sm text-green-400 overflow-x-auto">
-							{selectedEndpoint.path}
-						</code>
-					</div>
-
-					{#if selectedEndpoint.performance}
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-gray-400">Expected response time</span>
-							<span class="font-medium text-white">{selectedEndpoint.performance.expectedMs}ms</span>
-						</div>
-					{/if}
-				</div>
-			{:else if selectedCategory === 'experimental'}
-				<!-- Experimental Lab Header with Warning -->
-				<div class="mb-6 rounded-lg border border-orange-500/30 bg-orange-900/10 p-4">
-					<div class="flex items-start space-x-3">
-						<Beaker class="mt-1 h-5 w-5 text-orange-400" />
+					<div class="space-y-3 text-sm">
 						<div>
-							<h3 class="text-lg font-semibold text-orange-400">🧪 Experimental Lab</h3>
-							<p class="mt-1 text-sm text-orange-300">
-								These features are in active development and may be unstable. Use with caution in production environments.
-							</p>
+							<span class="font-medium text-gray-400">Endpoint:</span>
+							<code class="ml-2 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-900 px-2 py-1 text-xs text-blue-400">{selectedEndpoint.path}</code>
 						</div>
-					</div>
-				</div>
-
-				<!-- Experimental Endpoints List -->
-				<div class="space-y-3">
-					{#each experimentalEndpoints as endpoint}
-						<div
-							class="endpoint-card border-orange-500/20 hover:border-orange-500/40"
-							class:selected={selectedEndpoint === endpoint}
-							on:click={() => selectEndpoint(endpoint)}
-						>
-							<div class="flex items-start justify-between">
-								<div class="flex-1">
-									<div class="flex items-center space-x-2">
-										<h4 class="font-medium text-white">{endpoint.title || endpoint.name}</h4>
-										{#if endpoint.experimental?.stability}
-											<span class="rounded-full px-2 py-0.5 text-xs font-medium
-												{endpoint.experimental.stability === 'alpha' ? 'bg-red-900/30 text-red-400' : 
-												 endpoint.experimental.stability === 'beta' ? 'bg-yellow-900/30 text-yellow-400' : 
-												 'bg-green-900/30 text-green-400'}">
-												{endpoint.experimental.stability}
-											</span>
-										{/if}
-									</div>
-									<p class="mt-1 text-sm text-gray-400">{endpoint.description}</p>
-									{#if endpoint.experimental?.warning}
-										<p class="mt-2 text-xs text-orange-400">⚠️ {endpoint.experimental.warning}</p>
-									{/if}
-								</div>
-								<ChevronRight class="h-4 w-4 text-gray-500" />
-							</div>
+						<div>
+							<span class="font-medium text-gray-400">Category:</span>
+							<span class="ml-2 capitalize text-white">{selectedEndpoint.category}</span>
 						</div>
-					{/each}
-					{#if experimentalEndpoints.length === 0}
-						<div class="rounded-lg border border-gray-700 bg-gray-800/30 p-6 text-center">
-							<Beaker class="mx-auto h-8 w-8 text-gray-500" />
-							<p class="mt-2 text-sm text-gray-500">No experimental features available</p>
-							<p class="mt-1 text-xs text-gray-600">Check back later for cutting-edge features!</p>
-						</div>
-					{/if}
-				</div>
-			{:else if selectedCategory && selectedCategory !== 'overview' && selectedCategory !== 'health'}
-				<!-- Endpoints for Selected Category -->
-				<h3 class="mb-4 text-lg font-semibold text-white">
-					{categoryConfig[selectedCategory as keyof typeof categoryConfig]?.name} Endpoints
-				</h3>
-				<div class="space-y-3">
-					{#each getEndpointsByCategory(selectedCategory as CoreCategory) as endpoint}
-						<div
-							class="endpoint-card"
-							class:selected={selectedEndpoint === endpoint}
-							on:click={() => selectEndpoint(endpoint)}
-						>
-							<h4 class="font-medium text-white">{endpoint.name}</h4>
-							<p class="mt-1 text-sm text-gray-400">{endpoint.description}</p>
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<!-- Category Grid -->
-				<h3 class="mb-4 text-lg font-semibold text-white">Categories</h3>
-				<div class="space-y-3">
-					{#each Object.entries(categoryConfig) as [key, config]}
-						{#if key !== 'experimental'}
-							<div
-								class="category-card"
-								class:selected={selectedCategory === key}
-								on:click={() => {
-									selectedCategory = key as AllCategory;
-									selectedEndpoint = null;
-								}}
-							>
-								<div class="flex items-start space-x-3">
-									<svelte:component this={config.icon} class="mt-1 h-5 w-5 text-blue-400" />
-									<div class="flex-1">
-										<h4 class="font-medium text-white">{config.name}</h4>
-										{#if key === 'overview'}
-											<p class="mt-1 text-sm text-gray-400">Start here for MCP Tools overview and documentation</p>
-										{:else if key === 'health'}
-											<p class="mt-1 text-sm text-gray-400">System status and endpoint health monitoring</p>
-										{:else if key === 'core'}
-											<p class="mt-1 text-sm text-gray-400">Fast, direct access to Door43 resources with minimal processing</p>
-										{:else if key === 'extended'}
-											<p class="mt-1 text-sm text-gray-400">Intelligent features that combine resources for enhanced workflows</p>
-										{/if}
-									</div>
+						{#if selectedEndpoint.tags?.length > 0}
+							<div>
+								<span class="font-medium text-gray-400">Tags:</span>
+								<div class="mt-1 flex flex-wrap gap-1">
+									{#each selectedEndpoint.tags as tag}
+										<span class="rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-300">{tag}</span>
+									{/each}
 								</div>
 							</div>
 						{/if}
-					{/each}
-				</div>
-			{/if}
-		</div>
-
-		<!-- Right Content Area -->
-		<div class="lg:col-span-2">
-			{#if selectedEndpoint}
-				<!-- Endpoint Testing Interface -->
-				<div class="space-y-6">
-					<!-- Parameter Form -->
-					<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
-						<h3 class="mb-4 text-lg font-semibold text-white">Parameters</h3>
-						<ApiTester
-							endpoint={selectedEndpoint}
-							loading={isLoading}
-							result={apiResult}
-							on:test={handleApiTest}
-						/>
 					</div>
+				</div>
 
-					<!-- Examples -->
-					{#if selectedEndpoint.examples?.length > 0}
-						<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4 lg:p-6">
-							<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-								<h3 class="text-lg font-semibold text-white">Real Data Examples</h3>
-								<span class="rounded-full bg-blue-900/30 px-3 py-1 text-xs font-medium text-blue-400 self-start sm:self-auto">
-									{selectedEndpoint.examples.length} example{selectedEndpoint.examples.length !== 1 ? 's' : ''}
-								</span>
-							</div>
-							<div class="space-y-4">
-								{#each selectedEndpoint.examples as example, index}
-									<details class="example-card border border-gray-600/50 group" open={index === 0}>
-										<summary class="cursor-pointer p-4 hover:bg-gray-700/30 touch-friendly flex items-center justify-between">
-											<div class="flex-1">
-												<h4 class="font-medium text-white">
-													{example.name || example.title || `Example ${index + 1}`}
-												</h4>
-												{#if example.description}
-													<p class="mt-1 text-sm text-gray-400">{example.description}</p>
-												{/if}
-											</div>
-											<button
-												class="flex items-center space-x-1 rounded px-3 py-2 text-xs text-blue-400 hover:bg-blue-900/20 hover:text-blue-300 touch-friendly"
-												on:click|stopPropagation={() => copyExample(example, index)}
-											>
-												{#if copiedExample === index}
-													<Check class="h-3 w-3" />
-													<span class="hidden sm:inline">Copied!</span>
-												{:else}
-													<Copy class="h-3 w-3" />
-													<span class="hidden sm:inline">Copy</span>
-												{/if}
-											</button>
-										</summary>
-										
-										<div class="border-t border-gray-600/50 p-4">
-											<!-- Parameters -->
-											<div class="mb-3">
-												<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Parameters</span>
-												<pre class="mt-1 overflow-x-auto rounded bg-gray-900 p-3 text-xs lg:text-sm whitespace-pre-wrap break-words">
-<code class="text-green-400">{JSON.stringify(example.params, null, 2)}</code></pre>
-											</div>
+				<!-- Parameter Form -->
+				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+					<h3 class="mb-4 text-lg font-semibold text-white">Parameters</h3>
+					<ApiTester
+						endpoint={selectedEndpoint}
+						loading={isLoading}
+						result={apiResult}
+						on:test={handleApiTest}
+					/>
+				</div>
 
-											<!-- Expected Content (if available) -->
-											{#if example.expectedContent}
-												<div class="mt-3 rounded bg-gray-900/50 p-3">
-													<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Expected Response</span>
-													<div class="mt-2 space-y-2">
-														{#if example.expectedContent.contains?.length > 0}
-															<div>
-																<span class="text-xs text-blue-400">Contains:</span>
-																<div class="mt-1 flex flex-wrap gap-1">
-																	{#each example.expectedContent.contains as pattern}
-																		<span class="rounded bg-blue-900/20 px-2 py-0.5 text-xs text-blue-300">{pattern}</span>
-																	{/each}
-																</div>
-															</div>
-														{/if}
-														{#if example.expectedContent.minLength}
-															<div>
-																<span class="text-xs text-gray-400">Min length: </span>
-																<span class="text-xs text-white">{example.expectedContent.minLength} chars</span>
-															</div>
-														{/if}
-														{#if example.expectedContent.fields}
-															<div>
-																<span class="text-xs text-gray-400">Fields: </span>
-																<code class="text-xs text-gray-300">{Object.keys(example.expectedContent.fields).join(', ')}</code>
-															</div>
-														{/if}
-													</div>
-												</div>
+				<!-- Examples -->
+				{#if selectedEndpoint.examples?.length > 0}
+					<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4 lg:p-6">
+						<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+							<h3 class="text-lg font-semibold text-white">Real Data Examples</h3>
+							<span class="rounded-full bg-blue-900/30 px-3 py-1 text-xs font-medium text-blue-400 self-start sm:self-auto">
+								{selectedEndpoint.examples.length} example{selectedEndpoint.examples.length !== 1 ? 's' : ''}
+							</span>
+						</div>
+						<div class="space-y-4">
+							{#each selectedEndpoint.examples as example, index}
+								<details class="example-card border border-gray-600/50 group" open={index === 0}>
+									<summary class="cursor-pointer p-4 hover:bg-gray-700/30 touch-friendly flex items-center justify-between">
+										<div class="flex-1">
+											<h4 class="font-medium text-white">
+												{example.name || example.title || `Example ${index + 1}`}
+											</h4>
+											{#if example.description}
+												<p class="mt-1 text-sm text-gray-400">{example.description}</p>
 											{/if}
 										</div>
-									</details>
-								{/each}
-							</div>
-						</div>
-					{/if}
+										<button
+											class="flex items-center space-x-1 rounded px-3 py-2 text-xs text-blue-400 hover:bg-blue-900/20 hover:text-blue-300 touch-friendly"
+											on:click|stopPropagation={() => copyExample(example, index)}
+										>
+											{#if copiedExample === index}
+												<Check class="h-3 w-3" />
+												<span class="hidden sm:inline">Copied!</span>
+											{:else}
+												<Copy class="h-3 w-3" />
+												<span class="hidden sm:inline">Copy</span>
+											{/if}
+										</button>
+									</summary>
+									
+									<div class="border-t border-gray-600/50 p-4">
+										<!-- Parameters -->
+										<div class="mb-3">
+											<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Parameters</span>
+											<pre class="mt-1 overflow-x-auto rounded bg-gray-900 p-3 text-xs lg:text-sm whitespace-pre-wrap break-words">
+<code class="text-green-400">{JSON.stringify(example.params, null, 2)}</code></pre>
+										</div>
 
-					<!-- Performance Metrics -->
-					{#if performanceData[selectedEndpoint.name]}
-						<PerformanceMetrics data={performanceData[selectedEndpoint.name]} />
-					{/if}
-				</div>
-			{:else if selectedCategory === 'overview'}
-				<!-- Overview Content -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-8">
-					<h2 class="mb-4 text-2xl font-bold text-white">Welcome to MCP Tools</h2>
-					<p class="mb-6 text-gray-300">
-						This interface provides complete visibility into all translation helps endpoints. 
-						Select a category to explore available tools, test parameters, and monitor performance.
-					</p>
-
-					<div class="space-y-4">
-						<div class="flex items-start space-x-3">
-							<Database class="mt-1 h-5 w-5 text-blue-400" />
-							<div>
-								<h3 class="font-medium text-white">Core Tools</h3>
-								<p class="text-sm text-gray-400">
-									Production-ready endpoints for scripture, translation helps, and resource discovery
-								</p>
-							</div>
-						</div>
-
-						<div class="flex items-start space-x-3">
-							<Activity class="mt-1 h-5 w-5 text-green-400" />
-							<div>
-								<h3 class="font-medium text-white">Real-time Metrics</h3>
-								<p class="text-sm text-gray-400">
-									Monitor response times, cache performance, and endpoint health
-								</p>
-							</div>
-						</div>
-
-						<div class="flex items-start space-x-3">
-							<Beaker class="mt-1 h-5 w-5 text-purple-400" />
-							<div>
-								<h3 class="font-medium text-white">Experimental Lab</h3>
-								<p class="text-sm text-gray-400">
-									Test cutting-edge features in a separate, clearly marked section
-								</p>
-							</div>
+										<!-- Expected Content (if available) -->
+										{#if example.expectedContent}
+											<div class="mt-3 rounded bg-gray-900/50 p-3">
+												<span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Expected Response</span>
+												<div class="mt-2 space-y-2">
+													{#if example.expectedContent.contains?.length > 0}
+														<div>
+															<span class="text-xs text-blue-400">Contains:</span>
+															<div class="mt-1 flex flex-wrap gap-1">
+																{#each example.expectedContent.contains as pattern}
+																	<span class="rounded bg-blue-900/20 px-2 py-0.5 text-xs text-blue-300">{pattern}</span>
+																{/each}
+															</div>
+														</div>
+													{/if}
+													{#if example.expectedContent.minLength}
+														<div>
+															<span class="text-xs text-gray-400">Min length: </span>
+															<span class="text-xs text-white">{example.expectedContent.minLength} chars</span>
+														</div>
+													{/if}
+													{#if example.expectedContent.fields}
+														<div>
+															<span class="text-xs text-blue-400">Expected fields:</span>
+															<div class="mt-1 flex flex-wrap gap-1">
+																{#each example.expectedContent.fields as field}
+																	<span class="rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-300">{field}</span>
+																{/each}
+															</div>
+														</div>
+													{/if}
+												</div>
+											</div>
+										{/if}
+									</div>
+								</details>
+							{/each}
 						</div>
 					</div>
-				</div>
-			{:else if selectedCategory === 'health'}
-				<!-- Health Status -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-8">
-					<h2 class="mb-4 text-2xl font-bold text-white">API Health Status</h2>
-					<p class="text-gray-300">Real-time monitoring of all endpoints coming soon...</p>
-				</div>
-			{:else if selectedCategory === 'core'}
-				<!-- Core Endpoints -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
-					<h2 class="mb-4 text-2xl font-bold text-white">Core Endpoints</h2>
-					<p class="mb-6 text-gray-300">Production-ready endpoints for scripture, translation helps, and resource discovery</p>
-					
-					{#if coreEndpoints.length > 0}
-						<div class="grid gap-4 sm:grid-cols-2">
-							{#each coreEndpoints as endpoint}
-								<div class="endpoint-card" on:click={() => selectEndpoint(endpoint)}>
-									<div class="mb-2 flex items-start justify-between">
-										<h3 class="font-semibold text-white">{endpoint.title || endpoint.name}</h3>
-										<span class="text-xs text-blue-400">{endpoint.path}</span>
-									</div>
-									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
-									<div class="flex items-center justify-between text-xs">
-										<span class="text-gray-500">{Object.keys(endpoint.params || {}).length} parameters</span>
-										{#if endpoint.examples?.length > 0}
-											<span class="text-green-400">{endpoint.examples.length} example{endpoint.examples.length !== 1 ? 's' : ''}</span>
-										{/if}
-									</div>
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-gray-400">Loading core endpoints...</p>
-					{/if}
-				</div>
+				{/if}
 
-			{:else if selectedCategory === 'extended'}
-				<!-- Extended Endpoints -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
-					<h2 class="mb-4 text-2xl font-bold text-white">Extended Features</h2>
-					<p class="mb-6 text-gray-300">Intelligent features that combine resources for enhanced workflows</p>
-					
-					{#if extendedEndpoints.length > 0}
-						<div class="grid gap-4 sm:grid-cols-2">
-							{#each extendedEndpoints as endpoint}
-								<div class="endpoint-card" on:click={() => selectEndpoint(endpoint)}>
-									<div class="mb-2 flex items-start justify-between">
-										<h3 class="font-semibold text-white">{endpoint.title || endpoint.name}</h3>
-										<span class="text-xs text-blue-400">{endpoint.path}</span>
-									</div>
-									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
-									<div class="flex items-center justify-between text-xs">
-										<span class="text-gray-500">{Object.keys(endpoint.params || {}).length} parameters</span>
-										{#if endpoint.examples?.length > 0}
-											<span class="text-green-400">{endpoint.examples.length} example{endpoint.examples.length !== 1 ? 's' : ''}</span>
-										{/if}
+				<!-- Performance Metrics -->
+				{#if performanceData[selectedEndpoint.name]}
+					<PerformanceMetrics data={performanceData[selectedEndpoint.name]} />
+				{/if}
+			</div>
+		{:else if selectedCategory === 'core'}
+			<!-- Core Endpoints -->
+			<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-4 lg:p-6">
+				<h2 class="mb-4 text-2xl font-bold text-white">Core Endpoints</h2>
+				<p class="mb-6 text-gray-300">Essential tools for Bible translation and study</p>
+				
+				{#if coreEndpoints.length > 0}
+					{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
+					<div class="space-y-8">
+						{#each Object.entries(groupedEndpoints) as [groupName, group]}
+							<div class="rounded-lg border border-gray-700/50 bg-gray-900/30 p-4">
+								<div class="mb-4 flex items-center gap-3">
+									<span class="text-2xl">{group.icon}</span>
+									<div>
+										<h3 class="text-lg font-semibold text-white">{groupName}</h3>
+										<p class="text-sm text-gray-400">{group.description}</p>
 									</div>
 								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-gray-400">Loading extended endpoints...</p>
-					{/if}
-				</div>
+								
+								<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+									{#each group.endpoints as endpoint}
+										<div 
+											class="endpoint-card cursor-pointer border-gray-700/50 bg-gray-800/30 p-3 transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
+											on:click={() => selectEndpoint(endpoint)}
+											on:keydown={(e) => e.key === 'Enter' && selectEndpoint(endpoint)}
+											tabindex="0"
+											role="button"
+										>
+											<div class="mb-1 flex items-start justify-between gap-2">
+												<h4 class="text-sm font-medium text-white line-clamp-1">{endpoint.title || endpoint.name}</h4>
+											</div>
+											<p class="mb-2 text-xs text-gray-400 line-clamp-2">{endpoint.description}</p>
+											<div class="flex items-center justify-between text-xs">
+												<span class="text-gray-500">
+													<code class="rounded bg-gray-900 px-1 py-0.5 text-xs">{endpoint.path}</code>
+												</span>
+												{#if endpoint.examples?.length > 0}
+													<span class="text-green-400">
+														<Check class="inline h-3 w-3" />
+													</span>
+												{/if}
+											</div>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-gray-400">Loading core endpoints...</p>
+				{/if}
+			</div>
 
-			{:else if selectedCategory === 'experimental'}
-				<!-- Experimental Endpoints -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
-					<h2 class="mb-4 text-2xl font-bold text-white">🧪 Experimental Lab</h2>
-					<p class="mb-6 text-gray-300">Test cutting-edge features in a separate, clearly marked section</p>
-					
-					{#if experimentalEndpoints.length > 0}
-						<div class="grid gap-4 sm:grid-cols-2">
-							{#each experimentalEndpoints as endpoint}
-								<div class="endpoint-card border-purple-500/30" on:click={() => selectEndpoint(endpoint)}>
-									<div class="mb-2 flex items-start justify-between">
-										<h3 class="font-semibold text-white">🧪 {endpoint.title || endpoint.name}</h3>
-										<span class="text-xs text-purple-400">{endpoint.path}</span>
-									</div>
-									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
-									<div class="flex items-center justify-between text-xs">
-										<span class="text-gray-500">{Object.keys(endpoint.params || {}).length} parameters</span>
-										{#if endpoint.examples?.length > 0}
-											<span class="text-green-400">{endpoint.examples.length} example{endpoint.examples.length !== 1 ? 's' : ''}</span>
-										{/if}
-									</div>
+		{:else if selectedCategory === 'extended'}
+			<!-- Extended Endpoints -->
+			<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+				<h2 class="mb-4 text-2xl font-bold text-white">Extended Features</h2>
+				<p class="mb-6 text-gray-300">Intelligent features that combine resources for enhanced workflows</p>
+				
+				{#if extendedEndpoints.length > 0}
+					<div class="grid gap-4 sm:grid-cols-2">
+						{#each extendedEndpoints as endpoint}
+							<div 
+								class="endpoint-card cursor-pointer transition-all"
+								on:click={() => selectEndpoint(endpoint)}
+								on:keydown={(e) => e.key === 'Enter' && selectEndpoint(endpoint)}
+								tabindex="0"
+								role="button"
+							>
+								<div class="mb-2 flex items-start justify-between">
+									<h3 class="font-semibold text-white">{endpoint.title || endpoint.name}</h3>
+									<span class="text-xs text-blue-400">{endpoint.path}</span>
 								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-gray-400">Loading experimental endpoints...</p>
-					{/if}
-				</div>
-			{/if}
-		</div>
+								<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
+								<div class="flex items-center justify-between text-xs">
+									<span class="text-gray-500">{Object.keys(endpoint.params || {}).length} parameters</span>
+									{#if endpoint.examples?.length > 0}
+										<span class="text-green-400">{endpoint.examples.length} example{endpoint.examples.length !== 1 ? 's' : ''}</span>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-gray-400">Loading extended endpoints...</p>
+				{/if}
+			</div>
+
+		{:else if selectedCategory === 'experimental'}
+			<!-- Experimental Endpoints -->
+			<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+				<h2 class="mb-4 text-2xl font-bold text-white">🧪 Experimental Lab</h2>
+				<p class="mb-6 text-gray-300">Test cutting-edge features in a separate, clearly marked section</p>
+				
+				{#if experimentalEndpoints.length > 0}
+					<div class="grid gap-4 sm:grid-cols-2">
+						{#each experimentalEndpoints as endpoint}
+							<div 
+								class="endpoint-card border-purple-500/30 cursor-pointer transition-all"
+								on:click={() => selectEndpoint(endpoint)}
+								on:keydown={(e) => e.key === 'Enter' && selectEndpoint(endpoint)}
+								tabindex="0"
+								role="button"
+							>
+								<div class="mb-2 flex items-start justify-between">
+									<h3 class="font-semibold text-white">🧪 {endpoint.title || endpoint.name}</h3>
+									<span class="text-xs text-purple-400">{endpoint.path}</span>
+								</div>
+								<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
+								{#if endpoint.experimental}
+									<div class="rounded bg-purple-900/20 p-2 text-xs text-purple-300">
+										⚠️ {endpoint.experimental.warning || 'Experimental feature - use with caution'}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="rounded-lg border border-purple-700/30 bg-purple-900/10 p-8 text-center">
+						<Beaker class="mx-auto h-12 w-12 text-purple-400" />
+						<h3 class="mt-4 text-lg font-semibold text-purple-300">No Experimental Features Available</h3>
+						<p class="mt-2 text-sm text-purple-400">Check back soon for cutting-edge AI-powered features!</p>
+					</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </div>
 
