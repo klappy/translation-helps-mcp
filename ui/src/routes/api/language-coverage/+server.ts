@@ -7,10 +7,10 @@ export const config = {
  *
  * GET /api/language-coverage
  *
- * Returns a comprehensive matrix showing resource availability across all Strategic Languages.
+ * ⚠️ WARNING: Uses EXPERIMENTAL language coverage handler
  */
 
-import { languageCoverageHandler } from '../../../../../src/functions/handlers/language-coverage.js';
+import { languageCoverageHandler } from '../../../../../src/experimental/language-coverage-experimental.js';
 import type { PlatformRequest } from '../../../../../src/functions/platform-adapter.js';
 
 export async function GET(event: { request: Request; url: URL }): Promise<Response> {
@@ -29,9 +29,8 @@ export async function GET(event: { request: Request; url: URL }): Promise<Respon
 	const platformRequest: PlatformRequest = {
 		method: event.request.method,
 		url: event.url.toString(),
-		headers,
-		body: null, // GET request has no body
-		queryStringParameters
+		body: null,
+		requestId: `req_${Date.now()}_${Math.random().toString(36).substring(2)}`
 	};
 
 	// Call the platform handler

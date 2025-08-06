@@ -1,4 +1,30 @@
 /**
+ * ⚠️ ⚠️ ⚠️ EXPERIMENTAL FEATURE - DO NOT USE IN PRODUCTION ⚠️ ⚠️ ⚠️
+ *
+ * Language Coverage Matrix - EXPERIMENTAL
+ *
+ * ⚠️ WARNING: This feature is EXPERIMENTAL and has implementation issues
+ *
+ * KNOWN ISSUES:
+ * - Uses hard-coded estimates (books: 66, articles: 1000)
+ * - Basic string matching for resource detection
+ * - Only tests one reference (Genesis 1:1) for full coverage assessment
+ * - Fixed 3-second timeout may be too aggressive
+ * - Resource detection logic is unreliable
+ *
+ * PROMOTION CRITERIA:
+ * - Implement proper resource counting (not estimates)
+ * - Add comprehensive testing across multiple references
+ * - Improve resource detection accuracy
+ * - Add dynamic timeout based on network conditions
+ * - Achieve <500ms response times consistently
+ * - Get explicit approval from project maintainers
+ *
+ * See src/experimental/README.md for full promotion requirements
+ * ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️
+ */
+
+/**
  * Platform-agnostic Language Coverage Handler
  * Provides comprehensive coverage matrix for all Strategic Languages
  */

@@ -1,4 +1,30 @@
 /**
+ * ⚠️ ⚠️ ⚠️ EXPERIMENTAL FEATURE - DO NOT USE IN PRODUCTION ⚠️ ⚠️ ⚠️
+ *
+ * AI-Assisted Translation Quality Checker - EXPERIMENTAL
+ *
+ * ⚠️ WARNING: This feature is EXPERIMENTAL and NOT production-ready
+ *
+ * - Currently uses MOCK responses only
+ * - Real LLM integration NOT implemented
+ * - NOT guaranteed to work reliably
+ * - NOT covered by stability guarantees
+ * - SUBJECT TO CHANGE without notice
+ * - Requires explicit approval for core promotion
+ *
+ * PROMOTION CRITERIA:
+ * - Replace mock LLM calls with efficient algorithms
+ * - Achieve <500ms response times consistently
+ * - Add comprehensive testing and error handling
+ * - Prove production stability over 30+ days
+ * - Get explicit approval from project maintainers
+ * - Get partner approval from stakeholders
+ *
+ * See src/experimental/README.md for full promotion requirements
+ * ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️ ⚠️
+ */
+
+/**
  * AI-Assisted Translation Quality Checker
  *
  * Provides comprehensive quality checking for Bible translations including
