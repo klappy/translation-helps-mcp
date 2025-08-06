@@ -150,14 +150,29 @@
 								<p class="mt-1 text-xs text-gray-400">
 									Common: en, es, fr, de, pt, ru, zh, ar, hi, sw, id
 								</p>
+								<!-- TODO: Future enhancement - fetch available languages from DCS API
+								     Endpoints needed:
+								     - GET /api/v1/catalog/languages
+								     - GET /api/v1/repos/search?lang=<code>
+								-->
 							{:else if param.name === 'org' || param.name === 'organization'}
 								<p class="mt-1 text-xs text-gray-400">
 									Common: unfoldingWord, Door43-Catalog, STR, BCS
 								</p>
+								<!-- TODO: Future enhancement - fetch organizations from DCS API
+								     Endpoints needed:
+								     - GET /api/v1/orgs
+								     - Filter by orgs that have translation resources
+								-->
 							{:else if param.name === 'resource'}
 								<p class="mt-1 text-xs text-gray-400">
 									Common: tn, tw, tq, ta, obs, ult, ust
 								</p>
+								<!-- TODO: Future enhancement - fetch resource types from DCS API
+								     Endpoints needed:
+								     - GET /api/v1/repos/search?topic=<resource_type>
+								     - Parse subject field from repos
+								-->
 							{/if}
 						</div>
 					{:else}
