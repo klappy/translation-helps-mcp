@@ -451,8 +451,8 @@
 										{#each group.endpoints as endpoint}
 											<button
 												class="w-full rounded border border-gray-700/50 bg-gray-900/30 p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
-												class:bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
-												class:border-blue-500/50={selectedEndpoint?.name === endpoint.name}
+												class:!bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
+												class:!border-blue-500/50={selectedEndpoint?.name === endpoint.name}
 												on:click={() => selectEndpoint(endpoint)}
 											>
 												<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
@@ -474,8 +474,8 @@
 							{#each extendedEndpoints as endpoint}
 								<button
 									class="w-full rounded border border-gray-700/50 bg-gray-900/30 p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
-									class:bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
-									class:border-blue-500/50={selectedEndpoint?.name === endpoint.name}
+									class:!bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
+									class:!border-blue-500/50={selectedEndpoint?.name === endpoint.name}
 									on:click={() => selectEndpoint(endpoint)}
 								>
 									<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
