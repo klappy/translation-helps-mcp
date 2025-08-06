@@ -35,6 +35,7 @@
 	let performanceData: any = {};
 	let healthStatus: Record<string, {status: 'checking' | 'healthy' | 'error' | 'unknown', message?: string}> = {};
 	let isCheckingHealth = false;
+	let isInitialized = false;
 
 	// Load endpoints from configuration
 	onMount(async () => {
@@ -62,9 +63,11 @@
 			console.log(`✅ Loaded ${experimentalEndpoints.length} experimental endpoints`);
 			
 			console.log('🎉 MCP Tools successfully connected to configuration system!');
+			isInitialized = true;
 		} catch (error) {
 			console.error('❌ Failed to load endpoint configurations:', error);
 			loadingError = error instanceof Error ? error.message : String(error);
+			isInitialized = true; // Still set to prevent infinite loading
 		}
 	});
 
@@ -419,6 +422,14 @@
 	{/if}
 
 	<!-- Main Content -->
+	{#if !isInitialized}
+		<div class="flex items-center justify-center p-8">
+			<div class="text-center">
+				<div class="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-blue-400 border-t-transparent mx-auto"></div>
+				<p class="text-gray-400">Loading MCP Tools...</p>
+			</div>
+		</div>
+	{:else}
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
 		{#if selectedEndpoint}
 			<!-- Endpoint Testing Interface (Full Width) -->
@@ -561,8 +572,9 @@
 				{/if}
 			</div>
 		{:else if selectedCategory === 'core'}
-			{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
 			<!-- Core Endpoints with Sidebar -->
+			{#if coreEndpoints.length > 0}
+				{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
 			<!-- Left Sidebar -->
 			<div class="lg:col-span-1">
 				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4 sticky top-4">
@@ -643,6 +655,12 @@
 					<p class="text-gray-400">Loading core endpoints...</p>
 				{/if}
 			</div>
+			{:else}
+				<!-- Loading state for core -->
+				<div class="lg:col-span-3 rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+					<p class="text-gray-400">Loading core endpoints...</p>
+				</div>
+			{/if}
 
 		{:else if selectedCategory === 'extended'}
 			<!-- Extended Endpoints with Sidebar -->
@@ -858,6 +876,7 @@
 			</div>
 		{/if}
 	</div>
+	{/if}
 </div>
 
 <style>
