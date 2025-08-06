@@ -89,24 +89,24 @@
 	// Handle navigation with loading state
 	async function handleNavigation(e: MouseEvent, href: string) {
 		e.preventDefault();
-		
+
 		// Provide immediate visual feedback
 		isNavigating = true;
 		navigationError = false;
-		
+
 		try {
 			// Import navigation functions
 			const { goto } = await import('$app/navigation');
-			
+
 			// Navigate to the page
 			await goto(href);
-			
+
 			// Close menu on successful navigation
 			closeMobileMenu();
 		} catch (error) {
 			console.error('Navigation error:', error);
 			navigationError = true;
-			
+
 			// Try fallback navigation
 			window.location.href = href;
 		} finally {
@@ -298,7 +298,7 @@
 							<p class="text-sm">Navigation error occurred. Retrying...</p>
 						</div>
 					{/if}
-					
+
 					{#each navItems as item}
 						<a
 							href={item.href}
@@ -306,9 +306,14 @@
 							class="flex items-center space-x-3 rounded-xl p-3 transition-all duration-300 {$page
 								.url.pathname === item.href
 								? 'border border-white/20 bg-white/20 text-white'
-								: 'border border-transparent text-blue-200 hover:border-white/10 hover:bg-white/10 hover:text-white'} backdrop-blur-xl {isNavigating ? 'pointer-events-none opacity-50' : ''}"
+								: 'border border-transparent text-blue-200 hover:border-white/10 hover:bg-white/10 hover:text-white'} backdrop-blur-xl {isNavigating
+								? 'pointer-events-none opacity-50'
+								: ''}"
 						>
-							<svelte:component this={item.icon} class="h-5 w-5 {isNavigating ? 'animate-spin' : ''}" />
+							<svelte:component
+								this={item.icon}
+								class="h-5 w-5 {isNavigating ? 'animate-spin' : ''}"
+							/>
 							<div>
 								<div class="font-medium">
 									{item.label}
