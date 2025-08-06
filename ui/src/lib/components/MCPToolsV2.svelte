@@ -3,10 +3,8 @@
 		Activity,
 		Beaker,
 		Check,
-		ChevronRight,
 		Copy,
 		Database,
-		Info,
 		Link
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
@@ -310,7 +308,10 @@
 				testParams.resource = 'tn';
 			}
 			
-			const response = await fetch(endpoint.path, {
+			// Ensure endpoint path starts with /api
+			const apiPath = endpoint.path.startsWith('/api') ? endpoint.path : `/api${endpoint.path}`;
+			
+			const response = await fetch(apiPath, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(testParams)
@@ -431,9 +432,63 @@
 		</div>
 	{:else}
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-		{#if selectedEndpoint}
-			<!-- Endpoint Testing Interface (Full Width) -->
-			<div class="space-y-6 lg:col-span-3">
+		{#if selectedEndpoint && (selectedCategory === 'core' || selectedCategory === 'extended')}
+			<!-- Persistent Sidebar + Endpoint Details View -->
+			{#if selectedCategory === 'core'}
+				{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
+				<!-- Left Sidebar -->
+				<div class="lg:col-span-1">
+					<div class="rounded-lg border border-gray-700 bg-gray-800 p-4 sticky top-4">
+						<h3 class="mb-4 text-lg font-semibold text-white">Core Endpoints</h3>
+						<div class="space-y-3">
+							{#each Object.entries(groupedEndpoints) as [groupName, group]}
+								<div>
+									<h4 class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-400">
+										<span>{group.icon}</span>
+										{groupName}
+									</h4>
+									<div class="space-y-1">
+										{#each group.endpoints as endpoint}
+											<button
+												class="w-full rounded border border-gray-700/50 bg-gray-900/30 p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
+												class:bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
+												class:border-blue-500/50={selectedEndpoint?.name === endpoint.name}
+												on:click={() => selectEndpoint(endpoint)}
+											>
+												<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
+												<div class="text-xs text-gray-500 truncate">{endpoint.path}</div>
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
+			{:else if selectedCategory === 'extended'}
+				<!-- Left Sidebar -->
+				<div class="lg:col-span-1">
+					<div class="rounded-lg border border-gray-700 bg-gray-800 p-4 sticky top-4">
+						<h3 class="mb-4 text-lg font-semibold text-white">Extended Endpoints</h3>
+						<div class="space-y-1">
+							{#each extendedEndpoints as endpoint}
+								<button
+									class="w-full rounded border border-gray-700/50 bg-gray-900/30 p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
+									class:bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
+									class:border-blue-500/50={selectedEndpoint?.name === endpoint.name}
+									on:click={() => selectEndpoint(endpoint)}
+								>
+									<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
+									<div class="text-xs text-gray-500 truncate">{endpoint.path}</div>
+								</button>
+							{/each}
+						</div>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Endpoint Testing Interface (Right Panel) -->
+			<div class="space-y-6 lg:col-span-2">
 				<!-- Back Button -->
 				<button
 					class="flex items-center text-sm text-blue-400 hover:text-blue-300 touch-friendly"
@@ -441,7 +496,7 @@
 						selectedEndpoint = null;
 					}}
 				>
-					← Back to {categoryConfig[selectedCategory as keyof typeof categoryConfig]?.name || 'endpoints'}
+					← Back to Overview
 				</button>
 
 				<!-- Endpoint Details Card -->
@@ -571,6 +626,64 @@
 					<PerformanceMetrics data={performanceData[selectedEndpoint.name]} />
 				{/if}
 			</div>
+
+		{:else if selectedEndpoint}
+			<!-- Full Width for Experimental/Health Endpoints -->
+			<div class="space-y-6 lg:col-span-3">
+				<!-- Back Button -->
+				<button
+					class="flex items-center text-sm text-blue-400 hover:text-blue-300 touch-friendly"
+					on:click={() => {
+						selectedEndpoint = null;
+					}}
+				>
+					← Back to {selectedCategory === 'experimental' ? 'Lab' : 'Health Status'}
+				</button>
+
+				<!-- Endpoint Details Card -->
+				<div class="rounded-lg border border-gray-700 bg-gray-800 p-4 lg:p-6">
+					<h3 class="mb-2 text-lg lg:text-xl font-semibold text-white">{selectedEndpoint.name}</h3>
+					<p class="mb-4 text-sm text-gray-300">{selectedEndpoint.description}</p>
+
+					<div class="space-y-3 text-sm">
+						<div>
+							<span class="font-medium text-gray-400">Endpoint:</span>
+							<code class="ml-2 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-900 px-2 py-1 text-xs text-blue-400">{selectedEndpoint.path}</code>
+						</div>
+						<div>
+							<span class="font-medium text-gray-400">Category:</span>
+							<span class="ml-2 capitalize text-white">{selectedEndpoint.category}</span>
+						</div>
+						{#if selectedEndpoint.tags?.length > 0}
+							<div>
+								<span class="font-medium text-gray-400">Tags:</span>
+								<div class="mt-1 flex flex-wrap gap-1">
+									{#each selectedEndpoint.tags as tag}
+										<span class="rounded-full bg-gray-700 px-2 py-0.5 text-xs text-gray-300">{tag}</span>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Parameter Form -->
+				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+					<h3 class="mb-4 text-lg font-semibold text-white">Parameters</h3>
+					<ApiTester
+						endpoint={selectedEndpoint}
+						loading={isLoading}
+						result={apiResult}
+						on:test={handleApiTest}
+					/>
+				</div>
+
+				<!-- Performance Metrics -->
+				{#if performanceData[selectedEndpoint.name]}
+					<PerformanceMetrics data={performanceData[selectedEndpoint.name]} />
+				{/if}
+			</div>
+
 		{:else if selectedCategory === 'core'}
 			<!-- Core Endpoints with Sidebar -->
 			{#if coreEndpoints.length > 0}
@@ -589,9 +702,11 @@
 								<div class="space-y-1">
 									{#each group.endpoints as endpoint}
 										<button
-											class="w-full rounded border border-gray-700/50 bg-gray-900/30 p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
-											class:bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
-											class:border-blue-500/50={selectedEndpoint?.name === endpoint.name}
+											class={`w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 ${
+												selectedEndpoint?.name === endpoint.name
+													? 'bg-blue-900/30 border-blue-500/50'
+													: 'bg-gray-900/30 border-gray-700/50'
+											}`}
 											on:click={() => selectEndpoint(endpoint)}
 										>
 											<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
@@ -671,9 +786,11 @@
 					<div class="space-y-1">
 						{#each extendedEndpoints as endpoint}
 							<button
-								class="w-full rounded border border-gray-700/50 bg-gray-900/30 p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50"
-								class:bg-blue-900/30={selectedEndpoint?.name === endpoint.name}
-								class:border-blue-500/50={selectedEndpoint?.name === endpoint.name}
+								class={`w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 ${
+									selectedEndpoint?.name === endpoint.name
+										? 'bg-blue-900/30 border-blue-500/50'
+										: 'bg-gray-900/30 border-gray-700/50'
+								}`}
 								on:click={() => selectEndpoint(endpoint)}
 							>
 								<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
