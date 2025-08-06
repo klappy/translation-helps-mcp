@@ -91,6 +91,17 @@ export const overallHealth = derived(healthData, ($health): HealthIndicator => {
 	const summary = $health.summary;
 	const status = $health.status;
 
+	// Safety check for missing summary data
+	if (!summary || summary.healthyEndpoints === undefined) {
+		return {
+			status: 'warning',
+			label: 'Overall',
+			tooltip: 'Health data structure incomplete',
+			color: getStatusColor('warning'),
+			badgeColor: getStatusBadgeColor('warning')
+		};
+	}
+
 	return {
 		status,
 		label: 'Overall',
