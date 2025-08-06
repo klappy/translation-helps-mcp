@@ -91,7 +91,7 @@ interface QualityIssue {
   metadata: {
     detector: string;
     timestamp: string;
-    additionalInfo?: Record<string, any>;
+    additionalInfo?: Record<string, unknown>;
   };
 }
 
@@ -139,7 +139,7 @@ interface QualityCheckConfig {
   apiKey?: string;
   enabledChecks: QualityCheckType[];
   severityThresholds: Record<QualityCheckType, number>;
-  culturalContexts: Record<string, any>;
+  culturalContexts: Record<string, unknown>;
   enableCaching: boolean;
 }
 
@@ -441,7 +441,7 @@ export class AIQualityChecker {
    */
   private async callAIForCheck(
     context: string,
-    criteria: any,
+    criteria: unknown,
     request: QualityCheckRequest
   ): Promise<string> {
     if (this.config.aiProvider === "mock") {
@@ -458,7 +458,7 @@ export class AIQualityChecker {
   /**
    * Generate mock analysis for demonstration
    */
-  private generateMockAnalysis(request: QualityCheckRequest, criteria: any): string {
+  private generateMockAnalysis(request: QualityCheckRequest, criteria: unknown): string {
     const mockAnalyses: Record<string, string> = {
       accuracy:
         "The translation accurately conveys the core meaning with minor terminology variations.",
@@ -482,7 +482,7 @@ export class AIQualityChecker {
   private parseAIResponse(
     analysis: string,
     checkType: QualityCheckType,
-    request: QualityCheckRequest
+    _request: QualityCheckRequest // eslint-disable-line @typescript-eslint/no-unused-vars
   ): QualityIssue[] {
     const issues: QualityIssue[] = [];
 
@@ -564,7 +564,8 @@ export class AIQualityChecker {
   /**
    * Generate improvement recommendations
    */
-  private generateRecommendations(issues: QualityIssue[], request: QualityCheckRequest): string[] {
+  private generateRecommendations(issues: QualityIssue[], _request: QualityCheckRequest): string[] {
+    // eslint-disable-line @typescript-eslint/no-unused-vars
     const recommendations: string[] = [];
 
     // Group issues by type

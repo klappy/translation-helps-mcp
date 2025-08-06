@@ -121,7 +121,7 @@ const EXPERIMENTAL_TOOLS = [
 	}
 ];
 
-export const GET: RequestHandler = async ({ request, url }) => {
+export const GET: RequestHandler = async () => {
 	// For MCP discovery
 	return json({
 		name: 'Translation Helps MCP - EXPERIMENTAL Lab',
@@ -191,7 +191,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					id
 				});
 
-			case 'tools/call':
+			case 'tools/call': {
 				const { name, arguments: args } = params;
 
 				// Log experimental tool usage with extra warnings
@@ -201,7 +201,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				});
 
 				// All experimental tools return mock responses with clear warnings
-				const mockResponses: Record<string, any> = {
+				const mockResponses: Record<string, unknown> = {
 					experimental_ai_summarize: {
 						_experimental: true,
 						_warning: 'MOCK RESPONSE - Real AI integration not implemented',
@@ -308,6 +308,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					},
 					id
 				});
+			}
 
 			default:
 				return json({
