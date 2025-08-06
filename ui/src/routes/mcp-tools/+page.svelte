@@ -292,7 +292,7 @@
 		healthStatus[healthKey] = { status: 'checking' };
 
 		try {
-			// Create a simple test request
+			// Create a simple test request with query parameters
 			const testParams: any = {};
 
 			// Add minimal required params for testing
@@ -307,8 +307,16 @@
 				testParams.reference = 'John 3:16';
 			} else if (endpoint.name === 'fetchTranslationWords') {
 				testParams.reference = 'John 3:16';
+			} else if (endpoint.name === 'fetchTranslationQuestions') {
+				testParams.reference = 'John 3:16';
 			} else if (endpoint.name === 'getTranslationWord') {
 				testParams.word = 'faith';
+			} else if (endpoint.name === 'fetchTranslationWordLinks') {
+				testParams.reference = 'John 3:16';
+			} else if (endpoint.name === 'getContext') {
+				testParams.reference = 'John 3:16';
+			} else if (endpoint.name === 'getWordsForReference') {
+				testParams.reference = 'John 3:16';
 			} else if (
 				endpoint.name === 'browseTranslationWords' ||
 				endpoint.name === 'browseTranslationAcademy'
@@ -320,23 +328,41 @@
 				testParams.resource = 'tn';
 			}
 
+			// Build query string
+			const params = new URLSearchParams();
+			Object.entries(testParams).forEach(([key, value]) => {
+				if (value !== null && value !== undefined && value !== '') {
+					params.append(key, String(value));
+				}
+			});
+
 			// Ensure endpoint path starts with /api
 			const apiPath = endpoint.path.startsWith('/api') ? endpoint.path : `/api${endpoint.path}`;
+			const queryString = params.toString();
+			const url = `${apiPath}${queryString ? `?${queryString}` : ''}`;
 
-			const response = await fetch(apiPath, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(testParams)
+			const response = await fetch(url, {
+				method: 'GET',
+				headers: {
+					'Accept': 'application/json'
+				}
 			});
 
 			if (response.ok) {
 				const data = await response.json();
-				if (data.success !== false) {
+				// Check if endpoint is responding properly (even if underlying data is missing)
+				if (data._metadata && data._metadata.success) {
+					// Endpoint is working, even if underlying data source has issues
+					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
+				} else if (data.data && data.data.success === false && data.data.statusCode === 404) {
+					// Data not found in source, but endpoint is working
+					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint working (data not available)' };
+				} else if (data.success !== false && !data.error) {
 					healthStatus[healthKey] = { status: 'healthy', message: 'Endpoint responding correctly' };
 				} else {
 					healthStatus[healthKey] = {
 						status: 'error',
-						message: data.error || 'Endpoint returned error'
+						message: data.error || data.message || 'Endpoint returned error'
 					};
 				}
 			} else {
