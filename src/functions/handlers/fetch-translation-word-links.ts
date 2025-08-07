@@ -9,10 +9,10 @@ import {
   Organization,
   ResourceType,
 } from "../../constants/terminology.js";
-import { getCachedDCSClient } from "../../services/cached-dcs-client.js";
+import { parseUSFMAlignment } from "../../experimental/usfm-alignment-parser.js";
+import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
-import { parseUSFMAlignment } from "../../experimental/usfm-alignment-parser.js";
 
 interface WordLink {
   id: string;
@@ -60,14 +60,18 @@ interface TWLResponse {
 /**
  * Main handler for Translation Words Links requests
  */
-export const fetchTranslationWordLinksHandler: PlatformHandler = async (request) => {
+export const fetchTranslationWordLinksHandler: PlatformHandler = async (
+  request,
+) => {
   const startTime = Date.now();
   const url = new URL(request.url);
 
   // Extract parameters
   const reference = url.searchParams.get("reference");
-  const language = url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
-  const organization = url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
+  const language =
+    url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
+  const organization =
+    url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
   const includeMetadata = url.searchParams.get("includeMetadata") !== "false";
   const bypassCache = url.searchParams.get("bypassCache") === "true";
 
@@ -116,14 +120,19 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
     console.log(`🔄 TWL cache MISS, fetching fresh data for: ${reference}`);
 
     // Fetch fresh data with X-Ray tracing
-    const dcsClient = getCachedDCSClient();
+    const dcsClient = new DCSApiClient();
     const traceId = `twl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     dcsClient.enableTracing(traceId, "/api/fetch-translation-word-links");
 
-    const result = await fetchTWLData(dcsClient, reference, language, organization);
+    const result = await fetchTWLData(
+      dcsClient,
+      reference,
+      language,
+      organization,
+    );
 
     // Collect X-Ray trace data
-    const xrayTrace = dcsClient.getTrace();
+    // const xrayTrace = dcsClient.getTrace();
     dcsClient.disableTracing();
 
     if (!result) {
@@ -201,7 +210,7 @@ async function fetchTWLData(
   dcsClient: DCSApiClient,
   reference: string,
   language: string,
-  organization: string
+  organization: string,
 ): Promise<{
   reference: string;
   language: string;
@@ -219,7 +228,7 @@ async function fetchTWLData(
     const scriptureResponse = await dcsClient.getSpecificResourceMetadata(
       language,
       organization,
-      "ult" // Use ULT for alignment data
+      "ult", // Use ULT for alignment data
     );
 
     if (!scriptureResponse.success || !scriptureResponse.data) {
@@ -242,7 +251,11 @@ async function fetchTWLData(
     const alignmentData = parseUSFMAlignment(usfmText);
 
     // Get Translation Words catalog
-    const twResponse = await dcsClient.getSpecificResourceMetadata(language, organization, "tw");
+    const twResponse = await dcsClient.getSpecificResourceMetadata(
+      language,
+      organization,
+      "tw",
+    );
 
     if (!twResponse.success || !twResponse.data) {
       console.warn(`No TW resource found for ${language}/${organization}`);
@@ -261,9 +274,15 @@ async function fetchTWLData(
           strongNumber: alignment.attributes["x-strong"],
           lemma: alignment.attributes["x-lemma"],
           occurrence: parseInt(alignment.attributes["x-occurrence"] || "1"),
-          totalOccurrences: parseInt(alignment.attributes["x-occurrences"] || "1"),
-          translationWordId: alignment.attributes["x-tw"] || alignment.attributes["x-strong"] || "",
-          translationWordTitle: alignment.attributes["x-content"] || alignment.targetWord,
+          totalOccurrences: parseInt(
+            alignment.attributes["x-occurrences"] || "1",
+          ),
+          translationWordId:
+            alignment.attributes["x-tw"] ||
+            alignment.attributes["x-strong"] ||
+            "",
+          translationWordTitle:
+            alignment.attributes["x-content"] || alignment.targetWord,
           confidence: alignment.confidence,
           position: {
             start: alignment.position.start,
@@ -272,7 +291,9 @@ async function fetchTWLData(
             chapter: alignment.position.chapter,
           },
           metadata: {
-            sourceLanguage: alignment.attributes["x-lemma"] ? "hebrew" : "greek",
+            sourceLanguage: alignment.attributes["x-lemma"]
+              ? "hebrew"
+              : "greek",
             targetLanguage: language,
             resourceType: ResourceType.TWL,
           },
@@ -291,7 +312,9 @@ async function fetchTWLData(
     // Calculate metadata
     const totalLinks = links.length;
     const averageConfidence =
-      totalLinks > 0 ? links.reduce((sum, link) => sum + link.confidence, 0) / totalLinks : 0;
+      totalLinks > 0
+        ? links.reduce((sum, link) => sum + link.confidence, 0) / totalLinks
+        : 0;
 
     const coveragePercentage =
       totalLinks > 0 ? (totalLinks / alignmentData.alignments.length) * 100 : 0;

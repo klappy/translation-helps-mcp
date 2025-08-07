@@ -12,5 +12,13 @@ compatibility_flags = ["nodejs_compat"]
 [env.preview.vars]
   NODE_ENV = "development"
 
+# KV Namespace binding (you'll need to create this in Cloudflare dashboard)
+# Run: npx wrangler kv:namespace create "TRANSLATION_HELPS_CACHE"
+# Then update the id below with the actual namespace ID
+[[kv_namespaces]]
+binding = "TRANSLATION_HELPS_CACHE"
+id = "116847d7b0714a9c8d2882335b05d35a"
+preview_id = "550f39aa441a453aaf682eddbb97a618"
+
 # For Pages deployment, use: npx wrangler pages deploy ui/build
 # For secrets: npx wrangler secret put ANTHROPIC_API_KEY 

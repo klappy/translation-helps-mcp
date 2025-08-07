@@ -9,7 +9,7 @@ import {
   Organization,
   ResourceType,
 } from "../../constants/terminology.js";
-import { getCachedDCSClient } from "../../services/cached-dcs-client.js";
+import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
 
@@ -74,13 +74,17 @@ interface RCLinksResponse {
 /**
  * Main handler for Resource Container link resolution
  */
-export const resourceContainerLinksHandler: PlatformHandler = async (request) => {
+export const resourceContainerLinksHandler: PlatformHandler = async (
+  request,
+) => {
   const startTime = Date.now();
   const url = new URL(request.url);
 
   // Extract parameters
-  const language = url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
-  const organization = url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
+  const language =
+    url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
+  const organization =
+    url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
   const resourceType = url.searchParams.get("resourceType") as ResourceType;
   const includeManifest = url.searchParams.get("includeManifest") !== "false";
   const bypassCache = url.searchParams.get("bypassCache") === "true";
@@ -126,16 +130,18 @@ export const resourceContainerLinksHandler: PlatformHandler = async (request) =>
       }
     }
 
-    console.log(`🔄 RC Links cache MISS, fetching fresh data for: ${language}:${resourceType}`);
+    console.log(
+      `🔄 RC Links cache MISS, fetching fresh data for: ${language}:${resourceType}`,
+    );
 
     // Fetch fresh data
-    const dcsClient = getCachedDCSClient();
+    const dcsClient = new DCSApiClient();
     const result = await fetchRCLinks(
       dcsClient,
       language,
       organization,
       resourceType,
-      includeManifest
+      includeManifest,
     );
 
     if (!result) {
@@ -213,7 +219,7 @@ async function fetchRCLinks(
   language: string,
   organization: string,
   resourceType: ResourceType,
-  includeManifest: boolean
+  includeManifest: boolean,
 ): Promise<{
   language: string;
   organization: string;
@@ -231,11 +237,13 @@ async function fetchRCLinks(
     const manifestResponse = await dcsClient.getFileContent(
       organization,
       `${language}_${resourceType}`,
-      "manifest.yaml"
+      "manifest.yaml",
     );
 
     if (!manifestResponse.success || !manifestResponse.data) {
-      console.warn(`No RC manifest found for ${organization}/${language}_${resourceType}`);
+      console.warn(
+        `No RC manifest found for ${organization}/${language}_${resourceType}`,
+      );
       return null;
     }
 
@@ -244,7 +252,7 @@ async function fetchRCLinks(
       manifestResponse.data.content || manifestResponse.data.toString(),
       language,
       organization,
-      resourceType
+      resourceType,
     );
 
     if (!manifest) {
@@ -321,7 +329,7 @@ function parseRCManifest(
   content: string,
   language: string,
   organization: string,
-  resourceType: ResourceType
+  resourceType: ResourceType,
 ): RCManifest | null {
   try {
     // This is a simplified parser - in practice, RC manifests would be in YAML format
@@ -353,7 +361,7 @@ function parseRCManifest(
  */
 function getDefaultDependencies(
   resourceType: ResourceType,
-  language: string
+  language: string,
 ): RCManifest["dependencies"] {
   const dependencies: RCManifest["dependencies"] = [];
 
@@ -401,7 +409,7 @@ function getDefaultDependencies(
  */
 function getDefaultRelationships(
   resourceType: ResourceType,
-  language: string
+  language: string,
 ): RCManifest["relationships"] {
   const relationships: RCManifest["relationships"] = [];
 
