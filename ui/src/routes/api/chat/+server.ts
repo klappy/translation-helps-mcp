@@ -8,7 +8,7 @@ import type { RequestHandler } from './$types';
 /**
  * MCP + LLM Reference Implementation
  * Shows how to properly integrate MCP tools with ChatGPT/Claude
- * 
+ *
  * Deployment: ${new Date().toISOString()}
  */
 
@@ -86,10 +86,10 @@ export const POST: RequestHandler = async ({ request, url, platform, fetch }) =>
 		totalTime: 0,
 		citations: []
 	};
-	
+
 	try {
 		const { message, history = [] } = await request.json();
-		
+
 		if (!message) {
 			return json({ error: 'No message provided' });
 		}
@@ -97,19 +97,19 @@ export const POST: RequestHandler = async ({ request, url, platform, fetch }) =>
 		// Get OpenAI API key from Cloudflare environment
 		// In Cloudflare Pages, secrets are available on platform.env
 		const env = platform?.env || {};
-		let apiKey = env.OPENAI_API_KEY;
-		
+		const apiKey = env.OPENAI_API_KEY;
+
 		console.log('[CHAT] Environment check:', {
 			hasPlatform: !!platform,
 			hasEnv: !!platform?.env,
 			hasApiKey: !!apiKey,
-			envKeys: platform?.env ? Object.keys(platform.env).filter(k => !k.includes('KEY')) : [],
+			envKeys: platform?.env ? Object.keys(platform.env).filter((k) => !k.includes('KEY')) : [],
 			// Add more debug info
 			envType: typeof platform?.env,
 			keyLength: apiKey ? apiKey.length : 0,
 			keyPrefix: apiKey ? apiKey.substring(0, 7) + '...' : 'none'
 		});
-		
+
 		if (!apiKey) {
 			// Provide instructions for setting up the API key
 			return json({
@@ -150,11 +150,11 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 		xrayData.timeline.push({ time: Date.now() - startTime, event: 'Discovering MCP tools' });
 		const tools = await discoverMCPTools(url, fetch);
 		xrayData.timeline.push({ time: Date.now() - startTime, event: `Found ${tools.length} tools` });
-		
+
 		// Build messages for OpenAI including tool definitions
 		const messages = [
 			{ role: 'system', content: SYSTEM_PROMPT },
-			...history.map(msg => ({
+			...history.map((msg) => ({
 				role: msg.role,
 				content: msg.content
 			})),
@@ -166,13 +166,13 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 		const openAIResponse = await fetch(OPENAI_API_URL, {
 			method: 'POST',
 			headers: {
-				'Authorization': `Bearer ${apiKey}`,
+				Authorization: `Bearer ${apiKey}`,
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
 				model: 'gpt-4o-mini',
 				messages,
-				tools: tools.map(tool => ({
+				tools: tools.map((tool) => ({
 					type: 'function',
 					function: {
 						name: tool.name,
@@ -191,7 +191,7 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 				tool_choice: 'auto'
 			})
 		});
-		
+
 		if (!openAIResponse.ok) {
 			const errorText = await openAIResponse.text();
 			console.error('[CHAT] OpenAI API error:', openAIResponse.status, errorText);
@@ -209,17 +209,29 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 
 		// If the LLM wants to use tools
 		if (assistantMessage.tool_calls) {
-			xrayData.timeline.push({ time: Date.now() - startTime, event: `Executing ${assistantMessage.tool_calls.length} tool calls` });
-			const toolResults = await executeToolCalls(assistantMessage.tool_calls, url, fetch, xrayData, startTime);
-			
+			xrayData.timeline.push({
+				time: Date.now() - startTime,
+				event: `Executing ${assistantMessage.tool_calls.length} tool calls`
+			});
+			const toolResults = await executeToolCalls(
+				assistantMessage.tool_calls,
+				url,
+				fetch,
+				xrayData,
+				startTime
+			);
+
 			console.log('[CHAT] Tool results:', toolResults.length);
 
 			// Send tool results back to OpenAI for final response
-			xrayData.timeline.push({ time: Date.now() - startTime, event: 'Getting final response from OpenAI' });
+			xrayData.timeline.push({
+				time: Date.now() - startTime,
+				event: 'Getting final response from OpenAI'
+			});
 			const finalResponse = await fetch(OPENAI_API_URL, {
 				method: 'POST',
 				headers: {
-					'Authorization': `Bearer ${apiKey}`,
+					Authorization: `Bearer ${apiKey}`,
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
@@ -227,7 +239,7 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 					messages: [
 						...messages,
 						assistantMessage,
-						...toolResults.map(result => ({
+						...toolResults.map((result) => ({
 							role: 'tool',
 							tool_call_id: result.tool_call_id,
 							content: JSON.stringify(result.content)
@@ -247,7 +259,7 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 
 			return json({
 				content: processedContent,
-				tool_calls: assistantMessage.tool_calls.map(tc => tc.function.name),
+				tool_calls: assistantMessage.tool_calls.map((tc) => tc.function.name),
 				xrayData
 			});
 		}
@@ -258,12 +270,11 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 			content: makeRCLinksClickable(assistantMessage.content),
 			xrayData
 		});
-
 	} catch (error) {
 		console.error('Chat error:', error);
 		xrayData.totalTime = Date.now() - startTime;
 		xrayData.timeline.push({ time: xrayData.totalTime, event: `Error: ${error.message}` });
-		
+
 		return json({
 			error: 'An error occurred',
 			details: error instanceof Error ? error.message : 'Unknown error',
@@ -275,7 +286,7 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 /**
  * Discover available MCP tools from the server
  */
-async function discoverMCPTools(baseUrl: URL, fetch: typeof globalThis.fetch): Promise<any[]> {
+async function discoverMCPTools(baseUrl: URL, fetch: typeof globalThis.fetch): Promise<unknown[]> {
 	try {
 		const mcpUrl = new URL('/api/mcp', baseUrl);
 		const response = await fetch(mcpUrl, {
@@ -300,12 +311,17 @@ async function discoverMCPTools(baseUrl: URL, fetch: typeof globalThis.fetch): P
 /**
  * Execute tool calls requested by the LLM
  */
-async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof globalThis.fetch, xrayData: any, startTime: number): Promise<any[]> {
+async function executeToolCalls(
+	toolCalls: unknown[],
+	baseUrl: URL,
+	fetch: typeof globalThis.fetch,
+	xrayData: unknown
+): Promise<unknown[]> {
 	const results = await Promise.all(
 		toolCalls.map(async (toolCall) => {
 			const { name, arguments: args } = toolCall.function;
 			const toolStartTime = Date.now();
-			
+
 			try {
 				const mcpUrl = new URL('/api/mcp', baseUrl);
 				const response = await fetch(mcpUrl, {
@@ -322,10 +338,10 @@ async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof gl
 
 				const result = await response.json();
 				const toolDuration = Date.now() - toolStartTime;
-				
+
 				// Extract the actual content from MCP response
 				const content = result.content?.[0]?.text || JSON.stringify(result);
-				
+
 				// Add to X-ray data
 				xrayData.tools.push({
 					id: toolCall.id,
@@ -335,7 +351,7 @@ async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof gl
 					duration: toolDuration,
 					cached: response.headers.get('x-cache-status') === 'HIT'
 				});
-				
+
 				// Extract citations from the response
 				if (name === 'fetch_scripture' && args.reference) {
 					xrayData.citations.push(`Scripture: ${args.reference}`);
@@ -348,7 +364,7 @@ async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof gl
 				} else if (name === 'fetch_translation_academy' && args.articleId) {
 					xrayData.citations.push(`Translation Academy: ${args.articleId}`);
 				}
-				
+
 				return {
 					tool_call_id: toolCall.id,
 					content
@@ -364,7 +380,7 @@ async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof gl
 					cached: false,
 					error: true
 				});
-				
+
 				return {
 					tool_call_id: toolCall.id,
 					content: `Error calling ${name}: ${error}`
@@ -381,22 +397,22 @@ async function executeToolCalls(toolCalls: any[], baseUrl: URL, fetch: typeof gl
  */
 function makeRCLinksClickable(text: string): string {
 	if (!text) return '';
-	
+
 	// [[rc://]] format
 	text = text.replace(/\[\[rc:\/\/\*?\/([^\]]+)\]\]/g, (match, path) => {
 		const name = path.split('/').pop().replace(/[-_]/g, ' ');
 		return `📚 [${name}](rc://${path})`;
 	});
-	
+
 	// Plain rc:// format
-	text = text.replace(/(?<!\[)(?<!\()rc:\/\/\*?\/([^\s\)\]]+)/g, (match, path) => {
+	text = text.replace(/(?<!\[)(?<!\()rc:\/\/\*?\/([^\s)\]]+)/g, (match, path) => {
 		const name = path.split('/').pop().replace(/[-_]/g, ' ');
 		return `📚 [${name}](rc://${path})`;
 	});
-	
+
 	// Add emoji to existing markdown RC links
-	text = text.replace(/(?<!📚\s)\[([^\]]+)\]\(rc:\/\/([^\)]+)\)/g, '📚 [$1](rc://$2)');
-	
+	text = text.replace(/(?<!📚\s)\[([^\]]+)\]\(rc:\/\/([^)]+)\)/g, '📚 [$1](rc://$2)');
+
 	return text;
 }
 
@@ -466,30 +482,4 @@ function getDefaultTools() {
 			}
 		}
 	];
-}
-
-/**
- * Fallback handler when no LLM API key is available
- */
-async function handleWithoutLLM(message: string, baseUrl: URL, fetch: typeof globalThis.fetch): Promise<string> {
-	// Simple pattern matching fallback
-	const lower = message.toLowerCase();
-	
-	if (lower.includes('help') || lower.includes('hello')) {
-		return `I'm an MCP (Model Context Protocol) Bible study assistant that provides information ONLY from our translation resources database.
-
-I can help you with:
-		
-• **Scripture** - "Show me John 3:16" (from available translations)
-• **Translation Notes** - "Explain the notes for Romans 8:28" (from our database)
-• **Word Definitions** - "What does agape mean?" (from Translation Words)
-• **Study Questions** - "Questions for Genesis 1" (from our resources)
-• **Translation Articles** - "Article about metaphors" (from Translation Academy)
-
-Important: I only provide information that exists in our MCP database. I don't use any other biblical knowledge.
-
-For the full AI experience with natural language understanding, configure your OpenAI API key in the environment.`;
-	}
-	
-	return "I need an OpenAI API key to understand your request and fetch data from our MCP resources. Please configure OPENAI_API_KEY in your environment.";
 }

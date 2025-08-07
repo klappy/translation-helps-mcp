@@ -50,6 +50,7 @@
   },
   "dependencies": {
     "@upstash/redis": "^1.28.0",
+    "fflate": "^0.8.2",
     "node-fetch": "^3.3.2",
     "yaml": "^2.8.1",
     "zod": "^3.22.4"

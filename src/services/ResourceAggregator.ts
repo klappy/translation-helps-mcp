@@ -3,7 +3,8 @@
  * Aggregate Bible translation resources from various sources using DCS API
  */
 
-import { ParsedReference } from "../parsers/referenceParser.js";
+import { parseTSV } from "../config/RouteGenerator.js";
+import type { ParsedReference } from "../parsers/referenceParser.js";
 import { logger } from "../utils/logger.js";
 import {
   extractChapterText,
@@ -12,7 +13,6 @@ import {
   validateCleanText,
 } from "../utils/usfmExtractor.js";
 import { DCSApiClient } from "./DCSApiClient.js";
-import { parseTSV } from "../config/RouteGenerator.js";
 
 export interface ResourceOptions {
   language: string;
@@ -52,6 +52,23 @@ export interface TranslationWordLink {
   occurrences: number;
 }
 
+interface DCSResource {
+  name: string;
+  ingredients?: Array<{
+    identifier: string;
+    path: string;
+  }>;
+  owner?: string;
+}
+
+interface DCSSearchResponse {
+  data?: DCSResource[];
+}
+
+interface DCSMetadataResponse {
+  data?: DCSResource[];
+}
+
 export interface AggregatedResources {
   reference: string;
   language: string;
@@ -61,7 +78,7 @@ export interface AggregatedResources {
   translationNotes?: TranslationNote[];
   translationQuestions?: TranslationQuestion[];
   translationWords?: TranslationWord[];
-  translationWordLinks?: any[];
+  translationWordLinks?: TranslationWordLink[];
   timestamp: string;
 }
 
@@ -70,7 +87,7 @@ export class ResourceAggregator {
 
   constructor(
     private language: string = "en",
-    private organization: string = "unfoldingWord"
+    private organization: string = "unfoldingWord",
   ) {
     this.dcsClient = new DCSApiClient();
   }
@@ -80,7 +97,7 @@ export class ResourceAggregator {
    */
   async aggregateResources(
     reference: ParsedReference,
-    options: ResourceOptions
+    options: ResourceOptions,
   ): Promise<AggregatedResources> {
     const referenceStr = this.formatReference(reference);
 
@@ -110,7 +127,7 @@ export class ResourceAggregator {
             // Keep backward compatibility with single scripture
             result.scripture = scriptures[0];
           }
-        })
+        }),
       );
     }
 
@@ -118,7 +135,7 @@ export class ResourceAggregator {
       promises.push(
         this.fetchTranslationNotes(reference, options).then((notes) => {
           result.translationNotes = notes;
-        })
+        }),
       );
     }
 
@@ -126,7 +143,7 @@ export class ResourceAggregator {
       promises.push(
         this.fetchTranslationQuestions(reference, options).then((questions) => {
           result.translationQuestions = questions;
-        })
+        }),
       );
     }
 
@@ -134,19 +151,23 @@ export class ResourceAggregator {
       promises.push(
         this.fetchTranslationWords(reference, options).then((words) => {
           result.translationWords = words;
-        })
+        }),
       );
     }
 
     if (options.resources.includes("links")) {
       promises.push(
-        this.fetchTranslationWordLinks(reference, options).then((links) => {
-          console.log(`📊 TWL: Found ${links.length} links for ${reference.book} ${reference.chapter}:${reference.verse || '*'}`);
-          result.translationWordLinks = links;
-        }).catch((error) => {
-          console.error(`❌ TWL Error:`, error);
-          result.translationWordLinks = [];
-        })
+        this.fetchTranslationWordLinks(reference, options)
+          .then((links) => {
+            console.log(
+              `📊 TWL: Found ${links.length} links for ${reference.book} ${reference.chapter}:${reference.verse || "*"}`,
+            );
+            result.translationWordLinks = links;
+          })
+          .catch((error) => {
+            console.error(`❌ TWL Error:`, error);
+            result.translationWordLinks = [];
+          }),
       );
     }
 
@@ -172,11 +193,12 @@ export class ResourceAggregator {
    */
   private async fetchScripture(
     reference: ParsedReference,
-    options: ResourceOptions
+    options: ResourceOptions,
   ): Promise<Scripture[] | undefined> {
     try {
       // STEP 1: Get resource metadata from catalog
       const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=Bible,Aligned%20Bible`;
+      console.log(`🔍 Fetching Bible catalog: ${searchUrl}`);
       const searchResponse = await fetch(searchUrl);
 
       if (!searchResponse.ok) {
@@ -184,10 +206,13 @@ export class ResourceAggregator {
         return undefined;
       }
 
-      const searchData = (await searchResponse.json()) as { data?: any[] };
+      const searchData = (await searchResponse.json()) as DCSSearchResponse;
       const bibleResources = searchData.data || [];
 
       logger.debug(`Found ${bibleResources.length} Bible resources in catalog`);
+      console.log(
+        `📚 Bible resources found: ${bibleResources.map((r) => r.name).join(", ")}`,
+      );
 
       const allTranslations: Scripture[] = [];
 
@@ -210,14 +235,16 @@ export class ResourceAggregator {
         // STEP 3: USE THE INGREDIENTS ARRAY!!! (The #1 Discovery)
         const bookCode = this.getBookCode(reference.book);
         const ingredient = resource.ingredients?.find(
-          (ing: any) =>
+          (ing: { identifier: string }) =>
             ing.identifier === bookCode ||
             ing.identifier === reference.book.toUpperCase() ||
-            ing.identifier === reference.book
+            ing.identifier === reference.book,
         );
 
         if (!ingredient || !ingredient.path) {
-          logger.debug(`No ingredient found for ${bookCode} in ${resourceName}`);
+          logger.debug(
+            `No ingredient found for ${bookCode} in ${resourceName}`,
+          );
           continue;
         }
 
@@ -227,7 +254,7 @@ export class ResourceAggregator {
         const response = await this.dcsClient.getRawFileContent(
           options.organization,
           resourceName,
-          ingredient.path
+          ingredient.path,
         );
 
         if (response.success && response.data) {
@@ -242,12 +269,17 @@ export class ResourceAggregator {
             extractedText = this.extractChapterText(response.data, reference);
           } else {
             // Single verse extraction
-            const verseText = this.extractVerseFromUSFM(response.data, reference);
+            const verseText = this.extractVerseFromUSFM(
+              response.data,
+              reference,
+            );
             extractedText = verseText || "";
           }
 
           if (extractedText) {
-            logger.info(`Successfully extracted scripture from ${resourceName}`);
+            logger.info(
+              `Successfully extracted scripture from ${resourceName}`,
+            );
             allTranslations.push({
               text: extractedText,
               translation: resourceName.replace(/^[a-z]+_/, "").toUpperCase(),
@@ -257,12 +289,15 @@ export class ResourceAggregator {
       }
 
       if (allTranslations.length === 0) {
-        logger.warn("No scripture found after trying all available Bible resources", {
-          reference: this.formatReference(reference),
-          language: options.language,
-          organization: options.organization,
-          availableResources: bibleResources.map((r: any) => r.name),
-        });
+        logger.warn(
+          "No scripture found after trying all available Bible resources",
+          {
+            reference: this.formatReference(reference),
+            language: options.language,
+            organization: options.organization,
+            availableResources: bibleResources.map((r) => r.name),
+          },
+        );
         return undefined;
       }
 
@@ -281,7 +316,7 @@ export class ResourceAggregator {
    */
   private async fetchTranslationNotes(
     reference: ParsedReference,
-    options: ResourceOptions
+    options: ResourceOptions,
   ): Promise<TranslationNote[]> {
     try {
       // STEP 1: Get resource metadata from catalog
@@ -293,10 +328,12 @@ export class ResourceAggregator {
         return [];
       }
 
-      const searchData = (await searchResponse.json()) as { data?: any[] };
+      const searchData = (await searchResponse.json()) as DCSSearchResponse;
       const tnResources = searchData.data || [];
 
-      logger.debug(`Found ${tnResources.length} translation notes resources in catalog`);
+      logger.debug(
+        `Found ${tnResources.length} translation notes resources in catalog`,
+      );
 
       // STEP 2: Try each translation notes resource using INGREDIENTS
       for (const resource of tnResources) {
@@ -318,7 +355,8 @@ export class ResourceAggregator {
           continue;
         }
 
-        const metadataData = (await metadataResponse.json()) as { data?: any[] };
+        const metadataData =
+          (await metadataResponse.json()) as DCSMetadataResponse;
         const resourceMetadata = metadataData.data?.[0];
 
         if (!resourceMetadata || !resourceMetadata.ingredients) {
@@ -336,14 +374,16 @@ export class ResourceAggregator {
           if (path.includes(bookCode.toLowerCase()) && path.includes(".tsv")) {
             targetFile = ingredient;
             logger.debug(
-              `Found translation notes file: ${ingredient.path} for book ${reference.book}`
+              `Found translation notes file: ${ingredient.path} for book ${reference.book}`,
             );
             break;
           }
         }
 
         if (!targetFile) {
-          logger.debug(`No translation notes file found for ${reference.book} in ${resourceName}`);
+          logger.debug(
+            `No translation notes file found for ${reference.book} in ${resourceName}`,
+          );
           continue;
         }
 
@@ -352,17 +392,23 @@ export class ResourceAggregator {
         const fileResponse = await fetch(fileUrl);
 
         if (!fileResponse.ok) {
-          logger.warn(`Failed to fetch translation notes file: ${targetFile.path}`);
+          logger.warn(
+            `Failed to fetch translation notes file: ${targetFile.path}`,
+          );
           continue;
         }
 
         const tsvData = await fileResponse.text();
 
         if (tsvData) {
-          const notes = this.parseTNFromTSV(tsvData, reference, options.includeIntro);
+          const notes = this.parseTNFromTSV(
+            tsvData,
+            reference,
+            options.includeIntro,
+          );
           if (notes.length > 0) {
             logger.info(
-              `Successfully fetched ${notes.length} translation notes from ${resourceName}`
+              `Successfully fetched ${notes.length} translation notes from ${resourceName}`,
             );
             return notes;
           }
@@ -390,7 +436,7 @@ export class ResourceAggregator {
    */
   private async fetchTranslationQuestions(
     reference: ParsedReference,
-    options: ResourceOptions
+    options: ResourceOptions,
   ): Promise<TranslationQuestion[]> {
     try {
       // Use catalog search with ingredients pattern
@@ -403,7 +449,10 @@ export class ResourceAggregator {
       }
 
       const searchData = (await searchResponse.json()) as {
-        data?: { name: string; ingredients?: { identifier?: string; path?: string }[] }[];
+        data?: {
+          name: string;
+          ingredients?: { identifier?: string; path?: string }[];
+        }[];
       };
       const tqResources = searchData.data || [];
 
@@ -413,7 +462,7 @@ export class ResourceAggregator {
           (ing: { identifier?: string; path?: string }) =>
             ing.identifier === bookCode ||
             ing.identifier === reference.book.toUpperCase() ||
-            ing.identifier === reference.book.toLowerCase()
+            ing.identifier === reference.book.toLowerCase(),
         );
 
         if (!ingredient || !ingredient.path) {
@@ -423,7 +472,7 @@ export class ResourceAggregator {
         const response = await this.dcsClient.getRawFileContent(
           options.organization,
           resource.name,
-          ingredient.path
+          ingredient.path,
         );
 
         if (response.success && response.data) {
@@ -446,7 +495,7 @@ export class ResourceAggregator {
    */
   private async fetchTranslationWords(
     reference: ParsedReference,
-    options: ResourceOptions
+    options: ResourceOptions,
   ): Promise<TranslationWord[]> {
     try {
       // STEP 1: Get resource metadata from catalog
@@ -458,10 +507,12 @@ export class ResourceAggregator {
         return [];
       }
 
-      const searchData = (await searchResponse.json()) as { data?: any[] };
+      const searchData = (await searchResponse.json()) as DCSSearchResponse;
       const twResources = searchData.data || [];
 
-      logger.debug(`Found ${twResources.length} translation words resources in catalog`);
+      logger.debug(
+        `Found ${twResources.length} translation words resources in catalog`,
+      );
 
       // STEP 2: Try each translation words resource using INGREDIENTS
       for (const resource of twResources) {
@@ -483,7 +534,8 @@ export class ResourceAggregator {
           continue;
         }
 
-        const metadataData = (await metadataResponse.json()) as { data?: any[] };
+        const metadataData =
+          (await metadataResponse.json()) as DCSMetadataResponse;
         const resourceMetadata = metadataData.data?.[0];
 
         if (!resourceMetadata || !resourceMetadata.ingredients) {
@@ -501,14 +553,16 @@ export class ResourceAggregator {
           if (path.includes(bookCode.toLowerCase()) && path.includes(".tsv")) {
             targetFile = ingredient;
             logger.debug(
-              `Found translation words file: ${ingredient.path} for book ${reference.book}`
+              `Found translation words file: ${ingredient.path} for book ${reference.book}`,
             );
             break;
           }
         }
 
         if (!targetFile) {
-          logger.debug(`No translation words file found for ${reference.book} in ${resourceName}`);
+          logger.debug(
+            `No translation words file found for ${reference.book} in ${resourceName}`,
+          );
           continue;
         }
 
@@ -517,7 +571,9 @@ export class ResourceAggregator {
         const fileResponse = await fetch(fileUrl);
 
         if (!fileResponse.ok) {
-          logger.warn(`Failed to fetch translation words file: ${targetFile.path}`);
+          logger.warn(
+            `Failed to fetch translation words file: ${targetFile.path}`,
+          );
           continue;
         }
 
@@ -527,7 +583,7 @@ export class ResourceAggregator {
           const words = this.parseTWFromTSV(tsvData, reference);
           if (words.length > 0) {
             logger.info(
-              `Successfully fetched ${words.length} translation words from ${resourceName}`
+              `Successfully fetched ${words.length} translation words from ${resourceName}`,
             );
             return words;
           }
@@ -555,22 +611,26 @@ export class ResourceAggregator {
    */
   private async fetchTranslationWordLinks(
     reference: ParsedReference,
-    options: ResourceOptions
-  ): Promise<any[]> {
+    options: ResourceOptions,
+  ): Promise<Record<string, unknown>[]> {
     try {
       // STEP 1: Get resource metadata from catalog
       const searchUrl = `https://git.door43.org/api/v1/catalog/search?lang=${options.language}&owner=${options.organization}&type=text&subject=TSV%20Translation%20Words%20Links`;
       const searchResponse = await fetch(searchUrl);
 
       if (!searchResponse.ok) {
-        logger.warn("Failed to search catalog for translation word links resources");
+        logger.warn(
+          "Failed to search catalog for translation word links resources",
+        );
         return [];
       }
 
-      const searchData = (await searchResponse.json()) as { data?: any[] };
+      const searchData = (await searchResponse.json()) as DCSSearchResponse;
       const twlResources = searchData.data || [];
 
-      logger.debug(`Found ${twlResources.length} translation word links resources in catalog`);
+      logger.debug(
+        `Found ${twlResources.length} translation word links resources in catalog`,
+      );
 
       // STEP 2: Try each translation word links resource using INGREDIENTS
       for (const resource of twlResources) {
@@ -585,7 +645,7 @@ export class ResourceAggregator {
 
         // STEP 3: Use ingredients directly from the resource (TWL resources have them)
         const ingredients = resource.ingredients;
-        
+
         if (!ingredients || ingredients.length === 0) {
           logger.warn(`No ingredients found for ${resourceName}`);
           continue;
@@ -601,7 +661,7 @@ export class ResourceAggregator {
           if (path.includes(bookCode.toLowerCase()) && path.includes(".tsv")) {
             targetFile = ingredient;
             logger.debug(
-              `Found translation word links file: ${ingredient.path} for book ${reference.book}`
+              `Found translation word links file: ${ingredient.path} for book ${reference.book}`,
             );
             break;
           }
@@ -609,7 +669,7 @@ export class ResourceAggregator {
 
         if (!targetFile) {
           logger.debug(
-            `No translation word links file found for ${reference.book} in ${resourceName}`
+            `No translation word links file found for ${reference.book} in ${resourceName}`,
           );
           continue;
         }
@@ -619,7 +679,9 @@ export class ResourceAggregator {
         const fileResponse = await fetch(fileUrl);
 
         if (!fileResponse.ok) {
-          logger.warn(`Failed to fetch translation word links file: ${targetFile.path}`);
+          logger.warn(
+            `Failed to fetch translation word links file: ${targetFile.path}`,
+          );
           continue;
         }
 
@@ -629,7 +691,7 @@ export class ResourceAggregator {
           const links = this.parseTWLFromTSV(tsvData, reference);
           if (links.length > 0) {
             logger.info(
-              `Successfully fetched ${links.length} translation word links from ${resourceName}`
+              `Successfully fetched ${links.length} translation word links from ${resourceName}`,
             );
             return links;
           }
@@ -831,21 +893,30 @@ export class ResourceAggregator {
   /**
    * Extract verse from USFM content using clean extraction approach
    */
-  private extractVerseFromUSFM(usfm: string, reference: ParsedReference): string | null {
+  private extractVerseFromUSFM(
+    usfm: string,
+    reference: ParsedReference,
+  ): string | null {
     if (!reference.chapter || !reference.verse || !usfm) {
       return null;
     }
 
     try {
       // Use our USFM extractor utility
-      const cleanText = extractVerseText(usfm, reference.chapter, reference.verse);
+      const cleanText = extractVerseText(
+        usfm,
+        reference.chapter,
+        reference.verse,
+      );
 
       if (cleanText && validateCleanText(cleanText)) {
-        console.log(`✅ Clean verse text extracted: ${cleanText.substring(0, 100)}...`);
+        console.log(
+          `✅ Clean verse text extracted: ${cleanText.substring(0, 100)}...`,
+        );
         return cleanText;
       } else {
         console.warn(
-          `⚠️ USFM extraction failed validation for ${reference.chapter}:${reference.verse}`
+          `⚠️ USFM extraction failed validation for ${reference.chapter}:${reference.verse}`,
         );
         return null;
       }
@@ -872,12 +943,12 @@ export class ResourceAggregator {
         usfm,
         reference.chapter,
         reference.verse,
-        reference.endVerse
+        reference.endVerse,
       );
 
       if (cleanText && validateCleanText(cleanText)) {
         console.log(
-          `✅ Clean verse range text extracted: ${reference.chapter}:${reference.verse}-${reference.endVerse}`
+          `✅ Clean verse range text extracted: ${reference.chapter}:${reference.verse}-${reference.endVerse}`,
         );
         return cleanText;
       } else {
@@ -906,11 +977,13 @@ export class ResourceAggregator {
       const cleanText = extractChapterText(usfm, reference.chapter);
 
       if (cleanText && validateCleanText(cleanText)) {
-        console.log(`✅ Clean chapter text extracted for chapter ${reference.chapter}`);
+        console.log(
+          `✅ Clean chapter text extracted for chapter ${reference.chapter}`,
+        );
         return cleanText;
       } else {
         console.warn(
-          `⚠️ USFM chapter extraction failed validation for chapter ${reference.chapter}`
+          `⚠️ USFM chapter extraction failed validation for chapter ${reference.chapter}`,
         );
         return "";
       }
@@ -929,7 +1002,7 @@ export class ResourceAggregator {
   private parseTNFromTSV(
     tsvData: string,
     reference: ParsedReference,
-    includeIntro: boolean = true
+    includeIntro: boolean = true,
   ): TranslationNote[] {
     const notes: TranslationNote[] = [];
 
@@ -947,7 +1020,7 @@ export class ResourceAggregator {
         const cols = line.split("\t");
         if (cols.length < 7) continue;
 
-        const [ref, id, tags, supportReference, quote, occurrence, noteText] = cols;
+        const [ref, , , , quote, , noteText] = cols;
 
         // Skip intro notes if not requested
         if (!includeIntro && ref.includes("intro")) {
@@ -973,7 +1046,8 @@ export class ResourceAggregator {
               verseNum <= reference.endVerse;
           } else if (reference.verse) {
             // Single verse
-            include = chapterNum === reference.chapter && verseNum === reference.verse;
+            include =
+              chapterNum === reference.chapter && verseNum === reference.verse;
           } else {
             // Full chapter
             include = chapterNum === reference.chapter;
@@ -1018,7 +1092,10 @@ export class ResourceAggregator {
   /**
    * Parse Translation Questions from TSV data
    */
-  private parseTQFromTSV(tsvData: string, reference: ParsedReference): TranslationQuestion[] {
+  private parseTQFromTSV(
+    tsvData: string,
+    reference: ParsedReference,
+  ): TranslationQuestion[] {
     const questions: TranslationQuestion[] = [];
 
     try {
@@ -1061,7 +1138,10 @@ export class ResourceAggregator {
   /**
    * Parse Translation Words from TSV data
    */
-  private parseTWFromTSV(tsvData: string, reference: ParsedReference): TranslationWord[] {
+  private parseTWFromTSV(
+    tsvData: string,
+    reference: ParsedReference,
+  ): TranslationWord[] {
     const words: TranslationWord[] = [];
 
     try {
@@ -1101,39 +1181,48 @@ export class ResourceAggregator {
   /**
    * Parse Translation Word Links from TSV data - using automatic parsing
    */
-  private parseTWLFromTSV(tsvData: string, reference: ParsedReference): any[] {
+  private parseTWLFromTSV(
+    tsvData: string,
+    reference: ParsedReference,
+  ): Record<string, unknown>[] {
     try {
       // Use the generic parseTSV to preserve exact structure
       const allRows = parseTSV(tsvData);
-      
+
       // Filter rows based on reference
-      return allRows.filter(row => {
-        const ref = row.Reference;
-        if (!ref) return false;
-        
-        const refMatch = ref.match(/(\d+):(\d+)/);
-        if (!refMatch) return false;
+      return allRows
+        .filter((row) => {
+          const ref = row.Reference;
+          if (!ref) return false;
 
-        const chapterNum = parseInt(refMatch[1]);
-        const verseNum = parseInt(refMatch[2]);
+          const refMatch = ref.match(/(\d+):(\d+)/);
+          if (!refMatch) return false;
 
-        // Check if this word link is in our range
-        if (reference.endVerse && reference.endVerse !== reference.verse) {
-          // Verse range within same chapter
-          return chapterNum === reference.chapter &&
-                 verseNum >= reference.verse! &&
-                 verseNum <= reference.endVerse;
-        } else if (reference.verse) {
-          // Single verse
-          return chapterNum === reference.chapter && verseNum === reference.verse;
-        } else {
-          // Full chapter
-          return chapterNum === reference.chapter;
-        }
-      }).map(row => ({
-        ...row,
-        Reference: `${reference.book} ${row.Reference}` // Keep original field name
-      }));
+          const chapterNum = parseInt(refMatch[1]);
+          const verseNum = parseInt(refMatch[2]);
+
+          // Check if this word link is in our range
+          if (reference.endVerse && reference.endVerse !== reference.verse) {
+            // Verse range within same chapter
+            return (
+              chapterNum === reference.chapter &&
+              verseNum >= reference.verse! &&
+              verseNum <= reference.endVerse
+            );
+          } else if (reference.verse) {
+            // Single verse
+            return (
+              chapterNum === reference.chapter && verseNum === reference.verse
+            );
+          } else {
+            // Full chapter
+            return chapterNum === reference.chapter;
+          }
+        })
+        .map((row) => ({
+          ...row,
+          Reference: `${reference.book} ${row.Reference}`, // Keep original field name
+        }));
     } catch (error) {
       logger.error("Error parsing TWL TSV", {
         reference: this.formatReference(reference),

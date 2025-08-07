@@ -3,9 +3,13 @@
  * Fetches actual translation word article content from DCS
  */
 
-import { getCachedDCSClient } from "../../services/cached-dcs-client.js";
+import { DCSApiClient } from "../../services/DCSApiClient.js";
 import { logger } from "../../utils/logger";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 interface TranslationWordArticle {
   id: string;
@@ -16,7 +20,7 @@ interface TranslationWordArticle {
 }
 
 export const getTranslationWordHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -36,9 +40,11 @@ export const getTranslationWordHandler: PlatformHandler = async (
 
   try {
     // Use 'word' parameter as per user preference
-    const word = request.queryStringParameters.word || request.queryStringParameters.term;
+    const word =
+      request.queryStringParameters.word || request.queryStringParameters.term;
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
 
     if (!word) {
       return {
@@ -50,7 +56,8 @@ export const getTranslationWordHandler: PlatformHandler = async (
         body: JSON.stringify({
           error: "Missing required parameter: 'word'",
           code: "MISSING_PARAMETER",
-          message: "Please provide a word to look up. Example: ?word=love&language=en",
+          message:
+            "Please provide a word to look up. Example: ?word=love&language=en",
           validEndpoints: [
             "/api/list-available-resources - Find available organizations/languages",
             "/api/browse-translation-words - Browse available words",
@@ -59,10 +66,14 @@ export const getTranslationWordHandler: PlatformHandler = async (
       };
     }
 
-    logger.info("Fetching translation word article", { word, language, organization });
+    logger.info("Fetching translation word article", {
+      word,
+      language,
+      organization,
+    });
 
     // Initialize DCS client
-    const dcsClient = getCachedDCSClient();
+    const dcsClient = new DCSApiClient();
 
     // Step 1: Search catalog for translation words resource
     const catalogUrl = `/catalog/search?subject=Translation%20Words&lang=${language}&owner=${organization}`;
@@ -114,26 +125,35 @@ export const getTranslationWordHandler: PlatformHandler = async (
 
             const response = await dcsClient.request(fileUrl);
 
-            if (response && typeof response === "string" && response.length > 0) {
+            if (
+              response &&
+              typeof response === "string" &&
+              response.length > 0
+            ) {
               articleContent = response;
               foundCategory = category;
               logger.info("Found article", { path, category });
               break;
             }
-          } catch (err) {
+          } catch {
             // Continue to next path
           }
         }
 
         if (articleContent) break;
-      } catch (err) {
+      } catch {
         // Continue to next category
       }
     }
 
     if (!articleContent) {
       // If exact match not found, search for similar words
-      const similarWords = await searchSimilarWords(dcsClient, repoName, organization, word);
+      const similarWords = await searchSimilarWords(
+        dcsClient,
+        repoName,
+        organization,
+        word,
+      );
 
       return {
         statusCode: 404,
@@ -144,7 +164,8 @@ export const getTranslationWordHandler: PlatformHandler = async (
         body: JSON.stringify({
           error: `Translation word article not found for '${word}'`,
           code: "WORD_NOT_FOUND",
-          message: "The exact word was not found. Try one of these similar words:",
+          message:
+            "The exact word was not found. Try one of these similar words:",
           similarWords: similarWords,
           hint: "Use /api/browse-translation-words to see all available words",
         }),
@@ -152,7 +173,11 @@ export const getTranslationWordHandler: PlatformHandler = async (
     }
 
     // Parse the markdown content to extract title and sections
-    const article = parseTranslationWordArticle(articleContent, word, foundCategory);
+    const article = parseTranslationWordArticle(
+      articleContent,
+      word,
+      foundCategory,
+    );
 
     const duration = Date.now() - startTime;
 
@@ -189,7 +214,8 @@ export const getTranslationWordHandler: PlatformHandler = async (
       body: JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        message: "An error occurred while fetching the translation word. Please try again.",
+        message:
+          "An error occurred while fetching the translation word. Please try again.",
       }),
     };
   }
@@ -201,9 +227,9 @@ export const getTranslationWordHandler: PlatformHandler = async (
 function parseTranslationWordArticle(
   content: string,
   word: string,
-  category: string
+  category: string,
 ): TranslationWordArticle {
-  const lines = content.split("\n");
+  // const lines = content.split("\n");
 
   // Extract title from first heading
   let title = word;
@@ -238,7 +264,7 @@ async function searchSimilarWords(
   dcsClient: DCSApiClient,
   repoName: string,
   organization: string,
-  searchTerm: string
+  searchTerm: string,
 ): Promise<string[]> {
   try {
     // Get the file tree to find similar words
@@ -266,7 +292,7 @@ async function searchSimilarWords(
     }
 
     return similar;
-  } catch (err) {
+  } catch {
     logger.error("Error searching similar words", err);
     return [];
   }

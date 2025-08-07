@@ -7,8 +7,8 @@ export const config = {
  * Uses ResourceAggregator with ingredients pattern for dynamic resource discovery
  */
 
-import { parseReference } from '$lib/../../../dist/src/parsers/referenceParser.js';
-import { ResourceAggregator } from '$lib/../../../dist/src/services/ResourceAggregator.js';
+import { parseReference } from '$lib/../../../src/parsers/referenceParser';
+import { ResourceAggregator } from '$lib/../../../src/services/ResourceAggregator';
 
 // Initialize ResourceAggregator
 const resourceAggregator = new ResourceAggregator();
