@@ -766,8 +766,18 @@ export class RouteGenerator {
       });
 
       const result = (await fetcher(zipConfig, params, context)) as any;
-      console.log("[RouteGenerator] fetcher result keys:", Object.keys(result || {}));
-      console.log("[RouteGenerator] resources length:", result?.resources?.length);
+      console.log("[RouteGenerator] fetcher result:", result);
+      
+      // The functional fetcher returns { scripture: {...}, resources: [...] }
+      // But we need to check what we actually got
+      if (result && typeof result === 'object') {
+        if ('scripture' in result && 'resources' in result) {
+          // This is the proper format!
+          console.log("[RouteGenerator] Got proper scripture format with", result.resources?.length, "resources");
+        } else {
+          console.log("[RouteGenerator] Unexpected result format:", Object.keys(result));
+        }
+      }
 
       // Attach X-Ray trace from ZIP path into metadata for UI/UX
       try {
