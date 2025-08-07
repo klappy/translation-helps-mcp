@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { Activity, Beaker, Check, Copy, Database, Link } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import ApiTester from '../../lib/components/ApiTester.svelte';
@@ -23,7 +25,7 @@
 	let isLoading = false;
 	let apiResult: any = null;
 	let copiedExample: number | null = null;
-	let performanceData: any = {};
+	let performanceData: Record<string, any> = {};
 	let healthStatus: Record<
 		string,
 		{ status: 'checking' | 'healthy' | 'error' | 'unknown' | 'warning'; message?: string }
@@ -58,6 +60,24 @@
 
 			console.log('🎉 MCP Tools successfully connected to configuration system!');
 			isInitialized = true;
+			
+			// Check URL for focused endpoint
+			const urlParams = new URLSearchParams($page.url.search);
+			const toolParam = urlParams.get('tool');
+			const categoryParam = $page.url.hash.replace('#', '') || 'core';
+			
+			if (categoryParam && ['core', 'extended', 'experimental'].includes(categoryParam)) {
+				selectedCategory = categoryParam as MainCategory;
+			}
+			
+			if (toolParam) {
+				// Find the endpoint and focus it
+				const allEndpoints = [...coreEndpoints, ...extendedEndpoints, ...experimentalEndpoints];
+				const endpoint = allEndpoints.find(e => e.name === toolParam);
+				if (endpoint) {
+					selectEndpoint(endpoint);
+				}
+			}
 		} catch (error) {
 			console.error('❌ Failed to load endpoint configurations:', error);
 			loadingError = error instanceof Error ? error.message : String(error);
@@ -137,6 +157,12 @@
 		// Clear previous results when selecting new endpoint
 		apiResult = null;
 		isLoading = false;
+		
+		// Update URL to persist selection
+		const url = new URL(window.location.href);
+		url.hash = selectedCategory;
+		url.searchParams.set('tool', endpoint.name);
+		goto(url.toString(), { replaceState: true, noScroll: true });
 	}
 
 	// Transform endpoint config to format expected by ApiTester
@@ -179,6 +205,7 @@
 
 	// Handle API response
 	function handleApiResponse(endpoint: any, response: any) {
+		console.log(`🎯 handleApiResponse called for ${endpoint.name}`, response);
 		const metadata = response.metadata || {};
 		const xrayTrace = metadata.xrayTrace || {};
 
@@ -200,7 +227,9 @@
 						hits: xrayTrace.cacheStats.hits,
 						misses: xrayTrace.cacheStats.misses,
 						total: xrayTrace.cacheStats.total,
-						hitRate: xrayTrace.cacheStats.hitRate
+						hitRate: xrayTrace.cacheStats.total > 0 
+							? xrayTrace.cacheStats.hits / xrayTrace.cacheStats.total 
+							: 0
 					}
 				: null,
 
@@ -214,7 +243,7 @@
 				: null,
 
 			// API call details
-			calls: xrayTrace.calls || [],
+			calls: xrayTrace.apiCalls || [],
 
 			// Additional metadata
 			format: metadata.format,
@@ -236,6 +265,17 @@
 			`📊 Performance data captured for ${endpoint.name}:`,
 			performanceData[endpoint.name]
 		);
+		
+		// Debug X-ray data specifically
+		console.log(`🔍 X-ray trace data:`, {
+			traceId: performanceData[endpoint.name].traceId,
+			totalDuration: performanceData[endpoint.name].totalDuration,
+			calls: performanceData[endpoint.name].calls,
+			cacheStats: performanceData[endpoint.name].cacheStats
+		});
+		
+		// Force reactivity update
+		performanceData = performanceData;
 	}
 
 	// Handle API test requests from ApiTester component
@@ -270,7 +310,28 @@
 				}
 			});
 
-			const responseData = await response.json();
+			// Check content type to determine how to parse response
+			const contentType = response.headers.get('content-type') || '';
+			let responseData;
+			
+			if (contentType.includes('application/json')) {
+				responseData = await response.json();
+			} else if (contentType.includes('text/markdown') || contentType.includes('text/plain')) {
+				// For markdown/text responses, wrap in a simple object
+				const text = await response.text();
+				responseData = {
+					success: true,
+					data: text,
+					metadata: {
+						format: 'markdown',
+						contentType: contentType
+					}
+				};
+			} else {
+				// Default to JSON parsing
+				responseData = await response.json();
+			}
+			
 			console.log(`✅ Response received:`, responseData);
 
 			// Set the result for display
@@ -318,11 +379,11 @@
 				testParams.reference = 'John 3:16';
 			} else if (endpoint.name === 'get-words-for-reference') {
 				testParams.reference = 'John 3:16';
-			} else if (
-				endpoint.name === 'browse-translation-words' ||
-				endpoint.name === 'browse-translation-academy'
-			) {
-				// No params needed
+			} else if (endpoint.name === 'browse-translation-words') {
+				// No params needed  
+			} else if (endpoint.name === 'browse-translation-academy') {
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
 			} else if (endpoint.name === 'extract-references') {
 				testParams.text = 'Check John 3:16';
 			} else if (endpoint.name === 'get-available-books') {
@@ -336,6 +397,11 @@
 					params.append(key, String(value));
 				}
 			});
+			
+			// Force JSON format for endpoints that support multiple formats
+			if (endpoint.name === 'browse-translation-academy' && !params.has('format')) {
+				params.append('format', 'json');
+			}
 
 			// Ensure endpoint path starts with /api
 			const apiPath = endpoint.path.startsWith('/api') ? endpoint.path : `/api${endpoint.path}`;
@@ -350,7 +416,7 @@
 			});
 
 			if (response.ok) {
-				const data = await response.json();
+				const data = await response.json(); // Everything returns JSON now
 
 				// Antifragile error detection: recursively search entire response for ANY error indicators
 				function hasAnyErrors(
@@ -393,8 +459,12 @@
 						errors.push('success: false');
 					}
 
-					// Recursively check all properties
+					// Recursively check all properties (but skip very large data arrays)
 					for (const [key, value] of Object.entries(obj)) {
+						// Skip recursing into large data arrays to avoid performance issues
+						if (key === 'data' && Array.isArray(value) && value.length > 50) {
+							continue;
+						}
 						const nestedResult = hasAnyErrors(value, visited);
 						if (nestedResult.hasError) {
 							errors.push(...nestedResult.errorDetails.map((detail) => `${key}.${detail}`));
@@ -1063,7 +1133,7 @@
 			{:else if selectedCategory === 'experimental'}
 				<!-- Experimental Endpoints (Full Width for Safety) -->
 				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
-					<h2 class="mb-4 text-2xl font-bold text-white">�� Experimental Lab</h2>
+					<h2 class="mb-4 text-2xl font-bold text-white">🧪 Experimental Lab</h2>
 					<p class="mb-6 text-gray-300">
 						Test cutting-edge features in a separate, clearly marked section
 					</p>
@@ -1093,14 +1163,21 @@
 							{/each}
 						</div>
 					{:else}
-						<div class="rounded-lg border border-purple-700/30 bg-purple-900/10 p-8 text-center">
-							<Beaker class="mx-auto h-12 w-12 text-purple-400" />
-							<h3 class="mt-4 text-lg font-semibold text-purple-300">
-								No Experimental Features Available
-							</h3>
-							<p class="mt-2 text-sm text-purple-400">
-								Check back soon for cutting-edge AI-powered features!
-							</p>
+						<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+							{#each experimentalEndpoints as endpoint}
+								<div class="group rounded-lg border border-purple-700/30 bg-purple-900/10 p-4 hover:bg-purple-900/20 transition-colors">
+									<h3 class="flex items-center gap-2 font-semibold text-purple-200">
+										<span class="text-lg">{endpoint.title}</span>
+										{#if !endpoint.enabled}
+											<span class="rounded-full bg-purple-700/30 px-2 py-0.5 text-xs text-purple-300">
+												Coming Soon
+											</span>
+										{/if}
+									</h3>
+									<p class="mt-2 text-sm text-purple-400">{endpoint.description}</p>
+									<p class="mt-2 text-xs text-purple-500/70 font-mono">{endpoint.path}</p>
+								</div>
+							{/each}
 						</div>
 					{/if}
 				</div>

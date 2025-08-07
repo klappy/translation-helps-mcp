@@ -1,6 +1,6 @@
 # Task ID: 1
 # Title: Documentation Cleanup & Consolidation
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Archive old docs, consolidate overlapping content, remove empty/aspirational docs, fix time-travel dates, and ensure 1:1 match with implementation
@@ -25,7 +25,7 @@
 Manual review of all documentation files, ensure no broken links, verify accuracy against codebase, check all dates are current
 
 # Subtasks:
-## 1. Create Archive Structure [pending]
+## 1. Create Archive Structure [done]
 ### Dependencies: None
 ### Description: Set up /docs/archive/ directory and subdirectories for organized storage
 ### Details:
@@ -33,7 +33,7 @@ mkdir -p docs/archive/{old-prds,deprecated-guides,experimental-features,cache-wa
 Create README.md in archive explaining the archival structure
 Document why each item was archived
 
-## 2. Archive Outdated Documentation [pending]
+## 2. Archive Outdated Documentation [done]
 ### Dependencies: 1.1
 ### Description: Move all deprecated and outdated documentation to archive, fix time-travel dates
 ### Details:
@@ -45,7 +45,7 @@ Move files:
 - Any guides referencing removed features
 Search and replace all dates that are before project start (2 weeks ago)
 
-## 3. Consolidate Core Guides [pending]
+## 3. Consolidate Core Guides [done]
 ### Dependencies: 1.2
 ### Description: Merge overlapping documentation into single authoritative sources
 ### Details:
@@ -57,7 +57,7 @@ Actions:
 - Document tWL as the bridge between verses and tW articles
 - Add ToC information for tA and tW resources
 
-## 4. Document Resource Data Shapes [pending]
+## 4. Document Resource Data Shapes [done]
 ### Dependencies: 1.3
 ### Description: Create clear documentation of actual data returned by each endpoint
 ### Details:
@@ -69,7 +69,7 @@ For each resource type, document:
 - How tWL links verses to tW articles
 - How tN links to tA articles
 
-## 5. Update Documentation Index [pending]
+## 5. Update Documentation Index [done]
 ### Dependencies: 1.4
 ### Description: Update main README and docs index to reflect new structure
 ### Details:

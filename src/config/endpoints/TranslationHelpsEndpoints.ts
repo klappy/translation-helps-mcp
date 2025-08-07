@@ -21,8 +21,7 @@ const REFERENCE_PARAMS = {
   reference: {
     type: "string" as const,
     required: true,
-    description:
-      'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
+    description: 'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
     example: "John 3:16",
     pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(?::\\d+(?:-\\d+)?)?$",
     min: 3,
@@ -53,8 +52,7 @@ const TERM_PARAMS = {
   term: {
     type: "string" as const,
     required: true,
-    description:
-      'Translation word term to lookup (e.g., "love", "grace", "salvation")',
+    description: 'Translation word term to lookup (e.g., "love", "grace", "salvation")',
     example: "love",
     min: 2,
     max: 50,
@@ -70,16 +68,14 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
   name: "fetch-translation-questions",
   path: "/fetch-translation-questions",
   title: "Fetch Translation Questions",
-  description:
-    "Retrieve comprehension and checking questions for scripture passages",
+  description: "Retrieve comprehension and checking questions for scripture passages",
   category: "core",
   responseShape: TRANSLATION_QUESTIONS_SHAPE,
   params: REFERENCE_PARAMS,
   dataSource: {
     type: "dcs-api",
-    dcsEndpoint:
-      "/api/v1/repos/{organization}/{language}_tq/contents/{book}/{chapter}.md",
-    transformation: "markdown-assemble",
+    dcsEndpoint: "USES_INGREDIENTS", // Service should use manifest ingredients, not hardcoded path
+    transformation: "tsv-parse", // Questions are in TSV format, not markdown
     cacheTtl: 7200,
   },
   enabled: true,
@@ -87,19 +83,14 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
   examples: [
     {
       name: "John 3:16 Questions",
-      description:
-        "Get comprehension questions for the most famous Bible verse",
+      description: "Get comprehension questions for the most famous Bible verse",
       params: {
         reference: "John 3:16",
         language: "en",
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: [
-          "How did God show he loved the world",
-          "giving his Only Son",
-          "eternal life",
-        ],
+        contains: ["How did God show he loved the world", "giving his Only Son", "eternal life"],
         minLength: 100,
         fields: {
           translationQuestions: "array",
@@ -164,8 +155,7 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
   name: "get-translation-word",
   path: "/get-translation-word",
   title: "Get Translation Word",
-  description:
-    "Retrieve detailed explanation of a specific biblical term or concept",
+  description: "Retrieve detailed explanation of a specific biblical term or concept",
   category: "core",
   responseShape: TRANSLATION_WORDS_SHAPE,
 
@@ -173,8 +163,7 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
 
   dataSource: {
     type: "dcs-api",
-    dcsEndpoint:
-      "/api/v1/repos/{organization}/{language}_tw/contents/bible/kt/{term}.md",
+    dcsEndpoint: "/api/v1/repos/{organization}/{language}_tw/contents/bible/kt/{term}.md",
     transformation: "markdown-assemble",
     cacheTtl: 14400, // 4 hours (more stable content)
   },
@@ -258,6 +247,14 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       min: 3,
       max: 50,
     },
+    format: {
+      type: "string" as const,
+      required: false,
+      description: "Response format - markdown for LLM-friendly output, json for structured data",
+      example: "markdown",
+      options: ["markdown", "json"],
+      default: "json",
+    },
   },
 
   dataSource: {
@@ -272,11 +269,25 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
 
   examples: [
     {
-      name: "All Modules",
-      description: "Get all available translation academy modules",
+      name: "All Modules (Markdown)",
+      description: "Get all modules in LLM-friendly markdown format",
       params: {
         language: "en",
         organization: "unfoldingWord",
+        // format: "markdown" is default
+      },
+      expectedContent: {
+        contains: ["# Translation Academy", "## Table of Contents", "- ["],
+        minLength: 1000,
+      },
+    },
+    {
+      name: "All Modules (JSON)",
+      description: "Get all modules in structured JSON format",
+      params: {
+        language: "en",
+        organization: "unfoldingWord",
+        format: "json",
       },
       expectedContent: {
         contains: ["modules", "categories", "beginner"],
@@ -328,8 +339,7 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
   name: "browse-translation-academy",
   path: "/browse-translation-academy",
   title: "Browse Translation Academy",
-  description:
-    "Browse available Translation Academy modules and categories (Table of Contents)",
+  description: "Browse available Translation Academy modules and categories (Table of Contents)",
   category: "core",
   responseShape: TRANSLATION_ACADEMY_SHAPE,
 
@@ -342,6 +352,15 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       description: "Filter by specific category",
       example: "translate",
       options: ["process", "translate", "checking", "audio", "gateway"],
+    },
+    format: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Response format - markdown (default) for LLM-friendly output, json for structured data",
+      example: "markdown",
+      options: ["markdown", "json"],
+      default: "json",
     },
   },
 
@@ -357,11 +376,25 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
 
   examples: [
     {
-      name: "All Categories",
-      description: "Browse all Translation Academy categories and modules",
+      name: "All Categories (Markdown)",
+      description: "Browse all categories in LLM-friendly markdown format",
       params: {
         language: "en",
         organization: "unfoldingWord",
+        // format: "markdown" is default
+      },
+      expectedContent: {
+        contains: ["# Translation Academy", "## Table of Contents", "- ["],
+        minLength: 1000,
+      },
+    },
+    {
+      name: "All Categories (JSON)",
+      description: "Browse all categories in structured JSON format",
+      params: {
+        language: "en",
+        organization: "unfoldingWord",
+        format: "json",
       },
       expectedContent: {
         contains: ["categories", "modules", "process", "translate"],
@@ -373,18 +406,16 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       },
     },
     {
-      name: "Translation Category",
-      description: "Browse modules in the translation category",
+      name: "Specific Category (Markdown)",
+      description: "Browse translation category in markdown",
       params: {
         language: "en",
         organization: "unfoldingWord",
         category: "translate",
       },
       expectedContent: {
-        contains: ["translate", "metaphor", "idiom"],
-        fields: {
-          categories: "array",
-        },
+        contains: ["# Table of Contents", "- [", "translate/"],
+        minLength: 500,
       },
     },
   ],
@@ -397,8 +428,7 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
   name: "fetch-translation-word-links",
   path: "/fetch-translation-word-links",
   title: "Fetch Translation Word Links",
-  description:
-    "Retrieve links between scripture references and translation word articles",
+  description: "Retrieve links between scripture references and translation word articles",
   category: "core",
   responseShape: TRANSLATION_WORD_LINKS_SHAPE,
 
@@ -406,8 +436,7 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
 
   dataSource: {
     type: "dcs-api",
-    dcsEndpoint:
-      "/api/v1/repos/{organization}/{language}_twl/contents/{book}/{chapter}.tsv",
+    dcsEndpoint: "/api/v1/repos/{organization}/{language}_twl/contents/{book}/{chapter}.tsv",
     transformation: "tsv-parse",
     cacheTtl: 10800, // 3 hours
   },
@@ -458,8 +487,7 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
   name: "fetch-translation-notes",
   path: "/fetch-translation-notes",
   title: "Fetch Translation Notes",
-  description:
-    "Retrieve detailed translation notes explaining difficult passages and terms",
+  description: "Retrieve detailed translation notes explaining difficult passages and terms",
   category: "core",
   responseShape: TRANSLATION_NOTES_SHAPE,
 
@@ -467,8 +495,7 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
 
   dataSource: {
     type: "dcs-api",
-    dcsEndpoint:
-      "/api/v1/repos/{organization}/{language}_tn/contents/{book}/{chapter}.tsv",
+    dcsEndpoint: "/api/v1/repos/{organization}/{language}_tn/contents/{book}/{chapter}.tsv",
     transformation: "tsv-parse",
     cacheTtl: 7200, // 2 hours
   },

@@ -9,7 +9,7 @@ import {
   Organization,
   ResourceType,
 } from "../../constants/terminology.js";
-import { DCSApiClient } from "../../services/DCSApiClient.js";
+import { getCachedDCSClient } from "../../services/cached-dcs-client.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
 
@@ -129,7 +129,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (request) =>
     console.log(`🔄 RC Links cache MISS, fetching fresh data for: ${language}:${resourceType}`);
 
     // Fetch fresh data
-    const dcsClient = new DCSApiClient();
+    const dcsClient = getCachedDCSClient();
     const result = await fetchRCLinks(
       dcsClient,
       language,

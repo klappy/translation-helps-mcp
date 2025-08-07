@@ -7,9 +7,9 @@ export const config = {
  * Uses the proper aggregation handler that combines all resources
  */
 
-import { MemoryCacheAdapter } from '$lib/../../../src/functions/caches/memory-cache';
-import { getContextHandler } from '$lib/../../../src/functions/handlers/get-context-catalog';
 import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
+import { getContextHandler } from '$lib/../../../src/functions/handlers/get-context-aggregated';
+import { MemoryCacheAdapter } from '$lib/../../../src/functions/caches/memory-cache';
 
 const cache = new MemoryCacheAdapter();
 export const GET = createSvelteKitHandler(getContextHandler, cache);

@@ -477,7 +477,7 @@
             "id": 1,
             "title": "Implement Real Data Tests",
             "description": "Replace status code checks with content validation",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "For each endpoint test:\n- Validate actual scripture text\n- Check tN content matches reference\n- Verify tW articles assembled correctly\n- Test tWL mappings are accurate\n- Use real verse ranges, not just single verses\n- Test edge cases with real data",
             "testStrategy": "Tests fail if data is wrong, not just missing"
@@ -525,6 +525,65 @@
             ],
             "details": "Final deployment:\n- Run full test suite\n- Deploy to staging first\n- Smoke test all endpoints\n- Deploy to production\n- Monitor for 24 hours\n- Prepare rollback plan",
             "testStrategy": "Zero errors in production for 24 hours"
+          },
+          {
+            "id": 6,
+            "title": "Fix get-translation-word endpoint",
+            "description": "Implement real article fetching from DCS markdown files instead of returning fake paths",
+            "details": "Current issue: Returns paths like 'bible/kt/beloved.md' that don't fetch content. Fix: Implement proper DCS markdown fetching using the TWLink RC paths to get actual article content including title, subtitle, and full markdown content.",
+            "status": "done",
+            "dependencies": [
+              "8.1"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 7,
+            "title": "Fix fetch-translation-questions path logic",
+            "description": "Fix wrong file path structure that tries JHN/3.md instead of proper TSV paths",
+            "details": "Current: Tries to fetch 'JHN/3.md' which doesn't exist. Fix: Use proper TSV file structure from manifest.yaml to fetch translation questions correctly.",
+            "status": "done",
+            "dependencies": [
+              "8.1"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 8,
+            "title": "Implement get-context aggregation",
+            "description": "Build the computed data source for comprehensive verse context",
+            "details": "Implement aggregation of: All scripture versions for the language (full chapter), Translation notes (book/chapter/verse), All unique translation words via TWL, Translation questions, Translation Academy articles from RC links. Return as flexible array structure.",
+            "status": "done",
+            "dependencies": [
+              "8.6",
+              "8.7"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 9,
+            "title": "Add version filtering to fetch-scripture",
+            "description": "Implement proper version parameter filtering instead of returning all versions",
+            "details": "Current: Ignores version parameter, always returns all 4 versions. Fix: When version parameter specified, filter results to only that version while maintaining consistent array response structure.",
+            "status": "pending",
+            "dependencies": [
+              "8.1"
+            ],
+            "parentTaskId": 8
+          },
+          {
+            "id": 10,
+            "title": "Implement helpful error messages",
+            "description": "Add LLM-friendly error messages with clear guidance on how to fix issues",
+            "details": "For all endpoints: Invalid references should return 400 with list of valid books, Missing parameters should explain defaults and link to discovery endpoints, When resources not found distinguish between file-not-found vs org/lang combo not existing. Always provide explicit examples of correct usage.",
+            "status": "pending",
+            "dependencies": [
+              "8.6",
+              "8.7",
+              "8.8",
+              "8.9"
+            ],
+            "parentTaskId": 8
           }
         ]
       },
@@ -585,7 +644,7 @@
       "lastModified": "2025-01-24T00:00:00Z",
       "description": "Translation Helps MCP 2025 Refactor - Simplifying to core functionality with proper tWL understanding and real data validation",
       "created": "2025-08-05T15:01:18.526Z",
-      "updated": "2025-08-05T22:53:41.559Z"
+      "updated": "2025-08-06T21:40:34.356Z"
     }
   }
 }

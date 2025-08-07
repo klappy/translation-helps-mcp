@@ -11,7 +11,7 @@ import {
   recommendResources,
   type RecommendationContext,
   type ScriptureReference,
-} from "../../experimental/resource-recommender.js";
+} from "./resource-recommender.js";
 import { cache } from "../cache.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 

@@ -3,7 +3,7 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
-import { DCSApiClient } from "../../services/DCSApiClient.js";
+import { getCachedDCSClient } from "../../services/cached-dcs-client.js";
 import type { XRayTrace } from "../../types/dcs.js";
 import type {
   PlatformHandler,
@@ -17,7 +17,7 @@ export const fetchScriptureHandler: PlatformHandler = async (
   request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   // Initialize DCS client for X-Ray tracing
-  const dcsClient = new DCSApiClient();
+  const dcsClient = getCachedDCSClient();
   const traceId = `scripture_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   try {

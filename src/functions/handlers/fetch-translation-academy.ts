@@ -5,7 +5,7 @@
  */
 
 import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";
-import { DCSApiClient } from "../../services/DCSApiClient.js";
+import { getCachedDCSClient } from "../../services/cached-dcs-client.js";
 import type { DCSCallTrace, XRayTrace } from "../../types/dcs.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
@@ -74,7 +74,7 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (request) =
     const cacheKey = `ta:v2:${language}:${organization}:${category || "all"}:${difficulty || "all"}:${moduleId || "all"}`;
 
     // Always initialize X-Ray tracing for current request timing
-    const dcsClient = new DCSApiClient();
+    const dcsClient = getCachedDCSClient();
     const traceId = `ta_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     dcsClient.enableTracing(traceId, "/api/fetch-translation-academy");
 

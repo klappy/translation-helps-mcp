@@ -23,7 +23,7 @@ Testing requirements:
 Every test validates real resource data, deployment completes without hanging
 
 # Subtasks:
-## 1. Implement Real Data Tests [pending]
+## 1. Implement Real Data Tests [in-progress]
 ### Dependencies: None
 ### Description: Replace status code checks with content validation
 ### Details:
@@ -81,4 +81,34 @@ Final deployment:
 - Deploy to production
 - Monitor for 24 hours
 - Prepare rollback plan
+
+## 6. Fix get-translation-word endpoint [pending]
+### Dependencies: 8.1
+### Description: Implement real article fetching from DCS markdown files instead of returning fake paths
+### Details:
+Current issue: Returns paths like 'bible/kt/beloved.md' that don't fetch content. Fix: Implement proper DCS markdown fetching using the TWLink RC paths to get actual article content including title, subtitle, and full markdown content.
+
+## 7. Fix fetch-translation-questions path logic [pending]
+### Dependencies: 8.1
+### Description: Fix wrong file path structure that tries JHN/3.md instead of proper TSV paths
+### Details:
+Current: Tries to fetch 'JHN/3.md' which doesn't exist. Fix: Use proper TSV file structure from manifest.yaml to fetch translation questions correctly.
+
+## 8. Implement get-context aggregation [pending]
+### Dependencies: 8.6, 8.7
+### Description: Build the computed data source for comprehensive verse context
+### Details:
+Implement aggregation of: All scripture versions for the language (full chapter), Translation notes (book/chapter/verse), All unique translation words via TWL, Translation questions, Translation Academy articles from RC links. Return as flexible array structure.
+
+## 9. Add version filtering to fetch-scripture [pending]
+### Dependencies: 8.1
+### Description: Implement proper version parameter filtering instead of returning all versions
+### Details:
+Current: Ignores version parameter, always returns all 4 versions. Fix: When version parameter specified, filter results to only that version while maintaining consistent array response structure.
+
+## 10. Implement helpful error messages [pending]
+### Dependencies: 8.6, 8.7, 8.8, 8.9
+### Description: Add LLM-friendly error messages with clear guidance on how to fix issues
+### Details:
+For all endpoints: Invalid references should return 400 with list of valid books, Missing parameters should explain defaults and link to discovery endpoints, When resources not found distinguish between file-not-found vs org/lang combo not existing. Always provide explicit examples of correct usage.
 

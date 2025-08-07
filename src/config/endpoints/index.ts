@@ -9,6 +9,7 @@
 import { endpointRegistry } from "../EndpointRegistry.js";
 import { CONTEXT_ENDPOINTS } from "./ContextEndpoints.js";
 import { DISCOVERY_ENDPOINTS } from "./DiscoveryEndpoints.js";
+import { ExperimentalEndpoints } from "./ExperimentalEndpoints.js";
 import { SCRIPTURE_ENDPOINTS } from "./ScriptureEndpoints.js";
 import { TRANSLATION_HELPS_ENDPOINTS } from "./TranslationHelpsEndpoints.js";
 
@@ -28,9 +29,7 @@ function registerScriptureEndpoints(): void {
     }
   }
 
-  console.log(
-    `📖 Scripture endpoints registered: ${SCRIPTURE_ENDPOINTS.length} total`,
-  );
+  console.log(`📖 Scripture endpoints registered: ${SCRIPTURE_ENDPOINTS.length} total`);
 }
 
 /**
@@ -50,7 +49,7 @@ function registerTranslationHelpsEndpoints(): void {
   }
 
   console.log(
-    `📚 Translation Helps endpoints registered: ${TRANSLATION_HELPS_ENDPOINTS.length} total`,
+    `📚 Translation Helps endpoints registered: ${TRANSLATION_HELPS_ENDPOINTS.length} total`
   );
 }
 
@@ -70,9 +69,7 @@ function registerDiscoveryEndpoints(): void {
     }
   }
 
-  console.log(
-    `🔍 Discovery endpoints registered: ${DISCOVERY_ENDPOINTS.length} total`,
-  );
+  console.log(`🔍 Discovery endpoints registered: ${DISCOVERY_ENDPOINTS.length} total`);
 }
 
 /**
@@ -84,18 +81,33 @@ function registerContextEndpoints(): void {
   for (const config of CONTEXT_ENDPOINTS) {
     try {
       endpointRegistry.register(config);
-      console.log(
-        `✅ Registered: ${config.name} (${config.path}) [${config.category}]`,
-      );
+      console.log(`✅ Registered: ${config.name} (${config.path}) [${config.category}]`);
     } catch (error) {
       console.error(`❌ Failed to register ${config.name}:`, error);
       throw error;
     }
   }
 
-  console.log(
-    `🧠 Context endpoints registered: ${CONTEXT_ENDPOINTS.length} total`,
-  );
+  console.log(`🧠 Context endpoints registered: ${CONTEXT_ENDPOINTS.length} total`);
+}
+
+/**
+ * Register all experimental endpoints
+ */
+function registerExperimentalEndpoints(): void {
+  console.log("🧪 Registering Experimental endpoints...");
+
+  for (const config of ExperimentalEndpoints) {
+    try {
+      endpointRegistry.register(config);
+      console.log(`✅ Registered: ${config.name} (${config.path}) [EXPERIMENTAL]`);
+    } catch (error) {
+      console.error(`❌ Failed to register ${config.name}:`, error);
+      throw error;
+    }
+  }
+
+  console.log(`🧪 Experimental endpoints registered: ${ExperimentalEndpoints.length} total`);
 }
 
 /**
@@ -112,6 +124,9 @@ export function initializeAllEndpoints(): void {
 
     // Register Extended tier endpoints
     registerContextEndpoints();
+
+    // Register Experimental endpoints
+    registerExperimentalEndpoints();
 
     // Print registry stats
     const stats = endpointRegistry.getStats();
@@ -142,31 +157,23 @@ export function validateAllEndpoints(): void {
     validationResult.errors.forEach((error) => {
       console.error(`  - ${error.endpoint}.${error.field}: ${error.message}`);
     });
-    throw new Error(
-      `Found ${validationResult.errors.length} configuration errors`,
-    );
+    throw new Error(`Found ${validationResult.errors.length} configuration errors`);
   }
 
   if (validationResult.warnings.length > 0) {
     console.warn("⚠️ Configuration warnings:");
     validationResult.warnings.forEach((warning) => {
-      console.warn(
-        `  - ${warning.endpoint}.${warning.field}: ${warning.message}`,
-      );
+      console.warn(`  - ${warning.endpoint}.${warning.field}: ${warning.message}`);
     });
   }
 
-  console.log(
-    `✅ All configurations valid! (${validationResult.warnings.length} warnings)`,
-  );
+  console.log(`✅ All configurations valid! (${validationResult.warnings.length} warnings)`);
 }
 
 /**
  * Get all endpoints by category
  */
-export function getEndpointsByCategory(
-  category: "core" | "extended" | "experimental",
-) {
+export function getEndpointsByCategory(category: "core" | "extended" | "experimental") {
   return endpointRegistry.getByCategory(category);
 }
 
@@ -191,6 +198,7 @@ export function isEndpointAvailable(name: string): boolean {
 export {
   CONTEXT_ENDPOINTS,
   DISCOVERY_ENDPOINTS,
+  ExperimentalEndpoints,
   SCRIPTURE_ENDPOINTS,
   TRANSLATION_HELPS_ENDPOINTS,
 };

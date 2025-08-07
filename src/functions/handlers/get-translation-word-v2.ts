@@ -9,7 +9,6 @@ import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../plat
 interface TranslationWordArticle {
   id: string;
   title: string;
-  subtitle?: string;
   content: string;
   category: string;
   url?: string;
@@ -129,56 +128,8 @@ export const getTranslationWordHandler: PlatformHandler = async (
       };
     }
 
-    // Check for additional content files (01.md, 02.md, etc.) if main file is a directory structure
-    let fullContent = articleContent;
-    let subtitle = "";
-
-    // If we found the main .md file, check if there's a directory with additional content
-    if (foundUrl && foundUrl.endsWith(".md")) {
-      // Try to fetch subtitle and numbered sections
-      const basePath = foundUrl.replace(/\.md$/, "");
-
-      try {
-        // Try subtitle
-        const subtitleUrl = `${basePath}/sub.md`;
-        const subtitleResponse = await fetch(subtitleUrl);
-        if (subtitleResponse.ok) {
-          subtitle = await subtitleResponse.text();
-          logger.info("Found subtitle", { url: subtitleUrl });
-        }
-      } catch (err) {
-        // No subtitle, that's okay
-      }
-
-      // Try numbered sections (01.md, 02.md, etc.)
-      const sections: string[] = [];
-      for (let i = 1; i <= 10; i++) {
-        try {
-          const sectionNum = i.toString().padStart(2, "0");
-          const sectionUrl = `${basePath}/${sectionNum}.md`;
-          const sectionResponse = await fetch(sectionUrl);
-
-          if (sectionResponse.ok) {
-            const sectionContent = await sectionResponse.text();
-            sections.push(sectionContent);
-            logger.info("Found section", { url: sectionUrl, section: sectionNum });
-          } else {
-            // No more sections
-            break;
-          }
-        } catch (err) {
-          break;
-        }
-      }
-
-      // If we found sections, use them as the main content
-      if (sections.length > 0) {
-        fullContent = sections.join("\n\n");
-      }
-    }
-
     // Parse the markdown content
-    const article = parseTranslationWordArticle(fullContent, word, foundCategory!, subtitle);
+    const article = parseTranslationWordArticle(articleContent, word, foundCategory!);
 
     const duration = Date.now() - startTime;
 
@@ -231,8 +182,7 @@ export const getTranslationWordHandler: PlatformHandler = async (
 function parseTranslationWordArticle(
   content: string,
   word: string,
-  category: string,
-  subtitle?: string
+  category: string
 ): TranslationWordArticle {
   // Extract title from first heading (skip YAML frontmatter if present)
   let title = word;
@@ -259,7 +209,6 @@ function parseTranslationWordArticle(
   return {
     id: word.toLowerCase().replace(/\s+/g, "-"),
     title,
-    subtitle: subtitle ? subtitle.trim() : undefined,
     content: cleanContent,
     category,
   };

@@ -4,28 +4,14 @@ export const config = {
 
 /**
  * SvelteKit API Route for fetch-ust-scripture
- * Generated from EndpointConfig using the new configuration system
+ * Uses the specialized UST handler
  */
 
-import { routeGenerator } from '$lib/../../../src/config/RouteGenerator';
-import { getEndpointConfig } from '$lib/../../../src/config/endpoints/index';
+import { fetchUSTScriptureHandler } from '$lib/../../../src/experimental/fetch-ust-scripture';
+import { MemoryCacheAdapter } from '$lib/../../../src/functions/caches/memory-cache';
 import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
 
-// Get the endpoint configuration
-const endpointConfig = getEndpointConfig('fetch-ust-scripture');
-
-if (!endpointConfig) {
-	throw new Error('fetch-ust-scripture endpoint configuration not found');
-}
-
-if (!endpointConfig.enabled) {
-	throw new Error('fetch-ust-scripture endpoint is disabled');
-}
-
-// Generate the handler from configuration
-const { handler: configuredHandler } = routeGenerator.generateHandler(endpointConfig);
-
-// Wrap with SvelteKit adapter
-export const GET = createSvelteKitHandler(configuredHandler);
-export const POST = createSvelteKitHandler(configuredHandler);
-export const OPTIONS = createSvelteKitHandler(configuredHandler);
+const cache = new MemoryCacheAdapter();
+export const GET = createSvelteKitHandler(fetchUSTScriptureHandler, cache);
+export const POST = createSvelteKitHandler(fetchUSTScriptureHandler, cache);
+export const OPTIONS = createSvelteKitHandler(fetchUSTScriptureHandler, cache);

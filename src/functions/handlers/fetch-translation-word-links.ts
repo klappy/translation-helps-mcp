@@ -9,10 +9,10 @@ import {
   Organization,
   ResourceType,
 } from "../../constants/terminology.js";
-import { DCSApiClient } from "../../services/DCSApiClient.js";
+import { getCachedDCSClient } from "../../services/cached-dcs-client.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
-import { parseUSFMAlignment } from "../usfm-alignment-parser.js";
+import { parseUSFMAlignment } from "../../experimental/usfm-alignment-parser.js";
 
 interface WordLink {
   id: string;
@@ -116,7 +116,7 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
     console.log(`🔄 TWL cache MISS, fetching fresh data for: ${reference}`);
 
     // Fetch fresh data with X-Ray tracing
-    const dcsClient = new DCSApiClient();
+    const dcsClient = getCachedDCSClient();
     const traceId = `twl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     dcsClient.enableTracing(traceId, "/api/fetch-translation-word-links");
 

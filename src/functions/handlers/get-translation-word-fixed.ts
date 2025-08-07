@@ -1,0 +1,273 @@
+/**
+ * Platform-agnostic Get Translation Word Handler - FIXED VERSION
+ * Fetches actual translation word article content from DCS
+ */
+
+import { getCachedDCSClient } from "../../services/cached-dcs-client.js";
+import { logger } from "../../utils/logger";
+import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+
+interface TranslationWordArticle {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  related?: string[];
+}
+
+export const getTranslationWordHandler: PlatformHandler = async (
+  request: PlatformRequest
+): Promise<PlatformResponse> => {
+  const startTime = Date.now();
+
+  // Handle CORS
+  if (request.method === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      },
+      body: "",
+    };
+  }
+
+  try {
+    // Use 'word' parameter as per user preference
+    const word = request.queryStringParameters.word || request.queryStringParameters.term;
+    const language = request.queryStringParameters.language || "en";
+    const organization = request.queryStringParameters.organization || "unfoldingWord";
+
+    if (!word) {
+      return {
+        statusCode: 400,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: JSON.stringify({
+          error: "Missing required parameter: 'word'",
+          code: "MISSING_PARAMETER",
+          message: "Please provide a word to look up. Example: ?word=love&language=en",
+          validEndpoints: [
+            "/api/list-available-resources - Find available organizations/languages",
+            "/api/browse-translation-words - Browse available words",
+          ],
+        }),
+      };
+    }
+
+    logger.info("Fetching translation word article", { word, language, organization });
+
+    // Initialize DCS client
+    const dcsClient = getCachedDCSClient();
+
+    // Step 1: Search catalog for translation words resource
+    const catalogUrl = `/catalog/search?subject=Translation%20Words&lang=${language}&owner=${organization}`;
+    const catalogData = await dcsClient.request(catalogUrl);
+
+    if (!catalogData.data || catalogData.data.length === 0) {
+      return {
+        statusCode: 404,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: JSON.stringify({
+          error: `No translation words found for language '${language}' and organization '${organization}'`,
+          code: "RESOURCE_NOT_FOUND",
+          message:
+            "Use /api/list-available-resources to find valid organization/language combinations",
+          availableEndpoints: ["/api/list-available-resources"],
+        }),
+      };
+    }
+
+    // Get the first matching resource
+    const resource = catalogData.data[0];
+    const repoName = resource.name || `${language}_tw`;
+
+    // Step 2: Try to fetch the word article from common locations
+    const categories = ["kt", "other", "names"];
+    let articleContent = null;
+    let foundCategory = null;
+
+    for (const category of categories) {
+      try {
+        // Normalize the word for file lookup (lowercase, no spaces)
+        const normalizedWord = word.toLowerCase().replace(/\s+/g, "");
+
+        // Try different file patterns
+        const paths = [
+          `bible/${category}/${normalizedWord}.md`,
+          `bible/${category}/${word}.md`,
+          `bible/${category}/${normalizedWord}/01.md`,
+          `bible/${category}/${word}/01.md`,
+        ];
+
+        for (const path of paths) {
+          try {
+            const fileUrl = `/${organization}/${repoName}/raw/branch/master/${path}`;
+            logger.debug("Trying path", { url: fileUrl });
+
+            const response = await dcsClient.request(fileUrl);
+
+            if (response && typeof response === "string" && response.length > 0) {
+              articleContent = response;
+              foundCategory = category;
+              logger.info("Found article", { path, category });
+              break;
+            }
+          } catch (err) {
+            // Continue to next path
+          }
+        }
+
+        if (articleContent) break;
+      } catch (err) {
+        // Continue to next category
+      }
+    }
+
+    if (!articleContent) {
+      // If exact match not found, search for similar words
+      const similarWords = await searchSimilarWords(dcsClient, repoName, organization, word);
+
+      return {
+        statusCode: 404,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: JSON.stringify({
+          error: `Translation word article not found for '${word}'`,
+          code: "WORD_NOT_FOUND",
+          message: "The exact word was not found. Try one of these similar words:",
+          similarWords: similarWords,
+          hint: "Use /api/browse-translation-words to see all available words",
+        }),
+      };
+    }
+
+    // Parse the markdown content to extract title and sections
+    const article = parseTranslationWordArticle(articleContent, word, foundCategory);
+
+    const duration = Date.now() - startTime;
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=7200", // Cache for 2 hours
+        "X-Response-Time": `${duration}ms`,
+      },
+      body: JSON.stringify({
+        word: article,
+        metadata: {
+          language,
+          organization,
+          category: foundCategory,
+          responseTime: duration,
+          timestamp: new Date().toISOString(),
+        },
+      }),
+    };
+  } catch (error) {
+    logger.error("Get Translation Word API Error:", error);
+    const duration = Date.now() - startTime;
+
+    return {
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "X-Response-Time": `${duration}ms`,
+      },
+      body: JSON.stringify({
+        error: "Internal server error",
+        code: "INTERNAL_ERROR",
+        message: "An error occurred while fetching the translation word. Please try again.",
+      }),
+    };
+  }
+};
+
+/**
+ * Parse markdown content into structured article
+ */
+function parseTranslationWordArticle(
+  content: string,
+  word: string,
+  category: string
+): TranslationWordArticle {
+  const lines = content.split("\n");
+
+  // Extract title from first heading
+  let title = word;
+  const titleMatch = content.match(/^#\s+(.+)$/m);
+  if (titleMatch) {
+    title = titleMatch[1];
+  }
+
+  // Extract related words from "See also" section
+  const related: string[] = [];
+  const seeAlsoMatch = content.match(/##\s*See also[\s\S]*?(?=##|$)/i);
+  if (seeAlsoMatch) {
+    const linkMatches = seeAlsoMatch[0].matchAll(/\[([^\]]+)\]/g);
+    for (const match of linkMatches) {
+      related.push(match[1]);
+    }
+  }
+
+  return {
+    id: word.toLowerCase().replace(/\s+/g, "-"),
+    title,
+    content,
+    category,
+    related: related.length > 0 ? related : undefined,
+  };
+}
+
+/**
+ * Search for similar words when exact match not found
+ */
+async function searchSimilarWords(
+  dcsClient: DCSApiClient,
+  repoName: string,
+  organization: string,
+  searchTerm: string
+): Promise<string[]> {
+  try {
+    // Get the file tree to find similar words
+    const treeUrl = `/${organization}/${repoName}/git/trees/master?recursive=true`;
+    const treeData = await dcsClient.request(treeUrl);
+
+    if (!treeData.tree) return [];
+
+    const similar: string[] = [];
+    const searchLower = searchTerm.toLowerCase();
+
+    for (const item of treeData.tree) {
+      if (item.type === "blob" && item.path.endsWith(".md")) {
+        const pathParts = item.path.split("/");
+        const filename = pathParts[pathParts.length - 1].replace(".md", "");
+
+        if (
+          filename.toLowerCase().includes(searchLower) ||
+          searchLower.includes(filename.toLowerCase())
+        ) {
+          similar.push(filename);
+          if (similar.length >= 5) break; // Limit to 5 suggestions
+        }
+      }
+    }
+
+    return similar;
+  } catch (err) {
+    logger.error("Error searching similar words", err);
+    return [];
+  }
+}
