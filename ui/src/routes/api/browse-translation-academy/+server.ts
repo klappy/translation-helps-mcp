@@ -7,12 +7,9 @@ export const config = {
  * Configuration-based endpoint using the new system
  */
 
-import { routeGenerator } from '$lib/../../../src/config/RouteGenerator';
 import { endpointRegistry, initializeAllEndpoints } from '$lib/../../../src/config/endpoints/index';
-import {
-	createSvelteKitHandler,
-	type PlatformHandler
-} from '$lib/../../../src/functions/platform-adapter';
+import { browseTranslationAcademyHandler } from '$lib/../../../src/functions/handlers/browse-translation-academy';
+import { createSvelteKitHandler } from '$lib/../../../src/functions/platform-adapter';
 
 // Initialize endpoints
 try {
@@ -32,16 +29,8 @@ if (!endpointConfig.enabled) {
 	throw new Error('browse-translation-academy endpoint is disabled');
 }
 
-// Generate the handler from configuration
-let configuredHandler: PlatformHandler;
-
-try {
-	const generatedHandler = routeGenerator.generateHandler(endpointConfig);
-	configuredHandler = generatedHandler.handler;
-} catch (error) {
-	console.error('Failed to generate handler:', error);
-	throw error;
-}
+// Use custom handler instead of generated one
+const configuredHandler = browseTranslationAcademyHandler;
 
 // Export handlers
 export const GET = createSvelteKitHandler(configuredHandler);

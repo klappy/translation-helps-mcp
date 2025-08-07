@@ -1,6 +1,6 @@
 # Task ID: 5
 # Title: Implement Core Endpoints via Config
-# Status: pending
+# Status: done
 # Dependencies: 4
 # Priority: high
 # Description: Migrate core endpoints to configuration system with proper data transformation
@@ -21,7 +21,7 @@ Each must handle real data transformations, not just pass through
 Each endpoint returns properly transformed uW data, tests use real resource content
 
 # Subtasks:
-## 1. Implement Scripture Endpoints [pending]
+## 1. Implement Scripture Endpoints [done]
 ### Dependencies: None
 ### Description: Configure scripture endpoints with USFM to text transformation
 ### Details:
@@ -34,7 +34,7 @@ Handle:
 - USFM to clean text extraction
 - Proper error messages for invalid references
 
-## 2. Implement Translation Helps [pending]
+## 2. Implement Translation Helps [done]
 ### Dependencies: None
 ### Description: Configure tN, tW, tWL with proper transformations
 ### Details:
@@ -51,7 +51,7 @@ Translation Words Links:
 - Verse-to-word mapping
 - Not a browsable resource
 
-## 3. Implement Translation Academy [pending]
+## 3. Implement Translation Academy [done]
 ### Dependencies: None
 ### Description: Configure tA endpoints with ToC support
 ### Details:
@@ -62,7 +62,7 @@ Implement:
 - Markdown parsing
 - Article categorization
 
-## 4. Implement Discovery Endpoints [pending]
+## 4. Implement Discovery Endpoints [done]
 ### Dependencies: None
 ### Description: Configure language and resource discovery
 ### Details:
@@ -75,7 +75,7 @@ get-available-books:
 - Clear indication of coverage
 - Better queries for resource-specific books
 
-## 5. Implement Context Endpoints [pending]
+## 5. Implement Context Endpoints [done]
 ### Dependencies: 5.1, 5.2, 5.3
 ### Description: Configure combined resource fetching
 ### Details:

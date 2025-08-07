@@ -1,6 +1,6 @@
 # Task ID: 7
 # Title: Create Lab Environment Structure
-# Status: pending
+# Status: done
 # Dependencies: 3
 # Priority: medium
 # Description: Set up experimental features in separate room of the house
@@ -22,7 +22,7 @@ Create clear separation for experimental features:
 Experimental features completely isolated, require explicit approval for promotion
 
 # Subtasks:
-## 1. Create Experimental Structure [pending]
+## 1. Create Experimental Structure [done]
 ### Dependencies: None
 ### Description: Set up directory structure for lab features
 ### Details:
@@ -33,7 +33,7 @@ Create:
 - Clear naming convention (*-experimental.ts)
 - Migration path documentation
 
-## 2. Move AI Features to Lab [pending]
+## 2. Move AI Features to Lab [done]
 ### Dependencies: 7.1
 ### Description: Relocate AI features that aren't battle-tested
 ### Details:
@@ -44,7 +44,7 @@ Move:
 Add warnings about experimental status
 Document approval process for core promotion
 
-## 3. Move Advanced Features [pending]
+## 3. Move Advanced Features [done]
 ### Dependencies: 7.1
 ### Description: Relocate poorly executed good ideas
 ### Details:
@@ -55,7 +55,7 @@ Move these 'good ideas poorly executed':
 - Automated content ingestion
 - Language coverage (needs better implementation)
 
-## 4. Create Lab MCP Endpoint [pending]
+## 4. Create Lab MCP Endpoint [done]
 ### Dependencies: 7.2, 7.3
 ### Description: Separate MCP server endpoint for experimental
 ### Details:
@@ -66,7 +66,7 @@ Create:
 - Note that LLMs might try to use these
 - Approval process for promotion
 
-## 5. Document Promotion Criteria [pending]
+## 5. Document Promotion Criteria [done]
 ### Dependencies: 7.4
 ### Description: Define how features graduate to core
 ### Details:

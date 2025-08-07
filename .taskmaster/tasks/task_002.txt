@@ -1,6 +1,6 @@
 # Task ID: 2
 # Title: Remove Deprecated UI Pages
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Delete unused/confusing UI pages and focus on MCP Tools page as single interface
@@ -25,7 +25,7 @@ Keep only:
 Verify all routes return 404, ensure no broken links remain, run E2E tests, check no bookmarks break (project is 2 weeks old)
 
 # Subtasks:
-## 1. Remove API Docs Route [pending]
+## 1. Remove API Docs Route [done]
 ### Dependencies: None
 ### Description: Delete /api-docs route since MCP Tools provides better coverage
 ### Details:
@@ -36,7 +36,7 @@ Delete:
 Remove from navigation in +layout.svelte
 Note: MCP Tools page already has everything API Docs tried to show
 
-## 2. Remove Test Pages [pending]
+## 2. Remove Test Pages [done]
 ### Dependencies: None
 ### Description: Delete /test (useless black box) and related test pages
 ### Details:
@@ -47,7 +47,7 @@ Delete:
 Remove from navigation
 Ensure MCP Tools provides all needed testing functionality
 
-## 3. Remove Developer Portal [pending]
+## 3. Remove Developer Portal [done]
 ### Dependencies: None
 ### Description: Delete developer portal that's 10% complete
 ### Details:
@@ -57,7 +57,7 @@ Remove from navigation
 Note: Either nuke it or elude to it coming later (we choose nuke)
 Move any useful content to main docs
 
-## 4. Remove Pricing and Sverdle [pending]
+## 4. Remove Pricing and Sverdle [done]
 ### Dependencies: None
 ### Description: Delete irrelevant pricing page and demo Sverdle app
 ### Details:
@@ -68,7 +68,7 @@ Remove from navigation
 Clean up any Sverdle-specific assets
 Note: Project is 2 weeks old, no bookmarks exist
 
-## 5. Update Navigation & E2E Tests [pending]
+## 5. Update Navigation & E2E Tests [done]
 ### Dependencies: 2.1, 2.2, 2.3, 2.4
 ### Description: Clean up navigation menu and update E2E tests
 ### Details:

@@ -1,6 +1,6 @@
 # Task ID: 4
 # Title: Design Endpoint Configuration System
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Create a configuration-driven system to prevent copy-paste errors and ensure consistency
@@ -21,7 +21,7 @@ System should allow minimal code changes for new endpoints
 Configuration system handles all core endpoints, prevents UI/API/MCP inconsistencies
 
 # Subtasks:
-## 1. Design EndpointConfig Interface [pending]
+## 1. Design EndpointConfig Interface [done]
 ### Dependencies: None
 ### Description: Create TypeScript interface for endpoint configuration
 ### Details:
@@ -46,7 +46,7 @@ interface EndpointConfig {
 }
 ```
 
-## 2. Create Response Shape Registry [pending]
+## 2. Create Response Shape Registry [done]
 ### Dependencies: 4.1
 ### Description: Define consistent shapes for resource types
 ### Details:
@@ -58,7 +58,7 @@ Define shapes for:
 - Discovery endpoints (lists with metadata)
 Ensure same resource type uses same shape across endpoints
 
-## 3. Build Configuration Registry [pending]
+## 3. Build Configuration Registry [done]
 ### Dependencies: 4.2
 ### Description: Create system to manage and validate configs
 ### Details:
@@ -69,7 +69,7 @@ Create src/config/EndpointRegistry.ts:
 - Prevent duplicate paths
 - Export for use across app
 
-## 4. Create Route Generator [pending]
+## 4. Create Route Generator [done]
 ### Dependencies: 4.3
 ### Description: Auto-generate API routes from configurations
 ### Details:
@@ -81,7 +81,7 @@ Build system to:
 - Add performance tracking
 - Return consistent response format
 
-## 5. Create UI Generator for MCP Tools [pending]
+## 5. Create UI Generator for MCP Tools [done]
 ### Dependencies: 4.3
 ### Description: Generate consistent UI from configurations
 ### Details:

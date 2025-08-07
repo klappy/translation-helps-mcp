@@ -107,11 +107,15 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
         format,
       })
         .then((res) => {
-          result.scripture = res.scripture;
-          if (res.scripture?.citation) {
-            result.citations.push(res.scripture.citation);
+          // Handle different response formats
+          const scriptureData = res.data || res.scripture;
+          result.scripture = scriptureData;
+          if (scriptureData?.citation) {
+            result.citations.push(scriptureData.citation);
+          } else if (res.metadata?.citation) {
+            result.citations.push(res.metadata.citation);
           }
-          if (res.scripture) result.metadata.resourcesFound++;
+          if (scriptureData) result.metadata.resourcesFound++;
           return res;
         })
         .catch((error) => {
@@ -135,9 +139,15 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
         includeContext: true,
       })
         .then((res) => {
-          result.translationNotes = res.translationNotes;
-          result.citations.push(res.citation);
-          if (res.translationNotes?.length) result.metadata.resourcesFound++;
+          // Handle different response formats
+          const notesData = res.notes || res.translationNotes;
+          result.translationNotes = notesData;
+          if (res.citation) {
+            result.citations.push(res.citation);
+          } else if (res.metadata?.citation) {
+            result.citations.push(res.metadata.citation);
+          }
+          if (notesData?.length) result.metadata.resourcesFound++;
           return res;
         })
         .catch((error) => {
@@ -183,9 +193,15 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
         organization,
       })
         .then((res) => {
-          result.translationWords = res.translationWords;
-          result.citations.push(res.citation);
-          if (res.translationWords?.length) result.metadata.resourcesFound++;
+          // Handle different response formats
+          const wordsData = res.words || res.translationWords;
+          result.translationWords = wordsData;
+          if (res.citation) {
+            result.citations.push(res.citation);
+          } else if (res.metadata?.citation) {
+            result.citations.push(res.metadata.citation);
+          }
+          if (wordsData?.length) result.metadata.resourcesFound++;
           return res;
         })
         .catch((error) => {

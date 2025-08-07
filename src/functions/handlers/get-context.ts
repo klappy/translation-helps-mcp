@@ -1,10 +1,13 @@
 /**
- * Platform-agnostic Get Context Handler
- * Can be used by both Netlify and SvelteKit/Cloudflare
+ * Platform-agnostic Get Context Handler - WORKING VERSION
+ * Aggregates all resources by calling the existing working handlers
  */
 
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
-import { getContextFromTranslationNotes } from "../context-service";
+import { fetchScriptureHandler } from "./fetch-scripture.js";
+import { fetchTranslationNotesHandler } from "./fetch-translation-notes.js";
+import { fetchTranslationQuestionsHandler } from "./fetch-translation-questions.js";
+import { fetchTranslationWordLinksHandler } from "./fetch-translation-word-links.js";
 
 export const getContextHandler: PlatformHandler = async (
   request: PlatformRequest
@@ -33,19 +36,134 @@ export const getContextHandler: PlatformHandler = async (
     if (!referenceParam) {
       return {
         statusCode: 400,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
         body: JSON.stringify({
-          error: "Missing reference parameter",
+          error: "Missing required parameter: 'reference'",
           code: "MISSING_PARAMETER",
+          message: "Please provide a Bible reference. Example: ?reference=John+3:16",
+          validEndpoints: [
+            "/api/list-available-resources - Find available organizations/languages",
+            "/api/get-available-books - List valid book names",
+          ],
         }),
       };
     }
 
-    // Get context
-    const result = await getContextFromTranslationNotes({
-      reference: referenceParam,
-      language,
-      organization,
-    });
+    console.log("Fetching comprehensive context for", referenceParam);
+
+    const contextArray = [];
+
+    // Call each handler directly in parallel
+    const [scriptureRes, notesRes, questionsRes, linksRes] = await Promise.all([
+      fetchScriptureHandler(request).catch((err) => {
+        console.warn("Scripture handler failed:", err);
+        return null;
+      }),
+      fetchTranslationNotesHandler(request).catch((err) => {
+        console.warn("Notes handler failed:", err);
+        return null;
+      }),
+      fetchTranslationQuestionsHandler(request).catch((err) => {
+        console.warn("Questions handler failed:", err);
+        return null;
+      }),
+      fetchTranslationWordLinksHandler(request).catch((err) => {
+        console.warn("Links handler failed:", err);
+        return null;
+      }),
+    ]);
+
+    // Process scripture response
+    if (scriptureRes && scriptureRes.statusCode === 200) {
+      try {
+        const scriptureData = JSON.parse(scriptureRes.body);
+        if (
+          scriptureData.data &&
+          Array.isArray(scriptureData.data) &&
+          scriptureData.data.length > 0
+        ) {
+          contextArray.push({
+            type: "scripture",
+            data: scriptureData.data,
+            count: scriptureData.data.length,
+            note: "All available scripture versions for the language",
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to parse scripture response");
+      }
+    }
+
+    // Process notes response
+    if (notesRes && notesRes.statusCode === 200) {
+      try {
+        const notesData = JSON.parse(notesRes.body);
+        if (notesData.notes && Array.isArray(notesData.notes) && notesData.notes.length > 0) {
+          contextArray.push({
+            type: "translation-notes",
+            data: notesData.notes,
+            count: notesData.notes.length,
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to parse notes response");
+      }
+    }
+
+    // Process questions response
+    if (questionsRes && questionsRes.statusCode === 200) {
+      try {
+        const questionsData = JSON.parse(questionsRes.body);
+        if (
+          questionsData.translationQuestions &&
+          Array.isArray(questionsData.translationQuestions) &&
+          questionsData.translationQuestions.length > 0
+        ) {
+          contextArray.push({
+            type: "translation-questions",
+            data: questionsData.translationQuestions,
+            count: questionsData.translationQuestions.length,
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to parse questions response");
+      }
+    }
+
+    // Process links response for unique words
+    if (linksRes && linksRes.statusCode === 200) {
+      try {
+        const linksData = JSON.parse(linksRes.body);
+        if (linksData.links && Array.isArray(linksData.links) && linksData.links.length > 0) {
+          // Extract unique words from links
+          const uniqueWords = new Map();
+
+          linksData.links.forEach((link: any) => {
+            if (link.TWLink && !uniqueWords.has(link.TWLink)) {
+              uniqueWords.set(link.TWLink, {
+                word: link.TWLink,
+                occurrences: link.Occurrence,
+                originalWords: link.OrigWords,
+              });
+            }
+          });
+
+          if (uniqueWords.size > 0) {
+            contextArray.push({
+              type: "translation-words",
+              data: Array.from(uniqueWords.values()),
+              count: uniqueWords.size,
+              note: "Translation word links for the verse. Use /api/get-translation-word to fetch full articles",
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse links response");
+      }
+    }
 
     const duration = Date.now() - startTime;
 
@@ -54,10 +172,21 @@ export const getContextHandler: PlatformHandler = async (
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "public, max-age=1800", // Cache for 30 minutes
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify(result),
+      body: JSON.stringify({
+        context: contextArray,
+        reference: referenceParam,
+        language,
+        organization,
+        metadata: {
+          responseTime: duration,
+          timestamp: new Date().toISOString(),
+          resourceTypes: contextArray.map((r) => r.type),
+          totalResourcesReturned: contextArray.reduce((sum, r) => sum + r.count, 0),
+        },
+      }),
     };
   } catch (error) {
     console.error("Get Context API Error:", error);
@@ -71,8 +200,10 @@ export const getContextHandler: PlatformHandler = async (
         "X-Response-Time": `${duration}ms`,
       },
       body: JSON.stringify({
-        error: "Failed to get context",
+        error: "Internal server error",
         code: "INTERNAL_ERROR",
+        message: "An error occurred while aggregating context. Please try again.",
+        details: error instanceof Error ? error.message : String(error),
       }),
     };
   }

@@ -29,10 +29,17 @@
  * Provides comprehensive coverage matrix for all Strategic Languages
  */
 
-import { ResourceType } from "../../constants/terminology.js";
-import { cache } from "../cache.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter.js";
-import { checkResourceAvailability, discoverAvailableResources } from "../resource-detector.js";
+import { ResourceType } from "../constants/terminology.js";
+import { cache } from "../functions/cache.js";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../functions/platform-adapter.js";
+import {
+  checkResourceAvailability,
+  discoverAvailableResources,
+} from "../functions/resource-detector.js";
 
 // Strategic Languages mapping for language coverage
 const STRATEGIC_LANGUAGES = {

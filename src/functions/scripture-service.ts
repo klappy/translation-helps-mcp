@@ -7,7 +7,8 @@
 import { parseReference } from "./reference-parser";
 import { discoverAvailableResources } from "./resource-detector";
 import { CacheBypassOptions, unifiedCache } from "./unified-cache";
-import { parseUSFMAlignment, type WordAlignment } from "./usfm-alignment-parser.js";
+import { parseUSFMAlignment, type WordAlignment } from "../experimental/usfm-alignment-parser.js";
+import { getCachedDCSClient } from "../services/cached-dcs-client.js";
 import {
   extractChapterRange,
   extractChapterRangeWithNumbers,
@@ -205,37 +206,28 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
         continue;
       }
 
-      // Build URL for the USFM file
-      const fileUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
-      console.log(`🔗 Fetching from: ${fileUrl}`);
+      // Build path for the USFM file
+      const filePath = ingredient.path.replace("./", "");
+      console.log(`🔗 Fetching from: ${organization}/${resource.name}/${filePath}`);
 
       try {
-        // Get USFM data
-        console.log(`🔍 Checking USFM cache for: usfm:${fileUrl}`);
-        const usfmCacheResult = await unifiedCache.getWithDeduplication(
-          `usfm:${fileUrl}`,
-          async () => {
-            console.log(`🔄 Cache miss for USFM file, downloading...`);
-            const fileResponse = await fetch(fileUrl);
-            if (!fileResponse.ok) {
-              throw new Error(`Failed to fetch scripture content: ${fileResponse.status}`);
-            }
-            const usfmData = await fileResponse.text();
-            console.log(`📄 Downloaded ${usfmData.length} characters of USFM data`);
-            return usfmData;
-          },
-          "fileContent",
-          bypassCache
+        // Get USFM data using the cached DCS client
+        console.log(`🔍 Fetching USFM file via DCS client...`);
+        const dcsClient = getCachedDCSClient();
+        const fileResponse = await dcsClient.getRawFileContent(
+          organization,
+          resource.name,
+          filePath,
+          "master"
         );
 
-        console.log(
-          `🎯 USFM cache result: fromCache=${usfmCacheResult.fromCache}, length=${usfmCacheResult.data?.length || 0}`
-        );
-        if (usfmCacheResult.fromCache) {
-          console.log(`🚀 USFM cache HIT! Using cached file.`);
+        if (!fileResponse.success || !fileResponse.data) {
+          console.error(`❌ Failed to fetch scripture content: ${fileResponse.error || "Unknown error"}`);
+          continue;
         }
 
-        const usfmData = usfmCacheResult.data;
+        const usfmData = fileResponse.data;
+        console.log(`📄 Retrieved ${usfmData.length} characters of USFM data`);
 
         // Choose extraction method based on format and includeVerseNumbers
         const extractionStart = Date.now();

@@ -1,315 +1,221 @@
 /**
  * Experimental Endpoint Configurations
- * 
- * ⚠️ WARNING: These endpoints are experimental and may change or be removed
- * without notice. Do not use in production!
+ *
+ * ⚠️ WARNING: These are placeholder configurations for future features
+ * They are not implemented yet but showcase what's coming!
  */
 
-import type { EndpointConfig } from '../EndpointConfig';
-
-/**
- * AI Content Summarizer endpoint
- */
-export const AISummarizerEndpoint: EndpointConfig = {
-  name: 'ai-summarize-content',
-  path: '/api/ai-summarize',
-  category: 'experimental',
-  description: '🧪 EXPERIMENTAL: AI-powered content summarization (currently mock data)',
-  params: {
-    reference: {
-      type: 'string',
-      required: true,
-      description: 'Bible reference to summarize'
-    },
-    contentType: {
-      type: 'string',
-      required: true,
-      description: 'Type of content to summarize',
-      validation: {
-        enum: ['notes', 'words', 'questions', 'all']
-      }
-    },
-    maxLength: {
-      type: 'number',
-      required: false,
-      default: 500,
-      description: 'Maximum summary length in characters'
-    }
-  },
-  dataSource: {
-    type: 'computed'
-  },
-  responseShape: {
-    type: 'context',
-    fields: {
-      summary: {
-        type: 'string',
-        description: 'AI-generated summary'
-      },
-      reference: {
-        type: 'string',
-        description: 'Reference being summarized'
-      },
-      sources: {
-        type: 'array',
-        description: 'Sources used for summary'
-      },
-      confidence: {
-        type: 'number',
-        description: 'AI confidence score (0-1)'
-      }
-    }
-  },
-  examples: [
-    {
-      params: { reference: 'John 3:16', contentType: 'all' },
-      response: {
-        summary: 'This verse emphasizes God\'s love for humanity...',
-        reference: 'John 3:16',
-        sources: ['tn', 'tw'],
-        confidence: 0.95
-      }
-    }
-  ],
-  performance: {
-    expectedMs: 2000,
-    cacheStrategy: 'minimal'
-  }
-};
+import type { EndpointConfig } from "../EndpointConfig";
 
 /**
- * AI Quality Checker endpoint
+ * Placeholder experimental endpoints
+ * These are displayed in the UI but not actually functional yet
  */
-export const AIQualityCheckerEndpoint: EndpointConfig = {
-  name: 'ai-quality-check',
-  path: '/api/ai-quality-check',
-  category: 'experimental',
-  description: '🧪 EXPERIMENTAL: AI-powered translation quality assessment (currently mock data)',
-  params: {
-    sourceText: {
-      type: 'string',
-      required: true,
-      description: 'Original source text'
+export const ExperimentalEndpoints: EndpointConfig[] = [
+  {
+    name: "ai-translation-assistant",
+    title: "🤖 AI Translation Assistant",
+    path: "/api/ai-translation-assistant",
+    category: "experimental",
+    enabled: false,
+    description:
+      "Coming Soon: Real-time AI-powered translation suggestions based on context and best practices",
+    params: {},
+    dataSource: { type: "computed" },
+    responseShape: {
+      dataType: "object",
+      structure: {
+        required: ["placeholder"],
+        optional: [],
+      },
+      performance: {
+        maxResponseTime: 1000,
+        cacheable: false,
+      },
     },
-    translatedText: {
-      type: 'string',
-      required: true,
-      description: 'Translated text to check'
+    performance: {
+      expectedMs: 1000,
+      cacheStrategy: "minimal",
     },
-    checkType: {
-      type: 'string',
-      required: false,
-      default: 'comprehensive',
-      description: 'Type of quality check',
-      validation: {
-        enum: ['accuracy', 'fluency', 'terminology', 'comprehensive']
-      }
-    }
   },
-  dataSource: {
-    type: 'computed'
-  },
-  responseShape: {
-    type: 'context',
-    fields: {
-      score: {
-        type: 'number',
-        description: 'Overall quality score (0-100)'
+  {
+    name: "parallel-passage-finder",
+    title: "🔍 Parallel Passage Finder",
+    path: "/api/parallel-passages",
+    category: "experimental",
+    enabled: false,
+    description:
+      "Coming Soon: Discover parallel passages and cross-references across the entire Bible",
+    params: {},
+    dataSource: { type: "computed" },
+    responseShape: {
+      dataType: "object",
+      structure: {
+        required: ["placeholder"],
+        optional: [],
       },
-      issues: {
-        type: 'array',
-        description: 'Identified quality issues'
+      performance: {
+        maxResponseTime: 1000,
+        cacheable: true,
       },
-      suggestions: {
-        type: 'array',
-        description: 'Improvement suggestions'
-      },
-      checkType: {
-        type: 'string',
-        description: 'Type of check performed'
-      }
-    }
-  },
-  examples: [
-    {
-      params: {
-        sourceText: 'For God so loved the world',
-        translatedText: 'Porque Dios amó tanto al mundo',
-        checkType: 'comprehensive'
-      },
-      response: {
-        score: 92,
-        issues: [],
-        suggestions: ['Consider alternate phrasing for emphasis'],
-        checkType: 'comprehensive'
-      }
-    }
-  ],
-  performance: {
-    expectedMs: 3000,
-    cacheStrategy: 'minimal'
-  }
-};
-
-/**
- * Smart Resource Recommendations endpoint
- */
-export const SmartRecommendationsEndpoint: EndpointConfig = {
-  name: 'smart-recommendations',
-  path: '/api/smart-recommendations',
-  category: 'experimental',
-  description: '🧪 EXPERIMENTAL: Context-aware resource recommendations',
-  params: {
-    reference: {
-      type: 'string',
-      required: true,
-      description: 'Bible reference'
     },
-    userRole: {
-      type: 'string',
-      required: true,
-      description: 'User role',
-      validation: {
-        enum: ['translator', 'checker', 'consultant', 'facilitator']
-      }
+    performance: {
+      expectedMs: 1500,
+      cacheStrategy: "standard",
     },
-    currentTask: {
-      type: 'string',
-      required: false,
-      description: 'Current translation task'
+  },
+  {
+    name: "translation-memory",
+    title: "💾 Translation Memory Engine",
+    path: "/api/translation-memory",
+    category: "experimental",
+    enabled: false,
+    description:
+      "Coming Soon: Leverage past translations to ensure consistency across your project",
+    params: {},
+    dataSource: { type: "computed" },
+    responseShape: {
+      dataType: "object",
+      structure: {
+        required: ["placeholder"],
+        optional: [],
+      },
+      performance: {
+        maxResponseTime: 500,
+        cacheable: true,
+      },
     },
-    difficulty: {
-      type: 'string',
-      required: false,
-      default: 'auto',
-      description: 'Passage difficulty',
-      validation: {
-        enum: ['easy', 'moderate', 'difficult', 'auto']
-      }
-    }
-  },
-  dataSource: {
-    type: 'computed'
-  },
-  responseShape: {
-    type: 'discovery',
-    fields: {
-      recommendations: {
-        type: 'array',
-        description: 'Recommended resources with priority and reasoning'
-      },
-      analysisMetadata: {
-        type: 'object',
-        description: 'Details about the analysis performed'
-      },
-      confidence: {
-        type: 'number',
-        description: 'Recommendation confidence (0-1)'
-      }
-    }
-  },
-  examples: [
-    {
-      params: {
-        reference: 'Romans 9',
-        userRole: 'translator'
-      },
-      response: {
-        recommendations: [
-          {
-            resource: 'tn',
-            priority: 'high',
-            reason: 'Complex theological concepts require translation notes'
-          }
-        ],
-        analysisMetadata: {
-          complexity: 'high',
-          themes: ['election', 'sovereignty']
-        },
-        confidence: 0.88
-      }
-    }
-  ],
-  performance: {
-    expectedMs: 1500,
-    cacheStrategy: 'moderate'
-  }
-};
-
-/**
- * Advanced Cache Analytics endpoint
- */
-export const CacheAnalyticsEndpoint: EndpointConfig = {
-  name: 'cache-analytics',
-  path: '/api/cache-analytics',
-  category: 'experimental',
-  description: '🧪 EXPERIMENTAL: Advanced cache performance analytics',
-  params: {
-    timeRange: {
-      type: 'string',
-      required: false,
-      default: '1h',
-      description: 'Time range for analytics',
-      validation: {
-        enum: ['5m', '1h', '24h', '7d', '30d']
-      }
+    performance: {
+      expectedMs: 500,
+      cacheStrategy: "aggressive",
     },
-    endpoint: {
-      type: 'string',
-      required: false,
-      description: 'Filter by specific endpoint'
-    }
   },
-  dataSource: {
-    type: 'computed'
+  {
+    name: "cultural-context-analyzer",
+    title: "🌍 Cultural Context Analyzer",
+    path: "/api/cultural-context",
+    category: "experimental",
+    enabled: false,
+    description: "Coming Soon: Understand cultural nuances and idioms for better contextualization",
+    params: {},
+    dataSource: { type: "computed" },
+    responseShape: {
+      dataType: "object",
+      structure: {
+        required: ["placeholder"],
+        optional: [],
+      },
+      performance: {
+        maxResponseTime: 2000,
+        cacheable: true,
+      },
+    },
+    performance: {
+      expectedMs: 2000,
+      cacheStrategy: "standard",
+    },
   },
-  responseShape: {
-    type: 'discovery',
-    fields: {
-      hitRate: {
-        type: 'number',
-        description: 'Cache hit rate percentage'
+  {
+    name: "hebrew-greek-interlinear",
+    title: "📜 Hebrew/Greek Interlinear",
+    path: "/api/interlinear",
+    category: "experimental",
+    enabled: false,
+    description: "Coming Soon: Word-by-word alignment with original Hebrew and Greek texts",
+    params: {},
+    dataSource: { type: "computed" },
+    responseShape: {
+      dataType: "object",
+      structure: {
+        required: ["placeholder"],
+        optional: [],
       },
-      avgResponseTime: {
-        type: 'object',
-        description: 'Average response times for hit/miss'
+      performance: {
+        maxResponseTime: 1500,
+        cacheable: true,
       },
-      hotKeys: {
-        type: 'array',
-        description: 'Most frequently accessed cache keys'
-      },
-      recommendations: {
-        type: 'array',
-        description: 'Cache optimization recommendations'
-      }
-    }
+    },
+    performance: {
+      expectedMs: 1500,
+      cacheStrategy: "aggressive",
+    },
   },
-  examples: [
-    {
-      params: { timeRange: '1h' },
-      response: {
-        hitRate: 85.3,
-        avgResponseTime: {
-          hit: 45,
-          miss: 320
-        },
-        hotKeys: ['scripture:john-3-16:en', 'tn:romans-1:en'],
-        recommendations: ['Increase TTL for scripture endpoints']
-      }
-    }
-  ],
-  performance: {
-    expectedMs: 500,
-    cacheStrategy: 'aggressive'
-  }
-};
-
-/**
- * All experimental endpoints
- */
-export const ExperimentalEndpoints = [
-  AISummarizerEndpoint,
-  AIQualityCheckerEndpoint,
-  SmartRecommendationsEndpoint,
-  CacheAnalyticsEndpoint
+  {
+    name: "audio-scripture-sync",
+    title: "🎧 Audio Scripture Sync",
+    path: "/api/audio-sync",
+    category: "experimental",
+    enabled: false,
+    description:
+      "Coming Soon: Synchronized audio narration with text highlighting for oral learners",
+    params: {},
+    dataSource: { type: "computed" },
+    responseShape: {
+      dataType: "object",
+      structure: {
+        required: ["placeholder"],
+        optional: [],
+      },
+      performance: {
+        maxResponseTime: 3000,
+        cacheable: true,
+      },
+    },
+    performance: {
+      expectedMs: 3000,
+      cacheStrategy: "standard",
+    },
+  },
+  {
+    name: "fetch-ult-scripture",
+    title: "Fetch ULT Scripture",
+    path: "/fetch-ult-scripture",
+    category: "experimental",
+    enabled: false,
+    description:
+      "⚠️ EXPERIMENTAL: Fetch ULT/GLT scripture with alignment data (not fully implemented)",
+    params: {},
+    dataSource: { type: "computed" },
+    responseShape: {
+      dataType: "object",
+      structure: {
+        required: ["placeholder"],
+        optional: [],
+      },
+      performance: {
+        maxResponseTime: 1000,
+        cacheable: true,
+      },
+    },
+    performance: {
+      expectedMs: 1000,
+      cacheStrategy: "standard",
+    },
+  },
+  {
+    name: "fetch-ust-scripture",
+    title: "Fetch UST Scripture",
+    path: "/fetch-ust-scripture",
+    category: "experimental",
+    enabled: false,
+    description:
+      "⚠️ EXPERIMENTAL: Fetch UST/GST scripture with clarity metrics (not fully implemented)",
+    params: {},
+    dataSource: { type: "computed" },
+    responseShape: {
+      dataType: "object",
+      structure: {
+        required: ["placeholder"],
+        optional: [],
+      },
+      performance: {
+        maxResponseTime: 1000,
+        cacheable: true,
+      },
+    },
+    performance: {
+      expectedMs: 1000,
+      cacheStrategy: "standard",
+    },
+  },
 ];

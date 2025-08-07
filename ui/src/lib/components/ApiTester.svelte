@@ -280,11 +280,26 @@
 					<span class="transform transition-transform group-open:rotate-90">▶</span>
 					Response Data
 					<span class="ml-auto text-xs text-gray-500">
-						{JSON.stringify(result).length.toLocaleString()} chars
+						{(typeof result === 'string' ? result.length : JSON.stringify(result).length).toLocaleString()} chars
 					</span>
 				</summary>
 				<div class="border-t border-white/10 p-4">
-					<pre class="overflow-x-auto text-xs lg:text-sm text-gray-300 whitespace-pre-wrap break-words">{JSON.stringify(result, null, 2)}</pre>
+					{#if typeof result === 'string'}
+						<pre class="overflow-x-auto text-xs lg:text-sm text-gray-300 whitespace-pre-wrap break-words">{result}</pre>
+					{:else if result?.metadata?.format === 'markdown' && typeof result?.data === 'string'}
+						<!-- JSON response with markdown content -->
+						<div class="space-y-4">
+							<div class="text-xs text-gray-500 border-b border-white/10 pb-2">
+								<strong>Format:</strong> Markdown | 
+								{#if result.metadata.category}<strong>Category:</strong> {result.metadata.category} | {/if}
+								{#if result.metadata.moduleCount}<strong>Modules:</strong> {result.metadata.moduleCount} | {/if}
+								<strong>Source:</strong> {result.metadata.source || 'N/A'}
+							</div>
+							<pre class="overflow-x-auto text-xs lg:text-sm text-gray-300 whitespace-pre-wrap break-words">{result.data}</pre>
+						</div>
+					{:else}
+						<pre class="overflow-x-auto text-xs lg:text-sm text-gray-300 whitespace-pre-wrap break-words">{JSON.stringify(result, null, 2)}</pre>
+					{/if}
 				</div>
 			</details>
 		</div>
@@ -298,7 +313,7 @@
 				<Database class="h-5 w-5 text-cyan-400" />
 				<h4 class="font-mono text-lg font-semibold text-cyan-300">X-Ray: DCS Call Trace</h4>
 				<div class="ml-auto rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-medium text-cyan-300">
-					{xrayTrace.calls.length} calls
+					{(xrayTrace.calls || xrayTrace.apiCalls || []).length} calls
 				</div>
 			</div>
 
@@ -313,13 +328,25 @@
 				<div class="rounded bg-slate-800/50 p-3">
 					<div class="text-xs text-gray-400">Cache Hit Rate</div>
 					<div class="text-lg font-mono font-bold text-emerald-300">
-						{xrayTrace.cacheStats.hitRate.toFixed(1)}%
+						{#if xrayTrace.cacheStats.hitRate !== undefined}
+							{xrayTrace.cacheStats.hitRate.toFixed(1)}%
+						{:else if xrayTrace.cacheStats.total > 0}
+							{((xrayTrace.cacheStats.hits / xrayTrace.cacheStats.total) * 100).toFixed(1)}%
+						{:else}
+							0.0%
+						{/if}
 					</div>
 				</div>
 				<div class="rounded bg-slate-800/50 p-3">
 					<div class="text-xs text-gray-400">Performance</div>
 					<div class="text-lg font-mono font-bold text-amber-300">
-						{xrayTrace.performance.average.toFixed(1)}ms avg
+						{#if xrayTrace.performance && xrayTrace.performance.average !== undefined}
+							{xrayTrace.performance.average.toFixed(1)}ms avg
+						{:else if xrayTrace.apiCalls && xrayTrace.apiCalls.length > 0}
+							{(xrayTrace.totalDuration / xrayTrace.apiCalls.length).toFixed(1)}ms avg
+						{:else}
+							N/A
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -327,7 +354,7 @@
 			<!-- Individual DCS Calls -->
 			<div class="space-y-2">
 				<div class="text-sm font-medium text-gray-300">Individual DCS API Calls:</div>
-				{#each xrayTrace.calls as call, index}
+				{#each (xrayTrace.calls || xrayTrace.apiCalls || []) as call, index}
 					<div class="flex items-center gap-3 rounded bg-slate-800/30 p-3 font-mono text-sm">
 						<!-- Call Number -->
 						<div class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-white">
@@ -336,24 +363,24 @@
 
 						<!-- Cache Status Badge -->
 						<div class="flex-shrink-0">
-							{#if call.cacheStatus === 'HIT'}
+							{#if call.cacheStatus === 'HIT' || call.cached === true}
 								<span class="inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-1 text-xs font-medium text-emerald-300">
 									🚀 HIT
 								</span>
-							{:else if call.cacheStatus === 'MISS'}
+							{:else if call.cacheStatus === 'MISS' || call.cached === false}
 								<span class="inline-flex items-center gap-1 rounded bg-orange-500/20 px-2 py-1 text-xs font-medium text-orange-300">
 									🌐 MISS
 								</span>
 							{:else}
 								<span class="inline-flex items-center gap-1 rounded bg-gray-500/20 px-2 py-1 text-xs font-medium text-gray-300">
-									❓ {call.cacheStatus}
+									❓ {call.cacheStatus || 'Unknown'}
 								</span>
 							{/if}
 						</div>
 
 						<!-- Endpoint -->
 						<div class="flex-1 truncate text-cyan-300">
-							{call.endpoint}
+							{call.endpoint || call.url || 'Unknown'}
 						</div>
 
 						<!-- Timing -->
