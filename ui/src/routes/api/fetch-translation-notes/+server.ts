@@ -2,52 +2,51 @@ export const config = {
 	runtime: 'edge'
 };
 
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
-import { fetchTranslationNotes } from '../../../../../src/functions/translation-notes-service.js';
+/**
+ * SvelteKit API Route for fetch-translation-notes
+ * Configuration-based endpoint using the unified system
+ */
 
-export const GET: RequestHandler = async ({ url }) => {
-	try {
-		const reference = url.searchParams.get('reference');
-		const language = url.searchParams.get('language');
-		const organization = url.searchParams.get('organization');
+import { routeGenerator } from '$lib/../../../src/config/RouteGenerator.js';
+import {
+	endpointRegistry,
+	initializeAllEndpoints
+} from '$lib/../../../src/config/endpoints/index.js';
+import {
+	createSvelteKitHandler,
+	type PlatformHandler
+} from '$lib/../../../src/functions/platform-adapter.js';
 
-		if (!reference || !language || !organization) {
-			return json(
-				{
-					success: false,
-					error: 'Missing required parameters: reference, language, organization'
-				},
-				{ status: 400 }
-			);
-		}
+// Initialize endpoints
+try {
+	initializeAllEndpoints();
+} catch (error) {
+	console.error('Failed to initialize endpoints:', error);
+}
 
-		const result = await fetchTranslationNotes({
-			reference,
-			language,
-			organization
-		});
-		return json(result);
-	} catch (error) {
-		console.error('Error in fetch-translation-notes:', error);
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
-			},
-			{ status: 500 }
-		);
-	}
-};
+// Get the endpoint configuration
+const endpointConfig = endpointRegistry.get('fetch-translation-notes');
 
-// Enable CORS
-export const OPTIONS: RequestHandler = async () => {
-	return new Response(null, {
-		status: 200,
-		headers: {
-			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Methods': 'GET, OPTIONS',
-			'Access-Control-Allow-Headers': 'Content-Type'
-		}
-	});
-};
+if (!endpointConfig) {
+	throw new Error('fetch-translation-notes endpoint configuration not found');
+}
+
+if (!endpointConfig.enabled) {
+	throw new Error('fetch-translation-notes endpoint is disabled');
+}
+
+// Generate the handler from configuration
+let configuredHandler: PlatformHandler;
+
+try {
+	const generatedHandler = routeGenerator.generateHandler(endpointConfig);
+	configuredHandler = generatedHandler.handler;
+} catch (error) {
+	console.error('Failed to generate handler:', error);
+	throw error;
+}
+
+// Export handlers
+export const GET = createSvelteKitHandler(configuredHandler);
+export const POST = createSvelteKitHandler(configuredHandler);
+export const OPTIONS = createSvelteKitHandler(configuredHandler);

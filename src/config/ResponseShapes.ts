@@ -16,7 +16,7 @@ const CORE_METADATA_SHAPE: ResponseShape = {
   },
   performance: {
     maxResponseTime: 50,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.8,
   },
 };
@@ -30,7 +30,7 @@ const CITATION_SHAPE: ResponseShape = {
   },
   performance: {
     maxResponseTime: 10,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.95,
   },
 };
@@ -62,21 +62,21 @@ export const SCRIPTURE_SHAPE: ResponseShape = {
                     },
                     performance: {
                       maxResponseTime: 5,
-                      cacheable: true,
+                      cacheable: false,
                     },
                   },
                 },
               },
               performance: {
                 maxResponseTime: 100,
-                cacheable: true,
+                cacheable: false,
               },
             },
           },
         },
         performance: {
           maxResponseTime: 200,
-          cacheable: true,
+          cacheable: false,
         },
       },
       metadata: CORE_METADATA_SHAPE,
@@ -84,7 +84,7 @@ export const SCRIPTURE_SHAPE: ResponseShape = {
   },
   performance: {
     maxResponseTime: 300,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.85,
   },
 };
@@ -100,17 +100,12 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: [
-            "sourceNotesCount",
-            "verseNotesCount",
-            "cached",
-            "responseTime",
-          ],
+          required: ["sourceNotesCount", "verseNotesCount", "cached", "responseTime"],
           optional: ["contextNotesCount", "timestamp"],
         },
         performance: {
           maxResponseTime: 10,
-          cacheable: true,
+          cacheable: false,
         },
       },
     },
@@ -118,23 +113,17 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       dataType: "translation-notes",
       structure: {
         required: ["id", "reference", "note"],
-        optional: [
-          "quote",
-          "occurrence",
-          "occurrences",
-          "markdown",
-          "supportReference",
-        ],
+        optional: ["quote", "occurrence", "occurrences", "markdown", "supportReference"],
       },
       performance: {
         maxResponseTime: 5,
-        cacheable: true,
+        cacheable: false,
       },
     },
   },
   performance: {
     maxResponseTime: 250,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.8,
   },
 };
@@ -155,7 +144,7 @@ export const TRANSLATION_WORDS_SHAPE: ResponseShape = {
         },
         performance: {
           maxResponseTime: 10,
-          cacheable: true,
+          cacheable: false,
         },
       },
     },
@@ -167,13 +156,13 @@ export const TRANSLATION_WORDS_SHAPE: ResponseShape = {
       },
       performance: {
         maxResponseTime: 20,
-        cacheable: true,
+        cacheable: false,
       },
     },
   },
   performance: {
     maxResponseTime: 200,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.85,
   },
 };
@@ -196,13 +185,13 @@ export const TRANSLATION_QUESTIONS_SHAPE: ResponseShape = {
       },
       performance: {
         maxResponseTime: 10,
-        cacheable: true,
+        cacheable: false,
       },
     },
   },
   performance: {
     maxResponseTime: 200,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.75,
   },
 };
@@ -222,7 +211,7 @@ export const TRANSLATION_ACADEMY_SHAPE: ResponseShape = {
         },
         performance: {
           maxResponseTime: 15,
-          cacheable: true,
+          cacheable: false,
         },
       },
     },
@@ -242,13 +231,13 @@ export const TRANSLATION_ACADEMY_SHAPE: ResponseShape = {
       },
       performance: {
         maxResponseTime: 50,
-        cacheable: true,
+        cacheable: false,
       },
     },
   },
   performance: {
     maxResponseTime: 400,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.9,
   },
 };
@@ -271,13 +260,13 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
       },
       performance: {
         maxResponseTime: 5,
-        cacheable: true,
+        cacheable: false,
       },
     },
   },
   performance: {
     maxResponseTime: 150,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.8,
   },
 };
@@ -292,18 +281,12 @@ export const LANGUAGES_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: [
-            "responseTime",
-            "cached",
-            "timestamp",
-            "languagesFound",
-            "organization",
-          ],
+          required: ["responseTime", "cached", "timestamp", "languagesFound", "organization"],
           optional: ["alternateNamesIncluded"],
         },
         performance: {
           maxResponseTime: 10,
-          cacheable: true,
+          cacheable: false,
         },
       },
     },
@@ -315,13 +298,13 @@ export const LANGUAGES_SHAPE: ResponseShape = {
       },
       performance: {
         maxResponseTime: 2,
-        cacheable: true,
+        cacheable: false,
       },
     },
   },
   performance: {
     maxResponseTime: 100,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.95,
   },
 };
@@ -341,7 +324,7 @@ export const RESOURCES_SHAPE: ResponseShape = {
         },
         performance: {
           maxResponseTime: 15,
-          cacheable: true,
+          cacheable: false,
         },
       },
     },
@@ -353,13 +336,13 @@ export const RESOURCES_SHAPE: ResponseShape = {
       },
       performance: {
         maxResponseTime: 5,
-        cacheable: true,
+        cacheable: false,
       },
     },
   },
   performance: {
     maxResponseTime: 200,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.85,
   },
 };
@@ -381,13 +364,13 @@ export const REFERENCES_SHAPE: ResponseShape = {
       },
       performance: {
         maxResponseTime: 2,
-        cacheable: true,
+        cacheable: false,
       },
     },
   },
   performance: {
     maxResponseTime: 50,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.9,
   },
 };
@@ -403,12 +386,7 @@ export const CONTEXT_SHAPE: ResponseShape = {
         dataType: "context",
         structure: {
           required: [],
-          optional: [
-            "scripture",
-            "translationNotes",
-            "translationWords",
-            "translationQuestions",
-          ],
+          optional: ["scripture", "translationNotes", "translationWords", "translationQuestions"],
           nested: {
             scripture: SCRIPTURE_SHAPE,
             translationNotes: TRANSLATION_NOTES_SHAPE,
@@ -418,31 +396,25 @@ export const CONTEXT_SHAPE: ResponseShape = {
         },
         performance: {
           maxResponseTime: 500,
-          cacheable: true,
+          cacheable: false,
         },
       },
       metadata: {
         dataType: "context",
         structure: {
-          required: [
-            "responseTime",
-            "cached",
-            "timestamp",
-            "resourcesRequested",
-            "resourcesFound",
-          ],
+          required: ["responseTime", "cached", "timestamp", "resourcesRequested", "resourcesFound"],
           optional: ["aggregationTime", "cacheHitRate"],
         },
         performance: {
           maxResponseTime: 20,
-          cacheable: true,
+          cacheable: false,
         },
       },
     },
   },
   performance: {
     maxResponseTime: 600,
-    cacheable: true,
+    cacheable: false,
     expectedCacheHitRate: 0.7,
   },
 };
@@ -490,9 +462,7 @@ export const RESPONSE_SHAPES = {
 } as const;
 
 // Utility function to get response shape by data type
-export function getResponseShape(
-  dataType: keyof typeof RESPONSE_SHAPES,
-): ResponseShape {
+export function getResponseShape(dataType: keyof typeof RESPONSE_SHAPES): ResponseShape {
   const shape = RESPONSE_SHAPES[dataType];
   if (!shape) {
     throw new Error(`Unknown response shape: ${dataType}`);
@@ -504,7 +474,7 @@ export function getResponseShape(
 export function validateResponseShape(
   response: unknown,
   shape: ResponseShape,
-  path = "root",
+  path = "root"
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -525,11 +495,7 @@ export function validateResponseShape(
   if (shape.structure.nested) {
     for (const [field, nestedShape] of Object.entries(shape.structure.nested)) {
       if (field in obj && obj[field] !== null && obj[field] !== undefined) {
-        const nestedResult = validateResponseShape(
-          obj[field],
-          nestedShape,
-          `${path}.${field}`,
-        );
+        const nestedResult = validateResponseShape(obj[field], nestedShape, `${path}.${field}`);
         errors.push(...nestedResult.errors);
       }
     }

@@ -4,15 +4,18 @@ export const config = {
 
 /**
  * SvelteKit API Route for fetch-translation-academy
- * Configuration-based endpoint using the new system
+ * Configuration-based endpoint using the unified system
  */
 
-import { routeGenerator } from '$lib/../../../src/config/RouteGenerator';
-import { endpointRegistry, initializeAllEndpoints } from '$lib/../../../src/config/endpoints/index';
+import { routeGenerator } from '$lib/../../../src/config/RouteGenerator.js';
+import {
+	endpointRegistry,
+	initializeAllEndpoints
+} from '$lib/../../../src/config/endpoints/index.js';
 import {
 	createSvelteKitHandler,
 	type PlatformHandler
-} from '$lib/../../../src/functions/platform-adapter';
+} from '$lib/../../../src/functions/platform-adapter.js';
 
 // Initialize endpoints
 try {
