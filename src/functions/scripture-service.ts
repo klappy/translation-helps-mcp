@@ -4,14 +4,11 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
-import {
-  parseUSFMAlignment,
-  type WordAlignment,
-} from "../experimental/usfm-alignment-parser.js";
+import { parseUSFMAlignment, type WordAlignment } from "../experimental/usfm-alignment-parser.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
-import { parseReference } from "./reference-parser";
-import { discoverAvailableResources } from "./resource-detector";
-import { CacheBypassOptions, unifiedCache } from "./unified-cache";
+import { parseReference } from "./reference-parser.js";
+import { discoverAvailableResources } from "./resource-detector.js";
+import { CacheBypassOptions, unifiedCache } from "./unified-cache.js";
 import {
   extractChapterRange,
   extractChapterRangeWithNumbers,
@@ -21,7 +18,7 @@ import {
   extractVerseRangeWithNumbers,
   extractVerseText,
   extractVerseTextWithNumbers,
-} from "./usfm-extractor";
+} from "./usfm-extractor.js";
 
 export { type WordAlignment };
 
@@ -91,9 +88,7 @@ export interface ScriptureResult {
 /**
  * Core scripture fetching logic - now properly handles all parameters
  */
-export async function fetchScripture(
-  options: ScriptureOptions,
-): Promise<ScriptureResult> {
+export async function fetchScripture(options: ScriptureOptions): Promise<ScriptureResult> {
   const startTime = Date.now();
   const {
     reference: referenceParam,
@@ -132,7 +127,7 @@ export async function fetchScripture(
       return await fetchFreshScripture();
     },
     "transformedResponse",
-    bypassCache,
+    bypassCache
   );
 
   if (cachedResponse.fromCache) {
@@ -156,39 +151,29 @@ export async function fetchScripture(
 
     // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog searches
     console.log(`🔍 Using unified resource discovery for scripture...`);
-    const availability = await discoverAvailableResources(
-      referenceParam,
-      language,
-      organization,
-    );
+    const availability = await discoverAvailableResources(referenceParam, language, organization);
     const allResources = availability.scripture;
 
     if (allResources.length === 0) {
-      console.error(
-        `❌ No scripture resources found for ${language}/${organization}`,
-      );
-      throw new Error(
-        `No scripture resources found for ${language}/${organization}`,
-      );
+      console.error(`❌ No scripture resources found for ${language}/${organization}`);
+      throw new Error(`No scripture resources found for ${language}/${organization}`);
     }
 
-    console.log(
-      `📊 Found ${allResources.length} scripture resources from unified discovery`,
-    );
+    console.log(`📊 Found ${allResources.length} scripture resources from unified discovery`);
 
     // Filter by specific translations if requested
     let filteredResources = allResources;
     if (specificTranslations && specificTranslations.length > 0) {
       filteredResources = allResources.filter((resource) =>
-        specificTranslations!.includes(resource.name),
+        specificTranslations!.includes(resource.name)
       );
       console.log(
-        `🎯 Filtered to ${filteredResources.length} specific translations: ${specificTranslations.join(", ")}`,
+        `🎯 Filtered to ${filteredResources.length} specific translations: ${specificTranslations.join(", ")}`
       );
 
       if (filteredResources.length === 0) {
         console.warn(
-          `⚠️ No resources found for specified translations: ${specificTranslations.join(", ")}`,
+          `⚠️ No resources found for specified translations: ${specificTranslations.join(", ")}`
         );
         // Fall back to all available resources if none of the specified ones exist
         filteredResources = allResources;
@@ -201,36 +186,30 @@ export async function fetchScripture(
       : allResources; // Use all available translations (default)
 
     console.log(
-      `📖 Processing ${resourcesToProcess.length} resource(s) (${specificTranslations ? `specific: ${specificTranslations.join(",")}` : "all available"})`,
+      `📖 Processing ${resourcesToProcess.length} resource(s) (${specificTranslations ? `specific: ${specificTranslations.join(",")}` : "all available"})`
     );
     console.log(
-      `🐛 DEBUG: resourcesToProcess names: ${resourcesToProcess.map((r) => r.name).join(", ")}`,
+      `🐛 DEBUG: resourcesToProcess names: ${resourcesToProcess.map((r) => r.name).join(", ")}`
     );
 
     const scriptures = [];
     for (const resource of resourcesToProcess) {
-      console.log(
-        `📖 Processing resource: ${resource.name} (${resource.title})`,
-      );
+      console.log(`📖 Processing resource: ${resource.name} (${resource.title})`);
 
       // Find the correct file from ingredients
       const ingredient = resource.ingredients?.find(
         (ing: { identifier: string }) =>
-          ing.identifier?.toLowerCase() === reference?.book.toLowerCase(),
+          ing.identifier?.toLowerCase() === reference?.book.toLowerCase()
       );
 
       if (!ingredient || !reference) {
-        console.warn(
-          `Book ${reference?.book || "unknown"} not found in resource ${resource.name}`,
-        );
+        console.warn(`Book ${reference?.book || "unknown"} not found in resource ${resource.name}`);
         continue;
       }
 
       // Build path for the USFM file
       const filePath = ingredient.path.replace("./", "");
-      console.log(
-        `🔗 Fetching from: ${organization}/${resource.name}/${filePath}`,
-      );
+      console.log(`🔗 Fetching from: ${organization}/${resource.name}/${filePath}`);
 
       try {
         // Get USFM data using the cached DCS client
@@ -240,12 +219,12 @@ export async function fetchScripture(
           organization,
           resource.name,
           filePath,
-          "master",
+          "master"
         );
 
         if (!fileResponse.success || !fileResponse.data) {
           console.error(
-            `❌ Failed to fetch scripture content: ${fileResponse.error || "Unknown error"}`,
+            `❌ Failed to fetch scripture content: ${fileResponse.error || "Unknown error"}`
           );
           continue;
         }
@@ -256,7 +235,7 @@ export async function fetchScripture(
         // Choose extraction method based on format and includeVerseNumbers
         const extractionStart = Date.now();
         console.log(
-          `⚡ Starting USFM extraction for ${reference.book} ${reference.chapter}:${reference.verse}`,
+          `⚡ Starting USFM extraction for ${reference.book} ${reference.chapter}:${reference.verse}`
         );
         let text = "";
 
@@ -271,19 +250,15 @@ export async function fetchScripture(
                 usfmData,
                 reference.chapter,
                 reference.verse,
-                reference.verseEnd,
+                reference.verseEnd
               );
             } else if (reference.verse) {
-              text = extractVerseTextWithNumbers(
-                usfmData,
-                reference.chapter,
-                reference.verse,
-              );
+              text = extractVerseTextWithNumbers(usfmData, reference.chapter, reference.verse);
             } else if (reference.verseEnd) {
               text = extractChapterRangeWithNumbers(
                 usfmData,
                 reference.chapter,
-                reference.verseEnd,
+                reference.verseEnd
               );
             } else {
               text = extractChapterTextWithNumbers(usfmData, reference.chapter);
@@ -294,20 +269,12 @@ export async function fetchScripture(
                 usfmData,
                 reference.chapter,
                 reference.verse,
-                reference.verseEnd,
+                reference.verseEnd
               );
             } else if (reference.verse) {
-              text = extractVerseText(
-                usfmData,
-                reference.chapter,
-                reference.verse,
-              );
+              text = extractVerseText(usfmData, reference.chapter, reference.verse);
             } else if (reference.verseEnd) {
-              text = extractChapterRange(
-                usfmData,
-                reference.chapter,
-                reference.verseEnd,
-              );
+              text = extractChapterRange(usfmData, reference.chapter, reference.verseEnd);
             } else {
               text = extractChapterText(usfmData, reference.chapter);
             }
@@ -341,20 +308,16 @@ export async function fetchScripture(
                 metadata: {
                   totalAlignments: parsedAlignment.metadata.totalAlignments,
                   averageConfidence: parsedAlignment.metadata.averageConfidence,
-                  hasCompleteAlignment:
-                    parsedAlignment.metadata.hasCompleteAlignment,
+                  hasCompleteAlignment: parsedAlignment.metadata.hasCompleteAlignment,
                 },
               };
 
               const alignmentTime = Date.now() - alignmentStart;
               console.log(
-                `🔗 Alignment processing completed in ${alignmentTime}ms: ${parsedAlignment.alignments.length} alignments found`,
+                `🔗 Alignment processing completed in ${alignmentTime}ms: ${parsedAlignment.alignments.length} alignments found`
               );
             } catch (alignmentError) {
-              console.warn(
-                `⚠️ Alignment processing failed for ${resource.name}:`,
-                alignmentError,
-              );
+              console.warn(`⚠️ Alignment processing failed for ${resource.name}:`, alignmentError);
               // Continue without alignment data
             }
           }
@@ -373,7 +336,7 @@ export async function fetchScripture(
           });
           const extractionTime = Date.now() - extractionStart;
           console.log(
-            `📝 Extracted ${text.length} characters from ${resource.name} in ${extractionTime}ms`,
+            `📝 Extracted ${text.length} characters from ${resource.name} in ${extractionTime}ms`
           );
         }
       } catch (error) {
@@ -398,8 +361,7 @@ export async function fetchScripture(
               format,
               translationsFound: scriptures.length,
               cacheKey: responseKey,
-              hasAlignmentData:
-                includeAlignment && scriptures[0]?.alignment !== undefined,
+              hasAlignmentData: includeAlignment && scriptures[0]?.alignment !== undefined,
             },
           }
         : {
@@ -413,8 +375,7 @@ export async function fetchScripture(
               translationsFound: scriptures.length,
               cacheKey: responseKey,
               hasAlignmentData:
-                includeAlignment &&
-                scriptures.some((s) => s.alignment !== undefined),
+                includeAlignment && scriptures.some((s) => s.alignment !== undefined),
             },
           };
 
@@ -428,9 +389,7 @@ export async function fetchScripture(
     await unifiedCache.set(responseKey, result, "transformedResponse");
     console.log(`💾 Cached transformed scripture response: ${responseKey}`);
   } else {
-    console.log(
-      `🚫 Skipping cache due to bypass: ${cachedResponse.cacheInfo?.bypassReason}`,
-    );
+    console.log(`🚫 Skipping cache due to bypass: ${cachedResponse.cacheInfo?.bypassReason}`);
   }
 
   return result;
@@ -446,7 +405,7 @@ function extractUSFMPassage(
     chapter?: number;
     verse?: number;
     verseEnd?: number;
-  },
+  }
 ): string {
   const chapterPattern = new RegExp(`\\\\c\\s+${reference.chapter}\\b`);
   const chapterSplit = usfm.split(chapterPattern);
@@ -476,9 +435,7 @@ function extractUSFMPassage(
 
     if (reference.verseEnd) {
       // Find end verse
-      const endVersePattern = new RegExp(
-        `\\\\v\\s+${reference.verseEnd + 1}\\b`,
-      );
+      const endVersePattern = new RegExp(`\\\\v\\s+${reference.verseEnd + 1}\\b`);
       const endMatch = verseContent.match(endVersePattern);
       if (endMatch) {
         verseContent = verseContent.substring(0, endMatch.index);

@@ -12,6 +12,12 @@ import { DISCOVERY_ENDPOINTS } from "./DiscoveryEndpoints.js";
 import { ExperimentalEndpoints } from "./ExperimentalEndpoints.js";
 import { SCRIPTURE_ENDPOINTS } from "./ScriptureEndpoints.js";
 import { TRANSLATION_HELPS_ENDPOINTS } from "./TranslationHelpsEndpoints.js";
+import {
+  FETCH_SCRIPTURE_ZIP_CONFIG,
+  FETCH_TRANSLATION_QUESTIONS_ZIP_CONFIG,
+  FETCH_TRANSLATION_NOTES_ZIP_CONFIG,
+  GET_TRANSLATION_WORD_ZIP_CONFIG
+} from "./ZipEnabledEndpoints.js";
 
 /**
  * Register all scripture endpoints
