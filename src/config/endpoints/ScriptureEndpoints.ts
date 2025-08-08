@@ -19,15 +19,16 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     reference: {
       type: "string",
       required: true,
-      description: 'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
+      description:
+        'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23", "John 3-4", "Matthew")',
       example: "John 3:16",
-      pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(?::\\d+(?:-\\d+)?)?$",
+      pattern: "^[1-3]?\\s?[A-Za-z]+.*$",
       min: 3,
       max: 50,
     },
     language: {
       type: "string",
-      required: false,
+      required: true,
       default: "en",
       description: "Language code for the scripture text",
       example: "en",
@@ -35,7 +36,7 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     },
     organization: {
       type: "string",
-      required: false,
+      required: true,
       default: "unfoldingWord",
       description: "Organization providing the scripture text",
       example: "unfoldingWord",
@@ -54,9 +55,10 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       type: "string",
       required: false,
       default: "text",
-      description: "Output format for scripture text",
+      description:
+        "Output format - 'json' for structured data, 'text' for plain text with citation, 'md' for markdown, 'usfm' for USFM formatted",
       example: "text",
-      options: ["text", "usfm"],
+      options: ["json", "text", "md", "markdown", "usfm"],
     },
     includeAlignment: {
       type: "boolean",
@@ -67,11 +69,9 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     },
   },
   dataSource: {
-    type: "dcs-api",
-    dcsEndpoint:
-      "/api/v1/repos/{organization}/{language}_{resource}/contents/{book}/{chapter}.usfm",
-    transformation: "usfm-to-text",
-    cacheTtl: 7200, // 2 hours
+    type: "zip-cached",
+    cacheTtl: 7200,
+    zipConfig: { fetchMethod: "getScripture", resourceType: "all" },
   },
   enabled: true,
   tags: ["scripture", "bible", "core", "text"],
@@ -158,6 +158,7 @@ export const FETCH_SCRIPTURE_CONFIG: EndpointConfig = {
 /**
  * Fetch ULT Scripture - MOVED TO EXPERIMENTAL
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const FETCH_ULT_SCRIPTURE_CONFIG: EndpointConfig = {
   ...SCRIPTURE_BASE_CONFIG,
   name: "fetch-ult-scripture",
@@ -166,8 +167,9 @@ const FETCH_ULT_SCRIPTURE_CONFIG: EndpointConfig = {
   description: "Retrieve Unlocked Literal Text (ULT) scripture with word-for-word accuracy",
 
   dataSource: {
-    ...SCRIPTURE_BASE_CONFIG.dataSource!,
-    dcsEndpoint: "/api/v1/repos/{organization}/{language}_ult/contents/{book}/{chapter}.usfm",
+    type: "zip-cached",
+    cacheTtl: 7200,
+    zipConfig: { fetchMethod: "getScripture", resourceType: "ult" },
   },
 
   examples: [
@@ -211,6 +213,7 @@ const FETCH_ULT_SCRIPTURE_CONFIG: EndpointConfig = {
 /**
  * Fetch UST Scripture - Optimized for Unlocked Simplified Text
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const FETCH_UST_SCRIPTURE_CONFIG: EndpointConfig = {
   ...SCRIPTURE_BASE_CONFIG,
   name: "fetch-ust-scripture",
@@ -220,8 +223,9 @@ const FETCH_UST_SCRIPTURE_CONFIG: EndpointConfig = {
     "Retrieve Unlocked Simplified Text (UST) scripture with clear, easy-to-understand language",
 
   dataSource: {
-    ...SCRIPTURE_BASE_CONFIG.dataSource!,
-    dcsEndpoint: "/api/v1/repos/{organization}/{language}_ust/contents/{book}/{chapter}.usfm",
+    type: "zip-cached",
+    cacheTtl: 7200,
+    zipConfig: { fetchMethod: "getScripture", resourceType: "ust" },
   },
 
   examples: [

@@ -7,14 +7,36 @@ export const config = {
  * Auto-generated from shared handler with in-memory caching
  */
 
-import { json } from '@sveltejs/kit';
+import { getKVCache, initializeKVCache } from '$lib/../../../src/functions/kv-cache.js';
 import type { RequestHandler } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 
 // This will be replaced at build time by sync-version.js
 const BUILD_VERSION = '4.5.0';
 const BUILD_TIMESTAMP = new Date().toISOString();
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url, platform }) => {
+    // Ensure KV is wired (if available in this environment)
+    try {
+        // @ts-expect-error platform typing differs by adapter
+        const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
+        if (kv) initializeKVCache(kv);
+    } catch {
+        // ignore
+    }
+	const clearCache = url.searchParams.get('clearCache') === 'true';
+	const clearKv = url.searchParams.get('clearKv') === 'true';
+
+	let kvCleared = 0;
+	if (clearCache || clearKv) {
+		const kv = getKVCache();
+		if (clearKv) {
+			kvCleared = await kv.clearPrefixes(['zip:', 'catalog:']);
+		} else {
+			await kv.clear();
+		}
+	}
+
 	return json({
 		status: 'healthy',
 		version: BUILD_VERSION,
@@ -23,7 +45,12 @@ export const GET: RequestHandler = async () => {
 			environment: import.meta.env.MODE,
 			platform: 'cloudflare-pages'
 		},
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
+		cache: {
+			clearedMemory: clearCache || clearKv,
+			clearedKv: clearKv,
+			kvDeleted: kvCleared
+		}
 	});
 };
 
