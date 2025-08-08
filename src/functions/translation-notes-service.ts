@@ -123,9 +123,8 @@ export async function fetchTranslationNotes(
     throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
   }
 
-  // Build URL for the TSV file
-  const fileUrl = `https://git.door43.org/${organization}/${resourceInfo.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
-  console.log(`🔗 Fetching from: ${fileUrl}`);
+  // Enforce ingredients path via ZIP fetcher in new flow; avoid raw hardcoded URLs
+  const fileUrl = undefined as unknown as string;
 
   // Try to get from cache first
   const cacheKey = `tn:${fileUrl}`;

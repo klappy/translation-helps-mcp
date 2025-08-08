@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8888";
 const TIMEOUT = 30000;
@@ -10,6 +10,7 @@ async function makeRequest(endpoint: string, params: Record<string, string | und
       url.searchParams.set(key, value);
     }
   });
+  if (!url.searchParams.has("format")) url.searchParams.set("format", "json");
 
   const response = await fetch(url.toString());
 

@@ -207,9 +207,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
         continue;
       }
 
-      // Build path for the USFM file
-      const filePath = ingredient.path.replace("./", "");
-      console.log(`🔗 Fetching from: ${organization}/${resource.name}/${filePath}`);
+      // Do not build raw paths; rely on ZIP + ingredients in ZipResourceFetcher2
 
       try {
         // Get USFM data using the cached DCS client

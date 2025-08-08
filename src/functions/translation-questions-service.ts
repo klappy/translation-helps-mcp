@@ -50,7 +50,9 @@ function parseTQFromTSV(tsvData: string, reference: ParsedReference): Translatio
   // Log first few lines for debugging
   if (lines.length > 0) {
     console.log(`📋 First TSV line: ${lines[0]}`);
-    console.log(`📋 Parsing questions for ${reference.book} ${reference.chapter}:${reference.verse || '*'}`);
+    console.log(
+      `📋 Parsing questions for ${reference.book} ${reference.chapter}:${reference.verse || "*"}`
+    );
   }
 
   for (const line of lines) {
@@ -59,11 +61,11 @@ function parseTQFromTSV(tsvData: string, reference: ParsedReference): Translatio
 
     // TSV format: reference, id, tags, quote, occurrence, question, response
     const [ref, id, tags, quote, occurrence, question, response] = columns;
-    
+
     // Parse the reference (e.g., "1:1" -> chapter 1, verse 1)
     const refMatch = ref.match(/^(\d+):(\d+)$/);
     if (!refMatch) continue;
-    
+
     const chapter = parseInt(refMatch[1]);
     const verse = parseInt(refMatch[2]);
 
@@ -77,7 +79,7 @@ function parseTQFromTSV(tsvData: string, reference: ParsedReference): Translatio
         reference: `${reference.bookName} ${chapter}:${verse}`,
         question: question.trim(),
         response: response.trim(),
-        tags: tags ? tags.split(',').map(t => t.trim()) : [],
+        tags: tags ? tags.split(",").map((t) => t.trim()) : [],
       });
     }
   }
@@ -140,8 +142,13 @@ export async function fetchTranslationQuestions(
   }
 
   console.log(`📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`);
-  console.log(`🔍 Looking for book: ${parsedRef.book} (lowercased: ${parsedRef.book.toLowerCase()})`);
-  console.log(`📦 Ingredients available:`, resourceInfo.ingredients?.map((i: any) => i.identifier));
+  console.log(
+    `🔍 Looking for book: ${parsedRef.book} (lowercased: ${parsedRef.book.toLowerCase()})`
+  );
+  console.log(
+    `📦 Ingredients available:`,
+    resourceInfo.ingredients?.map((i: any) => i.identifier)
+  );
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
@@ -154,8 +161,7 @@ export async function fetchTranslationQuestions(
   }
 
   // Build URL for the TSV file
-  const fileUrl = `https://git.door43.org/${organization}/${resourceInfo.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
-  console.log(`🔗 Fetching from: ${fileUrl}`);
+  // Direct raw URL fetch disabled. Use ZIP + ingredients path via ZipResourceFetcher2 service.
 
   // Try to get from cache first
   const cacheKey = `tq:${fileUrl}`;

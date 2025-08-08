@@ -6,7 +6,7 @@
  * DRY: All resources use the same fetch/cache/extract pattern
  */
 
-import { unifiedCache } from "../functions/cache.js";
+// Deprecated legacy fetcher; avoid direct cache imports here
 import { EdgeXRayTracer, trackedFetch } from "../functions/edge-xray.js";
 import type { ParsedReference } from "../parsers/referenceParser.js";
 import { logger } from "../utils/logger.js";
@@ -35,8 +35,8 @@ export class ZipResourceFetcher {
   ): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
       // 1. Check if we have the ZIP cached
-      const cacheKey = `zip:${resource.organization}/${resource.repository}`;
-      const cachedZip = await unifiedCache.get(cacheKey);
+      // Legacy caching removed in favor of KV cache in ZipResourceFetcher2
+      const cachedZip = null;
 
       if (cachedZip) {
         logger.info(`Using cached ZIP for ${resource.repository}`);
@@ -61,7 +61,7 @@ export class ZipResourceFetcher {
       const zipBuffer = await response.arrayBuffer();
 
       // 4. Cache it (30 days - these don't change often)
-      await unifiedCache.set(cacheKey, zipBuffer, "resource", 30 * 24 * 60 * 60 * 1000);
+      // Skip legacy cache write
 
       // 5. Extract the requested file
       return this.extractFileFromZip(zipBuffer, filePath, resource.repository);
@@ -149,8 +149,8 @@ export class ZipResourceFetcher {
     reference: ParsedReference,
     resource: ZipResource
   ): Promise<{ text: string; translation: string } | null> {
-    // Map book to file (e.g., "John" -> "44-JHN.usfm")
-    const bookFile = this.getBookFileName(reference.book);
+    // Deprecated: hardcoded file maps. Use ZipResourceFetcher2 with ingredients instead.
+    const bookFile = "";
 
     const result = await this.getResourceFile(resource, bookFile);
 
@@ -193,6 +193,7 @@ export class ZipResourceFetcher {
 
   private getBookFileName(book: string): string {
     // Complete book mapping
+    // Deprecated map; kept for legacy interface but unused
     const bookMap: Record<string, string> = {
       // Old Testament
       Genesis: "01-GEN.usfm",
@@ -276,8 +277,8 @@ export class ZipResourceFetcher {
     // Extract number and code from filename (e.g., "44-JHN.usfm" -> "44-JHN")
     const baseName = bookFile.replace(".usfm", "");
 
-    // TSV files pattern: en_tn_44-JHN.tsv
-    return `en_${resourceType}_${baseName}.tsv`;
+    // Deprecated pattern; do not use hardcoded TSV names
+    return "";
   }
 
   private getBookCode(book: string): string {

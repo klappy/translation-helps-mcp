@@ -55,6 +55,7 @@ export const FETCH_SCRIPTURE_ZIP_CONFIG: EndpointConfig = {
   },
 
   dataSource: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     type: "zip-cached" as any, // Using 'any' until types are updated
     cacheTtl: 3600, // 1 hour API response cache
     zipConfig: {
@@ -192,9 +193,16 @@ export const GET_TRANSLATION_WORD_ZIP_CONFIG: EndpointConfig = {
   params: {
     term: {
       type: "string",
-      required: true,
+      required: false,
       description: 'Translation word term (e.g., "love", "grace")',
       example: "love",
+    },
+    path: {
+      type: "string",
+      required: false,
+      description:
+        "Explicit path to the translation word markdown inside the repo (e.g., bible/kt/love.md)",
+      example: "bible/kt/love.md",
     },
     language: {
       type: "string",

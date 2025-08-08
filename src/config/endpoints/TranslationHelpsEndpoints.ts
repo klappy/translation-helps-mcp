@@ -51,11 +51,20 @@ const REFERENCE_PARAMS = {
 const TERM_PARAMS = {
   term: {
     type: "string" as const,
-    required: true,
+    required: false,
     description: 'Translation word term to lookup (e.g., "love", "grace", "salvation")',
     example: "love",
     min: 2,
     max: 50,
+  },
+  path: {
+    type: "string" as const,
+    required: false,
+    description:
+      "Explicit path to the translation word markdown inside the repo (e.g., bible/kt/love.md)",
+    example: "bible/kt/love.md",
+    min: 5,
+    max: 200,
   },
   language: REFERENCE_PARAMS.language,
   organization: REFERENCE_PARAMS.organization,
@@ -73,10 +82,9 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
   responseShape: TRANSLATION_QUESTIONS_SHAPE,
   params: REFERENCE_PARAMS,
   dataSource: {
-    type: "dcs-api",
-    dcsEndpoint: "USES_INGREDIENTS", // Service should use manifest ingredients, not hardcoded path
-    transformation: "tsv-parse", // Questions are in TSV format, not markdown
+    type: "zip-cached",
     cacheTtl: 7200,
+    zipConfig: { fetchMethod: "getTSVData", resourceType: "tq" },
   },
   enabled: true,
   tags: ["translation", "questions", "checking", "core"],
@@ -162,10 +170,9 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
   params: TERM_PARAMS,
 
   dataSource: {
-    type: "dcs-api",
-    dcsEndpoint: "/api/v1/repos/{organization}/{language}_tw/contents/bible/kt/{term}.md",
-    transformation: "markdown-assemble",
-    cacheTtl: 14400, // 4 hours (more stable content)
+    type: "zip-cached",
+    cacheTtl: 14400,
+    zipConfig: { fetchMethod: "getMarkdownContent", resourceType: "tw" },
   },
 
   enabled: true,
@@ -225,6 +232,15 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
   params: {
     language: REFERENCE_PARAMS.language,
     organization: REFERENCE_PARAMS.organization,
+    path: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Explicit path to a tA module markdown in the repo (e.g., translate/figs-metaphor/01.md)",
+      example: "translate/figs-metaphor/01.md",
+      min: 5,
+      max: 200,
+    },
     category: {
       type: "string" as const,
       required: false,
@@ -258,10 +274,9 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
   },
 
   dataSource: {
-    type: "dcs-api",
-    dcsEndpoint: "/api/v1/repos/{organization}/{language}_ta/contents",
-    transformation: "json-passthrough",
-    cacheTtl: 21600, // 6 hours (very stable content)
+    type: "zip-cached",
+    cacheTtl: 21600,
+    zipConfig: { fetchMethod: "getMarkdownContent", resourceType: "ta" },
   },
 
   enabled: true,
@@ -365,10 +380,9 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
   },
 
   dataSource: {
-    type: "dcs-api",
-    dcsEndpoint: "/api/v1/repos/{organization}/{language}_ta/contents",
-    transformation: "json-passthrough",
-    cacheTtl: 43200, // 12 hours (very stable TOC data)
+    type: "zip-cached",
+    cacheTtl: 43200,
+    zipConfig: { fetchMethod: "getMarkdownContent", resourceType: "ta" },
   },
 
   enabled: true,
@@ -435,10 +449,9 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
   params: REFERENCE_PARAMS,
 
   dataSource: {
-    type: "dcs-api",
-    dcsEndpoint: "/api/v1/repos/{organization}/{language}_twl/contents/{book}/{chapter}.tsv",
-    transformation: "tsv-parse",
-    cacheTtl: 10800, // 3 hours
+    type: "zip-cached",
+    cacheTtl: 10800,
+    zipConfig: { fetchMethod: "getTSVData", resourceType: "twl" },
   },
 
   enabled: true,
@@ -494,10 +507,9 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
   params: REFERENCE_PARAMS,
 
   dataSource: {
-    type: "dcs-api",
-    dcsEndpoint: "/api/v1/repos/{organization}/{language}_tn/contents/{book}/{chapter}.tsv",
-    transformation: "tsv-parse",
-    cacheTtl: 7200, // 2 hours
+    type: "zip-cached",
+    cacheTtl: 7200,
+    zipConfig: { fetchMethod: "getTSVData", resourceType: "tn" },
   },
 
   enabled: true,
