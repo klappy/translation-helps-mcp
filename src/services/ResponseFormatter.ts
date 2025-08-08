@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * ResponseFormatter Service
- * 
+ *
  * Handles all response formatting logic for different content types (JSON, text, markdown)
  * Extracted from RouteGenerator to maintain single responsibility principle
  */
@@ -66,8 +67,8 @@ export class ResponseFormatter {
     };
 
     const contentType = contentTypeMap[format] || "application/json";
-    const finalContentType = contentType.includes("charset") 
-      ? contentType 
+    const finalContentType = contentType.includes("charset")
+      ? contentType
       : `${contentType}; charset=utf-8`;
 
     return {
@@ -83,32 +84,47 @@ export class ResponseFormatter {
   private addMetadataHeaders(
     headers: Record<string, string>,
     metadata: FormatMetadata,
-    format: string
+    _format: string
   ): void {
-    // For JSON, metadata goes in body. For others, in headers.
-    if (format !== "json") {
-      if (metadata.cached !== undefined) {
-        headers["X-Cache-Status"] = metadata.cached ? "hit" : "miss";
+    // Always include key diagnostics in headers for consistency across formats
+    // Use _format to satisfy linter and provide minimal diagnostic
+    if (_format) headers["X-Format"] = String(_format);
+    const cacheStatus = (metadata as unknown as { cacheStatus?: unknown }).cacheStatus;
+    if (cacheStatus !== undefined) headers["X-Cache-Status"] = String(cacheStatus);
+    else if (metadata.cached !== undefined)
+      headers["X-Cache-Status"] = String(metadata.cached ? "hit" : "miss");
+
+    if (metadata.responseTime !== undefined)
+      headers["X-Response-Time"] = String(metadata.responseTime);
+    if (metadata.traceId) headers["X-Trace-Id"] = String(metadata.traceId);
+
+    if (metadata.xrayTrace) {
+      // Create human-readable summary
+      const summary = this.createXraySummary(metadata.xrayTrace);
+      headers["X-Xray-Summary"] = summary;
+      // Also include full trace (base64-encoded JSON) for tools/diagnostics
+      try {
+        const raw = JSON.stringify(metadata.xrayTrace);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const b64 =
+          typeof Buffer !== "undefined"
+            ? Buffer.from(raw).toString("base64")
+            : globalThis.btoa
+              ? globalThis.btoa(raw)
+              : undefined;
+        if (b64) headers["X-Xray-Trace"] = String(b64);
+      } catch {
+        // ignore xray header enrichment failures
       }
-      if (metadata.responseTime !== undefined) {
-        headers["X-Response-Time"] = String(metadata.responseTime);
-      }
-      if (metadata.traceId) {
-        headers["X-Trace-Id"] = metadata.traceId;
-      }
-      if (metadata.xrayTrace) {
-        // Create human-readable summary
-        const summary = this.createXraySummary(metadata.xrayTrace);
-        headers["X-Xray-Summary"] = summary;
-        
-        // Add detailed trace info
-        if (metadata.xrayTrace.totalDuration) {
-          headers["X-Xray-Total-Duration"] = `${metadata.xrayTrace.totalDuration}ms`;
-        }
-        if (metadata.xrayTrace.cacheStats) {
-          headers["X-Cache-Hits"] = String(metadata.xrayTrace.cacheStats.hits || 0);
-          headers["X-Cache-Misses"] = String(metadata.xrayTrace.cacheStats.misses || 0);
-        }
+
+      // Add detailed trace info
+      const xray: any = (metadata as unknown as { xrayTrace?: unknown }).xrayTrace;
+      if (xray?.totalDuration !== undefined)
+        headers["X-Xray-Total-Duration"] = String(`${xray.totalDuration}ms`);
+      if (xray?.cacheStats) {
+        headers["X-Cache-Hits"] = String(xray.cacheStats.hits || 0);
+        headers["X-Cache-Misses"] = String(xray.cacheStats.misses || 0);
       }
     }
   }
@@ -126,14 +142,14 @@ export class ResponseFormatter {
         const type = call.url?.includes("internal://") ? "cache" : "external";
         const cached = call.cached ? "cached" : "miss";
         const duration = call.duration || 0;
-        
+
         if (call.url?.includes("internal://kv/")) {
           const match = call.url.match(/internal:\/\/kv\/(catalog|zip)\/(.+)/);
           if (match) {
-            return `kv/${match[1]}/${match[2].split('/')[0]}:${cached}:${duration}ms`;
+            return `kv/${match[1]}/${match[2].split("/")[0]}:${cached}:${duration}ms`;
           }
         }
-        
+
         return `${type}:${cached}:${duration}ms`;
       })
       .join("; ");
@@ -159,9 +175,7 @@ export class ResponseFormatter {
       }
 
       // Add resources header
-      const resourceList = data.resources.map((r: any) => 
-        r.resource || r.translation
-      ).join(",");
+      const resourceList = data.resources.map((r: any) => r.resource || r.translation).join(",");
       headers["X-Resources"] = resourceList;
       headers["X-Language"] = data.scripture.language || params.language || "";
       headers["X-Organization"] = params.organization || "unfoldingWord";
@@ -170,7 +184,7 @@ export class ResponseFormatter {
     else if (data.scripture) {
       body = `${data.scripture.text}\n`;
       body += `-${data.scripture.reference} (${data.scripture.resource || data.scripture.translation})`;
-      
+
       headers["X-Resource"] = data.scripture.resource || data.scripture.translation || "";
       headers["X-Language"] = data.scripture.language || params.language || "";
       headers["X-Organization"] = params.organization || "unfoldingWord";
@@ -178,8 +192,10 @@ export class ResponseFormatter {
     // Generic text extraction
     else if (data.text) {
       body = data.text;
-    }
-    else {
+    } else if ((params.reference as string) && Array.isArray(data) && data.length === 0) {
+      const ref = (params.reference as string) || "";
+      body = `Invalid reference\n\nRequested: ${ref}\n\nThe resource is available, but the requested chapter/verse was not found. Please verify the reference and try again.`;
+    } else {
       body = JSON.stringify(data, null, 2);
     }
 
@@ -230,9 +246,7 @@ export class ResponseFormatter {
       }
 
       // Add metadata headers
-      const resourceList = data.resources.map((r: any) => 
-        r.resource || r.translation
-      ).join(",");
+      const resourceList = data.resources.map((r: any) => r.resource || r.translation).join(",");
       headers["X-Resources"] = resourceList;
       headers["X-Language"] = data.scripture.language || params.language || "";
       headers["X-Organization"] = params.organization || "unfoldingWord";
@@ -250,12 +264,46 @@ export class ResponseFormatter {
       headers["X-Language"] = scripture.language || params.language || "";
       headers["X-Organization"] = params.organization || "unfoldingWord";
     }
-    // Generic content
+    // Generic content or cache warming state
     else {
-      body = `# Response\n\n`;
-      body += "```json\n";
-      body += JSON.stringify(data, null, 2);
-      body += "\n```";
+      const ref = (params.reference as string) || "";
+      const org = (params.organization as string) || "unfoldingWord";
+      const lang = (params.language as string) || "en";
+
+      const cacheWarm = Boolean(data?.metadata?.cacheWarm);
+      const notFoundReason = (data?.metadata?.notFoundReason as string) || "";
+
+      // If scripture is expected but empty resources
+      if (ref && !data?.scripture && (data?.resources?.length ?? 0) === 0) {
+        if (cacheWarm && notFoundReason === "chapter_not_found") {
+          // Cache is warm and book exists; likely invalid chapter
+          body = `# Invalid reference\n\n`;
+          body += `Requested: \`${ref}\`\n\n`;
+          body += `The caches are warm and the book exists, but that chapter could not be found. Please check the chapter number.\n`;
+        } else if (!cacheWarm) {
+          // Cold start warming
+          body = `# Preparing resources\n\n`;
+          body += `Requested: \`${ref}\`\n\n`;
+          body += `The resources are being prepared for \`${lang}\` (${org}). This usually takes a few seconds the first time.\n\n`;
+          body += `Try again shortly; once warmed, responses are instant and offline-capable.\n`;
+        } else {
+          // Unknown state fallback
+          body = `# Response\n\n`;
+          body += "```json\n";
+          body += JSON.stringify(data, null, 2);
+          body += "\n```";
+        }
+      } else if (ref && Array.isArray(data) && data.length === 0) {
+        // Generic empty result for non-scripture endpoints with reference (e.g., TN/TQ/TWL)
+        body = `# Invalid reference\n\n`;
+        body += `Requested: \`${ref}\`\n\n`;
+        body += `The resource is available, but the requested chapter/verse was not found. Please verify the reference and try again.\n`;
+      } else {
+        body = `# Response\n\n`;
+        body += "```json\n";
+        body += JSON.stringify(data, null, 2);
+        body += "\n```";
+      }
     }
 
     return { body, headers };
@@ -285,7 +333,8 @@ export class ResponseFormatter {
 
     // Add hint for LLMs
     if (!jsonData._hint) {
-      jsonData._hint = "For LLM-optimized responses, add ?format=text or ?format=md to your request";
+      jsonData._hint =
+        "For LLM-optimized responses, add ?format=text or ?format=md to your request";
     }
 
     return {

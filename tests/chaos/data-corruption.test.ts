@@ -8,22 +8,23 @@
  */
 
 import { afterEach, describe, expect, test } from "vitest";
-import { chaosMonkey, ChaosType } from "./framework/chaos-monkey";
+import { ChaosType, chaosMonkey } from "./framework/chaos-monkey";
+import { buildUrl } from "../helpers/http";
 
 // Mock API functions for testing
 const mockApi = {
   fetchScripture: async (reference: string) => {
-    const response = await fetch(`/api/fetch-scripture?reference=${reference}`);
+    const response = await fetch(await buildUrl(`/api/fetch-scripture`, { reference }));
     return response.json();
   },
 
   fetchTranslationNotes: async (reference: string) => {
-    const response = await fetch(`/api/fetch-translation-notes?reference=${reference}`);
+    const response = await fetch(await buildUrl(`/api/fetch-translation-notes`, { reference }));
     return response.json();
   },
 
   getTranslationWord: async (word: string) => {
-    const response = await fetch(`/api/get-translation-word?word=${word}`);
+    const response = await fetch(await buildUrl(`/api/get-translation-word`, { word }));
     return response.json();
   },
 

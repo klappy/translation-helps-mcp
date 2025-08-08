@@ -208,7 +208,7 @@ export class RouteGenerationError extends Error {
  */
 export class RouteGenerator {
   private dcsClient: DCSApiClient;
-  private cachedZipFetcher?: any;
+  private cachedZipFetcher?: { getTrace?: () => unknown; setTracer?: (t: unknown) => void };
   private responseFormatter: ResponseFormatter;
 
   constructor() {
@@ -406,6 +406,14 @@ export class RouteGenerator {
         "dataSource.dcsEndpoint"
       );
     }
+    // zip-cached requires zipConfig
+    if (config.dataSource.type === "zip-cached" && !config.dataSource.zipConfig) {
+      throw new RouteGenerationError(
+        "zipConfig is required for zip-cached data sources",
+        config.name,
+        "dataSource.zipConfig"
+      );
+    }
   }
 
   /**
@@ -451,15 +459,17 @@ export class RouteGenerator {
           params[paramName] = rawValue === "true";
           break;
 
-        case "number":
+        case "number": {
           const numValue = Number(rawValue);
           params[paramName] = isNaN(numValue) ? undefined : numValue;
           break;
+        }
 
-        case "array":
+        case "array": {
           const delimiter = paramConfig.arrayDelimiter || ",";
           params[paramName] = rawValue.split(delimiter).map((v) => v.trim());
           break;
+        }
 
         default:
           params[paramName] = rawValue;
@@ -479,7 +489,16 @@ export class RouteGenerator {
     const errors: string[] = [];
 
     for (const [paramName, paramConfig] of Object.entries(paramConfigs)) {
-      const value = params[paramName];
+      let value = params[paramName];
+
+      // If missing but default exists, apply default here as well for safety
+      if (
+        (value === undefined || value === null || value === "") &&
+        paramConfig.default !== undefined
+      ) {
+        params[paramName] = paramConfig.default as unknown as string;
+        value = params[paramName];
+      }
 
       // Check required parameters
       if (paramConfig.required && (value === undefined || value === null || value === "")) {
@@ -744,16 +763,33 @@ export class RouteGenerator {
     ];
 
     if (zipEnabledEndpoints.includes(config.name)) {
-      console.log(`[RouteGenerator] computeData for ${config.name}, params:`, params);
+      console.log(`[RouteGenerator] computeData (ZIP) for ${config.name}, params:`, params);
 
-      // Override to use ZIP caching for scripture
+      // Choose correct ZIP method per endpoint
+      const fetchMethod =
+        config.name === "fetch-scripture"
+          ? ("getScripture" as const)
+          : config.name === "get-translation-word"
+            ? ("getMarkdownContent" as const)
+            : ("getTSVData" as const);
+
+      // Map endpoint to resourceType expected by ZipResourceFetcher2
+      const resourceType =
+        config.name === "fetch-scripture"
+          ? (params.resource as string) || "all"
+          : config.name === "fetch-translation-notes"
+            ? "tn"
+            : config.name === "fetch-translation-questions"
+              ? "tq"
+              : "tw"; // get-translation-word
+
       const zipConfig = {
         ...dataSourceConfig,
         type: "zip-cached" as const,
         zipConfig: {
-          fetchMethod: "getScripture" as const,
-          resourceType: (params.resource as string) || "all",
-          useIngredients: false,
+          fetchMethod,
+          resourceType,
+          useIngredients: fetchMethod !== "getScripture",
           zipCacheTtl: 7200,
         },
       };
@@ -763,34 +799,36 @@ export class RouteGenerator {
         ...params,
         resourceFromParams: params.resource,
         resourceFromZipConfig: zipConfig.zipConfig.resourceType,
+        fetchMethod,
       });
 
-      const result = (await fetcher(zipConfig, params, context)) as any;
-      console.log("[RouteGenerator] fetcher result:", result);
-      
-      // The functional fetcher returns { scripture: {...}, resources: [...] }
-      // But we need to check what we actually got
-      if (result && typeof result === 'object') {
-        if ('scripture' in result && 'resources' in result) {
-          // This is the proper format!
-          console.log("[RouteGenerator] Got proper scripture format with", result.resources?.length, "resources");
-        } else {
-          console.log("[RouteGenerator] Unexpected result format:", Object.keys(result));
-        }
-      }
+      const result = (await fetcher(
+        zipConfig,
+        params,
+        context as unknown as { traceId: string; platform?: unknown; cache?: Map<string, unknown> }
+      )) as unknown;
+      console.log("[RouteGenerator] fetcher result keys:", Object.keys(result || {}));
 
       // Attach X-Ray trace from ZIP path into metadata for UI/UX
       try {
         const xray = this.cachedZipFetcher?.getTrace?.();
         if (xray && result && typeof result === "object") {
           if ("metadata" in result) {
-            result.metadata = { ...(result.metadata as any), xrayTrace: xray };
+            (result as { metadata: Record<string, unknown> }).metadata = {
+              ...(result as { metadata: Record<string, unknown> }).metadata,
+              xrayTrace: xray as unknown,
+            };
           }
           if ("_metadata" in result) {
-            (result as any)._metadata = { ...(result as any)._metadata, xrayTrace: xray };
+            (result as { _metadata: Record<string, unknown> })._metadata = {
+              ...(result as { _metadata: Record<string, unknown> })._metadata,
+              xrayTrace: xray as unknown,
+            };
           }
           // Compute cache status from tracer
-          const calls = (xray as any).apiCalls as Array<{ url: string; cached: boolean }>;
+          const calls =
+            (xray as unknown as { apiCalls?: Array<{ url: string; cached: boolean }> }).apiCalls ||
+            [];
           // If no apiCalls or all are internal, it's a cache hit
           const hasExternalCalls =
             Array.isArray(calls) && calls.some((c) => !c.url.startsWith("internal://"));
@@ -803,20 +841,28 @@ export class RouteGenerator {
             );
           const hit = !hasExternalCalls || hasInternalHits;
           if ("metadata" in result) {
-            (result as any).metadata.cached = hit;
+            (result as { metadata: Record<string, unknown> }).metadata.cached = hit;
           }
           if ("_metadata" in result) {
-            (result as any)._metadata.cacheStatus = hit ? "hit" : "miss";
+            (result as { _metadata: Record<string, unknown> })._metadata.cacheStatus = hit
+              ? "hit"
+              : "miss";
           }
         }
-      } catch {}
+      } catch {
+        // ignore xray enrichment
+      }
 
       return result;
     }
 
     // For other endpoints that use the functional data fetcher
     // (including zip-cached), just pass through to the fetcher
-    const result = await fetcher(dataSourceConfig, params, context);
+    const result = await fetcher(
+      dataSourceConfig,
+      params,
+      context as unknown as { traceId: string; platform?: unknown; cache?: Map<string, unknown> }
+    );
 
     // Attach X-Ray trace for all endpoints that use ZIP
     if (dataSourceConfig.type === "zip-cached") {
@@ -824,30 +870,44 @@ export class RouteGenerator {
         const xray = this.cachedZipFetcher?.getTrace?.();
         if (xray && result && typeof result === "object") {
           if ("metadata" in result) {
-            result.metadata = { ...(result.metadata as any), xrayTrace: xray };
+            (result as { metadata: Record<string, unknown> }).metadata = {
+              ...(result as { metadata: Record<string, unknown> }).metadata,
+              xrayTrace: xray as unknown,
+            };
           }
           if ("_metadata" in result) {
-            (result as any)._metadata = { ...(result as any)._metadata, xrayTrace: xray };
+            (result as { _metadata: Record<string, unknown> })._metadata = {
+              ...(result as { _metadata: Record<string, unknown> })._metadata,
+              xrayTrace: xray as unknown,
+            };
           }
           // Compute cache status from tracer
-          const calls = (xray as any).apiCalls as Array<{ url: string; cached: boolean }>;
+          const calls =
+            (xray as unknown as { apiCalls?: Array<{ url: string; cached: boolean }> }).apiCalls ||
+            [];
           const hasExternalCalls =
             Array.isArray(calls) && calls.some((c) => !c.url.startsWith("internal://"));
           const hasInternalHits =
             Array.isArray(calls) &&
             calls.some(
-              (c) => c.url.startsWith("internal://kv/") || c.url.startsWith("internal://memory/")
+              (c) =>
+                c.cached &&
+                (c.url.startsWith("internal://kv/") || c.url.startsWith("internal://memory/"))
             );
           const hit = hasInternalHits && !hasExternalCalls;
 
           if ("metadata" in result) {
-            (result.metadata as any).cached = hit;
+            (result as { metadata: Record<string, unknown> }).metadata.cached = hit;
           }
           if ("_metadata" in result) {
-            (result as any)._metadata.cacheStatus = hit ? "hit" : "miss";
+            (result as { _metadata: Record<string, unknown> })._metadata.cacheStatus = hit
+              ? "hit"
+              : "miss";
           }
         }
-      } catch {}
+      } catch {
+        // ignore xray enrichment
+      }
     }
 
     return result;
@@ -903,6 +963,7 @@ export class RouteGenerator {
   private transformUSFMToText(data: unknown, _params: ParsedParams): unknown {
     // Placeholder for USFM transformation logic
     // This would use the existing USFM extractor functions
+    void _params; // satisfy eslint
     return data;
   }
 
@@ -1058,25 +1119,17 @@ export class RouteGenerator {
    * Determine response format based on request
    */
   private determineResponseFormat(params: ParsedParams, request: PlatformRequest): string {
-    // Priority 1: Explicit format parameter
+    // Priority 1: Explicit format parameter (overrides everything)
     if (params.format && ["json", "text", "md", "markdown"].includes(params.format as string)) {
       return params.format === "markdown" ? "md" : (params.format as string);
     }
 
-    // Priority 2: Accept header
+    // Priority 2: Accept header (client asks explicitly)
     const accept = request.headers?.accept || request.headers?.Accept || "";
     if (accept.includes("text/plain")) return "text";
     if (accept.includes("text/markdown")) return "md";
 
-    // Priority 3: Smart detection for LLM clients
-    const userAgent = request.headers?.["user-agent"] || request.headers?.["User-Agent"] || "";
-    const isLLMClient = /claude|gpt|llm|ai|assistant|bot/i.test(userAgent);
-
-    if (isLLMClient) {
-      return "text";
-    }
-
-    // Default to JSON
+    // Default: JSON for safety and compatibility
     return "json";
   }
 
@@ -1084,7 +1137,7 @@ export class RouteGenerator {
    * Format response based on requested format
    */
   private formatResponse(
-    data: any,
+    data: unknown,
     format: string,
     metadata: {
       responseTime: number;
@@ -1093,7 +1146,7 @@ export class RouteGenerator {
       status: number;
       traceId: string;
       endpointName: string;
-      xrayTrace?: any;
+      xrayTrace?: unknown;
     },
     params: ParsedParams
   ): { body: string; headers: Record<string, string> } {
@@ -1126,7 +1179,7 @@ export class RouteGenerator {
    * DEPRECATED: Format plain text response
    */
   private formatTextResponse(
-    data: any,
+    data: unknown,
     headers: Record<string, string>,
     params: ParsedParams
   ): { body: string; headers: Record<string, string> } {
@@ -1140,7 +1193,7 @@ export class RouteGenerator {
    * DEPRECATED: Format markdown response
    */
   private formatMarkdownResponse(
-    data: any,
+    data: unknown,
     headers: Record<string, string>,
     params: ParsedParams
   ): { body: string; headers: Record<string, string> } {
@@ -1155,50 +1208,30 @@ export class RouteGenerator {
    */
   /*
   private formatTextResponseOld(
-    data: any,
+    data: unknown,
     headers: Record<string, string>,
     params: ParsedParams
   ): { body: string; headers: Record<string, string> } {
     let body = "";
 
     // Handle scripture endpoint specifically
-    if (data.scripture && data.resources) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((data as any).scripture && (data as any).resources) {
       // Return all translations/resources, not just the first one
-      const texts = data.resources.map((res: any) => {
-        const resource = res.resource || res.translation;
-        return `${res.text}\n-${data.scripture.reference} (${resource}, ${params.organization || "unfoldingWord"})`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const texts = (data as any).resources.map((res: any) => {
+        const resourceName = res.shortName || res.name || res.id;
+        const text = res.text || "";
+        return `${resourceName}:\n${text}`;
       });
-      body = texts.join("\n\n");
-
-      // List all resources in header
-      const resourceList = data.resources.map((r: any) => r.resource || r.translation).join(",");
-      headers["X-Resources"] = resourceList;
-      headers["X-Language"] = data.scripture.language || params.language || "";
-      headers["X-Organization"] = params.organization || "unfoldingWord";
-    }
-    // Single scripture fallback
-    else if (data.scripture) {
-      const scripture = data.scripture;
-      body = `${scripture.text}\n-${scripture.reference} (${scripture.resource || scripture.translation}, ${params.organization || "unfoldingWord"})`;
-
-      headers["X-Resource"] = scripture.resource || scripture.translation || "";
-      headers["X-Language"] = scripture.language || params.language || "";
-      headers["X-Organization"] = params.organization || "unfoldingWord";
-    }
-    // Handle other resource types
-    else if (data.content) {
-      body = data.content;
-
-      if (data.resource) {
-        body += `\n-(${data.resource}, ${params.organization || "unfoldingWord"})`;
-        headers["X-Resource"] = data.resource;
-      }
-    }
-    // Fallback to JSON string
-    else {
+      body = texts.join("\n\n---\n\n");
+    } else if (typeof data === "string") {
+      body = data;
+    } else {
       body = JSON.stringify(data, null, 2);
     }
 
+    headers["Content-Type"] = "text/plain";
     return { body, headers };
   }
   */

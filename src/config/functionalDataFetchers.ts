@@ -26,7 +26,7 @@ export interface FetchContext {
 
 // Pure function to create a DCS fetcher
 export const createDCSFetcher = (client: DCSApiClient): DataFetcher => {
-  return async (config, params, context) => {
+  return async (config, params) => {
     if (!config.dcsEndpoint) {
       throw new Error("DCS endpoint required for API data source");
     }
@@ -44,7 +44,7 @@ export const createDCSFetcher = (client: DCSApiClient): DataFetcher => {
 
 // Pure function to create a ZIP fetcher
 export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): DataFetcher => {
-  return async (config, params, context) => {
+  return async (config, params) => {
     const { zipConfig } = config;
     if (!zipConfig) {
       throw new Error("ZIP config required for ZIP data source");
@@ -87,6 +87,27 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
             console.log("[functionalDataFetchers] Failed to fetch ALL resources:", err);
             scriptures = [];
           }
+
+          // If nothing came back (cold cache or catalog variance), try prioritized fallbacks
+          if (!Array.isArray(scriptures) || scriptures.length === 0) {
+            // Try common unfoldingWord resources in priority order
+            const preferred = ["ult", "ust", "t4t", "ueb"];
+            for (const code of preferred) {
+              try {
+                const partial = await zipFetcher.getScripture(
+                  reference,
+                  language,
+                  organization,
+                  code
+                );
+                if (Array.isArray(partial) && partial.length > 0) {
+                  scriptures.push(...partial);
+                }
+              } catch {
+                /* noop - try next */
+              }
+            }
+          }
         } else {
           // Get specific translation
           scriptures = await zipFetcher.getScripture(
@@ -124,6 +145,29 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
         console.log("[functionalDataFetchers] Building reference string:", reference);
         const referenceStr = normalizeReference(reference);
 
+        // Inspect tracer to determine cache warm status
+        let cacheWarm = false;
+        try {
+          const xray = (zipFetcher as unknown as { getTrace: () => unknown })?.getTrace?.() as
+            | {
+                cacheStats?: { hits?: number };
+                apiCalls?: Array<{ cached?: boolean; url?: string }>;
+              }
+            | undefined;
+          const hits = xray?.cacheStats?.hits || 0;
+          const hadKvZipHits = Array.isArray(xray?.apiCalls)
+            ? xray.apiCalls.some(
+                (c) => Boolean(c?.cached) && String(c?.url || "").includes("internal://kv/zip/")
+              )
+            : false;
+          cacheWarm = hits > 0 || hadKvZipHits;
+        } catch {
+          // ignore trace inspection failures
+        }
+
+        // If nothing was found but a chapter was requested, annotate reason for formatter
+        const notFoundReason = !primary && reference.chapter ? "chapter_not_found" : undefined;
+
         return {
           scripture: primary
             ? {
@@ -154,29 +198,51 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
                 resource: params.resource,
               },
             }),
+            cacheWarm,
+            ...(notFoundReason ? { notFoundReason } : {}),
           },
         };
       }
 
-      case "getTSVData":
+      case "getTSVData": {
         if (!reference?.isValid) throw new Error("Valid reference required");
-        return zipFetcher.getTSVData(
+        const rows = await zipFetcher.getTSVData(
+          reference,
           String(params.language || "en"),
           String(params.organization || "unfoldingWord"),
-          zipConfig.resourceType,
-          reference.book,
-          reference.chapter
+          zipConfig.resourceType
         );
+        const count = Array.isArray(rows) ? rows.length : 0;
+        const baseMeta = {
+          language: String(params.language || "en"),
+          organization: String(params.organization || "unfoldingWord"),
+          reference: params.reference,
+          count,
+        };
+        if (zipConfig.resourceType === "tn") {
+          return { verseNotes: rows, _metadata: baseMeta };
+        }
+        if (zipConfig.resourceType === "tq") {
+          return { questions: rows, _metadata: baseMeta };
+        }
+        // twl
+        return { links: rows, _metadata: baseMeta };
+      }
 
-      case "getMarkdownContent":
-        const term = params.term || params.moduleId;
-        if (!term) throw new Error("Term required for markdown content");
+      case "getMarkdownContent": {
+        const resourceType = zipConfig.resourceType as "tw" | "ta";
+        // Prefer explicit path when provided (delegated responsibility from browse endpoints/TWL)
+        const identifier = (params.path || params.term || params.moduleId) as string | undefined;
+        if (resourceType === "tw" && !identifier) {
+          throw new Error("Path or term required for translation words content");
+        }
         return zipFetcher.getMarkdownContent(
           String(params.language || "en"),
           String(params.organization || "unfoldingWord"),
-          zipConfig.resourceType,
-          String(term)
+          resourceType,
+          identifier
         );
+      }
 
       default:
         throw new Error(`Unknown fetch method: ${zipConfig.fetchMethod}`);
@@ -308,7 +374,7 @@ export const initializeCache = (platform?: {
 
 // Example usage in an endpoint
 export const createEndpointHandler = (config: EndpointConfig, fetcher: DataFetcher) => {
-  return async (request: Request, platform?: any) => {
+  return async (request: Request, platform?: unknown) => {
     // Initialize cache
     initializeCache(platform);
 
@@ -376,5 +442,6 @@ export const createEndpointHandler = (config: EndpointConfig, fetcher: DataFetch
 // Placeholder for transformations
 async function applyTransformation(data: unknown, transformation: string): Promise<unknown> {
   // This would apply TSV parsing, markdown parsing, etc.
+  void transformation; // satisfy eslint no-unused-vars for placeholder
   return data;
 }

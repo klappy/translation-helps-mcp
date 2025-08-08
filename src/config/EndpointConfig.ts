@@ -39,7 +39,7 @@ export interface ParamConfig {
 // Data Source and Transformation Types
 export interface DataSourceConfig {
   /** Where the data comes from */
-  type: "dcs-api" | "computed" | "hybrid";
+  type: "dcs-api" | "computed" | "hybrid" | "zip-cached";
 
   /** DCS API endpoint pattern (if applicable) */
   dcsEndpoint?: string;
@@ -52,6 +52,14 @@ export interface DataSourceConfig {
 
   /** Cache TTL in seconds */
   cacheTtl?: number;
+
+  /** ZIP fetch configuration when type is zip-cached */
+  zipConfig?: {
+    fetchMethod: "getScripture" | "getTSVData" | "getMarkdownContent";
+    resourceType: string;
+    useIngredients?: boolean;
+    zipCacheTtl?: number;
+  };
 }
 
 export type TransformationType =

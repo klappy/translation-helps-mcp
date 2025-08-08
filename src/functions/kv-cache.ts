@@ -6,25 +6,18 @@
 import { logger } from "../utils/logger.js";
 
 interface KVNamespace {
-  get(
-    key: string,
-    options?: { type?: "text" | "json" | "arrayBuffer" },
-  ): Promise<unknown>;
+  get(key: string, options?: { type?: "text" | "json" | "arrayBuffer" }): Promise<unknown>;
   put(
     key: string,
     value: string | ArrayBuffer,
-    options?: { expirationTtl?: number },
+    options?: { expirationTtl?: number }
   ): Promise<void>;
   delete(key: string): Promise<void>;
-  list(options?: {
-    prefix?: string;
-    limit?: number;
-  }): Promise<{ keys: Array<{ name: string }> }>;
+  list(options?: { prefix?: string; limit?: number }): Promise<{ keys: Array<{ name: string }> }>;
 }
 
 export class CloudflareKVCache {
-  private memoryCache: Map<string, { value: unknown; expires: number }> =
-    new Map();
+  private memoryCache: Map<string, { value: unknown; expires: number }> = new Map();
   private kv: KVNamespace | null = null;
   private kvAvailable = false;
 
@@ -34,9 +27,7 @@ export class CloudflareKVCache {
       this.kvAvailable = true;
       logger.info("🚀 CloudflareKVCache initialized with KV namespace");
     } else {
-      logger.warn(
-        "⚠️ CloudflareKVCache running in memory-only mode (no KV namespace)",
-      );
+      logger.warn("⚠️ CloudflareKVCache running in memory-only mode (no KV namespace)");
     }
   }
 
@@ -70,11 +61,7 @@ export class CloudflareKVCache {
     return null;
   }
 
-  async set(
-    key: string,
-    value: ArrayBuffer | string,
-    ttlSeconds: number = 1800,
-  ): Promise<void> {
+  async set(key: string, value: ArrayBuffer | string, ttlSeconds: number = 1800): Promise<void> {
     // Always set in memory cache
     this.memoryCache.set(key, {
       value,
@@ -117,10 +104,42 @@ export class CloudflareKVCache {
     this.memoryCache.clear();
 
     if (this.kvAvailable && this.kv) {
-      logger.warn(
-        "KV clear not implemented - would need to list and delete all keys",
-      );
+      logger.warn("KV clear called without prefixes - skipping full wipe for safety");
     }
+  }
+
+  /**
+   * Delete all KV keys matching the provided prefixes. Memory cache is also cleared.
+   * Returns the number of KV keys deleted.
+   */
+  async clearPrefixes(prefixes: string[] = ["zip:", "catalog:"]): Promise<number> {
+    this.memoryCache.clear();
+    let deletedCount = 0;
+
+    if (!this.kvAvailable || !this.kv) {
+      return deletedCount;
+    }
+
+    try {
+      for (const prefix of prefixes) {
+        // Attempt to list up to 1000 keys per prefix
+        const list = await this.kv.list({ prefix, limit: 1000 });
+        const keys = list?.keys || [];
+        for (const { name } of keys) {
+          try {
+            await this.kv.delete(name);
+            deletedCount++;
+          } catch (error) {
+            logger.error(`KV delete error for ${name}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      logger.error("KV clearPrefixes error:", error);
+    }
+
+    logger.warn(`☁️ KV prefixes cleared: ${deletedCount} keys deleted`);
+    return deletedCount;
   }
 
   getStats() {
