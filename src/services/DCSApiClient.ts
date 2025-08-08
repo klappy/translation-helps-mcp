@@ -576,9 +576,11 @@ export class DCSApiClient {
     path: string,
     ref?: string
   ): Promise<DCSResponse<string>> {
-    const branch = ref || "master";
-    const endpoint = `/repos/${owner}/${repo}/raw/${branch}/${encodeURIComponent(path)}`;
-    return this.makeRequest<string>(endpoint);
+    return {
+      success: false,
+      status: 400,
+      error: "Direct raw fetch is disabled. Use ZIP + ingredients.",
+    } as DCSResponse<string>;
   }
 
   /**

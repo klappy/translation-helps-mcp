@@ -5,14 +5,10 @@
 
 import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { XRayTrace } from "../../types/dcs.js";
-import type {
-  PlatformHandler,
-  PlatformRequest,
-  PlatformResponse,
-} from "../platform-adapter";
+import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const getContextHandler: PlatformHandler = async (
-  request: PlatformRequest,
+  request: PlatformRequest
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
   const performanceStart = performance.now();
@@ -40,8 +36,7 @@ export const getContextHandler: PlatformHandler = async (
   try {
     const reference = request.queryStringParameters.reference;
     const language = request.queryStringParameters.language || "en";
-    const organization =
-      request.queryStringParameters.organization || "unfoldingWord";
+    const organization = request.queryStringParameters.organization || "unfoldingWord";
 
     if (!reference) {
       dcsClient.disableTracing();
@@ -54,16 +49,13 @@ export const getContextHandler: PlatformHandler = async (
         body: JSON.stringify({
           error: "Missing required parameter: 'reference'",
           code: "MISSING_PARAMETER",
-          message:
-            "Please provide a Bible reference. Example: ?reference=John+3:16",
+          message: "Please provide a Bible reference. Example: ?reference=John+3:16",
         }),
       };
     }
 
     // Parse the reference to get book and chapter
-    const refParts = reference.match(
-      /^(\d?\s*\w+)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/,
-    );
+    const refParts = reference.match(/^(\d?\s*\w+)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
     if (!refParts) {
       dcsClient.disableTracing();
       return {
@@ -141,13 +133,13 @@ export const getContextHandler: PlatformHandler = async (
           ing.identifier === bookCode.toLowerCase() ||
           ing.identifier === bookCode ||
           ing.identifier === book.toUpperCase() ||
-          ing.identifier === book.toLowerCase(),
+          ing.identifier === book.toLowerCase()
       );
 
       if (!bookIngredient || !bookIngredient.path) {
         console.log(
           `No ingredient found for ${bookCode} in ${name}`,
-          ingredients.map((i) => i.identifier),
+          ingredients.map((i) => i.identifier)
         );
         continue;
       }
@@ -155,65 +147,44 @@ export const getContextHandler: PlatformHandler = async (
       // Scripture resources (Bible, Aligned Bible)
       if (subject?.includes("Bible")) {
         resourcePromises.push(
-          fetchRawContent(
-            organization,
-            name,
-            bookIngredient.path,
-            dcsClient,
-            traceId,
-          ).then((content) => {
-            if (content) {
-              const verses = extractVerses(
-                content,
-                chapter,
-                verseStart,
-                verseEnd,
-              );
-              if (verses) {
-                return {
-                  type: "scripture",
-                  version: resource.title || name,
-                  data: verses,
-                };
+          fetchRawContent(organization, name, bookIngredient.path, dcsClient, traceId).then(
+            (content) => {
+              if (content) {
+                const verses = extractVerses(content, chapter, verseStart, verseEnd);
+                if (verses) {
+                  return {
+                    type: "scripture",
+                    version: resource.title || name,
+                    data: verses,
+                  };
+                }
               }
             }
-          }),
+          )
         );
       }
       // Translation Notes
       else if (subject?.includes("Translation Notes")) {
         resourcePromises.push(
-          fetchRawContent(
-            organization,
-            name,
-            bookIngredient.path,
-            dcsClient,
-            traceId,
-          ).then((content) => parseTSV(content, "notes", reference)),
+          fetchRawContent(organization, name, bookIngredient.path, dcsClient, traceId).then(
+            (content) => parseTSV(content, "notes", reference)
+          )
         );
       }
       // Translation Questions
       else if (subject?.includes("Translation Questions")) {
         resourcePromises.push(
-          fetchRawContent(
-            organization,
-            name,
-            bookIngredient.path,
-            dcsClient,
-            traceId,
-          ).then((content) => parseTSV(content, "questions", reference)),
+          fetchRawContent(organization, name, bookIngredient.path, dcsClient, traceId).then(
+            (content) => parseTSV(content, "questions", reference)
+          )
         );
       }
       // Translation Word Links
       else if (subject?.includes("Translation Word")) {
         resourcePromises.push(
-          fetchRawContent(
-            organization,
-            name,
-            bookIngredient.path,
-            dcsClient,
-            traceId,
-          ).then((content) => parseTSV(content, "links", reference)),
+          fetchRawContent(organization, name, bookIngredient.path, dcsClient, traceId).then(
+            (content) => parseTSV(content, "links", reference)
+          )
         );
       }
     }
@@ -323,10 +294,7 @@ export const getContextHandler: PlatformHandler = async (
           responseTime,
           timestamp: new Date().toISOString(),
           resourceTypes: contextArray.map((r) => r.type),
-          totalResourcesReturned: contextArray.reduce(
-            (sum, r) => sum + r.count,
-            0,
-          ),
+          totalResourcesReturned: contextArray.reduce((sum, r) => sum + r.count, 0),
           catalogResourcesFound: resources.length,
           ...(xrayTrace && { xrayTrace }),
         },
@@ -357,11 +325,11 @@ async function fetchRawContent(
   repo: string,
   path: string,
   dcsClient?: DCSApiClient,
-  traceId?: string,
+  traceId?: string
 ): Promise<string | null> {
   const startTime = performance.now();
   try {
-    const url = `https://git.door43.org/${org}/${repo}/raw/branch/master/${path}`;
+    const url = `disabled://raw/${org}/${repo}/${path}`;
     const response = await fetch(url);
     const duration = performance.now() - startTime;
 
@@ -369,7 +337,7 @@ async function fetchRawContent(
     if (dcsClient && traceId) {
       dcsClient.addCustomTrace({
         id: `${traceId}_${repo}_${path.replace(/[^a-zA-Z0-9]/g, "_")}`,
-        endpoint: `/${org}/${repo}/raw/branch/master/${path}`,
+        endpoint: `/raw-disabled/${org}/${repo}/${path}`,
         url,
         method: "GET",
         startTime,
@@ -395,7 +363,7 @@ async function fetchRawContent(
 function parseTSV(
   content: string | null,
   type: string,
-  reference: string,
+  reference: string
 ): { type: string; data: unknown[] } {
   if (!content) return { type, data: [] };
 
@@ -445,13 +413,11 @@ function extractVerses(
   usfm: string,
   chapter: string,
   verseStart?: string,
-  verseEnd?: string,
+  verseEnd?: string
 ): string | null {
   try {
     // Find chapter
-    const chapterRegex = new RegExp(
-      `\\\\c\\s+${chapter}\\b[\\s\\S]*?(?=\\\\c\\s+\\d+|$)`,
-    );
+    const chapterRegex = new RegExp(`\\\\c\\s+${chapter}\\b[\\s\\S]*?(?=\\\\c\\s+\\d+|$)`);
     const chapterMatch = usfm.match(chapterRegex);
     if (!chapterMatch) return null;
 
@@ -465,7 +431,7 @@ function extractVerses(
       let result = "";
       for (let v = startNum; v <= endNum; v++) {
         const verseRegex = new RegExp(
-          `\\\\v\\s+${v}\\b[\\s\\S]*?(?=\\\\v\\s+\\d+|\\\\c\\s+\\d+|$)`,
+          `\\\\v\\s+${v}\\b[\\s\\S]*?(?=\\\\v\\s+\\d+|\\\\c\\s+\\d+|$)`
         );
         const verseMatch = text.match(verseRegex);
         if (verseMatch) {

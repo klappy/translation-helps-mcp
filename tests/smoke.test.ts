@@ -1,23 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { apiGet } from "./helpers/http";
 
-const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8174";
 const TIMEOUT = 15000; // Shorter timeout for smoke tests
 
 async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
-  const url = new URL(`${BASE_URL}/api/${endpoint}`);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined) {
-      url.searchParams.set(key, value);
-    }
-  });
-
-  const response = await fetch(url.toString());
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-  }
-
-  return response.json();
+  return apiGet(endpoint, params);
 }
 
 describe("Smoke Tests - Quick Health Check", () => {
@@ -89,12 +76,16 @@ describe("Smoke Tests - Quick Health Check", () => {
       // Remove timestamps and response times for comparison
       const normalizeTimestamps = (obj: unknown) => {
         const normalized = JSON.parse(JSON.stringify(obj)) as Record<string, unknown>;
-        if ('responseTime' in normalized) delete normalized.responseTime;
-        if (normalized.metadata && typeof normalized.metadata === 'object' && normalized.metadata !== null) {
+        if ("responseTime" in normalized) delete normalized.responseTime;
+        if (
+          normalized.metadata &&
+          typeof normalized.metadata === "object" &&
+          normalized.metadata !== null
+        ) {
           const metadata = normalized.metadata as Record<string, unknown>;
-          if ('timestamp' in metadata) delete metadata.timestamp;
-          if ('cacheExpiresAt' in metadata) delete metadata.cacheExpiresAt;
-          if ('cacheTtlSeconds' in metadata) delete metadata.cacheTtlSeconds;
+          if ("timestamp" in metadata) delete metadata.timestamp;
+          if ("cacheExpiresAt" in metadata) delete metadata.cacheExpiresAt;
+          if ("cacheTtlSeconds" in metadata) delete metadata.cacheTtlSeconds;
         }
         return normalized;
       };

@@ -366,11 +366,11 @@ class ConfigurationRegistry {
   ): ConfigValidationError[] {
     const errors: ConfigValidationError[] = [];
 
-    if (!["dcs-api", "computed", "hybrid"].includes(dataSource.type)) {
+    if (!["dcs-api", "computed", "hybrid", "zip-cached"].includes(dataSource.type)) {
       errors.push({
         endpoint: endpointName,
         field: "dataSource.type",
-        message: "Data source type must be dcs-api, computed, or hybrid",
+        message: "Data source type must be dcs-api, computed, hybrid, or zip-cached",
         severity: "error",
       });
     }
