@@ -1,6 +1,6 @@
 /**
  * Edge-compatible X-Ray tracing for performance monitoring
- * 
+ *
  * This is a lightweight version that works in edge runtimes
  * (Cloudflare Workers, Deno Deploy, etc.) where Node.js APIs aren't available
  */
@@ -32,7 +32,10 @@ export class EdgeXRayTracer {
   private startTime: number;
 
   constructor(traceId: string, endpoint: string) {
-    this.startTime = Date.now();
+    this.startTime =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
     this.trace = {
       traceId,
       mainEndpoint: endpoint,
@@ -47,15 +50,18 @@ export class EdgeXRayTracer {
     };
   }
 
-  addApiCall(call: Omit<EdgeApiCall, 'timestamp'>): void {
+  addApiCall(call: Omit<EdgeApiCall, "timestamp">): void {
     const apiCall: EdgeApiCall = {
       ...call,
-      timestamp: Date.now(),
+      timestamp:
+        typeof performance !== "undefined" && performance.now
+          ? Math.round(performance.now())
+          : Date.now(),
     };
-    
+
     this.trace.apiCalls.push(apiCall);
     this.trace.cacheStats.total++;
-    
+
     if (call.cached) {
       this.trace.cacheStats.hits++;
     } else {
@@ -64,7 +70,11 @@ export class EdgeXRayTracer {
   }
 
   getTrace(): EdgeXRayTrace {
-    this.trace.totalDuration = Date.now() - this.startTime;
+    const now =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
+    this.trace.totalDuration = Math.max(1, Math.round(now - this.startTime));
     return { ...this.trace };
   }
 }
@@ -73,27 +83,39 @@ export class EdgeXRayTracer {
 export async function trackedFetch(
   tracer: EdgeXRayTracer,
   url: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Response> {
-  const startTime = Date.now();
-  
+  const startTime =
+    typeof performance !== "undefined" && performance.now
+      ? performance.now()
+      : Date.now();
+
   try {
     const response = await fetch(url, options);
-    const duration = Date.now() - startTime;
-    
+    const now =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
+    const duration = Math.max(1, Math.round(now - startTime));
+
     tracer.addApiCall({
       url,
       duration,
       status: response.status,
-      size: parseInt(response.headers.get('content-length') || '0'),
-      cached: response.headers.get('x-cache-status') === 'HIT' ||
-              response.headers.get('cf-cache-status') === 'HIT',
+      size: parseInt(response.headers.get("content-length") || "0"),
+      cached:
+        response.headers.get("x-cache-status") === "HIT" ||
+        response.headers.get("cf-cache-status") === "HIT",
     });
-    
+
     return response;
   } catch (error) {
-    const duration = Date.now() - startTime;
-    
+    const now =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
+    const duration = Math.max(1, Math.round(now - startTime));
+
     tracer.addApiCall({
       url,
       duration,
@@ -101,7 +123,7 @@ export async function trackedFetch(
       size: 0,
       cached: false,
     });
-    
+
     throw error;
   }
 }

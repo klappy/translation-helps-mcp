@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.1] - 2025-08-09
+
+### 🧭 Observability & Timing (Patch)
+
+- Use performance.now() for tracer start/stop and fetch durations; clamp to ≥1ms
+- Compute responseTime at edge just before send to reflect real E2E latency
+- Reduce synthetic 1ms spam; prefer actual KV read/decoding timings
+- Type-safe metadata merge to prevent 0ms artifacts
+
 ## [5.1.0] - 2025-08-09
 
 ### ⚡ Performance & Consistency (Minor)
