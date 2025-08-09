@@ -328,8 +328,13 @@ export class ZipResourceFetcher2 {
             resIngredients as Array<{ identifier?: string; path?: string }>
           ).find((ing) => {
             const id = normalize(ing?.identifier);
+            const full = normalize(reference.book);
             return (
-              id === bookKey || id.endsWith(bookKey) || id.includes(bookKey)
+              id === bookKey ||
+              id === full ||
+              id.endsWith(bookKey) ||
+              id.includes(bookKey) ||
+              id.includes(full)
             );
           });
           if (!ingredient?.path) {
