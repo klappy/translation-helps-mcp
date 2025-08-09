@@ -3,12 +3,12 @@
  * Mirrors scripture by delegating to RouteGenerator with ZIP-cached data source
  */
 
-import type { PlatformHandler } from "../platform-adapter";
 import { routeGenerator } from "../../config/RouteGenerator.js";
 import {
   endpointRegistry,
   initializeAllEndpoints,
 } from "../../config/endpoints/index.js";
+import type { PlatformHandler } from "../platform-adapter";
 
 // Initialize endpoint registry once
 try {
