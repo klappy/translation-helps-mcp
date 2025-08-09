@@ -4,9 +4,11 @@
   "description": "MCP Server for aggregating Bible translation resources from Door43",
   "type": "module",
   "scripts": {
+    "prebuild": "node scripts/sync-version.js",
     "dev": "cd ui && npm run dev",
     "dev:workspace": "cd ui && npm run dev",
     "build": "cd ui && npm install && npm run build:cloudflare",
+    "prebuild:cloudflare": "node scripts/sync-version.js",
     "build:cloudflare": "cd ui && npm install && npm run build:cloudflare",
     "build:cloudflare-full": "npm install && cd ui && npm install && npm run build:cloudflare",
     "generate:functions": "node scripts/generate-platform-functions.js",
