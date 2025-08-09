@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2025-08-09
+
+### ⚡ Performance & Consistency (Minor)
+
+- ZIP fetcher cold-start optimization: parallel ZIP downloads, sequential single-file extraction
+- File-first cache path: serve from `zipfile:` KV when present; avoid ZIP touch on warm hits
+- Memory-first reads: reduce warm-hit latency
+- Health endpoint: `?nuke=true` to fully wipe KV + memory; per-request `_flush=true` for true-cold runs
+- Trace correctness: file writes logged as `kv/file-write` (no false cache hits)
+- No response caching; only files and upstream payloads cached (KV-first)
+
+Note: Backwards compatible with 5.0.0 API. No response shape changes.
+
+## [5.0.0] - 2025-08-05
+
+### 🧱 Architecture Hardening (Major)
+
+- API contracts validated with Zod (soft validation in handlers)
+- Standard error envelope (400 guidance, 500 internal)
+- Logger unification; realistic cache-timing headers
+- KV-first caching model unified; namespaced `zip:` / `zipfile:` / `catalog:` keys
+- ZIP policy: `ZipResourceFetcher2` with ingredients-based paths and DCS catalog (metadataType=rc)
+- Performance SLOs defined; groundwork for CI gating
+- Deprecation policy established; legacy code isolated
+
+Breaking changes: internal structure and contracts tightened; public endpoint shapes preserved where documented.
+
 ## [4.5.0] - 2024-12-20
 
 ### 🎉 PRD Implementation: Major Feature Release
@@ -65,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### **Terminology Standardization**
 
 - **Enhanced**: `src/constants/terminology.ts` with comprehensive resource type definitions
-- **Fixed**: All outdated "Gateway Language" references updated to "Strategic Language"
+- **Fixed**: All outdated "Strategic Language" references updated across code and docs
 - **Added**: UserTypes and LanguageRoles exports for test compatibility
 - **Updated**: Resource descriptions to match PRD specifications exactly
 
