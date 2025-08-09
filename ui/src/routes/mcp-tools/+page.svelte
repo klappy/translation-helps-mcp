@@ -151,9 +151,9 @@
 	}
 
 	// Handle endpoint selection
-  function selectEndpoint(endpoint: any | null) {
+	function selectEndpoint(endpoint: any | null) {
 		// Transform endpoint config to ApiTester format
-    selectedEndpoint = endpoint ? transformEndpointForTesting(endpoint) : null;
+		selectedEndpoint = endpoint ? transformEndpointForTesting(endpoint) : null;
 		// Clear previous results when selecting new endpoint
 		apiResult = null;
 		isLoading = false;
@@ -161,9 +161,9 @@
 		// Update URL to persist selection
 		const url = new URL(window.location.href);
 		url.hash = selectedCategory;
-    if (endpoint?.name) {
-      url.searchParams.set('tool', endpoint.name);
-    }
+		if (endpoint?.name) {
+			url.searchParams.set('tool', endpoint.name);
+		}
 		goto(url.toString(), { replaceState: true, noScroll: true });
 	}
 

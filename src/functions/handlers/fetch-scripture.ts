@@ -2,12 +2,12 @@
  * Unified scripture handler: delegate to RouteGenerator (mirrors questions)
  */
 
-import type { PlatformHandler } from "../platform-adapter";
 import { routeGenerator } from "../../config/RouteGenerator.js";
 import {
   endpointRegistry,
   initializeAllEndpoints,
 } from "../../config/endpoints/index.js";
+import type { PlatformHandler } from "../platform-adapter";
 
 try {
   initializeAllEndpoints();
