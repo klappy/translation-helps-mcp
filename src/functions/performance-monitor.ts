@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger.js";
 /**
  * Performance Monitoring System
  *
@@ -395,7 +396,7 @@ export class PerformanceMonitor {
       if (this.alertConfig.alertCallback) {
         this.alertConfig.alertCallback(alert);
       } else {
-        console.warn(`[PerformanceAlert] ${alert.severity.toUpperCase()}: ${alert.message}`);
+        logger.warn(`[PerformanceAlert] ${alert.severity.toUpperCase()}: ${alert.message}`);
       }
     }
   }

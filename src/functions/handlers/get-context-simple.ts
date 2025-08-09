@@ -3,6 +3,7 @@
  * Aggregates ALL resources by calling endpoints directly
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
 import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
@@ -37,15 +38,7 @@ export const getContextHandler: PlatformHandler = async (
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
         },
-        body: JSON.stringify({
-          error: "Missing required parameter: 'reference'",
-          code: "MISSING_PARAMETER",
-          message: "Please provide a Bible reference. Example: ?reference=John+3:16",
-          validEndpoints: [
-            "/api/list-available-resources - Find available organizations/languages",
-            "/api/get-available-books - List valid book names",
-          ],
-        }),
+        body: JSON.stringify(Errors.missingParameter("reference")),
       };
     }
 
@@ -186,12 +179,7 @@ export const getContextHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Internal server error",
-        code: "INTERNAL_ERROR",
-        message: "An error occurred while aggregating context. Please try again.",
-        details: error instanceof Error ? error.message : String(error),
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

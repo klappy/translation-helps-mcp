@@ -4,6 +4,7 @@
  * Uses unified resource discovery to minimize DCS API calls
  */
 
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
@@ -58,7 +59,7 @@ export async function fetchTranslationWords(
     throw new Error(`Invalid reference format: ${reference}`);
   }
 
-  console.log(`📚 Core translation words service called with:`, {
+  logger.info(`Core translation words service called`, {
     reference,
     language,
     organization,
@@ -70,7 +71,7 @@ export async function fetchTranslationWords(
   const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
-    console.log(`🚀 FAST cache hit for processed words: ${responseKey}`);
+    logger.info(`FAST cache hit for processed words`, { key: responseKey });
     return {
       translationWords: cachedResponse.value.translationWords,
       citation: cachedResponse.value.citation,
@@ -83,17 +84,17 @@ export async function fetchTranslationWords(
     };
   }
 
-  console.log(`🔄 Processing fresh words request: ${responseKey}`);
+  logger.info(`Processing fresh words request`, { key: responseKey });
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
-  console.log(`🔍 Using unified resource discovery for translation words...`);
+  logger.debug(`Using unified resource discovery for translation words...`);
   const resourceInfo = await getResourceForBook(reference, "words", language, organization);
 
   if (!resourceInfo) {
     throw new Error(`No translation words found for ${language}/${organization}`);
   }
 
-  console.log(`📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`);
+  logger.info(`Using resource`, { name: resourceInfo.name, title: resourceInfo.title });
 
   // Translation words are organized differently - we need to fetch the word links first
   // Then fetch individual word definitions
@@ -106,9 +107,10 @@ export async function fetchTranslationWords(
   );
 
   if (!linksIngredient) {
-    console.warn(
-      `⚠️ Translation word links for ${parsedRef.book} not found in resource ${resourceInfo.name}`
-    );
+    logger.warn(`Translation word links for book not found`, {
+      book: parsedRef.book,
+      resource: resourceInfo.name,
+    });
     throw new Error(
       `Translation word links for ${parsedRef.book} not found in resource ${resourceInfo.name}`
     );
@@ -122,29 +124,28 @@ export async function fetchTranslationWords(
   let linksData = await cache.getFileContent(linksCacheKey);
 
   if (!linksData) {
-    console.log(`🔄 Cache miss for TW links file, downloading...`);
+    logger.info(`Cache miss for TW links file, downloading...`);
     const linksResponse = await fetch(linksUrl);
     if (!linksResponse.ok) {
-      console.error(`❌ Failed to fetch TW links file: ${linksResponse.status}`);
+      logger.warn(`Failed to fetch TW links file`, { status: linksResponse.status });
       throw new Error(`Failed to fetch translation word links: ${linksResponse.status}`);
     }
 
     linksData = await linksResponse.text();
-    console.log(`📄 Downloaded ${linksData.length} characters of word links data`);
+    logger.info(`Downloaded word links data`, { length: linksData.length });
 
     // Cache the file content
     await cache.setFileContent(linksCacheKey, linksData);
-    console.log(`💾 Cached TW links file (${linksData.length} chars)`);
+    logger.info(`Cached TW links file`, { length: linksData.length });
   } else {
-    console.log(`✅ Cache hit for TW links file (${linksData.length} chars)`);
+    logger.info(`Cache hit for TW links file`, { length: linksData.length });
   }
 
   // Parse the word links for the specific verse/chapter
   const wordIds = parseWordLinksFromTSV(linksData, parsedRef);
-  console.log(`📝 Found ${wordIds.length} word links for ${reference}`);
+  logger.info(`Found word links for reference`, { count: wordIds.length, reference });
 
-  // For now, return empty array if no words found (to match existing behavior)
-  // Individual word fetching would happen here in full implementation
+  // For now, return empty array if no words found
   const words: TranslationWord[] = [];
 
   const result: TranslationWordsResult = {
@@ -170,7 +171,7 @@ export async function fetchTranslationWords(
     citation: result.citation,
   });
 
-  console.log(`📚 Processed ${words.length} translation words`);
+  logger.info(`Processed translation words`, { count: words.length });
 
   return result;
 }

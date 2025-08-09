@@ -1,0 +1,14 @@
+# Task ID: 6
+# Title: DCS Ingredients Helper & Rollout
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Create single helper for catalog search + metadataType=rc → ingredients; case-insensitive book matching; replace call sites.
+# Details:
+- Build pure helper covering rc ingredients flow with exceptions documented
+- Case-insensitive book code matching
+- Replace bespoke implementations
+- Document exceptions and add tests
+
+# Test Strategy:
+Unit tests for helper; integration confirms identical or improved results

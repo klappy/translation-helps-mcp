@@ -3,6 +3,8 @@
  * Aggregates all resources by calling the existing working handlers
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
+import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { fetchScriptureHandler } from "./fetch-scripture.js";
 import { fetchTranslationNotesHandler } from "./fetch-translation-notes.js";
@@ -40,38 +42,30 @@ export const getContextHandler: PlatformHandler = async (
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
         },
-        body: JSON.stringify({
-          error: "Missing required parameter: 'reference'",
-          code: "MISSING_PARAMETER",
-          message: "Please provide a Bible reference. Example: ?reference=John+3:16",
-          validEndpoints: [
-            "/api/list-available-resources - Find available organizations/languages",
-            "/api/get-available-books - List valid book names",
-          ],
-        }),
+        body: JSON.stringify(Errors.missingParameter("reference")),
       };
     }
 
-    console.log("Fetching comprehensive context for", referenceParam);
+    logger.info("Fetching comprehensive context", { reference: referenceParam });
 
     const contextArray = [];
 
     // Call each handler directly in parallel
     const [scriptureRes, notesRes, questionsRes, linksRes] = await Promise.all([
       fetchScriptureHandler(request).catch((err) => {
-        console.warn("Scripture handler failed:", err);
+        logger.warn("Scripture handler failed", { error: String(err) });
         return null;
       }),
       fetchTranslationNotesHandler(request).catch((err) => {
-        console.warn("Notes handler failed:", err);
+        logger.warn("Notes handler failed", { error: String(err) });
         return null;
       }),
       fetchTranslationQuestionsHandler(request).catch((err) => {
-        console.warn("Questions handler failed:", err);
+        logger.warn("Questions handler failed", { error: String(err) });
         return null;
       }),
       fetchTranslationWordLinksHandler(request).catch((err) => {
-        console.warn("Links handler failed:", err);
+        logger.warn("Links handler failed", { error: String(err) });
         return null;
       }),
     ]);
@@ -93,7 +87,7 @@ export const getContextHandler: PlatformHandler = async (
           });
         }
       } catch (e) {
-        console.warn("Failed to parse scripture response");
+        logger.warn("Failed to parse scripture response");
       }
     }
 
@@ -109,7 +103,7 @@ export const getContextHandler: PlatformHandler = async (
           });
         }
       } catch (e) {
-        console.warn("Failed to parse notes response");
+        logger.warn("Failed to parse notes response");
       }
     }
 
@@ -129,7 +123,7 @@ export const getContextHandler: PlatformHandler = async (
           });
         }
       } catch (e) {
-        console.warn("Failed to parse questions response");
+        logger.warn("Failed to parse questions response");
       }
     }
 
@@ -161,7 +155,7 @@ export const getContextHandler: PlatformHandler = async (
           }
         }
       } catch (e) {
-        console.warn("Failed to parse links response");
+        logger.warn("Failed to parse links response");
       }
     }
 
@@ -189,7 +183,6 @@ export const getContextHandler: PlatformHandler = async (
       }),
     };
   } catch (error) {
-    console.error("Get Context API Error:", error);
     const duration = Date.now() - startTime;
 
     return {
@@ -199,12 +192,7 @@ export const getContextHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Internal server error",
-        code: "INTERNAL_ERROR",
-        message: "An error occurred while aggregating context. Please try again.",
-        details: error instanceof Error ? error.message : String(error),
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

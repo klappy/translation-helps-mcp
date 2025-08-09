@@ -12,6 +12,7 @@ import type { PlatformHandler } from "../functions/platform-adapter.js";
 import { unifiedCache } from "../functions/unified-cache.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import type { XRayTrace } from "../types/dcs.js";
+import { logger } from "../utils/logger.js";
 import { ParsedUSFM, WordAlignment, parseUSFMAlignment } from "./usfm-alignment-parser.js";
 
 interface VerseMapping {
@@ -168,7 +169,7 @@ export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
           };
         }
       } catch (error) {
-        console.warn("Cache retrieval failed:", error);
+        logger.warn("Cache retrieval failed", { error: String(error) });
       }
     }
 
@@ -274,7 +275,7 @@ export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
     try {
       await unifiedCache.set(cacheKey, response);
     } catch (error) {
-      console.warn("Cache storage failed:", error);
+      logger.warn("Cache storage failed", { error: String(error) });
     }
 
     return {
@@ -289,7 +290,7 @@ export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
     // Ensure tracing is disabled on error
     dcsClient.disableTracing();
 
-    console.error("Error fetching UST/GST scripture:", error);
+    logger.error("Error fetching UST/GST scripture", { error: String(error) });
 
     const errorResponse: USTResponse = {
       success: false,
@@ -343,13 +344,13 @@ async function fetchUSTResource(
 
     const catalogResponse = await fetch(catalogUrl.toString());
     if (!catalogResponse.ok) {
-      console.error("Failed to fetch catalog:", catalogResponse.status);
+      logger.error("Failed to fetch catalog", { status: catalogResponse.status });
       return null;
     }
 
     const catalog = await catalogResponse.json();
     if (!catalog.data) {
-      console.error("No data in catalog response");
+      logger.error("No data in catalog response");
       return null;
     }
 
@@ -358,7 +359,7 @@ async function fetchUSTResource(
     const resource = catalog.data.find((r) => r.name === resourceName);
 
     if (!resource || !resource.ingredients) {
-      console.error(`Resource ${resourceName} not found or has no ingredients`);
+      logger.error(`Resource ${resourceName} not found or has no ingredients`);
       return null;
     }
 
@@ -370,7 +371,7 @@ async function fetchUSTResource(
     );
 
     if (!bookIngredient || !bookIngredient.path) {
-      console.error(`No ingredient found for book ${book} in ${resourceName}`);
+      logger.error(`No ingredient found for book ${book} in ${resourceName}`);
       return null;
     }
 
@@ -382,7 +383,10 @@ async function fetchUSTResource(
 
     const directResponse = await fetch(fileUrl);
     if (!directResponse.ok) {
-      console.error(`Failed to fetch: ${directResponse.status} ${directResponse.statusText}`);
+      logger.error("Failed to fetch", {
+        status: directResponse.status,
+        statusText: directResponse.statusText,
+      });
       return null;
     }
 
@@ -402,7 +406,7 @@ async function fetchUSTResource(
       book: book.toUpperCase(),
     };
   } catch (error) {
-    console.error(`Error fetching ${resourceType} resource:`, error);
+    logger.error(`Error fetching ${resourceType} resource`, { error: String(error) });
     return null;
   }
 }
@@ -468,7 +472,7 @@ function extractPassageFromUSFM(usfmText: string, reference: string): string {
 
     return chapterText;
   } catch (error) {
-    console.error("Error extracting passage:", error);
+    logger.error("Error extracting passage", { error: String(error) });
     return usfmText; // Return full text on error
   }
 }

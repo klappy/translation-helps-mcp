@@ -1,0 +1,14 @@
+# Task ID: 10
+# Title: Chat Showcase Revival (/chat via MCP)
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Restore /chat as a self-discoverable MCP client; no hardcoded endpoints; prompt-only adjustable.
+# Details:
+- Re-enable MCP tool discovery path
+- Remove endpoint hardcoding
+- Verify transparency/X-ray and performance
+- Mobile + accessibility polish
+
+# Test Strategy:
+E2E tests for chat flows; MCP tool discovery works; perf under SLOs

@@ -5,6 +5,7 @@
  * Prevents duplicate paths, validates required fields, and provides type safety.
  */
 
+import { logger } from "../utils/logger.js";
 import type {
   ConfigValidationError,
   ConfigValidationResult,
@@ -40,16 +41,16 @@ class ConfigurationRegistry {
    */
   initialize(): void {
     if (this.initialized) {
-      console.warn("⚠️ Registry already initialized");
+      logger.warn("Registry already initialized");
       return;
     }
 
-    console.log("🏗️ Initializing endpoint configuration registry...");
+    logger.info("Initializing endpoint configuration registry...");
 
     // Registry is now ready for endpoint registration
     this.initialized = true;
 
-    console.log("✅ Endpoint registry initialized");
+    logger.info("Endpoint registry initialized");
   }
 
   /**
@@ -87,7 +88,7 @@ class ConfigurationRegistry {
         );
       }
       // Same name and path - skip re-registration
-      console.log(`📝 Skipping re-registration of: ${config.name} (${config.path})`);
+      logger.info(`Skipping re-registration`, { name: config.name, path: config.path });
       return;
     }
 
@@ -95,7 +96,7 @@ class ConfigurationRegistry {
     this.registry.endpoints[config.name] = config;
     this.registry.lastUpdated = new Date().toISOString();
 
-    console.log(`📝 Registered endpoint: ${config.name} (${config.path})`);
+    logger.info(`Registered endpoint`, { name: config.name, path: config.path });
   }
 
   /**
@@ -109,7 +110,7 @@ class ConfigurationRegistry {
     delete this.registry.endpoints[name];
     this.registry.lastUpdated = new Date().toISOString();
 
-    console.log(`🗑️ Unregistered endpoint: ${name}`);
+    logger.info(`Unregistered endpoint`, { name });
     return true;
   }
 
@@ -547,7 +548,7 @@ class ConfigurationRegistry {
       try {
         this.register(config);
       } catch (error) {
-        console.error(`Failed to import endpoint:`, error);
+        logger.error(`Failed to import endpoint`, { error: String(error) });
         throw error;
       }
     }
@@ -560,7 +561,7 @@ class ConfigurationRegistry {
       ...registryData.defaults,
     };
 
-    console.log(`📥 Imported ${Object.keys(registryData.endpoints).length} endpoints`);
+    logger.info(`Imported endpoints`, { count: Object.keys(registryData.endpoints).length });
   }
 }
 

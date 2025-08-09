@@ -1,0 +1,13 @@
+# Task ID: 8
+# Title: Deprecations & Housekeeping
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Move unused code to legacy/ with banners; add one-cycle removal notice; add rule to block usage.
+# Details:
+- Move unused to legacy/; add DO-NOT-USE banner headers
+- CHANGELOG note: removal next release
+- Rule doc/ESLint guidance to prevent usage
+
+# Test Strategy:
+No imports of legacy dirs; lint/rules catch violations

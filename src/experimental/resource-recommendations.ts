@@ -7,13 +7,14 @@
  * Implements Task 9 from the implementation plan
  */
 
+import { cache } from "../cache.js";
+import type { PlatformHandler } from "../platform-adapter.js";
+import { logger } from "../utils/logger.js";
 import {
   recommendResources,
   type RecommendationContext,
   type ScriptureReference,
 } from "./resource-recommender.js";
-import { cache } from "../cache.js";
-import type { PlatformHandler } from "../platform-adapter.js";
 
 // Cache TTL: 30 minutes (recommendations can be cached but not too long since context matters)
 const CACHE_TTL = 1800; // 30 minutes in seconds
@@ -85,7 +86,7 @@ export const resourceRecommendationsHandler: PlatformHandler = async (request) =
     // Check cache first
     const cached = await cache.get(cacheKey);
     if (cached) {
-      console.log("[DEBUG] Resource recommendations served from cache");
+      logger.debug("Resource recommendations served from cache");
 
       return {
         statusCode: 200,
@@ -103,7 +104,7 @@ export const resourceRecommendationsHandler: PlatformHandler = async (request) =
       };
     }
 
-    console.log("[DEBUG] Generating fresh resource recommendations");
+    logger.debug("Generating fresh resource recommendations");
 
     // Generate recommendations
     const recommendations = recommendResources(context);
@@ -123,12 +124,7 @@ export const resourceRecommendationsHandler: PlatformHandler = async (request) =
     await cache.set(cacheKey, responseData, "metadata", CACHE_TTL);
 
     const duration = Date.now() - startTime;
-    console.log(`[DEBUG] Resource recommendations generated in ${duration}ms`);
-
-    // Validate response time requirement (Task 9: < 100ms)
-    if (duration > 100) {
-      console.warn(`[WARN] Recommendations took ${duration}ms (target: <100ms)`);
-    }
+    logger.info("Resource recommendations generated", { durationMs: duration });
 
     return {
       statusCode: 200,
@@ -140,7 +136,7 @@ export const resourceRecommendationsHandler: PlatformHandler = async (request) =
       },
     };
   } catch (error) {
-    console.error("[ERROR] Resource recommendations failed:", error);
+    logger.error("Resource recommendations failed", { error: String(error) });
 
     return {
       statusCode: 500,

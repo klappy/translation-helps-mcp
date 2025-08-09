@@ -3,6 +3,9 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
+import { questionsResponseSchema } from "../../utils/schemas.js";
+import { softValidate } from "../../utils/validator.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { fetchTranslationQuestions } from "../translation-questions-service";
 
@@ -46,10 +49,7 @@ export const fetchTranslationQuestionsHandler: PlatformHandler = async (
     if (!referenceParam) {
       return {
         statusCode: 400,
-        body: JSON.stringify({
-          error: "Missing reference parameter",
-          code: "MISSING_PARAMETER",
-        }),
+        body: JSON.stringify(Errors.missingParameter("reference")),
       };
     }
 
@@ -62,6 +62,9 @@ export const fetchTranslationQuestionsHandler: PlatformHandler = async (
 
     const duration = Date.now() - startTime;
 
+    // Soft schema validation (warn-only)
+    softValidate(questionsResponseSchema, result, "fetch-translation-questions");
+
     return {
       statusCode: 200,
       headers: {
@@ -73,7 +76,6 @@ export const fetchTranslationQuestionsHandler: PlatformHandler = async (
       body: JSON.stringify(result),
     };
   } catch (error) {
-    console.error("Translation Questions API Error:", error);
     const duration = Date.now() - startTime;
 
     return {
@@ -83,10 +85,7 @@ export const fetchTranslationQuestionsHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Failed to fetch translation questions",
-        code: "INTERNAL_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

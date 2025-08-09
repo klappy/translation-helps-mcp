@@ -1,0 +1,95 @@
+# Translation Helps MCP – vNext PRD
+
+## Executive Summary
+Harden contracts, errors, logging, caching, and DCS access, and restore the /chat showcase as a self‑discoverable MCP client. Goals: reduce drift, improve agent reliability, enforce performance SLOs, and keep UI minimal (MCP Tools only + chat showcase).
+
+## Decisions Locked
+- Scripture response shape: Always return an array, even when filtered to one version
+- Schema validation: Use a schema validator (Zod) in handlers and tests to guarantee response shapes
+- Error policy: 400 for invalid inputs with actionable “how to fix” guidance and examples; standard error envelope
+- Logging: Replace console usage with logger under src/** (tests/scripts can use console); prod LOG_LEVEL=info (debug via env)
+- Caching: KV-first; memory fallback only when KV unavailable; optional tiny hot LRU disabled by default in prod; unify TTLs/prefixes; correct timing reporting
+- ZIP policy: Keep the implemented ZIP fetcher (ZipResourceFetcher2) and deprecate others
+- DCS access: Catalog search with metadataType=rc and ingredients-only, case-insensitive book code matching; exceptions documented only
+- Performance SLOs (CI gates): verse <200ms, range <300ms, chapter <500ms; cache hits <100ms
+- Deprecations: 1 release cycle notice; move “unused” to legacy/ with DO-NOT-USE banners immediately
+- Scripture mapping: Never number-based filename guesses; derive from resource metadata/zip file listings; case-insensitive
+- UI scope: MCP Tools is the only sanctioned UI; /chat is a dedicated showcase implemented strictly as a self‑discoverable MCP client
+
+## Scope & Requirements
+### 1) API Contracts & Schemas
+- Add schemas for each endpoint (request/response)
+- Validate responses in handlers; parse in tests against the same schemas
+- Scripture endpoints always return an array (single-item when filtered)
+
+### 2) Error Policy & Envelope
+- Standard envelope: { code, message, hint, howToFix, examples, docs, traceId }
+- Invalid references → 400 with examples and links to discovery endpoints
+- Distinguish file-not-found vs org/lang combination not found
+
+### 3) Logging & Observability
+- Replace console.* with logger.* in src/**
+- Respect LOG_LEVEL env (default info); enable debug via env
+- Ensure tracer reports non-zero timings for KV/memory hits (include fetch+decode time)
+
+### 4) Caching Model
+- KV-first cache with documented TTLs and key prefixes; memory fallback only if KV is unavailable
+- Optional small LRU (strict cap) behind env flag, off in prod by default
+- Namespaced file cache keys for extracted ZIP contents: internal://zip/<org/repo:ref>/<filePath>
+- Fix timing: report realistic KV hit latencies rather than 0ms
+
+### 5) ZIP Fetching
+- Deprecate legacy ZIP fetchers; use ZipResourceFetcher2 only
+- Document behavior and cache key derivation
+
+### 6) DCS Access – Ingredients Rule
+- Single helper for catalog search + metadataType=rc → ingredients
+- Case-insensitive book code matching
+- Clearly documented exceptions; forbid guessed paths
+
+### 7) Performance SLOs (CI Gates)
+- Add CI tests using tracer-derived timings for verse/range/chapter and cache-hit scenarios
+- Fail build on SLO regressions
+
+### 8) Deprecations & Housekeeping
+- Move unused code to legacy/ with DO-NOT-USE headers
+- Announce removal after one release cycle
+
+### 9) Scripture Mapping Cleanup
+- Remove per-file numeric/filename maps
+- Derive from metadata/zip listings; case-insensitive matching
+
+### 10) Chat Showcase Revival (/chat)
+- Restore the chat page as a reference implementation that relies solely on MCP tool self-discovery and the system prompt
+- No hardcoded API endpoints inside chat; prompt-only adjustable
+
+## Acceptance Criteria
+- All endpoints validated against schemas in handlers and tests
+- Error responses use standard envelope with concrete guidance and links
+- All src/** logging flows through logger; LOG_LEVEL respected
+- Tracer shows realistic timings for KV/memory hits and decode; no 0ms for cache hits
+- Namespaced file cache keys for extracted ZIP files are used and measured correctly
+- Ingredients helper used across code; exceptions documented and tested
+- CI gates enforce SLOs; build fails on regressions
+- Legacy/unused code moved to legacy/ with DO-NOT-USE banners
+- /chat functions again via MCP self-discovery (no endpoint hardcoding)
+
+## Non-Goals
+- Net-new features beyond the hardening items above
+- Expanding public API surface beyond error envelope/schema enforcement
+
+## Risks & Mitigations
+- Tighter schemas may initially break brittle flows: start with warn logs, then enforce; add quick-fix guidance
+- KV outages: fall back to memory with strict caps; log mode and recovery clearly
+
+## Rollout Plan
+- Phase A: Contracts + schemas + logging
+- Phase B: Caching/tracing timing + namespaced file keys
+- Phase C: Ingredients helper unification + scripture mapping cleanup
+- Phase D: Deprecations + chat showcase revival
+
+## Success Criteria
+- Contract stability; agentic edits don’t break consumers
+- Measurable performance meeting SLOs under CI
+- Unified caching signals and realistic timings
+- Chat showcase demonstrates MCP-only discovery and remains stable across backend changes

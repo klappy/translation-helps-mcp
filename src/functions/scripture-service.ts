@@ -6,6 +6,7 @@
 
 import { parseUSFMAlignment, type WordAlignment } from "../experimental/usfm-alignment-parser.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
+import { logger } from "../utils/logger.js";
 import { parseReference } from "./reference-parser.js";
 import { discoverAvailableResources } from "./resource-detector.js";
 import { CacheBypassOptions, unifiedCache } from "./unified-cache.js";
@@ -101,14 +102,14 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     includeAlignment = false, // Default to false for backward compatibility
   } = options;
 
-  console.log(`📖 Core scripture service called with:`, {
+  logger.info(`Core scripture service called`, {
     reference: referenceParam,
     language,
     organization,
     includeVerseNumbers,
     format,
     includeAlignment,
-    bypassCache: bypassCache ? "enabled" : "disabled",
+    bypassCache: Boolean(bypassCache),
   });
 
   const reference = parseReference(referenceParam);
@@ -123,7 +124,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   const cachedResponse = await unifiedCache.getWithDeduplication(
     responseKey,
     async () => {
-      console.log(`🔄 Processing fresh scripture request: ${responseKey}`);
+      logger.debug(`Processing fresh scripture request`, { key: responseKey });
       return await fetchFreshScripture();
     },
     "transformedResponse",
@@ -131,7 +132,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   );
 
   if (cachedResponse.fromCache) {
-    console.log(`🚀 FAST cache hit for processed scripture: ${responseKey}`);
+    logger.info(`FAST cache hit for processed scripture`, { key: responseKey });
     return {
       ...cachedResponse.data,
       metadata: {
@@ -147,19 +148,19 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
   async function fetchFreshScripture(): Promise<ScriptureResult> {
     const executionId = Math.random().toString(36).substr(2, 9);
-    console.log(`🆔 fetchFreshScripture execution ID: ${executionId}`);
+    logger.debug(`fetchFreshScripture execution`, { id: executionId });
 
     // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog searches
-    console.log(`🔍 Using unified resource discovery for scripture...`);
+    logger.debug(`Using unified resource discovery for scripture...`);
     const availability = await discoverAvailableResources(referenceParam, language, organization);
     const allResources = availability.scripture;
 
     if (allResources.length === 0) {
-      console.error(`❌ No scripture resources found for ${language}/${organization}`);
+      logger.error(`No scripture resources found`, { language, organization });
       throw new Error(`No scripture resources found for ${language}/${organization}`);
     }
 
-    console.log(`📊 Found ${allResources.length} scripture resources from unified discovery`);
+    logger.info(`Found scripture resources from unified discovery`, { count: allResources.length });
 
     // Filter by specific translations if requested
     let filteredResources = allResources;
@@ -167,34 +168,29 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
       filteredResources = allResources.filter((resource) =>
         specificTranslations!.includes(resource.name)
       );
-      console.log(
-        `🎯 Filtered to ${filteredResources.length} specific translations: ${specificTranslations.join(", ")}`
-      );
+      logger.info(`Filtered to specific translations`, {
+        count: filteredResources.length,
+        specificTranslations,
+      });
 
       if (filteredResources.length === 0) {
-        console.warn(
-          `⚠️ No resources found for specified translations: ${specificTranslations.join(", ")}`
-        );
+        logger.warn(`No resources found for specified translations`, { specificTranslations });
         // Fall back to all available resources if none of the specified ones exist
         filteredResources = allResources;
       }
     }
 
     // Handle translations: if none specified, return all; if specified, return only those
-    const resourcesToProcess = specificTranslations
-      ? filteredResources // Use only the specified translations
-      : allResources; // Use all available translations (default)
+    const resourcesToProcess = specificTranslations ? filteredResources : allResources;
 
-    console.log(
-      `📖 Processing ${resourcesToProcess.length} resource(s) (${specificTranslations ? `specific: ${specificTranslations.join(",")}` : "all available"})`
-    );
-    console.log(
-      `🐛 DEBUG: resourcesToProcess names: ${resourcesToProcess.map((r) => r.name).join(", ")}`
-    );
+    logger.debug(`Processing resources`, {
+      count: resourcesToProcess.length,
+      specific: specificTranslations?.join(", "),
+    });
 
-    const scriptures = [];
+    const scriptures = [] as ScriptureResult["scriptures"];
     for (const resource of resourcesToProcess) {
-      console.log(`📖 Processing resource: ${resource.name} (${resource.title})`);
+      logger.debug(`Processing resource`, { name: resource.name, title: resource.title });
 
       // Find the correct file from ingredients
       const ingredient = resource.ingredients?.find(
@@ -203,7 +199,10 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
       );
 
       if (!ingredient || !reference) {
-        console.warn(`Book ${reference?.book || "unknown"} not found in resource ${resource.name}`);
+        logger.warn(`Book not found in resource`, {
+          book: reference?.book,
+          resource: resource.name,
+        });
         continue;
       }
 
@@ -211,7 +210,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
       try {
         // Get USFM data using the cached DCS client
-        console.log(`🔍 Fetching USFM file via DCS client...`);
+        logger.debug(`Fetching USFM file via DCS client...`);
         const dcsClient = new DCSApiClient();
         const fileResponse = await dcsClient.getRawFileContent(
           organization,
@@ -221,20 +220,20 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
         );
 
         if (!fileResponse.success || !fileResponse.data) {
-          console.error(
-            `❌ Failed to fetch scripture content: ${fileResponse.error || "Unknown error"}`
-          );
+          logger.error(`Failed to fetch scripture content`, {
+            error: fileResponse.error || "Unknown",
+          });
           continue;
         }
 
         const usfmData = fileResponse.data;
-        console.log(`📄 Retrieved ${usfmData.length} characters of USFM data`);
+        logger.debug(`Retrieved USFM data`, { length: usfmData.length });
 
         // Choose extraction method based on format and includeVerseNumbers
         const extractionStart = Date.now();
-        console.log(
-          `⚡ Starting USFM extraction for ${reference.book} ${reference.chapter}:${reference.verse}`
-        );
+        logger.debug(`Starting USFM extraction`, {
+          reference: `${reference.book} ${reference.chapter}:${reference.verse}`,
+        });
         let text = "";
 
         if (format === "usfm") {
@@ -294,7 +293,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
           if (includeAlignment && format !== "usfm") {
             try {
-              console.log(`🔗 Processing alignment data for ${resource.name}`);
+              logger.debug(`Processing alignment data`, { resource: resource.name });
               const alignmentStart = Date.now();
 
               // Parse alignment from the full USFM data for the passage
@@ -311,11 +310,15 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
               };
 
               const alignmentTime = Date.now() - alignmentStart;
-              console.log(
-                `🔗 Alignment processing completed in ${alignmentTime}ms: ${parsedAlignment.alignments.length} alignments found`
-              );
+              logger.debug(`Alignment processing completed`, {
+                ms: alignmentTime,
+                count: parsedAlignment.alignments.length,
+              });
             } catch (alignmentError) {
-              console.warn(`⚠️ Alignment processing failed for ${resource.name}:`, alignmentError);
+              logger.warn(`Alignment processing failed`, {
+                resource: resource.name,
+                error: String(alignmentError),
+              });
               // Continue without alignment data
             }
           }
@@ -333,17 +336,22 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
             alignment: alignmentData,
           });
           const extractionTime = Date.now() - extractionStart;
-          console.log(
-            `📝 Extracted ${text.length} characters from ${resource.name} in ${extractionTime}ms`
-          );
+          logger.debug(`Extracted scripture text`, {
+            resource: resource.name,
+            ms: extractionTime,
+            length: text.length,
+          });
         }
       } catch (error) {
-        console.warn(`⚠️ Failed to process ${resource.name}:`, error);
+        logger.warn(`Failed to process resource`, {
+          resource: resource.name,
+          error: String(error),
+        });
         continue;
       }
     }
 
-    if (scriptures.length === 0) {
+    if (!scriptures || scriptures.length === 0) {
       throw new Error(`No scripture text found for ${referenceParam}`);
     }
 
@@ -385,9 +393,9 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   // Cache the result (unless explicitly bypassed)
   if (!cachedResponse.cacheInfo?.bypassReason) {
     await unifiedCache.set(responseKey, result, "transformedResponse");
-    console.log(`💾 Cached transformed scripture response: ${responseKey}`);
+    logger.info(`Cached transformed scripture response`, { key: responseKey });
   } else {
-    console.log(`🚫 Skipping cache due to bypass: ${cachedResponse.cacheInfo?.bypassReason}`);
+    logger.info(`Skipping cache due to bypass`, { reason: cachedResponse.cacheInfo?.bypassReason });
   }
 
   return result;

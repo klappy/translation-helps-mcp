@@ -15,6 +15,7 @@ import { unifiedCache } from "../functions/unified-cache.js";
 import { parseReference } from "../parsers/referenceParser.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import { ResponseFormatter, type FormatMetadata } from "../services/ResponseFormatter.js";
+import { logger } from "../utils/logger.js";
 import type {
   DataSourceConfig,
   EndpointConfig,
@@ -265,10 +266,16 @@ export class RouteGenerator {
             request.headers["x-cache-bypass"] === "true";
 
           if (!bypassCache) {
+            const cacheStart = performance.now();
             const cached = await unifiedCache.get(cacheKey);
             if (cached && cached.value) {
               responseData = cached.value;
               cacheStatus = "hit";
+              // Attach minimal decode time to be merged later
+              (request as any).__cacheDecodeMs = Math.max(
+                1,
+                Math.round(performance.now() - cacheStart)
+              );
             } else {
               cacheStatus = "miss";
             }
@@ -279,11 +286,8 @@ export class RouteGenerator {
         if (!responseData) {
           responseData = await this.fetchData(config, params, traceId);
 
-          // Cache the result if cacheable
-          if (config.responseShape.performance.cacheable && cacheStatus !== "bypass") {
-            const ttl = config.dataSource.cacheTtl || 3600; // Default 1 hour
-            await unifiedCache.set(cacheKey, responseData, "apiResponse", ttl);
-          }
+          // Policy: never cache assembled API responses. Upstream layers (files, DCS, zipfile) are cached instead.
+          // Do nothing here for apiResponse caching.
         }
 
         // Apply transformations
@@ -304,7 +308,12 @@ export class RouteGenerator {
           transformedData,
           format,
           {
-            responseTime,
+            responseTime: Math.max(
+              responseTime,
+              typeof (request as any).__cacheDecodeMs === "number"
+                ? (request as any).__cacheDecodeMs
+                : responseTime
+            ),
             cacheStatus,
             success: true,
             status: 200,
@@ -357,7 +366,7 @@ export class RouteGenerator {
           this.dcsClient.disableTracing();
         }
 
-        console.error(`❌ Error in generated route ${config.name}:`, error);
+        logger.error(`Error in generated route`, { endpoint: config.name, error: String(error) });
 
         return this.generateErrorResponse(
           500,
@@ -763,7 +772,7 @@ export class RouteGenerator {
     ];
 
     if (zipEnabledEndpoints.includes(config.name)) {
-      console.log(`[RouteGenerator] computeData (ZIP) for ${config.name}, params:`, params);
+      logger.debug(`[RouteGenerator] computeData (ZIP)`, { endpoint: config.name, params });
 
       // Choose correct ZIP method per endpoint
       const fetchMethod =
@@ -794,8 +803,8 @@ export class RouteGenerator {
         },
       };
 
-      console.log("[RouteGenerator] zipConfig:", zipConfig);
-      console.log("[RouteGenerator] params being passed:", {
+      logger.debug("[RouteGenerator] zipConfig", zipConfig);
+      logger.debug("[RouteGenerator] params being passed", {
         ...params,
         resourceFromParams: params.resource,
         resourceFromZipConfig: zipConfig.zipConfig.resourceType,
@@ -807,7 +816,7 @@ export class RouteGenerator {
         params,
         context as unknown as { traceId: string; platform?: unknown; cache?: Map<string, unknown> }
       )) as unknown;
-      console.log("[RouteGenerator] fetcher result keys:", Object.keys(result || {}));
+      logger.debug("[RouteGenerator] fetcher result keys", { keys: Object.keys(result || {}) });
 
       // Attach X-Ray trace from ZIP path into metadata for UI/UX
       try {
@@ -951,7 +960,7 @@ export class RouteGenerator {
       }
 
       default: {
-        console.warn(`Unknown transformation type: ${transformation}`);
+        logger.warn(`Unknown transformation type`, { transformation });
         return data;
       }
     }
@@ -975,22 +984,50 @@ export class RouteGenerator {
       return data;
     }
 
-    const lines = data.split("\n").filter((line) => line.trim());
-    if (lines.length === 0) {
-      return [];
-    }
+    // Preserve header and column count exactly; ignore trailing extra columns
+    const lines = data.split("\n").filter((line) => line.trim().length > 0);
+    if (lines.length === 0) return [];
 
     const headers = lines[0].split("\t");
-    const result = [];
+    const result: Array<Record<string, string>> = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split("\t");
-      const row: Record<string, string> = {};
+      let values = lines[i].split("\t");
 
+      // Heuristic: Some TN intro rows omit one column, causing a shift.
+      // If headers include TN columns and Reference is an intro row, insert an empty Quote.
+      const referenceIdx = headers.indexOf("Reference");
+      const quoteIdx = headers.indexOf("Quote");
+      const occurrenceIdx = headers.indexOf("Occurrence");
+      const noteIdx = headers.indexOf("Note");
+      const isTNShape = referenceIdx === 0 && quoteIdx >= 0 && occurrenceIdx >= 0 && noteIdx >= 0;
+      const looksShort = values.length === headers.length - 1;
+      const refVal = values[referenceIdx] || "";
+      if (isTNShape && looksShort && /intro/.test(refVal)) {
+        const adjusted = values.slice();
+        adjusted.splice(quoteIdx, 0, "");
+        values = adjusted;
+      }
+      const row: Record<string, string> = {};
       for (let j = 0; j < headers.length; j++) {
-        row[headers[j]] = values[j] || "";
+        row[headers[j]] = values[j] !== undefined ? values[j] : "";
       }
 
+      // Compatibility normalization for TN rows:
+      // - Intro rows sometimes set Quote to "0"; normalize to empty string
+      // - Some TN rows place Note text in Occurrence when Note is missing; swap when detected
+      if (isTNShape) {
+        const refCell = row["Reference"] || "";
+        if (/intro/.test(refCell) && row["Quote"] === "0") {
+          row["Quote"] = "";
+        }
+        const occ = row["Occurrence"] || "";
+        const note = row["Note"] || "";
+        if (!note && occ && !/^\d+$/.test(occ)) {
+          row["Note"] = occ;
+          row["Occurrence"] = "";
+        }
+      }
       result.push(row);
     }
 

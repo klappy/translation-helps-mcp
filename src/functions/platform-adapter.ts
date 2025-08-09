@@ -1,5 +1,7 @@
 // Platform-agnostic adapter for function handling
+import { logger } from "../utils/logger.js";
 import { CacheBypassOptions, shouldBypassCache, unifiedCache } from "./unified-cache";
+import { withMeasuredCacheHeaders } from "./unified-cache.js";
 
 export interface PlatformRequest {
   method: string;
@@ -68,10 +70,12 @@ export function createNetlifyHandler(handler: PlatformHandler, _cacheAdapter?: C
 
     try {
       // Try unified cache first (unless bypassed)
+      const cacheReadStart = performance.now();
       const cacheResult = await unifiedCache.get(cacheKey, "apiResponse", bypassOptions);
+      const cacheReadMs = performance.now() - cacheReadStart;
 
       if (cacheResult.value) {
-        console.log(`🚀 Cache HIT for ${event.path}`);
+        logger.info(`Cache HIT`, { path: event.path });
         return {
           statusCode: 200,
           headers: {
@@ -80,15 +84,19 @@ export function createNetlifyHandler(handler: PlatformHandler, _cacheAdapter?: C
             "Access-Control-Allow-Headers":
               "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            ...unifiedCache.generateCacheHeaders(cacheResult),
+            ...withMeasuredCacheHeaders(
+              unifiedCache.generateCacheHeaders(cacheResult),
+              cacheReadMs,
+              cacheResult.cacheType === "memory" ? "memory" : "kv"
+            ),
           },
           body: JSON.stringify(cacheResult.value),
         };
       }
 
-      console.log(`🔄 Cache MISS for ${event.path} - processing request`);
+      logger.info(`Cache MISS`, { path: event.path });
     } catch (error) {
-      console.warn("Cache read failed:", error);
+      logger.warn("Cache read failed", { error: String(error) });
     }
 
     // Process the request
@@ -99,9 +107,9 @@ export function createNetlifyHandler(handler: PlatformHandler, _cacheAdapter?: C
       try {
         const responseData = JSON.parse(response.body);
         await unifiedCache.set(cacheKey, responseData, "apiResponse");
-        console.log(`💾 Cached response for ${event.path}`);
+        logger.info(`Cached response`, { path: event.path });
       } catch (error) {
-        console.warn("Cache write failed:", error);
+        logger.warn("Cache write failed", { error: String(error) });
       }
     }
 

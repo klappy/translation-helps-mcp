@@ -4,6 +4,7 @@
  * Uses unified resource discovery to minimize DCS API calls
  */
 
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
@@ -49,8 +50,8 @@ function parseTQFromTSV(tsvData: string, reference: ParsedReference): Translatio
 
   // Log first few lines for debugging
   if (lines.length > 0) {
-    console.log(`📋 First TSV line: ${lines[0]}`);
-    console.log(
+    logger.debug(`📋 First TSV line`, { line: lines[0] });
+    logger.debug(
       `📋 Parsing questions for ${reference.book} ${reference.chapter}:${reference.verse || "*"}`
     );
   }
@@ -107,7 +108,7 @@ export async function fetchTranslationQuestions(
     throw new Error(`Invalid reference format: ${reference}`);
   }
 
-  console.log(`❓ Core translation questions service called with:`, {
+  logger.info(`Core translation questions service called`, {
     reference,
     language,
     organization,
@@ -118,7 +119,7 @@ export async function fetchTranslationQuestions(
   const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
-    console.log(`🚀 FAST cache hit for processed questions: ${responseKey}`);
+    logger.info(`FAST cache hit for processed questions`, { key: responseKey });
     return {
       translationQuestions: cachedResponse.value.translationQuestions,
       citation: cachedResponse.value.citation,
@@ -131,24 +132,21 @@ export async function fetchTranslationQuestions(
     };
   }
 
-  console.log(`🔄 Processing fresh questions request: ${responseKey}`);
+  logger.info(`Processing fresh questions request`, { key: responseKey });
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
-  console.log(`🔍 Using unified resource discovery for translation questions...`);
+  logger.debug(`Using unified resource discovery for translation questions...`);
   const resourceInfo = await getResourceForBook(reference, "questions", language, organization);
 
   if (!resourceInfo) {
     throw new Error(`No translation questions found for ${language}/${organization}`);
   }
 
-  console.log(`📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`);
-  console.log(
-    `🔍 Looking for book: ${parsedRef.book} (lowercased: ${parsedRef.book.toLowerCase()})`
-  );
-  console.log(
-    `📦 Ingredients available:`,
-    resourceInfo.ingredients?.map((i: any) => i.identifier)
-  );
+  logger.info(`Using resource`, { name: resourceInfo.name, title: resourceInfo.title });
+  logger.debug(`Looking for book`, { book: parsedRef.book, lower: parsedRef.book.toLowerCase() });
+  logger.debug(`Ingredients available`, {
+    ingredients: resourceInfo.ingredients?.map((i: any) => i.identifier),
+  });
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
@@ -156,7 +154,10 @@ export async function fetchTranslationQuestions(
   );
 
   if (!ingredient) {
-    console.error(`❌ Book ${parsedRef.book} not found in ingredients:`, resourceInfo.ingredients);
+    logger.error(`Book not found in ingredients`, {
+      book: parsedRef.book,
+      ingredients: resourceInfo.ingredients,
+    });
     throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
   }
 
@@ -168,26 +169,26 @@ export async function fetchTranslationQuestions(
   let tsvData = await cache.getFileContent(cacheKey);
 
   if (!tsvData) {
-    console.log(`🔄 Cache miss for TQ file, downloading...`);
+    logger.info(`Cache miss for TQ file, downloading...`);
     const fileResponse = await fetch(fileUrl);
     if (!fileResponse.ok) {
-      console.error(`❌ Failed to fetch TQ file: ${fileResponse.status}`);
+      logger.error(`Failed to fetch TQ file`, { status: fileResponse.status });
       throw new Error(`Failed to fetch translation questions content: ${fileResponse.status}`);
     }
 
     tsvData = await fileResponse.text();
-    console.log(`📄 Downloaded ${tsvData.length} characters of TSV data`);
+    logger.info(`Downloaded TSV data`, { length: tsvData.length });
 
     // Cache the file content
     await cache.setFileContent(cacheKey, tsvData);
-    console.log(`💾 Cached TQ file (${tsvData.length} chars)`);
+    logger.info(`Cached TQ file`, { length: tsvData.length });
   } else {
-    console.log(`✅ Cache hit for TQ file (${tsvData.length} chars)`);
+    logger.info(`Cache hit for TQ file`, { length: tsvData.length });
   }
 
   // Parse the TSV data
   const questions = parseTQFromTSV(tsvData, parsedRef);
-  console.log(`❓ Parsed ${questions.length} translation questions`);
+  logger.info(`Parsed translation questions`, { count: questions.length });
 
   const result: TranslationQuestionsResult = {
     translationQuestions: questions,
@@ -212,7 +213,7 @@ export async function fetchTranslationQuestions(
     citation: result.citation,
   });
 
-  console.log(`❓ Parsed ${questions.length} translation questions`);
+  logger.info(`Parsed translation questions`, { count: questions.length });
 
   return result;
 }

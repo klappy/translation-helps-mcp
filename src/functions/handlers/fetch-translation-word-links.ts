@@ -11,6 +11,7 @@ import {
 } from "../../constants/terminology.js";
 import { parseUSFMAlignment } from "../../experimental/usfm-alignment-parser.js";
 import { DCSApiClient } from "../../services/DCSApiClient.js";
+import { logger } from "../../utils/logger.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
 
@@ -97,7 +98,7 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
     if (!bypassCache) {
       const cachedResult = await unifiedCache.get(cacheKey);
       if (cachedResult) {
-        console.log(`🚀 TWL cache HIT for: ${cacheKey}`);
+        logger.info(`TWL cache HIT`, { cacheKey });
         return {
           statusCode: 200,
           headers: {
@@ -113,7 +114,7 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
       }
     }
 
-    console.log(`🔄 TWL cache MISS, fetching fresh data for: ${reference}`);
+    logger.info(`TWL cache MISS, fetching fresh data`, { reference });
 
     // Fetch fresh data with X-Ray tracing
     const dcsClient = new DCSApiClient();
@@ -146,7 +147,7 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
     // Cache the result
     if (!bypassCache) {
       await unifiedCache.set(cacheKey, result, "transformedResponse");
-      console.log(`💾 Cached TWL response: ${cacheKey}`);
+      logger.info(`Cached TWL response`, { cacheKey });
     }
 
     const responseTime = Date.now() - startTime;
@@ -174,7 +175,7 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
       body: JSON.stringify(response),
     };
   } catch (error) {
-    console.error("TWL error:", error);
+    logger.error("TWL error", { error: error instanceof Error ? error.message : String(error) });
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     const errorResponse: TWLResponse = {
@@ -223,7 +224,7 @@ async function fetchTWLData(
     );
 
     if (!scriptureResponse.success || !scriptureResponse.data) {
-      console.warn(`No ULT resource found for ${language}/${organization}`);
+      logger.warn(`No ULT resource found`, { language, organization });
       return null;
     }
 
@@ -231,7 +232,7 @@ async function fetchTWLData(
     // Do not construct raw USFM URLs; this handler should be migrated to use ingredients via ZIP
     const usfmResponse = await Promise.resolve({ ok: false } as Response);
     if (!usfmResponse.ok) {
-      console.warn(`Failed to fetch USFM: ${usfmResponse.status}`);
+      logger.warn(`Failed to fetch USFM`, { status: usfmResponse.status });
       return null;
     }
 
@@ -244,7 +245,7 @@ async function fetchTWLData(
     const twResponse = await dcsClient.getSpecificResourceMetadata(language, organization, "tw");
 
     if (!twResponse.success || !twResponse.data) {
-      console.warn(`No TW resource found for ${language}/${organization}`);
+      logger.warn(`No TW resource found`, { language, organization });
       return null;
     }
 
@@ -308,7 +309,9 @@ async function fetchTWLData(
       },
     };
   } catch (error) {
-    console.error("Error fetching TWL data:", error);
+    logger.error("Error fetching TWL data", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }

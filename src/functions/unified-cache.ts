@@ -5,6 +5,7 @@
  * unified system that supports cache bypass via headers and query params.
  */
 
+import { logger } from "../utils/logger.js";
 import { getVersion } from "../version.js";
 
 // Cache bypass detection
@@ -57,7 +58,7 @@ interface CacheItem {
   lastAccessed: number;
 }
 
-// Unified TTL configuration
+// Unified TTL configuration (single source of truth for TTLs)
 const UNIFIED_CACHE_TTLS = {
   // API Response level (what users see)
   apiResponse: 600, // 10 minutes - frequent enough for good UX
@@ -103,7 +104,7 @@ export class UnifiedCacheManager {
 
   constructor() {
     this.appVersion = getVersion();
-    console.log(`🚀 Unified cache initialized with app version: ${this.appVersion}`);
+    logger.info(`🚀 Unified cache initialized with app version: ${this.appVersion}`);
   }
 
   private getVersionedKey(key: string, cacheType?: UnifiedCacheType): string {
@@ -118,10 +119,20 @@ export class UnifiedCacheManager {
   ): Promise<CacheResult<T>> {
     const fullKey = this.getVersionedKey(key, cacheType);
 
+    // Hard-disable response-level caching by policy: never cache API responses
+    if (cacheType === "apiResponse") {
+      return {
+        value: null,
+        cached: false,
+        cacheKey: fullKey,
+        bypassReason: "apiResponse caching disabled",
+      };
+    }
+
     // Check if cache should be bypassed
     if (bypassOptions && shouldBypassCache(bypassOptions)) {
       this.stats.bypasses++;
-      console.log(`🚫 Cache bypass for: ${key} (${cacheType})`);
+      logger.warn(`🚫 Cache bypass for: ${key} (${cacheType})`);
       return {
         value: null,
         cached: false,
@@ -130,6 +141,7 @@ export class UnifiedCacheManager {
       };
     }
 
+    const memStart = typeof performance !== "undefined" ? performance.now() : Date.now();
     const item = this.memoryCache.get(fullKey);
 
     if (!item) {
@@ -169,6 +181,10 @@ export class UnifiedCacheManager {
     item.lastAccessed = Date.now();
     this.stats.hits++;
 
+    const timingMs = Math.max(
+      1,
+      Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - memStart)
+    );
     return {
       value: item.value,
       cached: true,
@@ -177,6 +193,8 @@ export class UnifiedCacheManager {
       expiresAt: new Date(item.expiry).toISOString(),
       ttlSeconds: Math.round((item.expiry - Date.now()) / 1000),
       version: this.appVersion,
+      // Provide minimal timing for header plumbing
+      bypassReason: `timing=${timingMs}ms`,
     };
   }
 
@@ -186,6 +204,11 @@ export class UnifiedCacheManager {
     cacheType: UnifiedCacheType = "apiResponse",
     customTtl?: number
   ): Promise<void> {
+    // Hard-disable response-level caching by policy
+    if (cacheType === "apiResponse") {
+      logger.debug("Skipping set for apiResponse cache (disabled)", { key });
+      return;
+    }
     const fullKey = this.getVersionedKey(key, cacheType);
     const ttl = customTtl || UNIFIED_CACHE_TTLS[cacheType];
     const expiry = Date.now() + ttl * 1000;
@@ -201,7 +224,7 @@ export class UnifiedCacheManager {
     this.memoryCache.set(fullKey, cacheItem);
     this.stats.sets++;
 
-    console.log(`💾 Cached: ${key} (${cacheType}) for ${ttl}s`);
+    logger.info(`💾 Cached: ${key} (${cacheType}) for ${ttl}s`);
   }
 
   async delete(key: string, cacheType?: UnifiedCacheType): Promise<void> {
@@ -209,14 +232,14 @@ export class UnifiedCacheManager {
     const deleted = this.memoryCache.delete(fullKey);
     if (deleted) {
       this.stats.deletes++;
-      console.log(`🗑️ Deleted from cache: ${key} (${cacheType})`);
+      logger.info(`🗑️ Deleted from cache: ${key} (${cacheType})`);
     }
   }
 
   async clear(): Promise<void> {
     const size = this.memoryCache.size;
     this.memoryCache.clear();
-    console.log(`🧹 Cleared ${size} cache entries`);
+    logger.info(`🧹 Cleared ${size} cache entries`);
   }
 
   async clearByType(cacheType: UnifiedCacheType): Promise<void> {
@@ -230,7 +253,7 @@ export class UnifiedCacheManager {
       }
     }
 
-    console.log(`🧹 Cleared ${deleted} entries of type: ${cacheType}`);
+    logger.info(`🧹 Cleared ${deleted} entries of type: ${cacheType}`);
   }
 
   async getWithDeduplication<T>(
@@ -252,11 +275,11 @@ export class UnifiedCacheManager {
     }
 
     // Check if there's already a pending request for this key
-    console.log(
+    logger.debug(
       `🔍 Checking pending requests for: ${fullKey}, has pending: ${this.pendingRequests.has(fullKey)}`
     );
     if (this.pendingRequests.has(fullKey)) {
-      console.log(`⏳ Waiting for pending request: ${key}`);
+      logger.debug(`⏳ Waiting for pending request: ${key}`);
       const result = (await this.pendingRequests.get(fullKey)) as T;
       return {
         data: result,
@@ -266,7 +289,7 @@ export class UnifiedCacheManager {
     }
 
     // Start new request
-    console.log(`🚀 Starting new request for: ${fullKey}`);
+    logger.debug(`🚀 Starting new request for: ${fullKey}`);
     const requestPromise = fetcher()
       .then(async (result) => {
         // Only cache if we're not bypassing
@@ -340,3 +363,15 @@ export const unifiedCache = new UnifiedCacheManager();
 // Legacy compatibility - gradually replace cache with unifiedCache
 export { unifiedCache as cache };
 export type { UnifiedCacheType as CacheType };
+
+export function withMeasuredCacheHeaders<T>(
+  headers: Record<string, string>,
+  timingMs: number,
+  source: "kv" | "memory" | "bypass" | "error" | "miss"
+): Record<string, string> {
+  return {
+    ...headers,
+    "X-Cache-Timing": `${Math.max(1, Math.round(timingMs))}ms`,
+    "X-Cache-Source": source.toUpperCase(),
+  };
+}

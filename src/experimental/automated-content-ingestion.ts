@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger.js";
 /**
  * Automated Content Ingestion System
  *
@@ -265,7 +266,7 @@ export class AutomatedContentIngestion {
         const content = await this.discoverFromSource(source);
         allContent.push(...content);
       } catch (error) {
-        console.warn(`Discovery failed for source ${source.id}:`, error);
+        logger.warn(`Discovery failed for source ${source.id}`, { error: String(error) });
         source.metadata.errorCount++;
       }
     }
@@ -620,7 +621,7 @@ export class AutomatedContentIngestion {
           // Content enhancement
           break;
         default:
-          console.warn(`Unknown transform rule: ${rule.type}`);
+          logger.warn(`Unknown transform rule`, { ruleType: rule.type });
       }
     }
 
@@ -648,7 +649,7 @@ export class AutomatedContentIngestion {
         recommendations: summary.metadata ? ["Consider reviewing for clarity"] : [],
       };
     } catch (error) {
-      console.warn("AI analysis failed:", error);
+      logger.warn("AI analysis failed", { error: String(error) });
       return null;
     }
   }
@@ -675,7 +676,7 @@ export class AutomatedContentIngestion {
 
       return response.overallScore;
     } catch (error) {
-      console.warn("Quality check failed:", error);
+      logger.warn("Quality check failed", { error: String(error) });
       return 75; // Default score
     }
   }
@@ -766,7 +767,7 @@ export class AutomatedContentIngestion {
       try {
         await Promise.all(concurrentJobs.map((job) => this.processJob(job)));
       } catch (error) {
-        console.error("Processing loop error:", error);
+        logger.error("Processing loop error", { error: String(error) });
       }
 
       this.isProcessing = false;

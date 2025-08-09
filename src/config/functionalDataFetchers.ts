@@ -5,10 +5,11 @@
  * Composable, testable, and easy to debug.
  */
 
-import { initializeKVCache } from "../functions/kv-cache.js";
+import { getKVCache, initializeKVCache } from "../functions/kv-cache.js";
 import { normalizeReference, parseReference } from "../parsers/referenceParser.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2.js";
+import { logger } from "../utils/logger.js";
 import type { DataSourceConfig, EndpointConfig } from "./EndpointConfig.js";
 
 // Types for our functional approach
@@ -50,6 +51,16 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
       throw new Error("ZIP config required for ZIP data source");
     }
 
+    // Optional in-request NUKE: allow true cold run via _flush=true
+    try {
+      if (params._flush === true || String(params._flush).toLowerCase() === "true") {
+        const kv = getKVCache();
+        await kv.clearAll();
+      }
+    } catch {
+      // ignore flush errors in read path
+    }
+
     // Get or create ZIP fetcher (lazy initialization)
     const zipFetcher = getZipFetcher();
 
@@ -65,7 +76,7 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
         const organization = String(params.organization || "unfoldingWord");
         const requestedResource = String(params.resource || zipConfig.resourceType);
 
-        console.log("[functionalDataFetchers] getScripture params:", {
+        logger.debug("getScripture params", {
           reference: reference,
           language,
           organization,
@@ -84,7 +95,7 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
           try {
             scriptures = await zipFetcher.getScripture(reference, language, organization);
           } catch (err) {
-            console.log("[functionalDataFetchers] Failed to fetch ALL resources:", err);
+            logger.warn("Failed to fetch ALL resources", { error: String(err) });
             scriptures = [];
           }
 
@@ -131,7 +142,7 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
           seenResources.add(s.resource);
           return true;
         });
-        console.log("[functionalDataFetchers] ZIP fetcher returned (unique):", {
+        logger.debug("ZIP fetcher returned (unique)", {
           scripturesLength: normalized.length,
           sample: normalized.slice(0, 2),
         });
@@ -142,7 +153,7 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
         const format = (params.format as string) || "text";
 
         // Build the reference string properly using the shared normalizer
-        console.log("[functionalDataFetchers] Building reference string:", reference);
+        logger.debug("Building reference string", { reference });
         const referenceStr = normalizeReference(reference);
 
         // Inspect tracer to determine cache warm status
@@ -256,7 +267,7 @@ export const withErrorHandling = (fetcher: DataFetcher): DataFetcher => {
     try {
       return await fetcher(config, params, context);
     } catch (error) {
-      console.error(`[${context.traceId}] Fetch error:`, error);
+      logger.error(`[${context.traceId}] Fetch error`, { error: String(error) });
       throw error;
     }
   };
@@ -270,7 +281,7 @@ export const withCaching = (fetcher: DataFetcher): DataFetcher => {
 
     // Check memory cache
     if (context.cache?.has(cacheKey)) {
-      console.log(`[${context.traceId}] Cache hit: ${cacheKey}`);
+      logger.debug(`[${context.traceId}] Cache hit`, { cacheKey });
       return context.cache.get(cacheKey);
     }
 
@@ -297,7 +308,7 @@ export const withRetry = (fetcher: DataFetcher, maxRetries = 3): DataFetcher => 
         return await fetcher(config, params, context);
       } catch (error) {
         lastError = error;
-        console.warn(`[${context.traceId}] Attempt ${attempt} failed:`, error);
+        logger.warn(`[${context.traceId}] Attempt failed`, { attempt, error: String(error) });
 
         if (attempt < maxRetries) {
           // Exponential backoff
@@ -316,7 +327,9 @@ export const createFallbackFetcher = (primary: DataFetcher, fallback: DataFetche
     try {
       return await primary(config, params, context);
     } catch (primaryError) {
-      console.warn(`[${context.traceId}] Primary fetch failed, trying fallback:`, primaryError);
+      logger.warn(`[${context.traceId}] Primary fetch failed, trying fallback:`, {
+        primaryError: String(primaryError),
+      });
       return fallback(config, params, context);
     }
   };
@@ -366,9 +379,9 @@ export const initializeCache = (platform?: {
   const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
   if (kv) {
     initializeKVCache(kv);
-    console.log("✅ KV cache initialized");
+    logger.info("KV cache initialized");
   } else {
-    console.log("⚠️ No KV cache available - using memory only");
+    logger.warn("No KV cache available - using memory only");
   }
 };
 

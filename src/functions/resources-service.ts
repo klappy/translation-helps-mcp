@@ -4,6 +4,7 @@
  * Uses unified resource discovery to minimize DCS API calls
  */
 
+import { logger } from "../utils/logger.js";
 import { checkResourceAvailability, discoverAvailableResources } from "./resource-detector";
 import { fetchScripture } from "./scripture-service";
 import { fetchTranslationNotes } from "./translation-notes-service";
@@ -60,7 +61,7 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
     format = "text",
   } = options;
 
-  console.log(`📦 Core resources service called with:`, {
+  logger.info(`Core resources service called`, {
     reference,
     language,
     organization,
@@ -68,10 +69,10 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
   });
 
   // 🚀 OPTIMIZATION: Discover resource availability first with one unified call
-  console.log(`🔍 Checking resource availability for optimized fetching...`);
+  logger.debug(`Checking resource availability for optimized fetching...`);
   const availability = await checkResourceAvailability(reference, language, organization);
 
-  console.log(`📊 Resource availability discovered:`, {
+  logger.debug(`Resource availability discovered`, {
     scripture: availability.hasScripture,
     notes: availability.hasNotes,
     questions: availability.hasQuestions,
@@ -97,7 +98,7 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
 
   // 🚀 OPTIMIZATION: Only fetch scripture if available
   if (resources.includes("scripture") && availability.hasScripture) {
-    console.log(`📖 Scripture available - fetching...`);
+    logger.info(`Scripture available - fetching...`);
     promises.push(
       fetchScripture({
         reference,
@@ -119,17 +120,17 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
           return res;
         })
         .catch((error) => {
-          console.warn(`⚠️ Scripture fetch failed: ${error.message}`);
+          logger.warn(`Scripture fetch failed`, { error: String(error) });
           return null;
         })
     );
   } else if (resources.includes("scripture")) {
-    console.log(`⏭️ Scripture not available - skipping fetch`);
+    logger.info(`Scripture not available - skipping fetch`);
   }
 
   // 🚀 OPTIMIZATION: Only fetch notes if available
   if (resources.includes("notes") && availability.hasNotes) {
-    console.log(`📝 Translation notes available - fetching...`);
+    logger.info(`Translation notes available - fetching...`);
     promises.push(
       fetchTranslationNotes({
         reference,
@@ -151,17 +152,17 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
           return res;
         })
         .catch((error) => {
-          console.warn(`⚠️ Translation notes fetch failed: ${error.message}`);
+          logger.warn(`Translation notes fetch failed`, { error: String(error) });
           return null;
         })
     );
   } else if (resources.includes("notes")) {
-    console.log(`⏭️ Translation notes not available - skipping fetch`);
+    logger.info(`Translation notes not available - skipping fetch`);
   }
 
   // 🚀 OPTIMIZATION: Only fetch questions if available
   if (resources.includes("questions") && availability.hasQuestions) {
-    console.log(`❓ Translation questions available - fetching...`);
+    logger.info(`Translation questions available - fetching...`);
     promises.push(
       fetchTranslationQuestions({
         reference,
@@ -175,17 +176,17 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
           return res;
         })
         .catch((error) => {
-          console.warn(`⚠️ Translation questions fetch failed: ${error.message}`);
+          logger.warn(`Translation questions fetch failed`, { error: String(error) });
           return null;
         })
     );
   } else if (resources.includes("questions")) {
-    console.log(`⏭️ Translation questions not available - skipping fetch`);
+    logger.info(`Translation questions not available - skipping fetch`);
   }
 
   // 🚀 OPTIMIZATION: Only fetch words if available
   if (resources.includes("words") && availability.hasWords) {
-    console.log(`📚 Translation words available - fetching...`);
+    logger.info(`Translation words available - fetching...`);
     promises.push(
       fetchTranslationWords({
         reference,
@@ -205,12 +206,12 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
           return res;
         })
         .catch((error) => {
-          console.warn(`⚠️ Translation words fetch failed: ${error.message}`);
+          logger.warn(`Translation words fetch failed`, { error: String(error) });
           return null;
         })
     );
   } else if (resources.includes("words")) {
-    console.log(`⏭️ Translation words not available - skipping fetch`);
+    logger.info(`Translation words not available - skipping fetch`);
   }
 
   // Wait for all requests to complete
@@ -221,9 +222,11 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
 
   result.metadata.responseTime = Date.now() - startTime;
 
-  console.log(
-    `📦 Resources aggregation completed: ${result.metadata.resourcesFound}/${resources.length} found (${availability.totalResources} total resources available)`
-  );
+  logger.info(`Resources aggregation completed`, {
+    found: result.metadata.resourcesFound,
+    requested: resources.length,
+    totalAvailable: availability.totalResources,
+  });
 
   return result;
 }
@@ -237,7 +240,7 @@ export async function getResourceCatalogInfo(
   language: string = "en",
   organization: string = "unfoldingWord"
 ) {
-  console.log(`📋 Getting detailed catalog info for ${reference}...`);
+  logger.info(`Getting detailed catalog info`, { reference });
   const catalog = await discoverAvailableResources(reference, language, organization);
 
   return {

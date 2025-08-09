@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger.js";
 /**
  * Response Payload Optimization System
  *
@@ -88,7 +89,7 @@ export class ResponseOptimizer {
       listResponses: 20 * 1024, // 20KB
     };
 
-    console.log("[ResponseOptimizer] Initialized with options:", this.options);
+    logger.info("[ResponseOptimizer] Initialized", { options: this.options });
   }
 
   /**
@@ -171,17 +172,20 @@ export class ResponseOptimizer {
     if (options.resourceType && this.sizeTargets[options.resourceType]) {
       const target = this.sizeTargets[options.resourceType];
       if (finalSize > target) {
-        console.warn(
-          `[ResponseOptimizer] Size target exceeded for ${options.resourceType}: ` +
-            `${finalSize} bytes > ${target} bytes target`
-        );
+        logger.warn("[ResponseOptimizer] Size target exceeded", {
+          resourceType: options.resourceType,
+          finalSize,
+          target,
+        });
       }
     }
 
-    console.log(
-      `[ResponseOptimizer] Optimized ${options.resourceType || "response"}: ` +
-        `${originalSize} → ${finalSize} bytes (${compressionRatio.toFixed(1)}% reduction)`
-    );
+    logger.info("[ResponseOptimizer] Optimized", {
+      resourceType: options.resourceType || "response",
+      originalSize,
+      finalSize,
+      compressionRatio: Number(compressionRatio.toFixed(1)),
+    });
 
     return response;
   }

@@ -25,17 +25,22 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         // ignore
     }
 	const clearCache = url.searchParams.get('clearCache') === 'true';
-	const clearKv = url.searchParams.get('clearKv') === 'true';
+    const clearKv = url.searchParams.get('clearKv') === 'true';
+    const nuke = url.searchParams.get('nuke') === 'true';
 
 	let kvCleared = 0;
-	if (clearCache || clearKv) {
-		const kv = getKVCache();
-		if (clearKv) {
-			kvCleared = await kv.clearPrefixes(['zip:', 'catalog:']);
-		} else {
-			await kv.clear();
-		}
-	}
+    if (clearCache || clearKv || nuke) {
+        const kv = getKVCache();
+        if (nuke) {
+            // Full wipe of KV + memory
+            kvCleared = await kv.clearAll();
+        } else if (clearKv) {
+            // Clear all relevant KV namespaces including file-level entries
+            kvCleared = await kv.clearPrefixes(['zip:', 'catalog:', 'zipfile:']);
+        } else {
+            await kv.clear();
+        }
+    }
 
 	return json({
 		status: 'healthy',
@@ -46,9 +51,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			platform: 'cloudflare-pages'
 		},
 		timestamp: new Date().toISOString(),
-		cache: {
+        cache: {
 			clearedMemory: clearCache || clearKv,
-			clearedKv: clearKv,
+            clearedKv: clearKv || nuke,
 			kvDeleted: kvCleared
 		}
 	});

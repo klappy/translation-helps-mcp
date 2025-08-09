@@ -3,13 +3,24 @@
  * Fetches Bible translation resources from DCS API
  */
 
-import { Reference } from "./reference-parser";
+import { logger } from "../utils/logger.js";
 import {
-  extractVerseText,
-  extractVerseRange,
-  extractChapterText,
   extractChapterRange,
-} from "./usfm-extractor";
+  extractChapterText,
+  extractVerseRange,
+  extractVerseText,
+} from "../utils/usfmExtractor.js";
+// Local reference type for experimental aggregator (compatible with existing usage)
+type Reference = {
+  book: string;
+  chapter: number;
+  verse?: number;
+  verseEnd?: number; // experimental files used this for endVerse or endChapter
+  endVerse?: number;
+  endChapter?: number;
+  citation?: string;
+  original?: string;
+};
 
 export interface ResourceOptions {
   language: string;
@@ -79,7 +90,7 @@ export class ResourceAggregator {
   }
 
   async fetchResources(reference: Reference, options: ResourceOptions): Promise<ResourceData> {
-    console.log(`🚀 fetchResources called with:`, {
+    logger.debug(`🚀 fetchResources called with:`, {
       reference: {
         book: reference.book,
         chapter: reference.chapter,
@@ -166,15 +177,15 @@ export class ResourceAggregator {
     options: ResourceOptions
   ): Promise<Scripture[] | undefined> {
     try {
-      console.log(`📖 Fetching scripture for ${reference.citation}`);
+      logger.info(`📖 Fetching scripture for ${reference.citation}`);
 
       // Search catalog for Bible resources
-      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Bible,Aligned%20Bible&lang=${options.language}&owner=${options.organization}&type=text`;
-      console.log(`🔍 Searching catalog: ${catalogUrl}`);
+      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Bible,Aligned%20Bible&lang=${options.language}&owner=${options.organization}&type=text&metadataType=rc&includeMetadata=true`;
+      logger.info(`🔍 Searching catalog: ${catalogUrl}`);
 
       const catalogResponse = await fetch(catalogUrl);
       if (!catalogResponse.ok) {
-        console.warn(`❌ Catalog search failed for Bible resources`);
+        logger.warn(`❌ Catalog search failed for Bible resources`);
         return undefined;
       }
 
@@ -188,8 +199,8 @@ export class ResourceAggregator {
         }>;
       };
 
-      console.log(`📊 Catalog returned ${catalogData.data?.length || 0} resources`);
-      console.log(`📦 First resource:`, catalogData.data?.[0]?.name);
+      logger.debug(`📊 Catalog returned ${catalogData.data?.length || 0} resources`);
+      logger.debug(`📦 First resource: ${catalogData.data?.[0]?.name || "none"}`);
 
       const resource = catalogData.data?.[0];
 
@@ -205,32 +216,32 @@ export class ResourceAggregator {
         );
 
         if (!ingredient) {
-          console.warn(`❌ No ingredient found for book ${reference.book} in ${resource.name}`);
+          logger.warn(`❌ No ingredient found for book ${reference.book} in ${resource.name}`);
           continue;
         }
 
-        console.log(
+        logger.debug(
           `✅ Found ingredient: ${ingredient.path} for ${reference.book} in ${resource.name}`
         );
 
         // Build the URL using the ingredient path
         const fileName = ingredient.path.replace("./", "");
         const url = `${this.baseUrl}/repos/${options.organization}/${resource.name}/raw/${fileName}`;
-        console.log(`📥 Fetching scripture from: ${url}`);
+        logger.info(`📥 Fetching scripture from: ${url}`);
 
         try {
           const response = await fetch(url);
           if (!response.ok) {
-            console.warn(`❌ Failed to fetch scripture: ${response.status}`);
+            logger.warn(`❌ Failed to fetch scripture: ${response.status}`);
             continue;
           }
 
           const usfm = await response.text();
-          console.log(`📜 Got USFM text (${usfm.length} chars) from ${resource.name}`);
+          logger.debug(`📜 Got USFM text (${usfm.length} chars) from ${resource.name}`);
 
           const cleanText = this.extractVerseFromUSFM(usfm, reference);
           if (cleanText) {
-            console.log(
+            logger.debug(
               `✨ Extracted text from ${resource.name}: ${cleanText.substring(0, 50)}...`
             );
 
@@ -246,14 +257,14 @@ export class ResourceAggregator {
             });
           }
         } catch (error) {
-          console.warn(`Failed to fetch ${resource.name}:`, error);
+          logger.warn(`Failed to fetch ${resource.name}`, { error: String(error) });
         }
       }
 
-      console.log(`📚 Found ${scriptures.length} scripture translations`);
+      logger.info(`📚 Found ${scriptures.length} scripture translations`);
       return scriptures.length > 0 ? scriptures : undefined;
     } catch (error) {
-      console.error("Error fetching scripture:", error);
+      logger.error("Error fetching scripture", { error: String(error) });
       return undefined;
     }
   }
@@ -263,15 +274,15 @@ export class ResourceAggregator {
     options: ResourceOptions
   ): Promise<TranslationNote[]> {
     try {
-      console.log(`📝 Fetching translation notes for ${reference.citation}`);
+      logger.info(`📝 Fetching translation notes for ${reference.citation}`);
 
       // Search catalog for Translation Notes using proper endpoint
-      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Notes&lang=${options.language}&owner=${options.organization}`;
-      console.log(`🔍 Searching catalog: ${catalogUrl}`);
+      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Notes&lang=${options.language}&owner=${options.organization}&metadataType=rc&includeMetadata=true`;
+      logger.info(`🔍 Searching catalog: ${catalogUrl}`);
 
       const catalogResponse = await fetch(catalogUrl);
       if (!catalogResponse.ok) {
-        console.warn(`❌ Catalog search failed for translation notes: ${catalogResponse.status}`);
+        logger.warn(`❌ Catalog search failed for translation notes: ${catalogResponse.status}`);
         return [];
       }
 
@@ -285,16 +296,16 @@ export class ResourceAggregator {
           }>;
         }>;
       };
-      console.log(`📋 Found ${catalogData.data?.length || 0} translation notes resources`);
+      logger.debug(`📋 Found ${catalogData.data?.length || 0} translation notes resources`);
 
       if (!catalogData.data || catalogData.data.length === 0) {
-        console.warn("❌ No translation notes resources found");
+        logger.warn("❌ No translation notes resources found");
         return [];
       }
 
       // Get the first available TN resource
       const resource = catalogData.data[0];
-      console.log(`📖 Using resource: ${resource.name} (${resource.title})`);
+      logger.debug(`📖 Using resource: ${resource.name} (${resource.title})`);
 
       // CRITICAL: Use ingredients array to find the correct file path
       const ingredient = resource.ingredients?.find(
@@ -302,31 +313,31 @@ export class ResourceAggregator {
       );
 
       if (!ingredient) {
-        console.warn(
+        logger.warn(
           `❌ No ingredient found for book ${reference.book} in resource ${resource.name}`
         );
         return [];
       }
 
-      console.log(`📁 Found ingredient path: ${ingredient.path}`);
+      logger.debug(`📁 Found ingredient path: ${ingredient.path}`);
 
       // Build URL using the proper pattern from docs
       const fileUrl = `https://git.door43.org/${options.organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
-      console.log(`🔗 Fetching from: ${fileUrl}`);
+      logger.info(`🔗 Fetching from: ${fileUrl}`);
 
       const fileResponse = await fetch(fileUrl);
       if (!fileResponse.ok) {
-        console.warn(`❌ Failed to fetch TN file: ${fileResponse.status}`);
+        logger.warn(`❌ Failed to fetch TN file: ${fileResponse.status}`);
         return [];
       }
 
       const tsvData = await fileResponse.text();
-      console.log(`📄 Downloaded ${tsvData.length} characters of TSV data`);
+      logger.debug(`📄 Downloaded ${tsvData.length} characters of TSV data`);
 
       // Parse TSV and include book/chapter intros
       return this.parseTNFromTSV(tsvData, reference, true);
     } catch (error) {
-      console.error("❌ Error fetching translation notes:", error);
+      logger.error("❌ Error fetching translation notes", { error: String(error) });
       return [];
     }
   }
@@ -336,15 +347,15 @@ export class ResourceAggregator {
     options: ResourceOptions
   ): Promise<TranslationQuestion[]> {
     try {
-      console.log(`❓ Fetching translation questions for ${reference.citation}`);
+      logger.info(`❓ Fetching translation questions for ${reference.citation}`);
 
       // Search catalog for Translation Questions using proper endpoint
-      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Questions&lang=${options.language}&owner=${options.organization}`;
-      console.log(`🔍 Searching catalog: ${catalogUrl}`);
+      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Questions&lang=${options.language}&owner=${options.organization}&metadataType=rc&includeMetadata=true`;
+      logger.info(`🔍 Searching catalog: ${catalogUrl}`);
 
       const catalogResponse = await fetch(catalogUrl);
       if (!catalogResponse.ok) {
-        console.warn(
+        logger.warn(
           `❌ Catalog search failed for translation questions: ${catalogResponse.status}`
         );
         return [];
@@ -360,16 +371,16 @@ export class ResourceAggregator {
           }>;
         }>;
       };
-      console.log(`📋 Found ${catalogData.data?.length || 0} translation questions resources`);
+      logger.debug(`📋 Found ${catalogData.data?.length || 0} translation questions resources`);
 
       if (!catalogData.data || catalogData.data.length === 0) {
-        console.warn("❌ No translation questions resources found");
+        logger.warn("❌ No translation questions resources found");
         return [];
       }
 
       // Get the first available TQ resource
       const resource = catalogData.data[0];
-      console.log(`📖 Using resource: ${resource.name} (${resource.title})`);
+      logger.debug(`📖 Using resource: ${resource.name} (${resource.title})`);
 
       // CRITICAL: Use ingredients array to find the correct file path
       const ingredient = resource.ingredients?.find(
@@ -377,31 +388,31 @@ export class ResourceAggregator {
       );
 
       if (!ingredient) {
-        console.warn(
+        logger.warn(
           `❌ No ingredient found for book ${reference.book} in resource ${resource.name}`
         );
         return [];
       }
 
-      console.log(`📁 Found ingredient path: ${ingredient.path}`);
+      logger.debug(`📁 Found ingredient path: ${ingredient.path}`);
 
       // Build URL using the proper pattern from docs
       const fileUrl = `https://git.door43.org/${options.organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
-      console.log(`🔗 Fetching from: ${fileUrl}`);
+      logger.info(`🔗 Fetching from: ${fileUrl}`);
 
       const fileResponse = await fetch(fileUrl);
       if (!fileResponse.ok) {
-        console.warn(`❌ Failed to fetch TQ file: ${fileResponse.status}`);
+        logger.warn(`❌ Failed to fetch TQ file: ${fileResponse.status}`);
         return [];
       }
 
       const tsvData = await fileResponse.text();
-      console.log(`📄 Downloaded ${tsvData.length} characters of TSV data`);
+      logger.debug(`📄 Downloaded ${tsvData.length} characters of TSV data`);
 
       // Parse TSV and include book/chapter intros
       return this.parseTQFromTSV(tsvData, reference, true);
     } catch (error) {
-      console.error("❌ Error fetching translation questions:", error);
+      logger.error("❌ Error fetching translation questions", { error: String(error) });
       return [];
     }
   }
@@ -416,27 +427,27 @@ export class ResourceAggregator {
     } = { title: true, subtitle: true, content: true }
   ): Promise<TranslationWord[]> {
     try {
-      console.log(`📖 Fetching translation words for ${reference.citation}`);
+      logger.info(`📖 Fetching translation words for ${reference.citation}`);
 
       // STEP 1: Get Translation Word Links (TWL) first
       const twlLinks = await this.fetchTranslationWordLinks(reference, options);
 
       if (!twlLinks || twlLinks.length === 0) {
-        console.log(`📭 No translation word links found for ${reference.citation}`);
+        logger.info(`📭 No translation word links found for ${reference.citation}`);
         return [];
       }
 
-      console.log(`🔗 Found ${twlLinks.length} translation word links`);
+      logger.debug(`🔗 Found ${twlLinks.length} translation word links`);
 
       // STEP 2: Extract unique rc:// URIs from the TWL links
       const rcUris = [...new Set(twlLinks.map((link) => link.twlid).filter(Boolean))];
 
       if (rcUris.length === 0) {
-        console.log(`📭 No valid rc:// URIs found in translation word links`);
+        logger.info(`📭 No valid rc:// URIs found in translation word links`);
         return [];
       }
 
-      console.log(`🔗 Extracted ${rcUris.length} unique rc:// URIs:`, rcUris);
+      logger.debug(`🔗 Extracted ${rcUris.length} unique rc:// URIs: ${rcUris.join(",")}`);
 
       // STEP 3: Fetch Translation Word articles from the rc:// URIs
       const translationWords: TranslationWord[] = [];
@@ -448,14 +459,14 @@ export class ResourceAggregator {
             translationWords.push(article);
           }
         } catch (error) {
-          console.warn(`❌ Failed to fetch article for ${rcUri}:`, error);
+          logger.warn(`❌ Failed to fetch article for ${rcUri}`, { error: String(error) });
         }
       }
 
-      console.log(`✅ Successfully fetched ${translationWords.length} translation word articles`);
+      logger.info(`✅ Successfully fetched ${translationWords.length} translation word articles`);
       return translationWords;
     } catch (error) {
-      console.error("❌ Error fetching translation words:", error);
+      logger.error("❌ Error fetching translation words", { error: String(error) });
       return [];
     }
   }
@@ -474,14 +485,14 @@ export class ResourceAggregator {
   ): Promise<TranslationWord | null> {
     try {
       if (!rcUri || !rcUri.startsWith("rc://")) {
-        console.warn(`❌ Invalid rc:// URI: ${rcUri}`);
+        logger.warn(`❌ Invalid rc:// URI: ${rcUri}`);
         return null;
       }
 
       // Parse the rc:// URI
       const parsed = this.parseRcUri(rcUri, options.language);
       if (!parsed) {
-        console.warn(`❌ Failed to parse rc:// URI: ${rcUri}`);
+        logger.warn(`❌ Failed to parse rc:// URI: ${rcUri}`);
         return null;
       }
 
@@ -491,12 +502,12 @@ export class ResourceAggregator {
       // Build URL for the article
       const articleUrl = this.rcUriToUrl(rcUri, options.language, options.organization);
 
-      console.log(`📥 Fetching TW article from: ${articleUrl}`);
+      logger.info(`📥 Fetching TW article from: ${articleUrl}`);
 
       // Fetch the main article content
       const response = await fetch(articleUrl);
       if (!response.ok) {
-        console.warn(
+        logger.warn(
           `❌ Failed to fetch article ${rcUri}: ${response.status} ${response.statusText}`
         );
         return null;
@@ -531,7 +542,7 @@ export class ResourceAggregator {
 
       return result;
     } catch (error) {
-      console.error(`❌ Error fetching TW article ${rcUri}:`, error);
+      logger.error(`❌ Error fetching TW article ${rcUri}`, { error: String(error) });
       return null;
     }
   }
@@ -614,7 +625,7 @@ export class ResourceAggregator {
         fileName: pathParts[pathParts.length - 1] + ".md",
       };
     } catch (error) {
-      console.error(`❌ Error parsing rc:// URI ${rcUri}:`, error);
+      logger.error(`❌ Error parsing rc:// URI ${rcUri}`, { error: String(error) });
       return null;
     }
   }
@@ -697,7 +708,7 @@ export class ResourceAggregator {
     includeSections: { title?: boolean; subtitle?: boolean; content?: boolean } = {}
   ): Promise<TranslationWord | null> {
     try {
-      console.log(`📖 Fetching translation word article for term: ${term}`);
+      logger.info(`📖 Fetching translation word article for term: ${term}`);
 
       const repoName = `${options.language}_tw`;
       const baseUrl = `https://git.door43.org/${options.organization}/${repoName}/raw/branch/master`;
@@ -715,7 +726,7 @@ export class ResourceAggregator {
 
         for (const path of paths) {
           const url = `${baseUrl}/${path}`;
-          console.log(`🔍 Trying: ${url}`);
+          logger.debug(`🔍 Trying: ${url}`);
 
           try {
             const response = await fetch(url);
@@ -790,10 +801,10 @@ export class ResourceAggregator {
         }
       }
 
-      console.warn(`❌ Translation word not found: ${term}`);
+      logger.warn(`❌ Translation word not found: ${term}`);
       return null;
     } catch (error) {
-      console.error(`❌ Error fetching translation word by term:`, error);
+      logger.error(`❌ Error fetching translation word by term`, { error: String(error) });
       return null;
     }
   }
@@ -803,15 +814,15 @@ export class ResourceAggregator {
     options: ResourceOptions
   ): Promise<TranslationWordLink[]> {
     try {
-      console.log(`🔗 Fetching translation word links for ${reference.citation}`);
+      logger.info(`🔗 Fetching translation word links for ${reference.citation}`);
 
       // Search catalog for Translation Word Links using proper endpoint
-      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Words%20Links&lang=${options.language}&owner=${options.organization}`;
-      console.log(`🔍 Searching catalog: ${catalogUrl}`);
+      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=TSV%20Translation%20Words%20Links&lang=${options.language}&owner=${options.organization}&metadataType=rc&includeMetadata=true`;
+      logger.info(`🔍 Searching catalog: ${catalogUrl}`);
 
       const catalogResponse = await fetch(catalogUrl);
       if (!catalogResponse.ok) {
-        console.warn(
+        logger.warn(
           `❌ Catalog search failed for translation word links: ${catalogResponse.status}`
         );
         return [];
@@ -827,16 +838,16 @@ export class ResourceAggregator {
           }>;
         }>;
       };
-      console.log(`📋 Found ${catalogData.data?.length || 0} translation word links resources`);
+      logger.debug(`📋 Found ${catalogData.data?.length || 0} translation word links resources`);
 
       if (!catalogData.data || catalogData.data.length === 0) {
-        console.warn("❌ No translation word links resources found");
+        logger.warn("❌ No translation word links resources found");
         return [];
       }
 
       // Get the first available TWL resource
       const resource = catalogData.data[0];
-      console.log(`📖 Using resource: ${resource.name} (${resource.title})`);
+      logger.debug(`📖 Using resource: ${resource.name} (${resource.title})`);
 
       // CRITICAL: Use ingredients array to find the correct file path
       const ingredient = resource.ingredients?.find(
@@ -844,31 +855,31 @@ export class ResourceAggregator {
       );
 
       if (!ingredient) {
-        console.warn(
+        logger.warn(
           `❌ No ingredient found for book ${reference.book} in resource ${resource.name}`
         );
         return [];
       }
 
-      console.log(`📁 Found ingredient path: ${ingredient.path}`);
+      logger.debug(`📁 Found ingredient path: ${ingredient.path}`);
 
       // Build URL using the proper pattern from docs
       const fileUrl = `https://git.door43.org/${options.organization}/${resource.name}/raw/branch/master/${ingredient.path.replace("./", "")}`;
-      console.log(`🔗 Fetching from: ${fileUrl}`);
+      logger.info(`🔗 Fetching from: ${fileUrl}`);
 
       const fileResponse = await fetch(fileUrl);
       if (!fileResponse.ok) {
-        console.warn(`❌ Failed to fetch TWL file: ${fileResponse.status}`);
+        logger.warn(`❌ Failed to fetch TWL file: ${fileResponse.status}`);
         return [];
       }
 
       const tsvData = await fileResponse.text();
-      console.log(`📄 Downloaded ${tsvData.length} characters of TSV data`);
+      logger.debug(`📄 Downloaded ${tsvData.length} characters of TSV data`);
 
       // Parse TSV data
       return this.parseTWLFromTSV(tsvData, reference);
     } catch (error) {
-      console.error("❌ Error fetching translation word links:", error);
+      logger.error("❌ Error fetching translation word links", { error: String(error) });
       return [];
     }
   }
@@ -909,7 +920,7 @@ export class ResourceAggregator {
         return extractChapterText(usfm, reference.chapter);
       }
     } catch (error) {
-      console.error("Error extracting verse from USFM:", error);
+      logger.error("Error extracting verse from USFM", { error: String(error) });
       return null;
     }
   }
@@ -920,8 +931,8 @@ export class ResourceAggregator {
     includeIntro: boolean = false
   ): TranslationNote[] {
     try {
-      console.log(`🔍 Parsing TN TSV for reference: ${reference.citation}`);
-      console.log(
+      logger.debug(`🔍 Parsing TN TSV for reference: ${reference.citation}`);
+      logger.debug(
         `📋 Reference details: chapter=${reference.chapter}, verse=${reference.verse}, verseEnd=${reference.verseEnd}`
       );
 
@@ -933,7 +944,7 @@ export class ResourceAggregator {
         lines.shift();
       }
 
-      console.log(`📄 Processing ${lines.length} TSV lines`);
+      logger.debug(`📄 Processing ${lines.length} TSV lines`);
       let skippedIntro = 0;
       let skippedChapter = 0;
       let skippedVerse = 0;
@@ -1039,7 +1050,7 @@ export class ResourceAggregator {
         }
 
         included++;
-        console.log(`  ✅ Including ${noteType}: ${ref} - "${noteText.substring(0, 50)}..."`);
+        logger.debug(`  ✅ Including ${noteType}: ${ref} - "${noteText.substring(0, 50)}..."`);
 
         notes.push({
           reference: `${reference.book} ${ref}`,
@@ -1048,16 +1059,16 @@ export class ResourceAggregator {
         });
       }
 
-      console.log(`📊 TN Filtering results:`);
-      console.log(`  ✅ Included: ${included}`);
-      console.log(`  ❌ Skipped intro: ${skippedIntro}`);
-      console.log(`  ❌ Skipped wrong chapter: ${skippedChapter}`);
-      console.log(`  ❌ Skipped wrong verse: ${skippedVerse}`);
-      console.log(`  📝 Total notes returned: ${notes.length}`);
+      logger.debug(`📊 TN Filtering results:`);
+      logger.debug(`  ✅ Included: ${included}`);
+      logger.debug(`  ❌ Skipped intro: ${skippedIntro}`);
+      logger.debug(`  ❌ Skipped wrong chapter: ${skippedChapter}`);
+      logger.debug(`  ❌ Skipped wrong verse: ${skippedVerse}`);
+      logger.debug(`  📝 Total notes returned: ${notes.length}`);
 
       return notes;
     } catch (error) {
-      console.error("Error parsing TN TSV:", error);
+      logger.error("Error parsing TN TSV", { error: String(error) });
       return [];
     }
   }
@@ -1068,8 +1079,8 @@ export class ResourceAggregator {
     includeIntro: boolean = false
   ): TranslationQuestion[] {
     try {
-      console.log(`🔍 Parsing TQ TSV for reference: ${reference.citation}`);
-      console.log(
+      logger.debug(`🔍 Parsing TQ TSV for reference: ${reference.citation}`);
+      logger.debug(
         `📋 Reference details: chapter=${reference.chapter}, verse=${reference.verse}, verseEnd=${reference.verseEnd}`
       );
 
@@ -1081,7 +1092,7 @@ export class ResourceAggregator {
         lines.shift();
       }
 
-      console.log(`📄 Processing ${lines.length} TSV lines`);
+      logger.debug(`📄 Processing ${lines.length} TSV lines`);
       let skippedIntro = 0;
       let skippedChapter = 0;
       let skippedVerse = 0;
@@ -1124,7 +1135,7 @@ export class ResourceAggregator {
           const startChapter = reference.chapter;
           const endChapter = reference.verseEnd;
           include = chapterNum >= startChapter && chapterNum <= endChapter;
-          console.log(
+          logger.debug(
             `📖 Chapter range filter: ${chapterNum} in [${startChapter}-${endChapter}] = ${include}`
           );
         } else if (reference.verse && reference.verseEnd) {
@@ -1133,23 +1144,23 @@ export class ResourceAggregator {
             chapterNum === reference.chapter &&
             verseNum >= reference.verse &&
             verseNum <= reference.verseEnd;
-          console.log(
+          logger.debug(
             `📖 Verse range filter: ch${chapterNum}:v${verseNum} in ch${reference.chapter}:v${reference.verse}-${reference.verseEnd} = ${include}`
           );
         } else if (reference.verse) {
           // Single verse
           include = chapterNum === reference.chapter && verseNum === reference.verse;
-          console.log(
+          logger.debug(
             `📖 Single verse filter: ch${chapterNum}:v${verseNum} == ch${reference.chapter}:v${reference.verse} = ${include}`
           );
         } else if (!reference.verse && !reference.verseEnd) {
           // Full book (include all chapters)
           include = true;
-          console.log(`📖 Full book filter: including all = ${include}`);
+          logger.debug(`📖 Full book filter: including all = ${include}`);
         } else {
           // Full chapter
           include = chapterNum === reference.chapter;
-          console.log(
+          logger.debug(
             `📖 Full chapter filter: ch${chapterNum} == ch${reference.chapter} = ${include}`
           );
         }
@@ -1174,23 +1185,23 @@ export class ResourceAggregator {
         });
       }
 
-      console.log(`📊 TQ Filtering results:`);
-      console.log(`  ✅ Included: ${included}`);
-      console.log(`  ❌ Skipped intro: ${skippedIntro}`);
-      console.log(`  ❌ Skipped wrong chapter: ${skippedChapter}`);
-      console.log(`  ❌ Skipped wrong verse: ${skippedVerse}`);
-      console.log(`  📝 Total questions returned: ${questions.length}`);
+      logger.debug(`📊 TQ Filtering results:`);
+      logger.debug(`  ✅ Included: ${included}`);
+      logger.debug(`  ❌ Skipped intro: ${skippedIntro}`);
+      logger.debug(`  ❌ Skipped wrong chapter: ${skippedChapter}`);
+      logger.debug(`  ❌ Skipped wrong verse: ${skippedVerse}`);
+      logger.debug(`  📝 Total questions returned: ${questions.length}`);
 
       return questions;
     } catch (error) {
-      console.error("Error parsing TQ TSV:", error);
+      logger.error("Error parsing TQ TSV", { error: String(error) });
       return [];
     }
   }
 
   private parseTWLFromTSV(tsvData: string, reference: Reference): TranslationWordLink[] {
     try {
-      console.log(`🔍 Parsing TWL TSV for reference: ${reference.citation}`);
+      logger.debug(`🔍 Parsing TWL TSV for reference: ${reference.citation}`);
 
       const lines = tsvData.split("\n");
       const links: TranslationWordLink[] = [];
@@ -1200,7 +1211,7 @@ export class ResourceAggregator {
         lines.shift();
       }
 
-      console.log(`📄 Processing ${lines.length} TWL TSV lines`);
+      logger.debug(`📄 Processing ${lines.length} TWL TSV lines`);
 
       for (const line of lines) {
         if (!line.trim()) continue;
@@ -1259,10 +1270,10 @@ export class ResourceAggregator {
         });
       }
 
-      console.log(`📊 TWL Filtering results: ${links.length} links found`);
+      logger.debug(`📊 TWL Filtering results: ${links.length} links found`);
       return links;
     } catch (error) {
-      console.error("Error parsing TWL TSV:", error);
+      logger.error("Error parsing TWL TSV", { error: String(error) });
       return [];
     }
   }

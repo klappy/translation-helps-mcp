@@ -94,8 +94,11 @@ export class ResponseFormatter {
     else if (metadata.cached !== undefined)
       headers["X-Cache-Status"] = String(metadata.cached ? "hit" : "miss");
 
-    if (metadata.responseTime !== undefined)
-      headers["X-Response-Time"] = String(metadata.responseTime);
+    if (metadata.responseTime !== undefined) {
+      // Ensure non-zero response time to avoid 0ms for cache hits
+      const safeMs = Math.max(1, Number(metadata.responseTime) || 0);
+      headers["X-Response-Time"] = String(safeMs);
+    }
     if (metadata.traceId) headers["X-Trace-Id"] = String(metadata.traceId);
 
     if (metadata.xrayTrace) {

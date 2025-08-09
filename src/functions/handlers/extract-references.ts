@@ -3,6 +3,7 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { extractReferences } from "../reference-parser";
 
@@ -31,10 +32,7 @@ export const extractReferencesHandler: PlatformHandler = async (
     if (!text) {
       return {
         statusCode: 400,
-        body: JSON.stringify({
-          error: "Missing text parameter",
-          code: "MISSING_PARAMETER",
-        }),
+        body: JSON.stringify(Errors.missingParameter("text")),
       };
     }
 
@@ -61,7 +59,6 @@ export const extractReferencesHandler: PlatformHandler = async (
       }),
     };
   } catch (error) {
-    console.error("Extract References API Error:", error);
     const duration = Date.now() - startTime;
 
     return {
@@ -71,10 +68,7 @@ export const extractReferencesHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Failed to extract references",
-        code: "INTERNAL_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

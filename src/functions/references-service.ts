@@ -4,6 +4,7 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
+import { logger } from "../utils/logger.js";
 import { parseReference } from "./reference-parser";
 
 export interface ExtractReferencesOptions {
@@ -46,7 +47,7 @@ export async function extractReferences(
   const startTime = Date.now();
   const { text, includeContext = false } = options;
 
-  console.log(`🔍 Core references service called with:`, {
+  logger.info(`References service called`, {
     textLength: text.length,
     includeContext,
   });
@@ -105,7 +106,7 @@ export async function extractReferences(
     (ref, index, arr) => arr.findIndex((r) => r.reference === ref.reference) === index
   );
 
-  console.log(`🔍 Extracted ${uniqueReferences.length} unique references`);
+  logger.info(`Extracted references`, { count: uniqueReferences.length });
 
   return {
     references: uniqueReferences,

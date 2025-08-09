@@ -8,6 +8,7 @@
  */
 
 import { AlignmentData, AlignmentType } from "../constants/terminology.js";
+import { logger } from "../utils/logger.js";
 
 // ===== USFM ALIGNMENT MARKER PATTERNS =====
 const USFM_PATTERNS = {
@@ -220,7 +221,7 @@ export class USFMAlignmentParser {
       const endMatch = USFM_PATTERNS.ZALN_END.exec(remainingText);
 
       if (!endMatch) {
-        console.warn("Unclosed zaln-s marker found");
+        logger.warn("Unclosed zaln-s marker found");
         position = startPosition + startMatch[0].length;
         continue;
       }

@@ -5,16 +5,15 @@
 
 import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { XRayTrace } from "../../types/dcs.js";
-import type {
-  PlatformHandler,
-  PlatformRequest,
-  PlatformResponse,
-} from "../platform-adapter";
+import { Errors } from "../../utils/errorEnvelope.js";
+import { scriptureResponseSchema } from "../../utils/schemas.js";
+import { softValidate } from "../../utils/validator.js";
+import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { fetchScripture } from "../scripture-service";
 import type { CacheBypassOptions } from "../unified-cache";
 
 export const fetchScriptureHandler: PlatformHandler = async (
-  request: PlatformRequest,
+  request: PlatformRequest
 ): Promise<PlatformResponse> => {
   // Initialize DCS client for X-Ray tracing
   const dcsClient = new DCSApiClient();
@@ -26,30 +25,20 @@ export const fetchScriptureHandler: PlatformHandler = async (
 
     const referenceParam = request.queryStringParameters.reference;
     const language = request.queryStringParameters.language || "en";
-    const organization =
-      request.queryStringParameters.organization || "unfoldingWord";
-    const includeVerseNumbers =
-      request.queryStringParameters.includeVerseNumbers !== "false";
+    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const includeVerseNumbers = request.queryStringParameters.includeVerseNumbers !== "false";
     const formatParam = request.queryStringParameters.format || "text";
-    const format = (formatParam === "usfm" ? "usfm" : "text") as
-      | "text"
-      | "usfm";
+    const format = (formatParam === "usfm" ? "usfm" : "text") as "text" | "usfm";
     const specificTranslations = request.queryStringParameters.translations
-      ? request.queryStringParameters.translations
-          .split(",")
-          .map((t) => t.trim())
+      ? request.queryStringParameters.translations.split(",").map((t) => t.trim())
       : undefined;
-    const includeAlignment =
-      request.queryStringParameters.includeAlignment === "true";
+    const includeAlignment = request.queryStringParameters.includeAlignment === "true";
 
     if (!referenceParam) {
       dcsClient.disableTracing();
       return {
         statusCode: 400,
-        body: JSON.stringify({
-          error: "Missing reference parameter",
-          code: "MISSING_PARAMETER",
-        }),
+        body: JSON.stringify(Errors.missingParameter("reference", traceId)),
       };
     }
 
@@ -119,6 +108,9 @@ export const fetchScriptureHandler: PlatformHandler = async (
       },
     };
 
+    // Soft validation (warn-only) during migration to array-only shape
+    softValidate<typeof response>(scriptureResponseSchema, response, "fetch-scripture");
+
     return {
       statusCode: 200,
       headers: {
@@ -132,15 +124,9 @@ export const fetchScriptureHandler: PlatformHandler = async (
   } catch (error) {
     // Ensure tracing is disabled even on error
     dcsClient.disableTracing();
-
-    console.error("Scripture error:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: errorMessage,
-        code: "FETCH_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal(traceId)),
     };
   }
 };

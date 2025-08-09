@@ -1,0 +1,14 @@
+# Task ID: 12
+# Title: Release & Deployment Hardening
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Make deployment fully unattended; version/changelog updates; staging + production roll with monitoring.
+# Details:
+- Fix scripts to pass --yes and non-watch
+- Bump version; update CHANGELOG
+- Stage deploy, smoke, prod deploy, 24h monitor
+- Rollback plan
+
+# Test Strategy:
+CI logs show unattended run; successful staging and prod smoke

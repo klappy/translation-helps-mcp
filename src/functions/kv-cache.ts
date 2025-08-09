@@ -32,28 +32,36 @@ export class CloudflareKVCache {
   }
 
   async get(key: string): Promise<unknown> {
-    // Check memory cache first
+    // Memory-first: return immediately if hot in-process cache is valid
     const memItem = this.memoryCache.get(key);
     if (memItem && Date.now() < memItem.expires) {
       logger.info(`💾 Memory cache HIT for ${key}`);
       return memItem.value;
     }
 
-    // Check KV if available
+    // KV second: persistent store, then warm memory for subsequent hits
     if (this.kvAvailable && this.kv) {
       try {
+        const kvStart = typeof performance !== "undefined" ? performance.now() : Date.now();
         const kvValue = await this.kv.get(key, { type: "arrayBuffer" });
+        const kvMs = Math.max(
+          1,
+          Math.round(
+            (typeof performance !== "undefined" ? performance.now() : Date.now()) - kvStart
+          )
+        );
         if (kvValue) {
-          logger.info(`☁️ KV cache HIT for ${key}`);
-          // Warm memory cache with KV value
+          logger.info(`☁️ KV cache HIT for ${key} in ${kvMs}ms`);
+          // Warm memory cache with KV value (5 min TTL)
           this.memoryCache.set(key, {
             value: kvValue,
-            expires: Date.now() + 300000, // 5 minutes for memory cache
+            expires: Date.now() + 300000,
           });
           return kvValue;
         }
+        logger.info(`❌ KV MISS for ${key} in ${kvMs}ms`);
       } catch (error) {
-        logger.error(`KV get error for ${key}:`, error);
+        logger.error("KV get error", { key, error: String(error) });
       }
     }
 
@@ -83,7 +91,7 @@ export class CloudflareKVCache {
         });
         logger.info(`☁️ Stored ${key} in KV with TTL ${ttlSeconds}s`);
       } catch (error) {
-        logger.error(`KV put error for ${key}:`, error);
+        logger.error("KV put error", { key, error: String(error) });
       }
     }
   }
@@ -95,7 +103,7 @@ export class CloudflareKVCache {
       try {
         await this.kv.delete(key);
       } catch (error) {
-        logger.error(`KV delete error for ${key}:`, error);
+        logger.error("KV delete error", { key, error: String(error) });
       }
     }
   }
@@ -112,7 +120,7 @@ export class CloudflareKVCache {
    * Delete all KV keys matching the provided prefixes. Memory cache is also cleared.
    * Returns the number of KV keys deleted.
    */
-  async clearPrefixes(prefixes: string[] = ["zip:", "catalog:"]): Promise<number> {
+  async clearPrefixes(prefixes: string[] = ["zip:", "catalog:", "zipfile:"]): Promise<number> {
     this.memoryCache.clear();
     let deletedCount = 0;
 
@@ -135,10 +143,50 @@ export class CloudflareKVCache {
         }
       }
     } catch (error) {
-      logger.error("KV clearPrefixes error:", error);
+      logger.error("KV clearPrefixes error", { error: String(error) });
     }
 
     logger.warn(`☁️ KV prefixes cleared: ${deletedCount} keys deleted`);
+    return deletedCount;
+  }
+
+  /**
+   * NUKE: Delete ALL keys from KV and clear memory cache. Use with caution.
+   * Returns the number of KV keys deleted.
+   */
+  async clearAll(): Promise<number> {
+    this.memoryCache.clear();
+    let deletedCount = 0;
+
+    if (!this.kvAvailable || !this.kv) {
+      return deletedCount;
+    }
+
+    try {
+      // Attempt to list up to 1000 keys (dev environments usually small). If larger, repeat best-effort.
+      // Note: Our KVNamespace type does not expose cursors; this is a pragmatic nuke for this environment.
+      let loopGuard = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (loopGuard < 10) {
+        loopGuard++;
+        const list = await this.kv.list({ limit: 1000 });
+        const keys = list?.keys || [];
+        if (keys.length === 0) break;
+        for (const { name } of keys) {
+          try {
+            await this.kv.delete(name);
+            deletedCount++;
+          } catch (error) {
+            logger.error(`KV delete error for ${name}:`, error);
+          }
+        }
+        // Continue loop in case there are more than 1000 keys
+      }
+    } catch (error) {
+      logger.error("KV clearAll error", { error: String(error) });
+    }
+
+    logger.warn(`☁️ KV FULL WIPE: ${deletedCount} keys deleted`);
     return deletedCount;
   }
 

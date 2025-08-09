@@ -5,6 +5,8 @@
 
 import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { XRayTrace } from "../../types/dcs.js";
+import { Errors } from "../../utils/errorEnvelope.js";
+import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const getContextHandler: PlatformHandler = async (
@@ -46,11 +48,7 @@ export const getContextHandler: PlatformHandler = async (
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
         },
-        body: JSON.stringify({
-          error: "Missing required parameter: 'reference'",
-          code: "MISSING_PARAMETER",
-          message: "Please provide a Bible reference. Example: ?reference=John+3:16",
-        }),
+        body: JSON.stringify(Errors.missingParameter("reference", traceId)),
       };
     }
 
@@ -65,7 +63,6 @@ export const getContextHandler: PlatformHandler = async (
           "Access-Control-Allow-Origin": "*",
         },
         body: JSON.stringify({
-          error: "Invalid reference format",
           code: "INVALID_REFERENCE",
           message: "Please provide a valid reference like 'John 3:16'",
         }),
@@ -75,7 +72,7 @@ export const getContextHandler: PlatformHandler = async (
     const [, book, chapter, verseStart, verseEnd] = refParts;
     const bookCode = getBookCode(book);
 
-    console.log("Parsed reference:", {
+    logger.info("Parsed reference", {
       book,
       bookCode,
       chapter,
@@ -137,10 +134,9 @@ export const getContextHandler: PlatformHandler = async (
       );
 
       if (!bookIngredient || !bookIngredient.path) {
-        console.log(
-          `No ingredient found for ${bookCode} in ${name}`,
-          ingredients.map((i) => i.identifier)
-        );
+        logger.info(`No ingredient found for ${bookCode} in ${name}`, {
+          identifiers: ingredients.map((i) => i.identifier),
+        });
         continue;
       }
 
@@ -310,11 +306,7 @@ export const getContextHandler: PlatformHandler = async (
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
       },
-      body: JSON.stringify({
-        error: "Internal server error",
-        code: "INTERNAL_ERROR",
-        message: error instanceof Error ? error.message : "Unknown error",
-      }),
+      body: JSON.stringify(Errors.internal(traceId)),
     };
   }
 };

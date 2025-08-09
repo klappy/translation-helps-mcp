@@ -1,0 +1,12 @@
+# Task ID: 7
+# Title: Performance SLOs & CI Gates
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Add tracer-based performance tests and CI gating for verse/range/chapter + cache-hit scenarios.
+# Details:
+- Tests: verse <200ms, range <300ms, chapter <500ms, cache hits <100ms
+- Gate CI on thresholds; expose env overrides for local
+
+# Test Strategy:
+Vitest/Playwright timings asserted; CI fails on regressions

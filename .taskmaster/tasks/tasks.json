@@ -646,5 +646,638 @@
       "created": "2025-08-05T15:01:18.526Z",
       "updated": "2025-08-06T21:40:34.356Z"
     }
+  },
+  "vnext-architecture": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "API Contracts & Schemas (Zod adoption)",
+        "description": "Adopt schema-first API contracts across endpoints; validate in handlers and tests; enforce scripture array response shape.",
+        "details": "- Introduce Zod schemas per endpoint (request/response)\n- Validate handler responses against schemas\n- Tests parse responses using the same schemas\n- Enforce scripture endpoints to always return an array (single-item when filtered)\n- Update docs to reflect contract stability",
+        "testStrategy": "Unit + integration tests parse schemas; regression tests for scripture array shape",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Zod schemas per endpoint",
+            "description": "Create request/response schemas for all core endpoints.",
+            "details": "Include scripture, notes, words, word-links, questions, academy, discovery, context.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1
+          },
+          {
+            "id": 2,
+            "title": "Validate handler responses",
+            "description": "Wire schema validation into all handlers before return.",
+            "details": "Fail fast with error envelope on mismatch; log traceId.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1
+          },
+          {
+            "id": 3,
+            "title": "Tests parse schemas",
+            "description": "Update unit/integration tests to parse responses using schemas.",
+            "details": "Add failure messages that show how to fix.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1
+          },
+          {
+            "id": 4,
+            "title": "Scripture array response enforcement",
+            "description": "Normalize scripture endpoints to always return an array.",
+            "details": "Single version → single-item array; update docs and tests.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Error Policy & Standard Envelope",
+        "description": "Implement consistent 400 errors with actionable guidance and links; standard error envelope across endpoints.",
+        "details": "- Create error helper returning { code, message, hint, howToFix, examples, docs, traceId }\n- Invalid references → 400 with examples + discovery links\n- Distinguish file-not-found vs org/lang not found\n- Wire into handlers uniformly",
+        "testStrategy": "Negative tests for invalid reference/missing params assert envelope + guidance",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create error helper",
+            "description": "Standard error envelope function with guidance fields.",
+            "details": "Fields: code, message, hint, howToFix, examples, docs, traceId.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2
+          },
+          {
+            "id": 2,
+            "title": "Wire into handlers",
+            "description": "Use error helper across endpoints; remove ad-hoc 400s.",
+            "details": "Invalid reference/missing params receive actionable guidance and links.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Logging & Observability Unification",
+        "description": "Replace console with logger in src/**; respect LOG_LEVEL; ensure tracer reports realistic cache timings.",
+        "details": "- Sweep src/** to replace console.* with logger.* (tests/scripts exempt)\n- Add LOG_LEVEL env (default info) and debug path\n- Ensure KV/memory hit timings include fetch+decode (no 0ms)\n- X-Ray trace integration review",
+        "testStrategy": "Greps confirm no console in src/**; tracer timings verified in tests",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Console sweep",
+            "description": "Replace console.* with logger.* in src/**",
+            "details": "Tests/scripts exempt by lint rule; use LOG_LEVEL env",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3
+          },
+          {
+            "id": 2,
+            "title": "Tracer timing fixes",
+            "description": "Ensure cache hits include KV/memory fetch+decode time (no 0ms).",
+            "details": "Report timings in X-Ray trace and response metadata.",
+            "status": "in-progress",
+            "dependencies": [],
+            "parentTaskId": 3
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Caching Model Hardening (KV-first)",
+        "description": "Enforce KV-first with memory fallback only; unify TTLs/prefixes; namespaced file cache keys; fix timing reporting.",
+        "details": "- KV-first enforcement; memory fallback only when KV unavailable\n- Optional tiny LRU behind env flag (off in prod)\n- Unify TTLs/prefixes; document retention\n- Namespaced file cache for extracted ZIPs: internal://zip/<org/repo:ref>/<filePath>\n- Ensure timing reflects KV hit latency",
+        "testStrategy": "Cache hit/miss tests; timing assertions; key naming verified",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Enforce KV-first, memory fallback only",
+            "description": "Ensure cache path uses KV by default; memory only when KV unavailable.",
+            "details": "Add env guard for optional small LRU; disabled in prod.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 2,
+            "title": "Unify TTLs & prefixes",
+            "description": "Centralize TTLs/prefixes for all cache entries; document retention.",
+            "details": "Document in code and docs; align with KV constraints.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 3,
+            "title": "Namespaced file cache keys",
+            "description": "Cache extracted ZIP files with internal://zip/<org/repo:ref>/<filePath>.",
+            "details": "Implement and verify hit ratios + timing.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "ZIP Fetching Policy Consolidation",
+        "description": "Deprecate legacy ZIP fetchers; mandate ZipResourceFetcher2; update docs and call sites.",
+        "details": "- Move legacy ZipResourceFetcher to legacy/ with DO-NOT-USE\n- Ensure ZipResourceFetcher2 is sole implementation\n- Update references and docs",
+        "testStrategy": "Code search shows no references to legacy class; tests pass",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Move Legacy ZipResourceFetcher",
+            "description": "Move the legacy ZipResourceFetcher to the legacy directory and mark it with a DO-NOT-USE banner.",
+            "dependencies": [],
+            "details": "Ensure that the legacy ZipResourceFetcher is clearly marked as deprecated and moved to the legacy/ directory.",
+            "status": "pending",
+            "testStrategy": "Verify that the legacy ZipResourceFetcher is no longer in the main codebase."
+          },
+          {
+            "id": 2,
+            "title": "Implement ZipResourceFetcher2",
+            "description": "Ensure that ZipResourceFetcher2 is the sole implementation for ZIP fetching.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Review all instances of ZIP fetching to confirm that only ZipResourceFetcher2 is being used.",
+            "status": "pending",
+            "testStrategy": "Conduct a code search to ensure no references to the legacy ZipResourceFetcher remain."
+          },
+          {
+            "id": 3,
+            "title": "Update Documentation",
+            "description": "Update all relevant documentation to reflect the changes made in ZIP fetching policy.",
+            "dependencies": [
+              "5.2"
+            ],
+            "details": "Ensure that all references to the legacy fetcher are removed and replaced with information about ZipResourceFetcher2.",
+            "status": "pending",
+            "testStrategy": "Perform a documentation review to confirm all updates are accurate and complete."
+          },
+          {
+            "id": 4,
+            "title": "Update Call Sites",
+            "description": "Update all call sites in the codebase to use ZipResourceFetcher2 instead of the legacy fetcher.",
+            "dependencies": [
+              "5.2"
+            ],
+            "details": "Identify and modify all instances where the legacy fetcher is called to ensure they now utilize ZipResourceFetcher2.",
+            "status": "pending",
+            "testStrategy": "Run tests to confirm that all call sites function correctly with ZipResourceFetcher2."
+          },
+          {
+            "id": 5,
+            "title": "Conduct Final Review",
+            "description": "Perform a final review of the changes to ensure compliance with the new ZIP fetching policy.",
+            "dependencies": [
+              "5.3",
+              "5.4"
+            ],
+            "details": "Review all changes made to confirm that the legacy fetcher is deprecated and ZipResourceFetcher2 is properly implemented.",
+            "status": "pending",
+            "testStrategy": "Conduct a comprehensive code review and run all tests to ensure system integrity."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "DCS Ingredients Helper & Rollout",
+        "description": "Create single helper for catalog search + metadataType=rc → ingredients; case-insensitive book matching; replace call sites.",
+        "details": "- Build pure helper covering rc ingredients flow with exceptions documented\n- Case-insensitive book code matching\n- Replace bespoke implementations\n- Document exceptions and add tests",
+        "testStrategy": "Unit tests for helper; integration confirms identical or improved results",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Build Helper for RC Ingredients Flow",
+            "description": "Create a pure helper function that covers the rc ingredients flow.",
+            "dependencies": [],
+            "details": "Ensure the helper handles all necessary cases and documents any exceptions encountered during the process.",
+            "status": "pending",
+            "testStrategy": "Unit tests to validate the helper's functionality."
+          },
+          {
+            "id": 2,
+            "title": "Implement Case-Insensitive Book Code Matching",
+            "description": "Develop functionality for case-insensitive matching of book codes.",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "Ensure that the matching logic is robust and handles various input cases correctly.",
+            "status": "pending",
+            "testStrategy": "Unit tests to verify case-insensitive matching accuracy."
+          },
+          {
+            "id": 3,
+            "title": "Replace Bespoke Implementations",
+            "description": "Identify and replace all bespoke implementations with the new helper.",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "Ensure that all call sites are updated to use the new helper function.",
+            "status": "pending",
+            "testStrategy": "Integration tests to confirm that all replaced implementations yield identical or improved results."
+          },
+          {
+            "id": 4,
+            "title": "Document Exceptions and Edge Cases",
+            "description": "Document any exceptions and edge cases encountered during the helper's development.",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "Create comprehensive documentation to assist future developers in understanding the helper's behavior.",
+            "status": "pending",
+            "testStrategy": "Review documentation for completeness and clarity."
+          },
+          {
+            "id": 5,
+            "title": "Add Tests for Helper Functionality",
+            "description": "Create tests to validate the functionality of the new helper.",
+            "dependencies": [
+              "6.1",
+              "6.2",
+              "6.3"
+            ],
+            "details": "Ensure that both unit and integration tests are included to cover all aspects of the helper's functionality.",
+            "status": "pending",
+            "testStrategy": "Unit tests for individual functions and integration tests for overall behavior."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Performance SLOs & CI Gates",
+        "description": "Add tracer-based performance tests and CI gating for verse/range/chapter + cache-hit scenarios.",
+        "details": "- Tests: verse <200ms, range <300ms, chapter <500ms, cache hits <100ms\n- Gate CI on thresholds; expose env overrides for local",
+        "testStrategy": "Vitest/Playwright timings asserted; CI fails on regressions",
+        "status": "in-progress",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Performance Test Scenarios",
+            "description": "Outline specific performance test scenarios for verse, range, chapter, and cache-hit based on the provided thresholds.",
+            "dependencies": [],
+            "details": "Create detailed descriptions of each performance test scenario, including expected outcomes and metrics to be collected.",
+            "status": "pending",
+            "testStrategy": "Documented scenarios reviewed for completeness and accuracy."
+          },
+          {
+            "id": 2,
+            "title": "Implement Tracer-Based Performance Tests",
+            "description": "Develop and integrate tracer-based performance tests for the defined scenarios.",
+            "dependencies": [],
+            "details": "Utilize existing tracing tools to create tests that measure performance against the defined thresholds.",
+            "status": "pending",
+            "testStrategy": "Run tests to ensure they accurately measure performance and report results."
+          },
+          {
+            "id": 3,
+            "title": "Set Up CI Gating Mechanism",
+            "description": "Establish CI gating based on the performance test results to ensure that thresholds are not exceeded.",
+            "dependencies": [],
+            "details": "Configure CI/CD pipeline to fail builds if performance thresholds are breached.",
+            "status": "pending",
+            "testStrategy": "Verify CI pipeline fails on performance regression."
+          },
+          {
+            "id": 4,
+            "title": "Expose Environment Overrides for Local Testing",
+            "description": "Implement environment variable overrides to allow local testing of performance thresholds.",
+            "dependencies": [],
+            "details": "Create a mechanism to override performance thresholds in local environments for testing purposes.",
+            "status": "pending",
+            "testStrategy": "Test local overrides to ensure they function as expected."
+          },
+          {
+            "id": 5,
+            "title": "Document Performance SLOs and CI Gates",
+            "description": "Create documentation detailing the performance SLOs and CI gating process for future reference.",
+            "dependencies": [],
+            "details": "Write comprehensive documentation that includes performance thresholds, test scenarios, and CI gating procedures.",
+            "status": "pending",
+            "testStrategy": "Review documentation for clarity and completeness."
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Deprecations & Housekeeping",
+        "description": "Move unused code to legacy/ with banners; add one-cycle removal notice; add rule to block usage.",
+        "details": "- Move unused to legacy/; add DO-NOT-USE banner headers\n- CHANGELOG note: removal next release\n- Rule doc/ESLint guidance to prevent usage",
+        "testStrategy": "No imports of legacy dirs; lint/rules catch violations",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Move Unused Code to Legacy Directory",
+            "description": "Identify and move all unused code to the legacy/ directory.",
+            "dependencies": [],
+            "details": "Ensure that all unused code is properly relocated to the legacy/ directory.",
+            "status": "pending",
+            "testStrategy": "Verify that all unused code is moved and no longer accessible from the main codebase."
+          },
+          {
+            "id": 2,
+            "title": "Add DO-NOT-USE Banner Headers",
+            "description": "Add banner headers to all moved files indicating they should not be used.",
+            "dependencies": [],
+            "details": "Include a clear DO-NOT-USE banner at the top of each file moved to the legacy/ directory.",
+            "status": "pending",
+            "testStrategy": "Check that all files in legacy/ contain the appropriate banner headers."
+          },
+          {
+            "id": 3,
+            "title": "Update CHANGELOG for Removal Notice",
+            "description": "Add a note to the CHANGELOG indicating the removal of the unused code in the next release.",
+            "dependencies": [],
+            "details": "Document the removal of unused code in the CHANGELOG to inform users of upcoming changes.",
+            "status": "pending",
+            "testStrategy": "Ensure the CHANGELOG is updated and reflects the removal notice accurately."
+          },
+          {
+            "id": 4,
+            "title": "Create ESLint Rule Documentation",
+            "description": "Draft documentation for the new ESLint rule to block usage of legacy code.",
+            "dependencies": [],
+            "details": "Provide clear guidance on the ESLint rule that prevents the usage of any code in the legacy/ directory.",
+            "status": "pending",
+            "testStrategy": "Review the documentation for clarity and completeness."
+          },
+          {
+            "id": 5,
+            "title": "Implement ESLint Rule",
+            "description": "Implement the ESLint rule that blocks usage of any code from the legacy/ directory.",
+            "dependencies": [],
+            "details": "Ensure that the ESLint rule is active and correctly configured to prevent usage of legacy code.",
+            "status": "pending",
+            "testStrategy": "Run linting checks to confirm that the rule catches any attempts to use legacy code."
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Scripture Mapping Cleanup",
+        "description": "Eliminate numeric filename maps; derive via metadata/zip listings; case-insensitive matching.",
+        "details": "- Remove per-file numeric/filename maps\n- Implement derived lookup via ingredients/zip listings\n- Replace usages (e.g., ResourceAggregator)\n- Add tests for case-insensitive matching",
+        "testStrategy": "Unit + integration passing; greps show no numeric maps used",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Remove Numeric Filename Maps",
+            "description": "Eliminate all numeric filename maps from the project.",
+            "dependencies": [],
+            "details": "Identify and remove all instances of numeric filename maps from the codebase.",
+            "status": "pending",
+            "testStrategy": "Code review to ensure no numeric maps remain."
+          },
+          {
+            "id": 2,
+            "title": "Implement Derived Lookup",
+            "description": "Create a derived lookup mechanism using metadata and zip listings.",
+            "dependencies": [],
+            "details": "Develop a lookup system that utilizes ingredients and zip listings to replace numeric filename maps.",
+            "status": "pending",
+            "testStrategy": "Unit tests to verify the correctness of the derived lookup."
+          },
+          {
+            "id": 3,
+            "title": "Replace Usages in Code",
+            "description": "Replace all usages of numeric filename maps in the codebase, such as in ResourceAggregator.",
+            "dependencies": [],
+            "details": "Search for and replace all instances of numeric filename maps with the new derived lookup.",
+            "status": "pending",
+            "testStrategy": "Integration tests to ensure functionality remains intact after replacements."
+          },
+          {
+            "id": 4,
+            "title": "Add Case-Insensitive Matching Tests",
+            "description": "Develop tests to ensure case-insensitive matching works correctly.",
+            "dependencies": [],
+            "details": "Create unit tests that validate the case-insensitive matching functionality.",
+            "status": "pending",
+            "testStrategy": "Unit tests to confirm case-insensitive matching behaves as expected."
+          },
+          {
+            "id": 5,
+            "title": "Verify No Numeric Maps Used",
+            "description": "Conduct a final verification to ensure no numeric maps are used in the codebase.",
+            "dependencies": [],
+            "details": "Perform a comprehensive search and review to confirm that all numeric maps have been eliminated.",
+            "status": "pending",
+            "testStrategy": "Use greps to ensure no numeric maps are present in the codebase."
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Chat Showcase Revival (/chat via MCP)",
+        "description": "Restore /chat as a self-discoverable MCP client; no hardcoded endpoints; prompt-only adjustable.",
+        "details": "- Re-enable MCP tool discovery path\n- Remove endpoint hardcoding\n- Verify transparency/X-ray and performance\n- Mobile + accessibility polish",
+        "testStrategy": "E2E tests for chat flows; MCP tool discovery works; perf under SLOs",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Re-enable MCP Tool Discovery Path",
+            "description": "Restore the functionality that allows users to discover the MCP tools through the chat interface.",
+            "dependencies": [],
+            "details": "Ensure that the MCP tool discovery path is fully operational and accessible within the chat client.",
+            "status": "pending",
+            "testStrategy": "Verify that the MCP tools are discoverable through the chat interface."
+          },
+          {
+            "id": 2,
+            "title": "Remove Endpoint Hardcoding",
+            "description": "Eliminate any hardcoded endpoints in the chat client to allow for dynamic endpoint configuration.",
+            "dependencies": [],
+            "details": "Refactor the code to ensure that all endpoints can be adjusted via prompts without hardcoding.",
+            "status": "pending",
+            "testStrategy": "Conduct tests to ensure that endpoints can be changed dynamically without issues."
+          },
+          {
+            "id": 3,
+            "title": "Verify Transparency/X-ray and Performance",
+            "description": "Ensure that the transparency and performance metrics of the chat client are functioning as expected.",
+            "dependencies": [],
+            "details": "Test the transparency and performance features to confirm they meet the required standards.",
+            "status": "pending",
+            "testStrategy": "Run performance tests to validate transparency and X-ray functionalities."
+          },
+          {
+            "id": 4,
+            "title": "Mobile and Accessibility Polish",
+            "description": "Enhance the mobile and accessibility features of the chat client to improve user experience.",
+            "dependencies": [],
+            "details": "Implement necessary adjustments to ensure the chat client is user-friendly on mobile devices and accessible to all users.",
+            "status": "pending",
+            "testStrategy": "Conduct usability testing on mobile devices and accessibility audits."
+          },
+          {
+            "id": 5,
+            "title": "End-to-End Testing for Chat Flows",
+            "description": "Develop and execute end-to-end tests for various chat flows to ensure functionality and performance.",
+            "dependencies": [],
+            "details": "Create comprehensive test cases that cover all chat functionalities and performance under specified service level objectives (SLOs).",
+            "status": "pending",
+            "testStrategy": "Perform E2E tests to validate chat flows and ensure they meet performance criteria."
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Docs & Rules Consolidation",
+        "description": "Add/update rules: logging, ingredients-only, endpoint contracts/schemas, ZIP/KV policy, error responses; sync docs.",
+        "details": "- Create rule files with examples and references\n- Update docs to reflect policies and helpers\n- Link from README and MCP Tools",
+        "testStrategy": "Docs lint; rule adherence visible in code and CI",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Rule Files",
+            "description": "Create rule files for logging, ingredients-only, endpoint contracts/schemas, ZIP/KV policy, and error responses.",
+            "dependencies": [],
+            "details": "Each rule file should include examples and references to ensure clarity and adherence.",
+            "status": "pending",
+            "testStrategy": "Review rule files for completeness and accuracy."
+          },
+          {
+            "id": 2,
+            "title": "Update Documentation",
+            "description": "Update existing documentation to reflect the new policies and helpers associated with the rules.",
+            "dependencies": [],
+            "details": "Ensure that all relevant sections of the documentation are updated to align with the new rules.",
+            "status": "pending",
+            "testStrategy": "Conduct a documentation review to ensure all updates are accurate."
+          },
+          {
+            "id": 3,
+            "title": "Link Documentation",
+            "description": "Link the updated documentation from the README and MCP Tools.",
+            "dependencies": [],
+            "details": "Ensure that users can easily access the updated rules and documentation from the main project resources.",
+            "status": "pending",
+            "testStrategy": "Verify that all links are functional and direct to the correct documentation."
+          },
+          {
+            "id": 4,
+            "title": "Sync Documentation",
+            "description": "Sync all documentation to ensure consistency across different platforms and tools.",
+            "dependencies": [],
+            "details": "Check for any discrepancies between documentation versions and resolve them.",
+            "status": "pending",
+            "testStrategy": "Perform a cross-check of documentation across platforms."
+          },
+          {
+            "id": 5,
+            "title": "Conduct Final Review",
+            "description": "Conduct a final review of all rules and documentation to ensure compliance and clarity.",
+            "dependencies": [],
+            "details": "Gather feedback from team members and make necessary adjustments before final approval.",
+            "status": "pending",
+            "testStrategy": "Collect feedback and ensure all changes are implemented before finalizing."
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Release & Deployment Hardening",
+        "description": "Make deployment fully unattended; version/changelog updates; staging + production roll with monitoring.",
+        "details": "- Fix scripts to pass --yes and non-watch\n- Bump version; update CHANGELOG\n- Stage deploy, smoke, prod deploy, 24h monitor\n- Rollback plan",
+        "testStrategy": "CI logs show unattended run; successful staging and prod smoke",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Fix Deployment Scripts",
+            "description": "Modify deployment scripts to ensure they pass the --yes flag and operate in non-watch mode.",
+            "dependencies": [],
+            "details": "Update the scripts to automate the deployment process without manual intervention.",
+            "status": "pending",
+            "testStrategy": "Verify that scripts execute without prompts and complete successfully."
+          },
+          {
+            "id": 2,
+            "title": "Version Bump and Changelog Update",
+            "description": "Increase the version number and update the CHANGELOG to reflect the latest changes.",
+            "dependencies": [],
+            "details": "Ensure the versioning follows semantic versioning guidelines and the changelog is clear and concise.",
+            "status": "pending",
+            "testStrategy": "Check that the version number is updated in the relevant files and the changelog is accurate."
+          },
+          {
+            "id": 3,
+            "title": "Staging Deployment and Monitoring",
+            "description": "Deploy the application to the staging environment and set up monitoring for 24 hours.",
+            "dependencies": [],
+            "details": "Conduct a smoke test post-deployment to ensure the application is functioning as expected.",
+            "status": "pending",
+            "testStrategy": "Monitor logs and performance metrics for any issues during the 24-hour period."
+          },
+          {
+            "id": 4,
+            "title": "Production Deployment",
+            "description": "Deploy the application to the production environment after successful staging tests.",
+            "dependencies": [
+              "12.3"
+            ],
+            "details": "Ensure that all monitoring tools are in place before proceeding with the production deployment.",
+            "status": "pending",
+            "testStrategy": "Confirm successful deployment and monitor for any immediate issues."
+          },
+          {
+            "id": 5,
+            "title": "Rollback Plan Development",
+            "description": "Create a rollback plan to revert changes in case of deployment failure.",
+            "dependencies": [],
+            "details": "Document the steps required to revert to the previous stable version if necessary.",
+            "status": "pending",
+            "testStrategy": "Review the rollback plan with the team and conduct a dry run if possible."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-08T22:43:37.888Z",
+      "updated": "2025-08-09T17:27:58.892Z",
+      "description": "Architecture hardening + chat showcase revival tasks from PRD vNext (contracts, errors, logging, caching, ingredients-only DCS, SLOs, deprecations)."
+    }
   }
 }

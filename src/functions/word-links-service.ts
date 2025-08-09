@@ -7,6 +7,7 @@
 import { EdgeXRayTracer } from "../functions/edge-xray";
 import { parseReference } from "../parsers/referenceParser";
 import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2";
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 
 export interface TranslationWordLink {
@@ -50,7 +51,7 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
   const startTime = Date.now();
   const { reference: referenceParam, language = "en", organization = "unfoldingWord" } = options;
 
-  console.log(`🔗 Core word links service called with:`, {
+  logger.info(`Core word links service called`, {
     reference: referenceParam,
     language,
     organization,
@@ -67,7 +68,7 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
   const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
-    console.log(`🚀 FAST cache hit for processed word links: ${responseKey}`);
+    logger.info(`FAST cache hit for processed word links`, { key: responseKey });
     // Return cached response as-is
     return {
       ...cachedResponse.value,
@@ -79,7 +80,7 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
     };
   }
 
-  console.log(`🔄 Processing fresh word links request: ${responseKey}`);
+  logger.info(`Processing fresh word links request`, { key: responseKey });
 
   // Use ZIP + ingredients path via ZipResourceFetcher2
   const tracer = new EdgeXRayTracer(`twl-${Date.now()}`, "word-links-service");
@@ -93,7 +94,7 @@ export async function fetchWordLinks(options: WordLinksOptions): Promise<WordLin
 
   // Map rows into expected pass-through structure (preserve fields)
   const wordLinks = (rows || []).map((row) => ({ ...row }));
-  console.log(`🔗 Parsed ${wordLinks.length} word links from ZIP`);
+  logger.info(`Parsed word links from ZIP`, { count: wordLinks.length });
 
   // Return the raw TSV structure without transformation
   const result = {

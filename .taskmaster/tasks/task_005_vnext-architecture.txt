@@ -1,0 +1,13 @@
+# Task ID: 5
+# Title: ZIP Fetching Policy Consolidation
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Deprecate legacy ZIP fetchers; mandate ZipResourceFetcher2; update docs and call sites.
+# Details:
+- Move legacy ZipResourceFetcher to legacy/ with DO-NOT-USE
+- Ensure ZipResourceFetcher2 is sole implementation
+- Update references and docs
+
+# Test Strategy:
+Code search shows no references to legacy class; tests pass

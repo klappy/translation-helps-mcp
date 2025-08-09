@@ -14,27 +14,26 @@ import {
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import fs from "fs";
-import path from "path";
 
 // Import tool handlers with updated names
-import { handleFetchScripture, FetchScriptureArgs } from "./tools/fetchScripture.js";
-import {
-  handleFetchTranslationNotes,
-  FetchTranslationNotesArgs,
-} from "./tools/fetchTranslationNotes.js";
-import {
-  handleFetchTranslationQuestions,
-  FetchTranslationQuestionsArgs,
-} from "./tools/fetchTranslationQuestions.js";
-import { handleGetTranslationWord, GetTranslationWordArgs } from "./tools/getTranslationWord.js";
-import { handleGetContext, GetContextArgs } from "./tools/getContext.js";
-import { handleGetLanguages, GetLanguagesArgs } from "./tools/getLanguages.js";
 import { handleBrowseTranslationWords } from "./tools/browseTranslationWords.js";
 import { handleExtractReferences } from "./tools/extractReferences.js";
 import { handleFetchResources } from "./tools/fetchResources.js";
+import { FetchScriptureArgs, handleFetchScripture } from "./tools/fetchScripture.js";
+import {
+  FetchTranslationNotesArgs,
+  handleFetchTranslationNotes,
+} from "./tools/fetchTranslationNotes.js";
+import {
+  FetchTranslationQuestionsArgs,
+  handleFetchTranslationQuestions,
+} from "./tools/fetchTranslationQuestions.js";
+import { GetContextArgs, handleGetContext } from "./tools/getContext.js";
+import { GetLanguagesArgs, handleGetLanguages } from "./tools/getLanguages.js";
+import { GetTranslationWordArgs, handleGetTranslationWord } from "./tools/getTranslationWord.js";
 import { handleGetWordsForReference } from "./tools/getWordsForReference.js";
 import { handleSearchResources } from "./tools/searchResources.js";
+import { logger } from "./utils/logger.js";
 import { getVersion } from "./version.js";
 
 // Tool definitions
@@ -232,10 +231,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Translation Helps MCP Server running on stdio");
+  logger.info("Translation Helps MCP Server running on stdio");
 }
 
 main().catch((error) => {
-  console.error("Fatal error in main():", error);
+  logger.error("Fatal error in main()", { error: String(error) });
   process.exit(1);
 });

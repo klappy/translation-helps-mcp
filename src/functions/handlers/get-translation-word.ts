@@ -3,6 +3,7 @@
  * Fetches actual translation word article content from DCS
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
 import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
@@ -47,15 +48,7 @@ export const getTranslationWordHandler: PlatformHandler = async (
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
         },
-        body: JSON.stringify({
-          error: "Missing required parameter: 'word'",
-          code: "MISSING_PARAMETER",
-          message: "Please provide a word to look up. Example: ?word=love&language=en",
-          validEndpoints: [
-            "/api/list-available-resources - Find available organizations/languages",
-            "/api/browse-translation-words - Browse available words",
-          ],
-        }),
+        body: JSON.stringify(Errors.missingParameter("word")),
       };
     }
 
@@ -221,12 +214,7 @@ export const getTranslationWordHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Internal server error",
-        code: "INTERNAL_ERROR",
-        message: "An error occurred while fetching the translation word. Please try again.",
-        details: error instanceof Error ? error.message : String(error),
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

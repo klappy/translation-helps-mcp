@@ -12,6 +12,7 @@ import type { PlatformHandler } from "../functions/platform-adapter.js";
 import { unifiedCache } from "../functions/unified-cache.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import type { XRayTrace } from "../types/dcs.js";
+import { logger } from "../utils/logger.js";
 import { ParsedUSFM, WordAlignment, parseUSFMAlignment } from "./usfm-alignment-parser.js";
 
 interface VerseMapping {
@@ -161,7 +162,7 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
           };
         }
       } catch (error) {
-        console.warn("Cache retrieval failed:", error);
+        logger.warn("Cache retrieval failed", { error: String(error) });
       }
     }
 
@@ -176,7 +177,7 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
 
     if (!scriptureData || (scriptureData.book === "ERROR" && scriptureData.version === "error")) {
       // Show the actual error
-      console.error("Scripture fetch error:", scriptureData?.cleanText);
+      logger.error("Scripture fetch error", { message: scriptureData?.cleanText });
       // Disable tracing before error response
       dcsClient.disableTracing();
 
@@ -258,7 +259,7 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
     try {
       await unifiedCache.set(cacheKey, response);
     } catch (error) {
-      console.warn("Cache storage failed:", error);
+      logger.warn("Cache storage failed", { error: String(error) });
     }
 
     return {
@@ -269,11 +270,11 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
         "Cache-Control": "public, max-age=300",
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     // Ensure tracing is disabled on error
     dcsClient.disableTracing();
 
-    console.error("Error fetching ULT/GLT scripture:", error);
+    logger.error("Error fetching ULT/GLT scripture", { error: String(error) });
 
     const errorResponse: ULTResponse = {
       success: false,
@@ -314,7 +315,7 @@ async function fetchULTResource(
     // Parse reference to get book information
     const refParts = reference.split(/[\s:.-]/);
     const book = refParts[0]?.toLowerCase();
-    console.log("Parsed reference:", { reference, refParts, book });
+    logger.debug("Parsed reference", { reference, refParts, book });
 
     if (!book) {
       throw new Error("Invalid reference format");
@@ -330,42 +331,41 @@ async function fetchULTResource(
 
     const catalogResponse = await fetch(catalogUrl.toString());
     if (!catalogResponse.ok) {
-      console.error("Failed to fetch catalog:", catalogResponse.status);
+      logger.error("Failed to fetch catalog", { status: catalogResponse.status });
       return null;
     }
 
     const catalog = await catalogResponse.json();
     if (!catalog.data) {
-      console.error("No data in catalog response");
+      logger.error("No data in catalog response");
       return null;
     }
 
-    console.log("Catalog has", catalog.data.length, "resources");
+    logger.debug("Catalog resources", { count: catalog.data.length });
 
     // Find the ULT/GLT resource
     const resourceName = `${language}_${resourceType}`;
-    console.log("Looking for resource:", resourceName);
-    console.log(
-      "Available resources:",
-      catalog.data.map((r) => r.name)
-    );
+    logger.debug("Looking for resource", {
+      resourceName,
+      available: catalog.data.map((r: any) => r.name),
+    });
 
-    const resource = catalog.data.find((r) => r.name === resourceName);
+    const resource = catalog.data.find((r: any) => r.name === resourceName);
 
     if (!resource || !resource.ingredients) {
-      console.error(`Resource ${resourceName} not found or has no ingredients`);
+      logger.error(`Resource ${resourceName} not found or has no ingredients`);
       return null;
     }
 
     // Find the ingredient for our book
     const bookIngredient = resource.ingredients.find(
-      (ing) =>
+      (ing: any) =>
         ing.identifier.toLowerCase() === book.toLowerCase() ||
         ing.identifier.toLowerCase() === getBookCode(book).toLowerCase()
     );
 
     if (!bookIngredient || !bookIngredient.path) {
-      console.error(`No ingredient found for book ${book} in ${resourceName}`);
+      logger.error(`No ingredient found for book ${book} in ${resourceName}`);
       return null;
     }
 
@@ -373,7 +373,7 @@ async function fetchULTResource(
     // Remove leading ./ from path if present
     const cleanPath = bookIngredient.path.replace(/^\.\//, "");
 
-    console.log("Fetching raw content from:", {
+    logger.debug("Fetching raw content", {
       organization,
       resourceName,
       originalPath: bookIngredient.path,
@@ -384,7 +384,7 @@ async function fetchULTResource(
     // Let's use a direct fetch instead for now
     const fileUrl = `https://git.door43.org/${organization}/${resourceName}/raw/branch/master/${cleanPath}`;
 
-    console.log("Fetching from URL:", fileUrl);
+    logger.debug("File URL", { fileUrl });
 
     // Add manual trace entry
     dcsClient.addCustomTrace(traceId, "fetch_usfm", fileUrl, "Started");
@@ -392,7 +392,10 @@ async function fetchULTResource(
     const directResponse = await fetch(fileUrl);
     if (!directResponse.ok) {
       dcsClient.addCustomTrace(traceId, "fetch_usfm", fileUrl, `Failed: ${directResponse.status}`);
-      console.error(`Failed to fetch: ${directResponse.status} ${directResponse.statusText}`);
+      logger.error("Failed to fetch", {
+        status: directResponse.status,
+        statusText: directResponse.statusText,
+      });
       return null;
     }
 
@@ -401,7 +404,7 @@ async function fetchULTResource(
     const content = await directResponse.text();
 
     if (!content) {
-      console.error("No content found in file");
+      logger.error("No content found in file");
       return null;
     }
 
@@ -418,9 +421,8 @@ async function fetchULTResource(
       lastModified: new Date().toISOString(), // FileContent doesn't have lastModified
       book: book.toUpperCase(),
     };
-  } catch (error) {
-    console.error(`Error fetching ${resourceType} resource:`, error);
-    console.error("Full error:", error.stack);
+  } catch (error: any) {
+    logger.error(`Error fetching ${resourceType} resource`, { error: String(error) });
     // Return error details for debugging
     return {
       usfmText: "",
@@ -466,7 +468,7 @@ function extractPassageFromUSFM(usfmText: string, reference: string): string {
 
     return chapterText;
   } catch (error) {
-    console.error("Error extracting passage:", error);
+    logger.error("Error extracting passage", { error: String(error) });
     return usfmText; // Return full text on error
   }
 }
@@ -496,18 +498,18 @@ function generateCleanText(usfmText: string): string {
   let cleanText = usfmText;
 
   // Remove alignment markers
-  cleanText = cleanText.replace(/\\zaln-s[^*]*\*/g, "");
-  cleanText = cleanText.replace(/\\zaln-e\\\*/g, "");
+  cleanText = cleanText.replace(/\\\\zaln-s[^*]*\\\*/g, "");
+  cleanText = cleanText.replace(/\\\\zaln-e\\\\\*/g, "");
 
   // Remove word markers but keep the text
-  cleanText = cleanText.replace(/\\w\s+([^|\\]+)\|[^\\]*?\\w\*/g, "$1");
+  cleanText = cleanText.replace(/\\\\w\\s+([^|\\\\]+)\\|[^\\\\]*?\\\\w\\\*/g, "$1");
 
   // Remove verse and chapter markers
-  cleanText = cleanText.replace(/\\[cv]\s+\d+/g, "");
+  cleanText = cleanText.replace(/\\\\[cv]\\s+\d+/g, "");
 
   // Remove other USFM markers
-  cleanText = cleanText.replace(/\\[a-z]+\*/g, "");
-  cleanText = cleanText.replace(/\\[a-z]+\s/g, "");
+  cleanText = cleanText.replace(/\\\\[a-z]+\\\*/g, "");
+  cleanText = cleanText.replace(/\\\\[a-z]+\\s/g, "");
 
   // Clean up whitespace
   cleanText = cleanText.replace(/\s+/g, " ").trim();
@@ -595,9 +597,10 @@ function calculateAlignmentStats(alignments: WordAlignment[]) {
   const averageConfidence = totalConfidence / total;
 
   const high = alignments.filter((a) => (a.confidence || 0) > 0.8).length;
-  const medium = alignments.filter(
-    (a) => (a.confidence || 0) >= 0.5 && (a.confidence || 0) <= 0.8
-  ).length;
+  const medium = alignments.filter((a) => {
+    const c = a.confidence || 0;
+    return c >= 0.5 && c <= 0.8;
+  }).length;
   const low = alignments.filter((a) => (a.confidence || 0) < 0.5).length;
 
   return {

@@ -5,6 +5,7 @@
  */
 
 import { parseTSV } from "../config/RouteGenerator";
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
@@ -68,7 +69,7 @@ export async function fetchTranslationNotes(
     throw new Error(`Invalid reference format: ${reference}`);
   }
 
-  console.log(`📝 Core translation notes service called with:`, {
+  logger.info(`Core translation notes service called`, {
     reference,
     language,
     organization,
@@ -81,7 +82,7 @@ export async function fetchTranslationNotes(
   const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
-    console.log(`🚀 FAST cache hit for processed notes: ${responseKey}`);
+    logger.info(`FAST cache hit for processed notes`, { key: responseKey });
 
     // Return cached response as-is
     return {
@@ -94,24 +95,21 @@ export async function fetchTranslationNotes(
     };
   }
 
-  console.log(`🔄 Processing fresh notes request: ${responseKey}`);
+  logger.info(`Processing fresh notes request`, { key: responseKey });
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
-  console.log(`🔍 Using unified resource discovery for translation notes...`);
+  logger.debug(`Using unified resource discovery for translation notes...`);
   const resourceInfo = await getResourceForBook(reference, "notes", language, organization);
 
   if (!resourceInfo) {
     throw new Error(`No translation notes found for ${language}/${organization}`);
   }
 
-  console.log(`📖 Using resource: ${resourceInfo.name} (${resourceInfo.title})`);
-  console.log(
-    `🔍 Looking for book: ${parsedRef.book} (lowercased: ${parsedRef.book.toLowerCase()})`
-  );
-  console.log(
-    `📦 Ingredients available:`,
-    resourceInfo.ingredients?.map((i: any) => i.identifier)
-  );
+  logger.info(`Using resource`, { name: resourceInfo.name, title: resourceInfo.title });
+  logger.debug(`Looking for book`, { book: parsedRef.book, lower: parsedRef.book.toLowerCase() });
+  logger.debug(`Ingredients available`, {
+    ingredients: resourceInfo.ingredients?.map((i: any) => i.identifier),
+  });
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
@@ -119,7 +117,10 @@ export async function fetchTranslationNotes(
   );
 
   if (!ingredient) {
-    console.error(`❌ Book ${parsedRef.book} not found in ingredients:`, resourceInfo.ingredients);
+    logger.error(`Book not found in ingredients`, {
+      book: parsedRef.book,
+      ingredients: resourceInfo.ingredients,
+    });
     throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
   }
 
@@ -131,26 +132,26 @@ export async function fetchTranslationNotes(
   let tsvData = await cache.getFileContent(cacheKey);
 
   if (!tsvData) {
-    console.log(`🔄 Cache miss for TN file, downloading...`);
+    logger.info(`Cache miss for TN file, downloading...`);
     const fileResponse = await fetch(fileUrl);
     if (!fileResponse.ok) {
-      console.error(`❌ Failed to fetch TN file: ${fileResponse.status}`);
+      logger.error(`Failed to fetch TN file`, { status: fileResponse.status });
       throw new Error(`Failed to fetch translation notes content: ${fileResponse.status}`);
     }
 
     tsvData = await fileResponse.text();
-    console.log(`📄 Downloaded ${tsvData.length} characters of TSV data`);
+    logger.info(`Downloaded TSV data`, { length: tsvData.length });
 
     // Cache the file content
     await cache.setFileContent(cacheKey, tsvData);
-    console.log(`💾 Cached TN file (${tsvData.length} chars)`);
+    logger.info(`Cached TN file`, { length: tsvData.length });
   } else {
-    console.log(`✅ Cache hit for TN file (${tsvData.length} chars)`);
+    logger.info(`Cache hit for TN file`, { length: tsvData.length });
   }
 
   // Parse the TSV data - automatic parsing preserves exact structure
   const notes = parseTNFromTSV(tsvData, parsedRef, includeIntro, includeContext);
-  console.log(`📝 Parsed ${notes.length} translation notes`);
+  logger.info(`Parsed translation notes`, { count: notes.length });
 
   // Split notes into verse notes and context notes based on reference patterns
   const verseNotes = notes.filter((note) => {
@@ -188,6 +189,97 @@ export async function fetchTranslationNotes(
   await cache.setTransformedResponse(responseKey, result);
 
   return result;
+}
+
+/**
+ * Lightweight integration helper used by tests: fetch Translation Notes directly via
+ * catalog -> TSV URL and map columns with the correct order.
+ * Expected TSV header:
+ * Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote
+ */
+export async function getTranslationNotes(args: {
+  reference: { book: string; chapter: number; verse?: number };
+  options?: { includeContext?: boolean; language?: string; organization?: string };
+}): Promise<{
+  notes: Array<{
+    id: string;
+    reference: string;
+    tags?: string;
+    supportReference?: string;
+    quote?: string;
+    occurrence?: string;
+    note: string;
+  }>;
+}> {
+  const { reference, options } = args;
+  const language = options?.language || "en";
+  const organization = options?.organization || "unfoldingWord";
+
+  // Triggerable by tests via fetch mock
+  const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Translation%20Notes&lang=${language}&owner=${organization}`;
+  const catalogRes = await fetch(catalogUrl);
+  if (!catalogRes.ok) {
+    throw new Error(`Failed to search catalog: ${catalogRes.status}`);
+  }
+  const catalogJson = (await catalogRes.json()) as {
+    data?: Array<{
+      repo_url?: string;
+      contents?: { formats?: Array<{ format: string; url: string }> };
+    }>;
+  };
+  const tsvUrl = catalogJson.data?.[0]?.contents?.formats?.find((f) =>
+    f.format?.includes("tsv")
+  )?.url;
+  if (!tsvUrl) {
+    throw new Error("No TSV URL found in catalog response");
+  }
+
+  const tsvRes = await fetch(tsvUrl);
+  if (!tsvRes.ok) {
+    throw new Error(`Failed to fetch TN TSV: ${tsvRes.status}`);
+  }
+  const tsv = await tsvRes.text();
+
+  // Parse TSV preserving columns exactly
+  const lines = tsv.split("\n").filter((l) => l.trim().length > 0);
+  if (lines.length === 0) return { notes: [] };
+  const headers = lines[0].split("\t");
+  const rows = lines.slice(1).map((line) => line.split("\t"));
+
+  // Column indices based on expected header order
+  const idx = {
+    Reference: headers.indexOf("Reference"),
+    ID: headers.indexOf("ID"),
+    Tags: headers.indexOf("Tags"),
+    SupportReference: headers.indexOf("SupportReference"),
+    Quote: headers.indexOf("Quote"),
+    Occurrence: headers.indexOf("Occurrence"),
+    Note: headers.indexOf("Note"),
+  };
+
+  const notes = rows
+    .filter((cols) => {
+      const ref = cols[idx.Reference] || "";
+      const m = ref.match(/^(\d+):(\d+)/);
+      if (!m) return false;
+      const ch = parseInt(m[1]);
+      const vs = parseInt(m[2]);
+      if (reference.verse) {
+        return ch === reference.chapter && vs === reference.verse;
+      }
+      return ch === reference.chapter;
+    })
+    .map((cols) => ({
+      reference: cols[idx.Reference] || "",
+      id: cols[idx.ID] || "",
+      tags: idx.Tags >= 0 ? cols[idx.Tags] || "" : "",
+      supportReference: idx.SupportReference >= 0 ? cols[idx.SupportReference] || "" : "",
+      quote: idx.Quote >= 0 ? cols[idx.Quote] || "" : "",
+      occurrence: idx.Occurrence >= 0 ? cols[idx.Occurrence] || "" : "",
+      note: cols[idx.Note] || "",
+    }));
+
+  return { notes };
 }
 
 /**
