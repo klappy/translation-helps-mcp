@@ -326,7 +326,12 @@ export class ZipResourceFetcher2 {
             [];
           const ingredient = (
             resIngredients as Array<{ identifier?: string; path?: string }>
-          ).find((ing) => normalize(ing?.identifier) === bookKey);
+          ).find((ing) => {
+            const id = normalize(ing?.identifier);
+            return (
+              id === bookKey || id.endsWith(bookKey) || id.includes(bookKey)
+            );
+          });
           if (!ingredient?.path) {
             logger.debug(
               `No ingredient found for ${reference.book} in ${resource.name}`,
