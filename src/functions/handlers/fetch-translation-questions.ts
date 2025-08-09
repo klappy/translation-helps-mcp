@@ -1,91 +1,34 @@
 /**
- * Platform-agnostic Fetch Translation Questions Handler
- * Can be used by both Netlify and SvelteKit/Cloudflare
+ * Unified, config-driven handler for Translation Questions
+ * Mirrors scripture by delegating to RouteGenerator with ZIP-cached data source
  */
 
-import { Errors } from "../../utils/errorEnvelope.js";
-import { questionsResponseSchema } from "../../utils/schemas.js";
-import { softValidate } from "../../utils/validator.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
-import { fetchTranslationQuestions } from "../translation-questions-service";
+import type { PlatformHandler } from "../platform-adapter";
+import { routeGenerator } from "../../config/RouteGenerator.js";
+import {
+  endpointRegistry,
+  initializeAllEndpoints,
+} from "../../config/endpoints/index.js";
 
-export const fetchTranslationQuestionsHandler: PlatformHandler = async (
-  request: PlatformRequest
-): Promise<PlatformResponse> => {
-  const startTime = Date.now();
+// Initialize endpoint registry once
+try {
+  initializeAllEndpoints();
+} catch {
+  // no-op; endpoints may already be initialized
+}
 
-  // Handle CORS
-  if (request.method === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers":
-          "Content-Type, Cache-Control, X-Cache-Bypass, X-Force-Refresh",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      },
-      body: "",
-    };
-  }
+// Resolve endpoint config and generate the platform-agnostic handler
+const tqConfig = endpointRegistry.get("fetch-translation-questions");
+if (!tqConfig) {
+  throw new Error(
+    "fetch-translation-questions endpoint configuration not found",
+  );
+}
+if (!tqConfig.enabled) {
+  throw new Error("fetch-translation-questions endpoint is disabled");
+}
 
-  try {
-    // Parse parameters from either query string or POST body
-    let params: { reference?: string; language?: string; organization?: string } = {};
+const generated = routeGenerator.generateHandler(tqConfig);
 
-    if (request.method === "POST" && request.body) {
-      try {
-        params = JSON.parse(request.body);
-      } catch {
-        params = {};
-      }
-    }
-
-    // Prefer query parameters over body parameters
-    const referenceParam = request.queryStringParameters.reference || params.reference;
-    const language = request.queryStringParameters.language || params.language || "en";
-    const organization =
-      request.queryStringParameters.organization || params.organization || "unfoldingWord";
-
-    if (!referenceParam) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify(Errors.missingParameter("reference")),
-      };
-    }
-
-    // Fetch translation questions
-    const result = await fetchTranslationQuestions({
-      reference: referenceParam,
-      language,
-      organization,
-    });
-
-    const duration = Date.now() - startTime;
-
-    // Soft schema validation (warn-only)
-    softValidate(questionsResponseSchema, result, "fetch-translation-questions");
-
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=3600",
-        "X-Response-Time": `${duration}ms`,
-      },
-      body: JSON.stringify(result),
-    };
-  } catch (error) {
-    const duration = Date.now() - startTime;
-
-    return {
-      statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "X-Response-Time": `${duration}ms`,
-      },
-      body: JSON.stringify(Errors.internal()),
-    };
-  }
-};
+export const fetchTranslationQuestionsHandler: PlatformHandler =
+  generated.handler;
