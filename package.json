@@ -96,11 +96,17 @@
   "license": "MIT",
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
-      "eslint --fix",
-      "prettier --write"
+      "prettier --write",
+      "eslint --fix"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"
+    ],
+    "**/*.svelte": [
+      "prettier --plugin-search-dir ui --write"
+    ],
+    "ui/**/*.{svelte,ts,tsx,js,jsx,css,scss,md}": [
+      "cd ui && npx prettier --write"
     ],
     "src/functions/handlers/*.ts": [
       "eslint --fix",
