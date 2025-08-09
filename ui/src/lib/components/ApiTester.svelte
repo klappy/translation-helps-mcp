@@ -24,7 +24,7 @@
 		};
 	}
 
-	export let endpoint: Endpoint;
+    export let endpoint: Endpoint | null = null;
 	export let loading: boolean = false;
 	export let result: any = null;
 
@@ -93,8 +93,8 @@
 </script>
 
 <div class="rounded-lg border border-white/10 bg-white/5 p-6">
-	<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-		<h4 class="text-lg font-semibold text-white">Try {endpoint.name}</h4>
+    <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h4 class="text-lg font-semibold text-white">Try {endpoint ? endpoint.name : 'Endpoint'}</h4>
 		<button
 			on:click={handleSubmit}
 			disabled={loading}
@@ -110,7 +110,7 @@
 		</button>
 	</div>
 
-	{#if endpoint.parameters && endpoint.parameters.length > 0}
+    {#if endpoint && endpoint.parameters && endpoint.parameters.length > 0}
 		<div class="mb-6 grid gap-4">
 			{#each endpoint.parameters as param}
 				{#if param.name !== 'includeAlignment'}
@@ -219,7 +219,7 @@
 	{/if}
 
 	<!-- Performance Indicators -->
-	{#if result?._metadata}
+    {#if result?._metadata}
 		<div class="mb-6 rounded-lg bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-500/30 p-4">
 			<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 				<!-- Response Time -->

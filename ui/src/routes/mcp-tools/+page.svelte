@@ -60,20 +60,20 @@
 
 			console.log('🎉 MCP Tools successfully connected to configuration system!');
 			isInitialized = true;
-			
+
 			// Check URL for focused endpoint
 			const urlParams = new URLSearchParams($page.url.search);
 			const toolParam = urlParams.get('tool');
 			const categoryParam = $page.url.hash.replace('#', '') || 'core';
-			
+
 			if (categoryParam && ['core', 'extended', 'experimental'].includes(categoryParam)) {
 				selectedCategory = categoryParam as MainCategory;
 			}
-			
+
 			if (toolParam) {
 				// Find the endpoint and focus it
 				const allEndpoints = [...coreEndpoints, ...extendedEndpoints, ...experimentalEndpoints];
-				const endpoint = allEndpoints.find(e => e.name === toolParam);
+				const endpoint = allEndpoints.find((e) => e.name === toolParam);
 				if (endpoint) {
 					selectEndpoint(endpoint);
 				}
@@ -151,17 +151,19 @@
 	}
 
 	// Handle endpoint selection
-	function selectEndpoint(endpoint: any) {
+  function selectEndpoint(endpoint: any | null) {
 		// Transform endpoint config to ApiTester format
-		selectedEndpoint = transformEndpointForTesting(endpoint);
+    selectedEndpoint = endpoint ? transformEndpointForTesting(endpoint) : null;
 		// Clear previous results when selecting new endpoint
 		apiResult = null;
 		isLoading = false;
-		
+
 		// Update URL to persist selection
 		const url = new URL(window.location.href);
 		url.hash = selectedCategory;
-		url.searchParams.set('tool', endpoint.name);
+    if (endpoint?.name) {
+      url.searchParams.set('tool', endpoint.name);
+    }
 		goto(url.toString(), { replaceState: true, noScroll: true });
 	}
 
@@ -227,9 +229,10 @@
 						hits: xrayTrace.cacheStats.hits,
 						misses: xrayTrace.cacheStats.misses,
 						total: xrayTrace.cacheStats.total,
-						hitRate: xrayTrace.cacheStats.total > 0 
-							? xrayTrace.cacheStats.hits / xrayTrace.cacheStats.total 
-							: 0
+						hitRate:
+							xrayTrace.cacheStats.total > 0
+								? xrayTrace.cacheStats.hits / xrayTrace.cacheStats.total
+								: 0
 					}
 				: null,
 
@@ -265,7 +268,7 @@
 			`📊 Performance data captured for ${endpoint.name}:`,
 			performanceData[endpoint.name]
 		);
-		
+
 		// Debug X-ray data specifically
 		console.log(`🔍 X-ray trace data:`, {
 			traceId: performanceData[endpoint.name].traceId,
@@ -273,7 +276,7 @@
 			calls: performanceData[endpoint.name].calls,
 			cacheStats: performanceData[endpoint.name].cacheStats
 		});
-		
+
 		// Force reactivity update
 		performanceData = performanceData;
 	}
@@ -313,10 +316,10 @@
 			// Check content type to determine how to parse response
 			const contentType = response.headers.get('content-type') || '';
 			let responseData;
-			
-            if (contentType.includes('application/json')) {
-                responseData = await response.json();
-            } else if (contentType.includes('text/markdown') || contentType.includes('text/plain')) {
+
+			if (contentType.includes('application/json')) {
+				responseData = await response.json();
+			} else if (contentType.includes('text/markdown') || contentType.includes('text/plain')) {
 				// For markdown/text responses, wrap in a simple object
 				const text = await response.text();
 				responseData = {
@@ -332,56 +335,58 @@
 				responseData = await response.json();
 			}
 
-            // Attach X-Ray and timing from headers if the body doesn't include it
-            try {
-                const xrayHeader = response.headers.get('X-Xray-Trace');
-                if (xrayHeader) {
-                    const cleaned = xrayHeader.replace(/\s+/g, '');
-                    // Decode base64-encoded JSON trace
-                    const decoded = JSON.parse(atob(cleaned));
-                    if (!responseData.metadata) responseData.metadata = {};
-                    if (!responseData.metadata.xrayTrace) {
-                        responseData.metadata.xrayTrace = decoded;
-                    }
-                }
+			// Attach X-Ray and timing from headers if the body doesn't include it
+			try {
+				const xrayHeader = response.headers.get('X-Xray-Trace');
+				if (xrayHeader) {
+					const cleaned = xrayHeader.replace(/\s+/g, '');
+					// Decode base64-encoded JSON trace
+					const decoded = JSON.parse(atob(cleaned));
+					if (!responseData.metadata) responseData.metadata = {};
+					if (!responseData.metadata.xrayTrace) {
+						responseData.metadata.xrayTrace = decoded;
+					}
+				}
 
-                // Response time
-                const rt = response.headers.get('X-Response-Time');
-                if (rt) {
-                    const rtNum = parseInt(rt.replace(/[^0-9]/g, ''), 10);
-                    if (!isNaN(rtNum)) {
-                        if (!responseData._metadata) responseData._metadata = {};
-                        if (responseData._metadata.responseTime === undefined) {
-                            responseData._metadata.responseTime = rtNum;
-                        }
-                        if (!responseData.metadata) responseData.metadata = {};
-                        if (responseData.metadata.responseTime === undefined) {
-                            responseData.metadata.responseTime = rtNum;
-                        }
-                    }
-                }
+				// Response time
+				const rt = response.headers.get('X-Response-Time');
+				if (rt) {
+					const rtNum = parseInt(rt.replace(/[^0-9]/g, ''), 10);
+					if (!isNaN(rtNum)) {
+						if (!responseData._metadata) responseData._metadata = {};
+						if (responseData._metadata.responseTime === undefined) {
+							responseData._metadata.responseTime = rtNum;
+						}
+						if (!responseData.metadata) responseData.metadata = {};
+						if (responseData.metadata.responseTime === undefined) {
+							responseData.metadata.responseTime = rtNum;
+						}
+					}
+				}
 
-                // Cache info
-                const cacheStatus = response.headers.get('X-Cache-Status');
-                if (cacheStatus) {
-                    if (!responseData._metadata) responseData._metadata = {};
-                    if (!responseData.metadata) responseData.metadata = {};
-                    responseData._metadata.cacheStatus = responseData._metadata.cacheStatus || cacheStatus.toLowerCase();
-                    responseData.metadata.cacheStatus = responseData.metadata.cacheStatus || cacheStatus.toLowerCase();
-                }
+				// Cache info
+				const cacheStatus = response.headers.get('X-Cache-Status');
+				if (cacheStatus) {
+					if (!responseData._metadata) responseData._metadata = {};
+					if (!responseData.metadata) responseData.metadata = {};
+					responseData._metadata.cacheStatus =
+						responseData._metadata.cacheStatus || cacheStatus.toLowerCase();
+					responseData.metadata.cacheStatus =
+						responseData.metadata.cacheStatus || cacheStatus.toLowerCase();
+				}
 
-                // Trace ID
-                const traceId = response.headers.get('X-Trace-Id');
-                if (traceId) {
-                    if (!responseData._metadata) responseData._metadata = {};
-                    if (!responseData.metadata) responseData.metadata = {};
-                    responseData._metadata.traceId = responseData._metadata.traceId || traceId;
-                    responseData.metadata.traceId = responseData.metadata.traceId || traceId;
-                }
-            } catch (e) {
-                console.warn('Failed to attach X-Ray headers to response data', e);
-            }
-			
+				// Trace ID
+				const traceId = response.headers.get('X-Trace-Id');
+				if (traceId) {
+					if (!responseData._metadata) responseData._metadata = {};
+					if (!responseData.metadata) responseData.metadata = {};
+					responseData._metadata.traceId = responseData._metadata.traceId || traceId;
+					responseData.metadata.traceId = responseData.metadata.traceId || traceId;
+				}
+			} catch (e) {
+				console.warn('Failed to attach X-Ray headers to response data', e);
+			}
+
 			console.log(`✅ Response received:`, responseData);
 
 			// Set the result for display
@@ -430,7 +435,7 @@
 			} else if (endpoint.name === 'get-words-for-reference') {
 				testParams.reference = 'John 3:16';
 			} else if (endpoint.name === 'browse-translation-words') {
-				// No params needed  
+				// No params needed
 			} else if (endpoint.name === 'browse-translation-academy') {
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
@@ -447,7 +452,7 @@
 					params.append(key, String(value));
 				}
 			});
-			
+
 			// Force JSON format for endpoints that support multiple formats
 			if (endpoint.name === 'browse-translation-academy' && !params.has('format')) {
 				params.append('format', 'json');
@@ -1215,17 +1220,21 @@
 					{:else}
 						<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 							{#each experimentalEndpoints as endpoint}
-								<div class="group rounded-lg border border-purple-700/30 bg-purple-900/10 p-4 hover:bg-purple-900/20 transition-colors">
+								<div
+									class="group rounded-lg border border-purple-700/30 bg-purple-900/10 p-4 transition-colors hover:bg-purple-900/20"
+								>
 									<h3 class="flex items-center gap-2 font-semibold text-purple-200">
 										<span class="text-lg">{endpoint.title}</span>
 										{#if !endpoint.enabled}
-											<span class="rounded-full bg-purple-700/30 px-2 py-0.5 text-xs text-purple-300">
+											<span
+												class="rounded-full bg-purple-700/30 px-2 py-0.5 text-xs text-purple-300"
+											>
 												Coming Soon
 											</span>
 										{/if}
 									</h3>
 									<p class="mt-2 text-sm text-purple-400">{endpoint.description}</p>
-									<p class="mt-2 text-xs text-purple-500/70 font-mono">{endpoint.path}</p>
+									<p class="mt-2 font-mono text-xs text-purple-500/70">{endpoint.path}</p>
 								</div>
 							{/each}
 						</div>
