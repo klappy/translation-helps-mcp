@@ -1,4 +1,3 @@
-import { logger } from "./utils/logger.js";
 /**
  * SINGLE SOURCE OF TRUTH FOR VERSION INFORMATION
  *
@@ -18,25 +17,7 @@ export function getVersion(): string {
   if (cachedVersion) {
     return cachedVersion;
   }
-
-<<<<<<< Updated upstream
   // Avoid require() to satisfy ESM + lint; rely on env or fallback below
-=======
-  // Try to read package.json dynamically (Node.js environments)
-  if (typeof process !== "undefined" && typeof require !== "undefined") {
-    try {
-      // Try to require package.json from parent directory
-      const packageJson = require("../package.json");
-      if (packageJson.version && typeof packageJson.version === "string") {
-        cachedVersion = packageJson.version;
-        return packageJson.version;
-      }
-    } catch (error) {
-      // If require fails, continue to other methods
-      logger.warn("Could not load package.json dynamically", { error: String(error) });
-    }
-  }
->>>>>>> Stashed changes
 
   // Fallback to environment variable if set during build
   if (typeof process !== "undefined" && process.env?.APP_VERSION) {
