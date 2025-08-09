@@ -314,9 +314,9 @@
 			const contentType = response.headers.get('content-type') || '';
 			let responseData;
 			
-			if (contentType.includes('application/json')) {
-				responseData = await response.json();
-			} else if (contentType.includes('text/markdown') || contentType.includes('text/plain')) {
+            if (contentType.includes('application/json')) {
+                responseData = await response.json();
+            } else if (contentType.includes('text/markdown') || contentType.includes('text/plain')) {
 				// For markdown/text responses, wrap in a simple object
 				const text = await response.text();
 				responseData = {
@@ -331,6 +331,56 @@
 				// Default to JSON parsing
 				responseData = await response.json();
 			}
+
+            // Attach X-Ray and timing from headers if the body doesn't include it
+            try {
+                const xrayHeader = response.headers.get('X-Xray-Trace');
+                if (xrayHeader) {
+                    const cleaned = xrayHeader.replace(/\s+/g, '');
+                    // Decode base64-encoded JSON trace
+                    const decoded = JSON.parse(atob(cleaned));
+                    if (!responseData.metadata) responseData.metadata = {};
+                    if (!responseData.metadata.xrayTrace) {
+                        responseData.metadata.xrayTrace = decoded;
+                    }
+                }
+
+                // Response time
+                const rt = response.headers.get('X-Response-Time');
+                if (rt) {
+                    const rtNum = parseInt(rt.replace(/[^0-9]/g, ''), 10);
+                    if (!isNaN(rtNum)) {
+                        if (!responseData._metadata) responseData._metadata = {};
+                        if (responseData._metadata.responseTime === undefined) {
+                            responseData._metadata.responseTime = rtNum;
+                        }
+                        if (!responseData.metadata) responseData.metadata = {};
+                        if (responseData.metadata.responseTime === undefined) {
+                            responseData.metadata.responseTime = rtNum;
+                        }
+                    }
+                }
+
+                // Cache info
+                const cacheStatus = response.headers.get('X-Cache-Status');
+                if (cacheStatus) {
+                    if (!responseData._metadata) responseData._metadata = {};
+                    if (!responseData.metadata) responseData.metadata = {};
+                    responseData._metadata.cacheStatus = responseData._metadata.cacheStatus || cacheStatus.toLowerCase();
+                    responseData.metadata.cacheStatus = responseData.metadata.cacheStatus || cacheStatus.toLowerCase();
+                }
+
+                // Trace ID
+                const traceId = response.headers.get('X-Trace-Id');
+                if (traceId) {
+                    if (!responseData._metadata) responseData._metadata = {};
+                    if (!responseData.metadata) responseData.metadata = {};
+                    responseData._metadata.traceId = responseData._metadata.traceId || traceId;
+                    responseData.metadata.traceId = responseData.metadata.traceId || traceId;
+                }
+            } catch (e) {
+                console.warn('Failed to attach X-Ray headers to response data', e);
+            }
 			
 			console.log(`✅ Response received:`, responseData);
 
