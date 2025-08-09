@@ -3,6 +3,7 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { fetchResources } from "../resources-service";
 import type { CacheBypassOptions } from "../unified-cache";
@@ -35,10 +36,7 @@ export const fetchResourcesHandler: PlatformHandler = async (
     if (!referenceParam) {
       return {
         statusCode: 400,
-        body: JSON.stringify({
-          error: "Missing reference parameter",
-          code: "MISSING_PARAMETER",
-        }),
+        body: JSON.stringify(Errors.missingParameter("reference")),
       };
     }
 
@@ -80,7 +78,6 @@ export const fetchResourcesHandler: PlatformHandler = async (
       body: JSON.stringify(result),
     };
   } catch (error) {
-    console.error("Resources API Error:", error);
     const duration = Date.now() - startTime;
 
     return {
@@ -90,10 +87,7 @@ export const fetchResourcesHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Failed to fetch resources",
-        code: "INTERNAL_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

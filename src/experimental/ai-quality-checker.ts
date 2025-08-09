@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger.js";
 /**
  * ⚠️ ⚠️ ⚠️ EXPERIMENTAL FEATURE - DO NOT USE IN PRODUCTION ⚠️ ⚠️ ⚠️
  *
@@ -303,7 +304,7 @@ export class AIQualityChecker {
           failedChecks.push(checkType);
         }
       } catch (error) {
-        console.warn(`Quality check ${checkType} failed:`, error);
+        logger.warn(`Quality check ${checkType} failed`, { error: String(error) });
         failedChecks.push(checkType);
       }
     }

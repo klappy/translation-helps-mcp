@@ -3,6 +3,8 @@
  * Provides detailed catalog information about available resources
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
+import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { getResourceCatalogInfo } from "../resources-service";
 
@@ -32,16 +34,11 @@ export const resourceCatalogHandler: PlatformHandler = async (
     if (!referenceParam) {
       return {
         statusCode: 400,
-        body: JSON.stringify({
-          error: "Missing reference parameter",
-          code: "MISSING_PARAMETER",
-          example:
-            "/api/resource-catalog?reference=John+3:16&language=en&organization=unfoldingWord",
-        }),
+        body: JSON.stringify(Errors.missingParameter("reference")),
       };
     }
 
-    console.log(`📋 Resource catalog request for: ${referenceParam} (${language}/${organization})`);
+    logger.info(`Resource catalog request`, { reference: referenceParam, language, organization });
 
     // Get the detailed catalog information
     const catalogInfo = await getResourceCatalogInfo(referenceParam, language, organization);
@@ -61,7 +58,6 @@ export const resourceCatalogHandler: PlatformHandler = async (
     };
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error("Resource catalog error:", error);
 
     return {
       statusCode: 500,
@@ -70,11 +66,7 @@ export const resourceCatalogHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Failed to fetch resource catalog",
-        message: error instanceof Error ? error.message : "Unknown error",
-        code: "CATALOG_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

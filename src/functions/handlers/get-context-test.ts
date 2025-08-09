@@ -3,6 +3,7 @@
  * Returns hardcoded aggregated results to test the structure
  */
 
+import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const getContextHandler: PlatformHandler = async (
@@ -42,6 +43,12 @@ export const getContextHandler: PlatformHandler = async (
         }),
       };
     }
+
+    logger.info("Returning test context payload", {
+      reference: referenceParam,
+      language,
+      organization,
+    });
 
     // Return hardcoded test data
     const testContext = {
@@ -102,7 +109,7 @@ export const getContextHandler: PlatformHandler = async (
       body: JSON.stringify(testContext),
     };
   } catch (error) {
-    console.error("Get Context API Error:", error);
+    logger.error("Get Context API Error (test)", { error: String(error) });
     const duration = Date.now() - startTime;
 
     return {

@@ -10,7 +10,8 @@ import {
   ResourceType,
 } from "../../constants/terminology.js";
 import { DCSApiClient } from "../../services/DCSApiClient.js";
-import type { PlatformHandler } from "../platform-adapter.js";
+import { logger } from "../../utils/logger.js";
+import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { unifiedCache } from "../unified-cache.js";
 
 interface RCLink {
@@ -75,16 +76,14 @@ interface RCLinksResponse {
  * Main handler for Resource Container link resolution
  */
 export const resourceContainerLinksHandler: PlatformHandler = async (
-  request,
-) => {
+  request: PlatformRequest
+): Promise<PlatformResponse> => {
   const startTime = Date.now();
   const url = new URL(request.url);
 
   // Extract parameters
-  const language =
-    url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
-  const organization =
-    url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
+  const language = url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
+  const organization = url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
   const resourceType = url.searchParams.get("resourceType") as ResourceType;
   const includeManifest = url.searchParams.get("includeManifest") !== "false";
   const bypassCache = url.searchParams.get("bypassCache") === "true";
@@ -115,7 +114,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
     if (!bypassCache) {
       const cachedResult = await unifiedCache.get(cacheKey);
       if (cachedResult) {
-        console.log(`🚀 RC Links cache HIT for: ${cacheKey}`);
+        logger.info(`🚀 RC Links cache HIT for: ${cacheKey}`);
         return {
           statusCode: 200,
           headers: {
@@ -130,9 +129,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
       }
     }
 
-    console.log(
-      `🔄 RC Links cache MISS, fetching fresh data for: ${language}:${resourceType}`,
-    );
+    logger.info(`🔄 RC Links cache MISS, fetching fresh data for: ${language}:${resourceType}`);
 
     // Fetch fresh data
     const dcsClient = new DCSApiClient();
@@ -141,7 +138,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
       language,
       organization,
       resourceType,
-      includeManifest,
+      includeManifest
     );
 
     if (!result) {
@@ -164,7 +161,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
     // Cache the result
     if (!bypassCache) {
       await unifiedCache.set(cacheKey, result, "transformedResponse");
-      console.log(`💾 Cached RC Links response: ${cacheKey}`);
+      logger.info(`💾 Cached RC Links response: ${cacheKey}`);
     }
 
     const responseTime = Date.now() - startTime;
@@ -191,7 +188,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
       body: JSON.stringify(response),
     };
   } catch (error) {
-    console.error("RC Links error:", error);
+    logger.error("Resource Container Links API Error", { error: String(error) });
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     const errorResponse: RCLinksResponse = {
@@ -219,7 +216,7 @@ async function fetchRCLinks(
   language: string,
   organization: string,
   resourceType: ResourceType,
-  includeManifest: boolean,
+  includeManifest: boolean
 ): Promise<{
   language: string;
   organization: string;
@@ -237,13 +234,11 @@ async function fetchRCLinks(
     const manifestResponse = await dcsClient.getFileContent(
       organization,
       `${language}_${resourceType}`,
-      "manifest.yaml",
+      "manifest.yaml"
     );
 
     if (!manifestResponse.success || !manifestResponse.data) {
-      console.warn(
-        `No RC manifest found for ${organization}/${language}_${resourceType}`,
-      );
+      logger.warn(`No RC manifest found for ${organization}/${language}_${resourceType}`);
       return null;
     }
 
@@ -252,7 +247,7 @@ async function fetchRCLinks(
       manifestResponse.data.content || manifestResponse.data.toString(),
       language,
       organization,
-      resourceType,
+      resourceType
     );
 
     if (!manifest) {
@@ -317,7 +312,7 @@ async function fetchRCLinks(
       },
     };
   } catch (error) {
-    console.error("Error fetching RC links:", error);
+    logger.error("Error fetching RC links:", error);
     return null;
   }
 }
@@ -329,7 +324,7 @@ function parseRCManifest(
   content: string,
   language: string,
   organization: string,
-  resourceType: ResourceType,
+  resourceType: ResourceType
 ): RCManifest | null {
   try {
     // This is a simplified parser - in practice, RC manifests would be in YAML format
@@ -351,7 +346,7 @@ function parseRCManifest(
 
     return manifest;
   } catch (error) {
-    console.error("Error parsing RC manifest:", error);
+    logger.error("Error parsing RC manifest:", error);
     return null;
   }
 }
@@ -361,7 +356,7 @@ function parseRCManifest(
  */
 function getDefaultDependencies(
   resourceType: ResourceType,
-  language: string,
+  language: string
 ): RCManifest["dependencies"] {
   const dependencies: RCManifest["dependencies"] = [];
 
@@ -409,7 +404,7 @@ function getDefaultDependencies(
  */
 function getDefaultRelationships(
   resourceType: ResourceType,
-  language: string,
+  language: string
 ): RCManifest["relationships"] {
   const relationships: RCManifest["relationships"] = [];
 

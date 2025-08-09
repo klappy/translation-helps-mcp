@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger.js";
 /**
  * Request Coalescing System
  *
@@ -66,7 +67,7 @@ export class RequestCoalescer {
       this.cleanupExpiredRequests();
     }, 5000); // Cleanup every 5 seconds
 
-    console.log("[RequestCoalescer] Initialized with options:", this.options);
+    logger.info("[RequestCoalescer] Initialized", { options: this.options });
   }
 
   /**
@@ -90,9 +91,10 @@ export class RequestCoalescer {
         this.updateCoalescingRate();
       }
 
-      console.log(
-        `[RequestCoalescer] Coalescing request for key: ${key} (${existing.requestCount} total)`
-      );
+      logger.debug("[RequestCoalescer] Coalescing request", {
+        key,
+        requestCount: existing.requestCount,
+      });
 
       try {
         const data = await existing.promise;
@@ -117,7 +119,7 @@ export class RequestCoalescer {
     }
 
     // No pending request - create new one
-    console.log(`[RequestCoalescer] Creating new request for key: ${key}`);
+    logger.debug(`[RequestCoalescer] Creating new request`, { key });
 
     const promise = fetcher().finally(() => {
       // Clean up when request completes
@@ -216,7 +218,7 @@ export class RequestCoalescer {
 
     // Cancel all pending requests
     this.pendingRequests.clear();
-    console.log("[RequestCoalescer] Destroyed and cleaned up resources");
+    logger.info("[RequestCoalescer] Destroyed and cleaned up resources");
   }
 
   // Private helper methods
@@ -275,7 +277,7 @@ export class RequestCoalescer {
     }
 
     if (expiredKeys.length > 0) {
-      console.log(`[RequestCoalescer] Cleaning up ${expiredKeys.length} expired requests`);
+      logger.info(`[RequestCoalescer] Cleaning up expired requests`, { count: expiredKeys.length });
       expiredKeys.forEach((key) => this.pendingRequests.delete(key));
 
       if (this.options.enableMetrics) {

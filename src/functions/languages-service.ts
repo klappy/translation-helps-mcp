@@ -4,6 +4,7 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 
 export interface Language {
@@ -36,7 +37,7 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
   const startTime = Date.now();
   const { organization = "unfoldingWord", includeAlternateNames = false } = options;
 
-  console.log(`🌍 Core languages service called with:`, {
+  logger.info(`Core languages service called`, {
     organization,
     includeAlternateNames,
   });
@@ -46,7 +47,7 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
   const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
-    console.log(`🚀 FAST cache hit for processed languages: ${responseKey}`);
+    logger.info(`Languages cache HIT`, { responseKey });
     return {
       languages: cachedResponse.value.languages || [],
       metadata: {
@@ -59,15 +60,15 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
     };
   }
 
-  console.log(`🔄 Processing fresh languages request: ${responseKey}`);
+  logger.info(`Languages cache MISS`, { responseKey });
 
   // Search catalog for all available resources to extract languages
   const catalogUrl = `https://git.door43.org/api/v1/catalog/search?owner=${organization}`;
-  console.log(`🔍 Searching catalog: ${catalogUrl}`);
+  logger.debug(`Searching catalog`, { catalogUrl });
 
   const catalogResponse = await fetch(catalogUrl);
   if (!catalogResponse.ok) {
-    console.error(`❌ Catalog search failed: ${catalogResponse.status}`);
+    logger.error(`Catalog search failed`, { status: catalogResponse.status });
     throw new Error(`Failed to search catalog: ${catalogResponse.status}`);
   }
 
@@ -80,7 +81,7 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
     }>;
   };
 
-  console.log(`📊 Found ${catalogData.data?.length || 0} resources`);
+  logger.debug(`Catalog resources found`, { count: catalogData.data?.length || 0 });
 
   if (!catalogData.data || catalogData.data.length === 0) {
     throw new Error(`No resources found for ${organization}`);
@@ -120,7 +121,7 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
   }
 
   const languages = Array.from(languageMap.values()).sort((a, b) => a.code.localeCompare(b.code));
-  console.log(`🌍 Extracted ${languages.length} unique languages`);
+  logger.info(`Extracted unique languages`, { count: languages.length });
 
   const result: LanguagesResult = {
     languages,

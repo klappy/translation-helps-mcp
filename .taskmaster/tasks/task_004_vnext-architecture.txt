@@ -1,0 +1,35 @@
+# Task ID: 4
+# Title: Caching Model Hardening (KV-first)
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Enforce KV-first with memory fallback only; unify TTLs/prefixes; namespaced file cache keys; fix timing reporting.
+# Details:
+- KV-first enforcement; memory fallback only when KV unavailable
+- Optional tiny LRU behind env flag (off in prod)
+- Unify TTLs/prefixes; document retention
+- Namespaced file cache for extracted ZIPs: internal://zip/<org/repo:ref>/<filePath>
+- Ensure timing reflects KV hit latency
+
+# Test Strategy:
+Cache hit/miss tests; timing assertions; key naming verified
+
+# Subtasks:
+## 1. Enforce KV-first, memory fallback only [pending]
+### Dependencies: None
+### Description: Ensure cache path uses KV by default; memory only when KV unavailable.
+### Details:
+Add env guard for optional small LRU; disabled in prod.
+
+## 2. Unify TTLs & prefixes [pending]
+### Dependencies: None
+### Description: Centralize TTLs/prefixes for all cache entries; document retention.
+### Details:
+Document in code and docs; align with KV constraints.
+
+## 3. Namespaced file cache keys [pending]
+### Dependencies: None
+### Description: Cache extracted ZIP files with internal://zip/<org/repo:ref>/<filePath>.
+### Details:
+Implement and verify hit ratios + timing.
+

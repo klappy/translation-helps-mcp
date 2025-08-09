@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger.js";
 /**
  * Response Compression Middleware
  *
@@ -401,7 +402,7 @@ export class CompressionMiddleware {
           },
         };
       } catch (error) {
-        console.error("[Compression] Error compressing response:", error);
+        logger.error("[Compression] Error compressing response", { error: String(error) });
 
         // Fall back to uncompressed response
         if (this.config.measurePerformance) {

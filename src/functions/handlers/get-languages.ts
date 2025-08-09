@@ -3,9 +3,12 @@
  * Contains only business logic, caching handled by platform wrappers
  */
 
-import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
-import { getLanguages } from "../languages-service";
+import { Errors } from "../../utils/errorEnvelope.js";
+import { languagesResponseSchema } from "../../utils/schemas.js";
+import { softValidate } from "../../utils/validator.js";
 import { getVersion } from "../../version.js";
+import { getLanguages } from "../languages-service";
+import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const getLanguagesHandler: PlatformHandler = async (
   request: PlatformRequest
@@ -45,7 +48,9 @@ export const getLanguagesHandler: PlatformHandler = async (
         languagesFound: result.metadata.languagesFound,
         version: getVersion(),
       },
-    };
+    } as const;
+
+    softValidate(languagesResponseSchema, response, "get-languages");
 
     return {
       statusCode: 200,
@@ -55,14 +60,9 @@ export const getLanguagesHandler: PlatformHandler = async (
       body: JSON.stringify(response),
     };
   } catch (error) {
-    console.error("Languages error:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: errorMessage,
-        code: "FETCH_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

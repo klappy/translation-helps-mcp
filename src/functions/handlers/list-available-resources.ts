@@ -4,6 +4,7 @@
  */
 
 import { ResourceDescriptions, ResourceType } from "../../constants/terminology.js";
+import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const listAvailableResourcesHandler: PlatformHandler = async (
@@ -30,6 +31,7 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
     const organization = request.queryStringParameters.organization;
     const query = request.queryStringParameters.query;
 
+    logger.info("Listing available resources", { language, organization, query });
     const resourceTypes = [
       {
         type: ResourceType.ULT,
@@ -118,7 +120,7 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
       }),
     };
   } catch (error) {
-    console.error("List Available Resources API Error:", error);
+    logger.error("List Available Resources API Error", { error: String(error) });
     const duration = Date.now() - startTime;
 
     return {

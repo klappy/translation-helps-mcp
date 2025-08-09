@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger.js";
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, no-case-declarations */
 /**
  * Intelligent Cache Warming Service
@@ -121,7 +122,7 @@ export class CacheWarmer {
    * Analyze access patterns from logs and cache statistics
    */
   async analyzePatterns(): Promise<AccessPattern[]> {
-    console.log("[CacheWarmer] Analyzing access patterns...");
+    logger.info("[CacheWarmer] Analyzing access patterns...");
 
     const patterns: AccessPattern[] = [];
 
@@ -146,7 +147,7 @@ export class CacheWarmer {
     // Sort by priority (highest first)
     patterns.sort((a, b) => b.priority - a.priority);
 
-    console.log(`[CacheWarmer] Analyzed ${patterns.length} access patterns`);
+    logger.info(`[CacheWarmer] Analyzed ${patterns.length} access patterns`);
     return patterns.slice(0, 100); // Top 100 as specified
   }
 
@@ -177,16 +178,14 @@ export class CacheWarmer {
     };
 
     try {
-      console.log(
-        `[CacheWarmer] Starting ${strategy.priority} priority warming with ${strategy.resources.length} resources`,
+      logger.info(
+        `[CacheWarmer] Starting ${strategy.priority} priority warming with ${strategy.resources.length} resources`
       );
 
       // Check warming conditions
-      const conditionsMet = await this.checkWarmingConditions(
-        strategy.conditions,
-      );
+      const conditionsMet = await this.checkWarmingConditions(strategy.conditions);
       if (!conditionsMet) {
-        console.log("[CacheWarmer] Warming conditions not met, skipping");
+        logger.info("[CacheWarmer] Warming conditions not met, skipping");
         throw new Error("Warming conditions not met");
       }
 
@@ -213,10 +212,7 @@ export class CacheWarmer {
             };
             errors.push(warmingError);
 
-            if (
-              error instanceof Error &&
-              error.message.includes("rate limit")
-            ) {
+            if (error instanceof Error && error.message.includes("rate limit")) {
               metrics.rateLimitHits++;
             }
           }
@@ -234,10 +230,7 @@ export class CacheWarmer {
 
     // Calculate metrics
     metrics.totalRequests = resourcesWarmed + resourcesFailed;
-    const responseTimes = Array.from(
-      { length: metrics.successfulRequests },
-      () => 500,
-    ); // Approximate
+    const responseTimes = Array.from({ length: metrics.successfulRequests }, () => 500); // Approximate
     metrics.averageResponseTime =
       responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length || 0;
 
@@ -256,8 +249,8 @@ export class CacheWarmer {
     // Store metrics for analysis
     this.metrics.set(`${strategy.priority}-${startTime.getTime()}`, metrics);
 
-    console.log(
-      `[CacheWarmer] Completed warming: ${resourcesWarmed}/${strategy.resources.length} resources in ${duration}ms`,
+    logger.info(
+      `[CacheWarmer] Completed warming: ${resourcesWarmed}/${strategy.resources.length} resources in ${duration}ms`
     );
     return result;
   }
@@ -347,9 +340,7 @@ export class CacheWarmer {
 
   // Private helper methods
 
-  private async warmResource(
-    resource: ResourceIdentifier,
-  ): Promise<{ bytes: number }> {
+  private async warmResource(resource: ResourceIdentifier): Promise<{ bytes: number }> {
     const cacheKey = this.generateCacheKey(resource);
 
     // Check if already cached and fresh
@@ -368,14 +359,11 @@ export class CacheWarmer {
     switch (resource.type) {
       case "scripture": {
         if (resource.reference) {
-          data = await this.fetchScripture(
-            resource.reference,
-            resource.language || "en",
-          );
+          data = await this.fetchScripture(resource.reference, resource.language || "en");
         } else if (resource.book && resource.chapter) {
           data = await this.fetchScripture(
             `${resource.book} ${resource.chapter}`,
-            resource.language || "en",
+            resource.language || "en"
           );
         }
         break;
@@ -383,20 +371,14 @@ export class CacheWarmer {
 
       case "notes": {
         if (resource.reference) {
-          data = await this.fetchTranslationNotes(
-            resource.reference,
-            resource.language || "en",
-          );
+          data = await this.fetchTranslationNotes(resource.reference, resource.language || "en");
         }
         break;
       }
 
       case "words": {
         if (resource.reference) {
-          data = await this.fetchTranslationWords(
-            resource.reference,
-            resource.language || "en",
-          );
+          data = await this.fetchTranslationWords(resource.reference, resource.language || "en");
         }
         break;
       }
@@ -405,7 +387,7 @@ export class CacheWarmer {
         if (resource.reference) {
           data = await this.fetchTranslationQuestions(
             resource.reference,
-            resource.language || "en",
+            resource.language || "en"
           );
         }
         break;
@@ -419,11 +401,7 @@ export class CacheWarmer {
     if (data) {
       const dataStr = JSON.stringify(data);
       bytes = new TextEncoder().encode(dataStr).length;
-      await cache.set(
-        cacheKey,
-        data,
-        this.getResourceTypeFromType(resource.type),
-      );
+      await cache.set(cacheKey, data, this.getResourceTypeFromType(resource.type));
     }
 
     return { bytes };
@@ -431,7 +409,7 @@ export class CacheWarmer {
 
   private async fetchScripture(
     reference: string,
-    language: string,
+    language: string
   ): Promise<Record<string, unknown>> {
     // Implementation would fetch scripture from DCS API
     return {
@@ -444,7 +422,7 @@ export class CacheWarmer {
 
   private async fetchTranslationNotes(
     reference: string,
-    language: string,
+    language: string
   ): Promise<Record<string, unknown>> {
     // Implementation would fetch translation notes from DCS API
     return {
@@ -457,7 +435,7 @@ export class CacheWarmer {
 
   private async fetchTranslationWords(
     reference: string,
-    language: string,
+    language: string
   ): Promise<Record<string, unknown>> {
     // Implementation would fetch translation words from DCS API
     return {
@@ -470,7 +448,7 @@ export class CacheWarmer {
 
   private async fetchTranslationQuestions(
     reference: string,
-    language: string,
+    language: string
   ): Promise<Record<string, unknown>> {
     // Implementation would fetch translation questions from DCS API
     return {
@@ -564,9 +542,7 @@ export class CacheWarmer {
     return Math.round(priority);
   }
 
-  private async checkWarmingConditions(
-    conditions: WarmingCondition[],
-  ): Promise<boolean> {
+  private async checkWarmingConditions(conditions: WarmingCondition[]): Promise<boolean> {
     for (const condition of conditions) {
       if (!(await this.evaluateCondition(condition))) {
         return false;
@@ -590,16 +566,11 @@ export class CacheWarmer {
     }
   }
 
-  private async evaluateCondition(
-    condition: WarmingCondition,
-  ): Promise<boolean> {
+  private async evaluateCondition(condition: WarmingCondition): Promise<boolean> {
     switch (condition.type) {
       case "time_range": {
         const hour = new Date().getHours();
-        if (
-          condition.operator === "between" &&
-          Array.isArray(condition.value)
-        ) {
+        if (condition.operator === "between" && Array.isArray(condition.value)) {
           return hour >= condition.value[0] && hour <= condition.value[1];
         }
         return false;
@@ -612,20 +583,12 @@ export class CacheWarmer {
 
       case "response_time": {
         const avgResponseTime = await this.getAverageResponseTime();
-        return this.compareValue(
-          avgResponseTime,
-          condition.operator,
-          condition.value,
-        );
+        return this.compareValue(avgResponseTime, condition.operator, condition.value);
       }
 
       case "load_threshold": {
         const systemLoad = await this.getSystemLoad();
-        return this.compareValue(
-          systemLoad,
-          condition.operator,
-          condition.value,
-        );
+        return this.compareValue(systemLoad, condition.operator, condition.value);
       }
 
       default:
@@ -636,7 +599,7 @@ export class CacheWarmer {
   private compareValue(
     actual: number,
     operator: ">" | "<" | ">=" | "<=" | "==" | "between",
-    expected: number | number[],
+    expected: number | number[]
   ): boolean {
     switch (operator) {
       case ">":
@@ -725,7 +688,7 @@ class Semaphore {
   private async executeTask<T>(
     task: () => Promise<T>,
     resolve: (value: T) => void,
-    reject: (reason: any) => void,
+    reject: (reason: any) => void
   ) {
     try {
       const result = await task();

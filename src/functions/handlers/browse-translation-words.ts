@@ -3,8 +3,10 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import { Errors } from "../../utils/errorEnvelope.js";
+import { logger } from "../../utils/logger.js";
 import { browseWords } from "../browse-words-service";
+import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const browseTranslationWordsHandler: PlatformHandler = async (
   request: PlatformRequest
@@ -30,6 +32,8 @@ export const browseTranslationWordsHandler: PlatformHandler = async (
     const organization = request.queryStringParameters.organization || "unfoldingWord";
     const category = request.queryStringParameters.category;
 
+    logger.info("Browsing translation words", { language, organization, category });
+
     // Browse translation words
     const result = await browseWords({
       language,
@@ -50,7 +54,7 @@ export const browseTranslationWordsHandler: PlatformHandler = async (
       body: JSON.stringify(result),
     };
   } catch (error) {
-    console.error("Browse Translation Words API Error:", error);
+    logger.error("Browse Translation Words API Error", { error: String(error) });
     const duration = Date.now() - startTime;
 
     return {
@@ -60,10 +64,7 @@ export const browseTranslationWordsHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Failed to browse translation words",
-        code: "INTERNAL_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal("Failed to browse translation words")),
     };
   }
 };

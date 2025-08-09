@@ -5,6 +5,7 @@
  */
 
 import { ResourceType } from "../constants/terminology";
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 
@@ -134,7 +135,7 @@ export function detectResourceType(context: ResourceContext): ResourceDetectionR
       type: null,
       confidence: 0,
       reasoning,
-      alternatives: [],
+      alternatives,
       context,
     };
   }
@@ -245,11 +246,11 @@ export async function discoverAvailableResources(
   // Try cache first
   const cached = await cache.getWithCacheInfo(cacheKey, "metadata");
   if (cached.value) {
-    console.log(`🎯 Resource discovery cache HIT for ${book}/${language}/${organization}`);
+    logger.info(`Resource discovery cache HIT`, { book, language, organization });
     return cached.value;
   }
 
-  console.log(`🔍 Discovering resources for ${book}/${language}/${organization}`);
+  logger.info(`Discovering resources`, { book, language, organization });
 
   const availability: ResourceAvailability = {
     scripture: [],
@@ -291,11 +292,11 @@ export async function discoverAvailableResources(
     search.subjects.map(async (subject) => {
       try {
         const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=${encodeURIComponent(subject)}&lang=${language}&owner=${organization}&metadataType=rc&includeMetadata=true`;
-        console.log(`🔍 Catalog search: ${subject} for ${language}/${organization}`);
+        logger.debug(`Catalog search`, { subject, language, organization });
 
         const response = await fetch(catalogUrl);
         if (!response.ok) {
-          console.warn(`⚠️ Catalog search failed for ${subject}: ${response.status}`);
+          logger.warn(`Catalog search failed`, { subject, status: response.status });
           return { type: search.type, resources: [] };
         }
 
@@ -308,16 +309,17 @@ export async function discoverAvailableResources(
           title: resource.title || resource.door43_metadata?.title || resource.description,
           subject,
           url: `https://git.door43.org/${organization}/${resource.name}`,
-          ingredients: resource.ingredients || resource.door43_metadata?.ingredients || resource.metadata?.ingredients || []
+          ingredients:
+            resource.ingredients ||
+            resource.door43_metadata?.ingredients ||
+            resource.metadata?.ingredients ||
+            [],
         }));
 
-        console.log(`📊 Found ${resources.length} ${subject} resources`);
-        if (resources.length > 0) {
-          console.log(`🔍 First resource ingredients:`, resources[0].ingredients?.slice(0, 3));
-        }
+        logger.debug(`Found resources`, { subject, count: resources.length });
         return { type: search.type, resources };
       } catch (error) {
-        console.warn(`⚠️ Catalog search error for ${subject}:`, error);
+        logger.warn(`Catalog search error`, { subject, error: String(error) });
         return { type: search.type, resources: [] };
       }
     })
@@ -359,9 +361,7 @@ export async function discoverAvailableResources(
     availability.words.length +
     availability.wordLinks.length;
 
-  console.log(
-    `🎯 Resource discovery complete: ${totalResources} total resources found for ${book}`
-  );
+  logger.info(`Resource discovery complete`, { totalResources, book });
 
   return availability;
 }
@@ -376,15 +376,14 @@ export async function getResourceForBook(
   language: string = "en",
   organization: string = "unfoldingWord"
 ): Promise<ResourceCatalogInfo | null> {
-  console.log(`🔍 getResourceForBook called:`, { reference, resourceType, language, organization });
+  logger.debug(`getResourceForBook called`, { reference, resourceType, language, organization });
   const availability = await discoverAvailableResources(reference, language, organization);
   const resources = availability[resourceType];
 
-  console.log(`📦 Resources found for ${resourceType}:`, resources?.length || 0);
-  console.log(`🔍 First resource:`, resources?.[0]);
-  
+  logger.debug(`Resources found`, { resourceType, count: resources?.length || 0 });
+
   if (!resources || resources.length === 0) {
-    console.error(`❌ No resources found for ${resourceType}`);
+    logger.error(`No resources found`, { resourceType });
     return null;
   }
 

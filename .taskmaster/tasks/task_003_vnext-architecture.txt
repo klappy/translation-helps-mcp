@@ -1,0 +1,28 @@
+# Task ID: 3
+# Title: Logging & Observability Unification
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Replace console with logger in src/**; respect LOG_LEVEL; ensure tracer reports realistic cache timings.
+# Details:
+- Sweep src/** to replace console.* with logger.* (tests/scripts exempt)
+- Add LOG_LEVEL env (default info) and debug path
+- Ensure KV/memory hit timings include fetch+decode (no 0ms)
+- X-Ray trace integration review
+
+# Test Strategy:
+Greps confirm no console in src/**; tracer timings verified in tests
+
+# Subtasks:
+## 1. Console sweep [pending]
+### Dependencies: None
+### Description: Replace console.* with logger.* in src/**
+### Details:
+Tests/scripts exempt by lint rule; use LOG_LEVEL env
+
+## 2. Tracer timing fixes [pending]
+### Dependencies: None
+### Description: Ensure cache hits include KV/memory fetch+decode time (no 0ms).
+### Details:
+Report timings in X-Ray trace and response metadata.
+

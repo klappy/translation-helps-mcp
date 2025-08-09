@@ -9,8 +9,9 @@ interface ApiResponse {
   body: string;
 }
 
-import { cache } from "./cache.js";
+import { logger } from "../utils/logger.js";
 import { getVersion } from "../version.js";
+import { cache } from "./cache.js";
 
 // Get the actual version from package.json (SINGLE SOURCE OF TRUTH)
 const packageVersion = getVersion();
@@ -90,7 +91,7 @@ export function parseJsonBody<T>(body: string | null): T | null {
  * Log metrics for monitoring
  */
 export function logMetric(functionName: string, metrics: Record<string, any>): void {
-  console.log("METRIC", {
+  logger.info("METRIC", {
     function: functionName,
     timestamp: new Date().toISOString(),
     ...metrics,
@@ -286,7 +287,7 @@ export async function withConservativeCache<T>(
     request.headers.get("x-bypass-cache") === "true";
 
   if (shouldBypassCache) {
-    console.log(`🚫 Cache bypassed for: ${cacheKey}`);
+    logger.info(`Cache bypassed`, { cacheKey });
     const data = await fetcher();
     return {
       data,
@@ -303,7 +304,7 @@ export async function withConservativeCache<T>(
     const cacheResult = await cache.getWithCacheInfo(cacheKey, cacheType);
 
     if (cacheResult.cached && cacheResult.value) {
-      console.log(`🎯 Serving from cache: ${cacheKey}`);
+      logger.info(`Serving from cache`, { cacheKey });
 
       return {
         data: cacheResult.value,
@@ -324,7 +325,7 @@ export async function withConservativeCache<T>(
     }
 
     // Cache miss - fetch fresh data
-    console.log(`⚡ Cache miss, fetching fresh: ${cacheKey}`);
+    logger.info(`Cache miss, fetching fresh`, { cacheKey });
     const data = await fetcher();
 
     // Store in cache for next time
@@ -350,7 +351,7 @@ export async function withConservativeCache<T>(
       },
     };
   } catch (error) {
-    console.error(`❌ Cache error for ${cacheKey}:`, error);
+    logger.error(`Cache error`, { cacheKey, error: String(error) });
 
     // Fallback to direct fetch without caching
     const data = await fetcher();

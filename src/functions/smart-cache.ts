@@ -9,6 +9,7 @@
  */
 
 import type { CatalogSearchParams, Resource } from "../types/dcs.js";
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache.js";
 
 /**
@@ -360,7 +361,8 @@ export class SmartCache {
     try {
       this.updateAccessPattern(key);
 
-      const cachedData = await cache.get(key);
+      // Always use a consistent cache bucket for smart-cache entries
+      const cachedData = await cache.get(key, "transformedResponse");
 
       if (cachedData) {
         const responseTime = Date.now() - startTime;
@@ -378,7 +380,7 @@ export class SmartCache {
       this.updateMetrics(false, responseTime);
       return null;
     } catch (error) {
-      console.error(`[SmartCache] Error retrieving ${key}:`, error);
+      logger.error(`[SmartCache] Error retrieving`, { key, error: String(error) });
       const responseTime = Date.now() - startTime;
       this.updateMetrics(false, responseTime);
       return null;
@@ -413,15 +415,15 @@ export class SmartCache {
       }
 
       // Store in cache with computed TTL
-      await cache.set(key, cacheData, adaptiveTTL);
+      await cache.set(key, cacheData, "transformedResponse", adaptiveTTL);
 
       // Update metrics
       const responseTime = Date.now() - startTime;
       this.updateMetrics(false, responseTime, dataSize);
 
-      console.log(`[SmartCache] Cached ${type} data with TTL ${adaptiveTTL}s (${dataSize} bytes)`);
+      logger.info(`[SmartCache] Cached data`, { type, ttl: adaptiveTTL, size: dataSize });
     } catch (error) {
-      console.error(`[SmartCache] Error caching ${key}:`, error);
+      logger.error(`[SmartCache] Error caching`, { key, error: String(error) });
     }
   }
 
@@ -429,7 +431,7 @@ export class SmartCache {
    * Invalidate cache entries by tag
    */
   async invalidateByTag(tag: string): Promise<number> {
-    console.log(`[SmartCache] Invalidating cache entries with tag: ${tag}`);
+    logger.warn(`[SmartCache] Invalidating cache entries by tag`, { tag });
 
     // This would need cache implementation support for tag-based invalidation
     // For now, simulate by clearing common patterns
@@ -438,7 +440,7 @@ export class SmartCache {
       .filter(([, pattern]) => pattern.tags.includes(tag))
       .map(([name]) => name);
 
-    console.log(`[SmartCache] Invalidating patterns: ${patternsToInvalidate.join(", ")}`);
+    logger.debug(`[SmartCache] Invalidating patterns`, { patterns: patternsToInvalidate });
 
     // In a real implementation, this would use a proper tag-based cache
     // For now, return simulated count
@@ -449,7 +451,7 @@ export class SmartCache {
    * Invalidate all cached data for a specific content type
    */
   async invalidateType(type: string): Promise<void> {
-    console.log(`[SmartCache] Invalidating all cache entries for type: ${type}`);
+    logger.warn(`[SmartCache] Invalidate type`, { type });
 
     // This would iterate through cache keys matching the type prefix
     // Implementation depends on cache backend capabilities
@@ -474,14 +476,14 @@ export class SmartCache {
    */
   updateConfig(newConfig: Partial<CacheConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    console.log("[SmartCache] Configuration updated:", this.config);
+    logger.info("[SmartCache] Configuration updated", { config: this.config });
   }
 
   /**
    * Clear all cache data (use with caution)
    */
   async clearAll(): Promise<void> {
-    console.log("[SmartCache] Clearing all cache data");
+    logger.warn("[SmartCache] Clearing all cache data");
 
     // Reset metrics
     cacheMetrics = {
@@ -507,13 +509,13 @@ export class SmartCache {
    * Warm up cache with frequently accessed data
    */
   async warmUp(warmupData: Array<{ type: string; params: any; data: any }>): Promise<void> {
-    console.log(`[SmartCache] Warming up cache with ${warmupData.length} entries`);
+    logger.info(`[SmartCache] Warmup start`, { count: warmupData.length });
 
     for (const item of warmupData) {
       await this.set(item.type, item.params, item.data);
     }
 
-    console.log("[SmartCache] Cache warmup complete");
+    logger.info("[SmartCache] Warmup complete");
   }
 
   /**

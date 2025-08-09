@@ -6,6 +6,7 @@
 
 import * as yaml from "yaml";
 import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";
+import { logger } from "../../utils/logger.js";
 import { EdgeXRayTracer, trackedFetch } from "../edge-xray.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 
@@ -60,7 +61,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
     if (category) {
       const tocUrl = `https://git.door43.org/${organization}/${language}_ta/raw/branch/master/${category}/toc.yaml`;
 
-      console.log("Fetching TOC from:", tocUrl);
+      logger.info("Fetching TOC", { tocUrl });
 
       const tocResponse = await trackedFetch(tracer, tocUrl);
 
@@ -139,7 +140,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
     // Get all categories by reading root directory
     const rootUrl = `https://git.door43.org/api/v1/repos/${organization}/${language}_ta/contents`;
 
-    console.log("Fetching root contents from:", rootUrl);
+    logger.info("Fetching root contents", { rootUrl });
 
     const rootResponse = await trackedFetch(tracer, rootUrl);
     const rootContents = await rootResponse.json();
@@ -149,10 +150,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
       (item: any) => item.type === "dir" && !item.name.startsWith(".") && item.name !== "media"
     );
 
-    console.log(
-      "Found categories:",
-      categoryDirs.map((d: any) => d.name)
-    );
+    logger.debug("Found categories", { categories: categoryDirs.map((d: any) => d.name) });
 
     // Fetch TOC for each category
     const allCategories = await Promise.all(
@@ -176,7 +174,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
             totalModules: countModules(transformedTOC),
           };
         } catch (error) {
-          console.warn(`Failed to parse TOC for ${dir.name}:`, error);
+          logger.warn(`Failed to parse TOC`, { dir: dir.name, error: String(error) });
           return null;
         }
       })
@@ -235,7 +233,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
       }),
     };
   } catch (error) {
-    console.error("Browse Translation Academy error:", error);
+    logger.error("Browse Translation Academy error", { error: String(error) });
     return {
       statusCode: 500,
       headers: {

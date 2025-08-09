@@ -1,0 +1,28 @@
+# Task ID: 2
+# Title: Error Policy & Standard Envelope
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Implement consistent 400 errors with actionable guidance and links; standard error envelope across endpoints.
+# Details:
+- Create error helper returning { code, message, hint, howToFix, examples, docs, traceId }
+- Invalid references → 400 with examples + discovery links
+- Distinguish file-not-found vs org/lang not found
+- Wire into handlers uniformly
+
+# Test Strategy:
+Negative tests for invalid reference/missing params assert envelope + guidance
+
+# Subtasks:
+## 1. Create error helper [pending]
+### Dependencies: None
+### Description: Standard error envelope function with guidance fields.
+### Details:
+Fields: code, message, hint, howToFix, examples, docs, traceId.
+
+## 2. Wire into handlers [pending]
+### Dependencies: None
+### Description: Use error helper across endpoints; remove ad-hoc 400s.
+### Details:
+Invalid reference/missing params receive actionable guidance and links.
+

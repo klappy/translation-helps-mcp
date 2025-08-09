@@ -1,0 +1,13 @@
+# Task ID: 11
+# Title: Docs & Rules Consolidation
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Add/update rules: logging, ingredients-only, endpoint contracts/schemas, ZIP/KV policy, error responses; sync docs.
+# Details:
+- Create rule files with examples and references
+- Update docs to reflect policies and helpers
+- Link from README and MCP Tools
+
+# Test Strategy:
+Docs lint; rule adherence visible in code and CI

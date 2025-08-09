@@ -1,0 +1,109 @@
+{
+	"meta": {
+		"generatedAt": "2025-08-08T23:01:28.760Z",
+		"tasksAnalyzed": 12,
+		"totalTasks": 12,
+		"analysisCount": 12,
+		"thresholdScore": 7,
+		"projectName": "Task Master",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "API Contracts & Schemas (Zod adoption)",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down the implementation of Zod schemas into specific endpoint categories and validation strategies.",
+			"reasoning": "The task involves multiple components including schema definition, validation, testing, and documentation updates, which increases its complexity."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Scripture Mapping Cleanup",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Identify specific areas where numeric filename maps are used and outline the steps for their removal and replacement.",
+			"reasoning": "The task requires careful consideration of existing dependencies and thorough testing to ensure no functionality is lost, adding to its complexity."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "ZIP Fetching Policy Consolidation",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Detail the steps for moving legacy code and ensuring all references are updated to the new implementation.",
+			"reasoning": "While the task is straightforward, it involves ensuring that all legacy references are correctly handled, which can introduce complexity."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Deprecations & Housekeeping",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Outline the specific files and rules that need to be moved and documented for deprecation.",
+			"reasoning": "This task is primarily administrative but requires careful tracking of code usage to avoid breaking changes."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "DCS Ingredients Helper & Rollout",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Define the specific cases and exceptions that the new helper needs to handle and document.",
+			"reasoning": "Creating a new helper involves understanding existing implementations and ensuring compatibility, which adds to the complexity."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Performance SLOs & CI Gates",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Specify the performance metrics and CI gating criteria that need to be established.",
+			"reasoning": "While the task is clear, defining precise performance thresholds and integrating them into CI adds complexity."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Logging & Observability Unification",
+			"complexityScore": 6,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Detail the steps for replacing console logs and ensuring proper logging levels are respected.",
+			"reasoning": "The task involves a significant code sweep and ensuring that logging is consistent across the application, which increases complexity."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Docs & Rules Consolidation",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Identify the specific rules and documentation that need to be updated or created.",
+			"reasoning": "This task is largely documentation-focused but requires thoroughness to ensure all policies are accurately reflected."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Caching Model Hardening (KV-first)",
+			"complexityScore": 7,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down the implementation of KV-first enforcement and the unification of TTLs and prefixes.",
+			"reasoning": "The task involves multiple components that need to work together seamlessly, increasing its complexity."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Chat Showcase Revival (/chat via MCP)",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Outline the steps necessary to restore the chat functionality and ensure it meets performance and accessibility standards.",
+			"reasoning": "Restoring functionality while ensuring compliance with performance and accessibility standards adds to the complexity."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Release & Deployment Hardening",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Detail the steps required to automate deployment and ensure monitoring is in place.",
+			"reasoning": "Automating deployment processes while ensuring reliability and monitoring requires careful planning and execution."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Error Policy & Standard Envelope",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on error policy & standard envelope.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		}
+	]
+}

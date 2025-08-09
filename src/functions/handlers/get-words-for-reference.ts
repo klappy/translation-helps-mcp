@@ -3,6 +3,7 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 import { fetchWordLinks } from "../word-links-service";
 
@@ -33,10 +34,7 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
     if (!referenceParam) {
       return {
         statusCode: 400,
-        body: JSON.stringify({
-          error: "Missing reference parameter",
-          code: "MISSING_PARAMETER",
-        }),
+        body: JSON.stringify(Errors.missingParameter("reference")),
       };
     }
 
@@ -63,7 +61,7 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
       // rc://*/tw/dict/bible/<category>/<term>
       const str = String(twLink);
       let rel: string | null = null;
-      const m = str.match(/rc:\/\/\*\/tw\/dict\/(bible\/[^\s]+)$/i);
+      const m = str.match(/rc:\/\/\*\/tw\/dict\/(bible\/[\^\s]+)$/i);
       if (m) {
         rel = m[1];
       } else if (str.includes("/tw/dict/")) {
@@ -78,7 +76,7 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
       const term = parts[2];
       const path = `${rel}.md`;
       const key = rel.toLowerCase();
-      const occ = Number(row.Occurrence || row["Occurrence"] || 1) || 1;
+      const occ = Number((row as any).Occurrence || (row as any)["Occurrence"] || 1) || 1;
       if (!aggregate[key]) {
         aggregate[key] = { term, path, occurrences: occ, category };
       } else {
@@ -104,7 +102,6 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
       }),
     };
   } catch (error) {
-    console.error("Get Words for Reference API Error:", error);
     const duration = Date.now() - startTime;
 
     return {
@@ -114,10 +111,7 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Failed to get words for reference",
-        code: "INTERNAL_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal()),
     };
   }
 };

@@ -1,5 +1,5 @@
 /**
- * ZIP-based Resource Fetcher
+ * ZIP-based Resource Fetcher (LEGACY - DO NOT USE)
  * Downloads entire repositories as ZIP files for efficient caching and offline support
  *
  * KISS: One download per resource instead of hundreds
@@ -18,6 +18,9 @@ interface ZipResource {
   resourceType: string; // 'bible', 'tn', 'tq', 'tw', 'twl', 'ta'
 }
 
+/**
+ * Deprecated in favor of ZipResourceFetcher2. Kept only for reference.
+ */
 export class ZipResourceFetcher {
   private tracer: EdgeXRayTracer;
 
@@ -46,7 +49,7 @@ export class ZipResourceFetcher {
       // 2. Download the ZIP
       const zipUrl = `https://git.door43.org/${resource.organization}/${resource.repository}/archive/master.zip`;
       logger.info(`Downloading ZIP: ${zipUrl}`);
-      console.log(`🔽 Downloading ZIP: ${zipUrl}`);
+      logger.debug(`Downloading ZIP (legacy fetcher)`, { zipUrl });
 
       const response = await trackedFetch(zipUrl, this.tracer);
 
@@ -115,7 +118,7 @@ export class ZipResourceFetcher {
       if (!fileData) {
         // List available files for debugging
         const availableFiles = Object.keys(unzipped).slice(0, 10);
-        logger.warn(`File ${filePath} not found in ZIP. Available files:`, availableFiles);
+        logger.warn(`File not found in ZIP`, { filePath, availableFiles });
 
         return {
           success: false,
@@ -127,7 +130,7 @@ export class ZipResourceFetcher {
       const decoder = new TextDecoder("utf-8");
       const text = decoder.decode(fileData);
 
-      logger.info(`Successfully extracted ${foundPath} from ZIP`);
+      logger.info(`Successfully extracted from ZIP`, { path: foundPath });
 
       return {
         success: true,

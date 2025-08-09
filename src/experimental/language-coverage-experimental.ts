@@ -40,6 +40,7 @@ import {
   checkResourceAvailability,
   discoverAvailableResources,
 } from "../functions/resource-detector.js";
+import { logger } from "../utils/logger.js";
 
 // Strategic Languages mapping for language coverage
 const STRATEGIC_LANGUAGES = {
@@ -210,7 +211,7 @@ async function buildLanguageCoverage(languageCode: string): Promise<LanguageEntr
       resourceCount,
     };
   } catch (error) {
-    console.warn(`Error building coverage for ${languageCode}:`, error);
+    logger.warn(`Error building coverage`, { language: languageCode, error: String(error) });
 
     // For network timeouts or other errors, return a basic entry
     // This allows the API to continue working even when external services are down
@@ -257,7 +258,7 @@ export const languageCoverageHandler: PlatformHandler = async (
     // Try cache first (1 hour TTL)
     const cached = await cache.getWithCacheInfo(cacheKey, "metadata");
     if (cached.value) {
-      console.log(`🎯 Language coverage cache HIT for ${cacheKey}`);
+      logger.info("Language coverage cache HIT", { cacheKey });
       return {
         statusCode: 200,
         headers: {
@@ -270,7 +271,7 @@ export const languageCoverageHandler: PlatformHandler = async (
       };
     }
 
-    console.log(`🔍 Building language coverage matrix`);
+    logger.info("Building language coverage matrix");
 
     // Determine languages to process
     const languagesToProcess = filterLanguage
@@ -293,7 +294,7 @@ export const languageCoverageHandler: PlatformHandler = async (
       await cache.set(cacheKey, emptyResponse, "metadata");
 
       const duration = Date.now() - startTime;
-      console.log(`✅ Empty language coverage matrix built in ${duration}ms`);
+      logger.info("Empty language coverage matrix built", { durationMs: duration });
 
       return {
         statusCode: 200,
@@ -342,7 +343,7 @@ export const languageCoverageHandler: PlatformHandler = async (
     await cache.set(cacheKey, response, "metadata");
 
     const duration = Date.now() - startTime;
-    console.log(`✅ Language coverage matrix built in ${duration}ms`);
+    logger.info("Language coverage matrix built", { durationMs: duration });
 
     return {
       statusCode: 200,
@@ -356,7 +357,7 @@ export const languageCoverageHandler: PlatformHandler = async (
       body: JSON.stringify(response),
     };
   } catch (error) {
-    console.error("Language coverage error:", error);
+    logger.error("Language coverage error", { error: String(error) });
 
     return {
       statusCode: 500,

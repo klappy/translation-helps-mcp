@@ -1,0 +1,41 @@
+# Task ID: 1
+# Title: API Contracts & Schemas (Zod adoption)
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Adopt schema-first API contracts across endpoints; validate in handlers and tests; enforce scripture array response shape.
+# Details:
+- Introduce Zod schemas per endpoint (request/response)
+- Validate handler responses against schemas
+- Tests parse responses using the same schemas
+- Enforce scripture endpoints to always return an array (single-item when filtered)
+- Update docs to reflect contract stability
+
+# Test Strategy:
+Unit + integration tests parse schemas; regression tests for scripture array shape
+
+# Subtasks:
+## 1. Define Zod schemas per endpoint [pending]
+### Dependencies: None
+### Description: Create request/response schemas for all core endpoints.
+### Details:
+Include scripture, notes, words, word-links, questions, academy, discovery, context.
+
+## 2. Validate handler responses [pending]
+### Dependencies: None
+### Description: Wire schema validation into all handlers before return.
+### Details:
+Fail fast with error envelope on mismatch; log traceId.
+
+## 3. Tests parse schemas [pending]
+### Dependencies: None
+### Description: Update unit/integration tests to parse responses using schemas.
+### Details:
+Add failure messages that show how to fix.
+
+## 4. Scripture array response enforcement [pending]
+### Dependencies: None
+### Description: Normalize scripture endpoints to always return an array.
+### Details:
+Single version → single-item array; update docs and tests.
+

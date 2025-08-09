@@ -1,0 +1,14 @@
+# Task ID: 9
+# Title: Scripture Mapping Cleanup
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Eliminate numeric filename maps; derive via metadata/zip listings; case-insensitive matching.
+# Details:
+- Remove per-file numeric/filename maps
+- Implement derived lookup via ingredients/zip listings
+- Replace usages (e.g., ResourceAggregator)
+- Add tests for case-insensitive matching
+
+# Test Strategy:
+Unit + integration passing; greps show no numeric maps used

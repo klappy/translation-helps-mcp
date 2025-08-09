@@ -5,6 +5,8 @@
  * Removes all USFM markers, alignment data, and formatting
  */
 
+import { logger } from "../utils/logger.js";
+
 // Simple verse range parser
 interface VerseRange {
   start: number;
@@ -25,7 +27,7 @@ export function extractVerseText(usfm: string, chapter: number, verse: number): 
     const chapterSplit = usfm.split(chapterPattern);
 
     if (chapterSplit.length < 2) {
-      console.warn(`Chapter ${chapter} not found`);
+      logger.warn(`Chapter not found`, { chapter });
       return "";
     }
 
@@ -43,7 +45,7 @@ export function extractVerseText(usfm: string, chapter: number, verse: number): 
     const verseSplit = chapterContent.split(versePattern);
 
     if (verseSplit.length < 2) {
-      console.warn(`Verse ${verse} not found in chapter ${chapter}`);
+      logger.warn(`Verse not found`, { chapter, verse });
       return "";
     }
 
@@ -59,7 +61,7 @@ export function extractVerseText(usfm: string, chapter: number, verse: number): 
     // Clean the text without verse numbers
     return cleanUSFMText(verseContent, false);
   } catch (error) {
-    console.error(`Error extracting verse ${chapter}:${verse}:`, error);
+    logger.error(`Error extracting verse`, { chapter, verse, error: String(error) });
     return "";
   }
 }
@@ -91,7 +93,7 @@ export function extractVerseRange(
     const chapterSplit = usfm.split(chapterPattern);
 
     if (chapterSplit.length < 2) {
-      console.warn(`Chapter ${chapter} not found`);
+      logger.warn(`Chapter not found`, { chapter });
       return "";
     }
 
@@ -109,7 +111,7 @@ export function extractVerseRange(
     const startVerseSplit = chapterContent.split(startVersePattern);
 
     if (startVerseSplit.length < 2) {
-      console.warn(`Start verse ${startVerse} not found in chapter ${chapter}`);
+      logger.warn(`Start verse not found`, { chapter, startVerse });
       return "";
     }
 
@@ -126,7 +128,12 @@ export function extractVerseRange(
     // Clean the text without verse numbers
     return cleanUSFMText(rangeContent, false);
   } catch (error) {
-    console.error(`Error extracting verse range ${chapter}:${startVerse}-${endVerse}:`, error);
+    logger.error(`Error extracting verse range`, {
+      chapter,
+      startVerse,
+      endVerse,
+      error: String(error),
+    });
     return "";
   }
 }
@@ -169,7 +176,7 @@ export function extractChapterText(usfm: string, chapter: number): string {
     const chapterSplit = usfm.split(chapterPattern);
 
     if (chapterSplit.length < 2) {
-      console.warn(`Chapter ${chapter} not found`);
+      logger.warn(`Chapter not found`, { chapter });
       return "";
     }
 
@@ -185,7 +192,7 @@ export function extractChapterText(usfm: string, chapter: number): string {
     // Clean the text without verse numbers
     return cleanUSFMText(chapterContent, false);
   } catch (error) {
-    console.error(`Error extracting chapter ${chapter}:`, error);
+    logger.error(`Error extracting chapter`, { chapter, error: String(error) });
     return "";
   }
 }
@@ -204,7 +211,7 @@ export function extractChapterTextWithNumbers(usfm: string, chapter: number): st
     const chapterSplit = usfm.split(chapterPattern);
 
     if (chapterSplit.length < 2) {
-      console.warn(`Chapter ${chapter} not found`);
+      logger.warn(`Chapter not found`, { chapter });
       return "";
     }
 
@@ -232,7 +239,7 @@ export function extractChapterTextWithNumbers(usfm: string, chapter: number): st
 
     return verses.join(" ");
   } catch (error) {
-    console.error(`Error extracting chapter ${chapter} with numbers:`, error);
+    logger.error(`Error extracting chapter with numbers`, { chapter, error: String(error) });
     return "";
   }
 }
@@ -377,7 +384,7 @@ export function validateCleanUSFM(text: string): boolean {
 
   for (const pattern of usfmPatterns) {
     if (pattern.test(text)) {
-      console.warn(`USFM validation failed - detected markup: ${pattern}`);
+      logger.warn(`USFM validation failed - detected markup`, { pattern: String(pattern) });
       return false;
     }
   }

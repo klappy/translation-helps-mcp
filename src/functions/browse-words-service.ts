@@ -4,6 +4,7 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 
 export interface BrowseWordsOptions {
@@ -46,7 +47,7 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
     limit = 100,
   } = options;
 
-  console.log(`📚 Core browse words service called with:`, {
+  logger.info(`Browse words called`, {
     language,
     organization,
     category,
@@ -59,7 +60,7 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
   const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
-    console.log(`🚀 FAST cache hit for browse words: ${responseKey}`);
+    logger.info(`Browse words cache HIT`, { responseKey });
     return {
       words: cachedResponse.value.words || [],
       metadata: {
@@ -73,15 +74,15 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
     };
   }
 
-  console.log(`🔄 Processing fresh browse words request: ${responseKey}`);
+  logger.info(`Browse words cache MISS`, { responseKey });
 
   // Search catalog for Translation Words
   const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Translation%20Words&lang=${language}&owner=${organization}`;
-  console.log(`🔍 Searching catalog: ${catalogUrl}`);
+  logger.debug(`Searching catalog`, { catalogUrl });
 
   const catalogResponse = await fetch(catalogUrl);
   if (!catalogResponse.ok) {
-    console.error(`❌ Catalog search failed: ${catalogResponse.status}`);
+    logger.error(`Catalog search failed`, { status: catalogResponse.status });
     throw new Error(`Failed to search catalog: ${catalogResponse.status}`);
   }
 
@@ -139,7 +140,7 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
         }
       }
     } catch (error) {
-      console.warn(`⚠️ Failed to browse category ${cat}:`, error);
+      logger.warn(`Failed to browse category`, { category: cat, error: String(error) });
     }
 
     if (words.length >= limit) {
@@ -147,7 +148,7 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
     }
   }
 
-  console.log(`📚 Found ${words.length} words`);
+  logger.info(`Browse words: found`, { count: words.length });
 
   const result: BrowseWordsResult = {
     words,

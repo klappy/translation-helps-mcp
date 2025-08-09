@@ -3,6 +3,8 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
+import { Errors } from "../../utils/errorEnvelope.js";
+import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
 
 export const getAvailableBooksHandler: PlatformHandler = async (
@@ -121,7 +123,7 @@ export const getAvailableBooksHandler: PlatformHandler = async (
       body: JSON.stringify(result),
     };
   } catch (error) {
-    console.error("Get Available Books API Error:", error);
+    logger.error("Get Available Books API Error", { error: String(error) });
     const duration = Date.now() - startTime;
 
     return {
@@ -131,10 +133,7 @@ export const getAvailableBooksHandler: PlatformHandler = async (
         "Access-Control-Allow-Origin": "*",
         "X-Response-Time": `${duration}ms`,
       },
-      body: JSON.stringify({
-        error: "Failed to get available books",
-        code: "INTERNAL_ERROR",
-      }),
+      body: JSON.stringify(Errors.internal("Failed to get available books")),
     };
   }
 };
