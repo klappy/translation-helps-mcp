@@ -8,10 +8,14 @@ import { languagesResponseSchema } from "../../utils/schemas.js";
 import { softValidate } from "../../utils/validator.js";
 import { getVersion } from "../../version.js";
 import { getLanguages } from "../languages-service";
-import { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 export const getLanguagesHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   // Handle CORS
   if (request.method === "OPTIONS") {
@@ -27,8 +31,10 @@ export const getLanguagesHandler: PlatformHandler = async (
   }
 
   try {
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
-    const includeAlternateNames = request.queryStringParameters.includeAlternateNames === "true";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
+    const includeAlternateNames =
+      request.queryStringParameters.includeAlternateNames === "true";
 
     // Pure business logic - no caching here
     const result = await getLanguages({

@@ -33,34 +33,51 @@ export interface ContextResult {
   };
 }
 
-export async function getComprehensiveContext(options: ContextOptions): Promise<ContextResult> {
+export async function getComprehensiveContext(
+  options: ContextOptions,
+): Promise<ContextResult> {
   const startTime = Date.now();
-  const { reference, language = "en", organization = "unfoldingWord" } = options;
+  const {
+    reference,
+    language = "en",
+    organization = "unfoldingWord",
+  } = options;
 
-  logger.info("Aggregating comprehensive context", { reference, language, organization });
+  logger.info("Aggregating comprehensive context", {
+    reference,
+    language,
+    organization,
+  });
 
   const contextArray = [];
 
   // Fetch all resources in parallel
   try {
-    const [scriptureResult, notesResult, questionsResult, linksResult] = await Promise.all([
-      fetchScripture({ reference, language, organization }).catch((err) => {
-        logger.warn("Scripture fetch failed", err);
-        return null;
-      }),
-      fetchTranslationNotes({ reference, language, organization }).catch((err) => {
-        logger.warn("Notes fetch failed", err);
-        return null;
-      }),
-      fetchTranslationQuestions({ reference, language, organization }).catch((err) => {
-        logger.warn("Questions fetch failed", err);
-        return null;
-      }),
-      fetchTranslationWordLinks({ reference, language, organization }).catch((err) => {
-        logger.warn("Links fetch failed", err);
-        return null;
-      }),
-    ]);
+    const [scriptureResult, notesResult, questionsResult, linksResult] =
+      await Promise.all([
+        fetchScripture({ reference, language, organization }).catch((err) => {
+          logger.warn("Scripture fetch failed", err);
+          return null;
+        }),
+        fetchTranslationNotes({ reference, language, organization }).catch(
+          (err) => {
+            logger.warn("Notes fetch failed", err);
+            return null;
+          },
+        ),
+        fetchTranslationQuestions({ reference, language, organization }).catch(
+          (err) => {
+            logger.warn("Questions fetch failed", err);
+            return null;
+          },
+        ),
+        fetchTranslationWordLinks({ reference, language, organization }).catch(
+          (err) => {
+            logger.warn("Links fetch failed", err);
+            return null;
+          },
+        ),
+      ]);
 
     // Add scripture (all versions)
     if (scriptureResult?.scripture) {
@@ -79,7 +96,10 @@ export async function getComprehensiveContext(options: ContextOptions): Promise<
     }
 
     // Add translation notes
-    if (notesResult?.translationNotes && notesResult.translationNotes.length > 0) {
+    if (
+      notesResult?.translationNotes &&
+      notesResult.translationNotes.length > 0
+    ) {
       contextArray.push({
         type: "translation-notes",
         data: notesResult.translationNotes,
@@ -88,7 +108,10 @@ export async function getComprehensiveContext(options: ContextOptions): Promise<
     }
 
     // Add translation questions
-    if (questionsResult?.translationQuestions && questionsResult.translationQuestions.length > 0) {
+    if (
+      questionsResult?.translationQuestions &&
+      questionsResult.translationQuestions.length > 0
+    ) {
       contextArray.push({
         type: "translation-questions",
         data: questionsResult.translationQuestions,

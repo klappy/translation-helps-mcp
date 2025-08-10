@@ -85,7 +85,7 @@ describe("DCSApiClient", () => {
             "User-Agent": "Translation-Helps-MCP/1.0",
             Accept: "application/json",
           }),
-        })
+        }),
       );
     });
 
@@ -215,7 +215,7 @@ describe("DCSApiClient", () => {
       expect(result.data).toEqual(mockResources);
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/catalog/search?stage=prod&limit=100",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -240,7 +240,7 @@ describe("DCSApiClient", () => {
       expect(result.success).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/catalog/search?stage=prod&limit=50&lang=es&owner=unfoldingword&subject=Bible",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -267,7 +267,7 @@ describe("DCSApiClient", () => {
       expect(result.data).toEqual(mockFileContent);
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/repos/owner/repo/contents/README.md",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -288,7 +288,7 @@ describe("DCSApiClient", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/repos/owner/repo/contents/file.txt?ref=develop",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -304,13 +304,17 @@ describe("DCSApiClient", () => {
         text: async () => mockRawContent,
       });
 
-      const result = await client.getRawFileContent("owner", "repo", "file.txt");
+      const result = await client.getRawFileContent(
+        "owner",
+        "repo",
+        "file.txt",
+      );
 
       expect(result.success).toBe(true);
       expect(result.data).toBe(mockRawContent);
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/repos/owner/repo/raw/master/file.txt",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -328,19 +332,21 @@ describe("DCSApiClient", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/repos/owner/repo/raw/develop/file.txt",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
 
   describe("Error handling and retries", () => {
     it("should retry on network errors", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error")).mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: async () => [],
-      });
+      mockFetch
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: new Headers({ "content-type": "application/json" }),
+          json: async () => [],
+        });
 
       const result = await client.getOwners();
 
@@ -442,7 +448,7 @@ describe("DCSApiClient", () => {
       expect(result.data).toEqual(mockRepo);
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/repos/unfoldingword/en_ult",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -467,7 +473,7 @@ describe("DCSApiClient", () => {
       expect(result.data).toEqual(mockRepos);
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/users/unfoldingword/repos?type=all&sort=updated&limit=100",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -481,12 +487,16 @@ describe("DCSApiClient", () => {
         json: async () => mockRepos,
       });
 
-      const result = await client.getOwnerRepositories("owner", "public", "created");
+      const result = await client.getOwnerRepositories(
+        "owner",
+        "public",
+        "created",
+      );
 
       expect(result.success).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
         "https://test.door43.org/api/v1/users/owner/repos?type=public&sort=created&limit=100",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });

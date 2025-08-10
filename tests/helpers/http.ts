@@ -7,7 +7,7 @@ let apiReady = false;
 async function fetchWithTimeout(
   url: string,
   opts: RequestInit = {},
-  timeoutMs = 1500
+  timeoutMs = 1500,
 ): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -20,18 +20,30 @@ async function fetchWithTimeout(
 
 async function isHealthy(baseUrl: string): Promise<boolean> {
   try {
-    const res = await fetchWithTimeout(`${baseUrl.replace(/\/$/, "")}/api/health`, {}, 2000);
+    const res = await fetchWithTimeout(
+      `${baseUrl.replace(/\/$/, "")}/api/health`,
+      {},
+      2000,
+    );
     if (!res.ok) return false;
     const text = await res.text();
     const json = JSON.parse(text);
     // Require status and non-empty endpoints to consider ready
-    return Boolean(json?.status) && Array.isArray(json?.endpoints) && json.endpoints.length > 0;
+    return (
+      Boolean(json?.status) &&
+      Array.isArray(json?.endpoints) &&
+      json.endpoints.length > 0
+    );
   } catch {
     return false;
   }
 }
 
-async function waitForReady(baseUrl: string, maxWaitMs = 45000, intervalMs = 500): Promise<void> {
+async function waitForReady(
+  baseUrl: string,
+  maxWaitMs = 45000,
+  intervalMs = 500,
+): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
     if (await isHealthy(baseUrl)) return;
@@ -40,14 +52,19 @@ async function waitForReady(baseUrl: string, maxWaitMs = 45000, intervalMs = 500
   // Final check to surface more helpful error
   const finalOk = await isHealthy(baseUrl);
   if (!finalOk) {
-    throw new Error(`API readiness timed out after ${Math.round(maxWaitMs / 1000)}s at ${baseUrl}`);
+    throw new Error(
+      `API readiness timed out after ${Math.round(maxWaitMs / 1000)}s at ${baseUrl}`,
+    );
   }
 }
 
 export async function getBaseUrl(): Promise<string> {
   if (resolvedBaseUrl) return resolvedBaseUrl;
 
-  const envUrl = process.env.TEST_BASE_URL || process.env.BASE_URL || process.env.API_BASE_URL;
+  const envUrl =
+    process.env.TEST_BASE_URL ||
+    process.env.BASE_URL ||
+    process.env.API_BASE_URL;
   if (envUrl && /^https?:\/\//.test(envUrl)) {
     resolvedBaseUrl = envUrl;
     return resolvedBaseUrl;
@@ -73,7 +90,7 @@ export async function getBaseUrl(): Promise<string> {
 
 export async function apiGet(
   endpoint: string,
-  params: Record<string, string | undefined> = {}
+  params: Record<string, string | undefined> = {},
 ): Promise<any> {
   let base = await getBaseUrl();
   if (!apiReady) {
@@ -94,14 +111,16 @@ export async function apiGet(
     return JSON.parse(text);
   } catch {
     // surface body for easier debugging
-    throw new Error(`Non-JSON response from ${url.toString()}: ${text.slice(0, 200)}`);
+    throw new Error(
+      `Non-JSON response from ${url.toString()}: ${text.slice(0, 200)}`,
+    );
   }
 }
 
 // Build absolute URL from a path like "/api/endpoint?..." and ensure format=json
 export async function buildUrl(
   path: string,
-  params?: Record<string, string | undefined>
+  params?: Record<string, string | undefined>,
 ): Promise<string> {
   let base = await getBaseUrl();
   if (!base || !/^https?:\/\//.test(base)) base = "http://localhost:8175";
@@ -109,7 +128,9 @@ export async function buildUrl(
   const isFullPath = path.startsWith("http://") || path.startsWith("https://");
   const normalizedBase = base.replace(/\/$/, "");
   const url = new URL(
-    isFullPath ? path : `${normalizedBase}${path.startsWith("/") ? "" : "/"}${path}`
+    isFullPath
+      ? path
+      : `${normalizedBase}${path.startsWith("/") ? "" : "/"}${path}`,
   );
   if (params) {
     Object.entries(params).forEach(([key, value]) => {

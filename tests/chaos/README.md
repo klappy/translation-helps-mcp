@@ -162,7 +162,9 @@ Each chaos test run generates comprehensive reports:
     "overall_success_rate": 95.2,
     "system_resilience_score": 88.7
   },
-  "recommendations": ["✅ System demonstrates excellent resilience across all chaos scenarios"]
+  "recommendations": [
+    "✅ System demonstrates excellent resilience across all chaos scenarios"
+  ]
 }
 ```
 

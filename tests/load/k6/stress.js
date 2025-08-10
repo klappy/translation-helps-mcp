@@ -52,7 +52,16 @@ export const options = {
       },
     },
   },
-  summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)", "p(99.9)"],
+  summaryTrendStats: [
+    "avg",
+    "min",
+    "med",
+    "max",
+    "p(90)",
+    "p(95)",
+    "p(99)",
+    "p(99.9)",
+  ],
 };
 
 // Aggressive endpoint testing patterns
@@ -168,7 +177,10 @@ function selectEndpoint() {
       if (endpoint.name.includes("Scripture")) {
         endpointCopy.params = {
           ...endpoint.params,
-          reference: stressfulReferences[Math.floor(Math.random() * stressfulReferences.length)],
+          reference:
+            stressfulReferences[
+              Math.floor(Math.random() * stressfulReferences.length)
+            ],
         };
       }
 
@@ -250,7 +262,8 @@ export default function () {
       "response time < 5000ms": (r) => r.timings.duration < 5000,
       "has response body": (r) => r.body && r.body.length > 0,
       "not timeout": () => !isTimeout,
-      [`${endpoint.name} responds`]: (r) => r.status === 200 || r.status === 429, // Accept rate limiting
+      [`${endpoint.name} responds`]: (r) =>
+        r.status === 200 || r.status === 429, // Accept rate limiting
     });
 
   // Record errors with detailed logging
@@ -260,19 +273,28 @@ export default function () {
   if (Math.random() < 0.02) {
     // 2% sampling for stress analysis
     const status = isTimeout ? "TIMEOUT" : response.status;
-    const degradation = degradationFactor > 2 ? "HIGH" : degradationFactor > 1.5 ? "MEDIUM" : "LOW";
+    const degradation =
+      degradationFactor > 2
+        ? "HIGH"
+        : degradationFactor > 1.5
+          ? "MEDIUM"
+          : "LOW";
     console.log(
-      `[STRESS] ${endpoint.name} ${status} ${Math.round(requestDuration)}ms [DEGRADE:${degradation}]`
+      `[STRESS] ${endpoint.name} ${status} ${Math.round(requestDuration)}ms [DEGRADE:${degradation}]`,
     );
   }
 
   // Log critical performance issues
   if (requestDuration > 2000) {
-    console.warn(`[CRITICAL] ${endpoint.name} took ${Math.round(requestDuration)}ms`);
+    console.warn(
+      `[CRITICAL] ${endpoint.name} took ${Math.round(requestDuration)}ms`,
+    );
   }
 
   if (isServerError) {
-    console.error(`[SERVER ERROR] ${endpoint.name} returned ${response.status}`);
+    console.error(
+      `[SERVER ERROR] ${endpoint.name} returned ${response.status}`,
+    );
   }
 
   // Aggressive user behavior - minimal pauses
@@ -281,7 +303,10 @@ export default function () {
 
 export function handleSummary(data) {
   const avgRPS = Math.round(data.metrics.http_reqs.values.rate);
-  const successRate = (100 - data.metrics.http_req_failed.values.rate * 100).toFixed(2);
+  const successRate = (
+    100 -
+    data.metrics.http_req_failed.values.rate * 100
+  ).toFixed(2);
   const maxRPS = 2000;
 
   return {
@@ -293,9 +318,14 @@ export function handleSummary(data) {
 
 function textSummary(data) {
   const avgRPS = Math.round(data.metrics.http_reqs.values.rate);
-  const successRate = (100 - data.metrics.http_req_failed.values.rate * 100).toFixed(2);
+  const successRate = (
+    100 -
+    data.metrics.http_req_failed.values.rate * 100
+  ).toFixed(2);
   const timeoutRate = (data.metrics.timeouts.values.rate * 100).toFixed(2);
-  const serverErrorRate = (data.metrics.server_errors.values.rate * 100).toFixed(2);
+  const serverErrorRate = (
+    data.metrics.server_errors.values.rate * 100
+  ).toFixed(2);
 
   return `
 💥 STRESS TEST RESULTS - 2000 RPS TARGET
@@ -364,7 +394,10 @@ Breaking Point Test: ${new Date().toISOString()}
 
 function htmlSummary(data) {
   const avgRPS = Math.round(data.metrics.http_reqs.values.rate);
-  const successRate = (100 - data.metrics.http_req_failed.values.rate * 100).toFixed(2);
+  const successRate = (
+    100 -
+    data.metrics.http_req_failed.values.rate * 100
+  ).toFixed(2);
 
   return `
 <!DOCTYPE html>

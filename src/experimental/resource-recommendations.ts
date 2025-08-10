@@ -19,7 +19,9 @@ import {
 // Cache TTL: 30 minutes (recommendations can be cached but not too long since context matters)
 const CACHE_TTL = 1800; // 30 minutes in seconds
 
-export const resourceRecommendationsHandler: PlatformHandler = async (request) => {
+export const resourceRecommendationsHandler: PlatformHandler = async (
+  request,
+) => {
   const startTime = Date.now();
 
   try {
@@ -55,12 +57,17 @@ export const resourceRecommendationsHandler: PlatformHandler = async (request) =
     }
 
     // Parse optional parameters
-    const verse = params.get("verse") ? parseInt(params.get("verse")!) : undefined;
-    const endVerse = params.get("endVerse") ? parseInt(params.get("endVerse")!) : undefined;
+    const verse = params.get("verse")
+      ? parseInt(params.get("verse")!)
+      : undefined;
+    const endVerse = params.get("endVerse")
+      ? parseInt(params.get("endVerse")!)
+      : undefined;
     const targetLanguage = params.get("targetLanguage") || undefined;
     const sourceLanguages = params.get("sourceLanguages")?.split(",") || [];
     const previousQueries = params.get("previousQueries")?.split(",") || [];
-    const languageCapabilities = params.get("languageCapabilities")?.split(",") || [];
+    const languageCapabilities =
+      params.get("languageCapabilities")?.split(",") || [];
 
     // Build scripture reference
     const reference: ScriptureReference = {

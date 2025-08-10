@@ -108,7 +108,8 @@ export const createRobustScriptureEndpoint = () => {
   const apiConfig = {
     ...config.dataSource,
     type: "dcs-api" as const,
-    dcsEndpoint: "/api/v1/repos/{organization}/{language}_ult/contents/{book}/{chapter}.usfm",
+    dcsEndpoint:
+      "/api/v1/repos/{organization}/{language}_ult/contents/{book}/{chapter}.usfm",
   };
 
   // Create composed fetcher
@@ -117,7 +118,7 @@ export const createRobustScriptureEndpoint = () => {
 
   const robustFetcher = createFallbackFetcher(
     (cfg, params, ctx) => zipDataFetcher(config.dataSource, params, ctx),
-    (cfg, params, ctx) => apiDataFetcher(apiConfig, params, ctx)
+    (cfg, params, ctx) => apiDataFetcher(apiConfig, params, ctx),
   );
 
   return createEndpointHandler(config, robustFetcher);
@@ -133,7 +134,7 @@ export async function GET({ request, platform }: any) {
 export const createHybridEndpoint = () => {
   // This demonstrates how to combine multiple data sources functionally
   const fetchScriptureData = createZIPFetcher(
-    () => new ZipResourceFetcher2(new EdgeXRayTracer("hybrid", "scripture"))
+    () => new ZipResourceFetcher2(new EdgeXRayTracer("hybrid", "scripture")),
   );
 
   const fetchMetadata = createDCSFetcher(new DCSApiClient());
@@ -144,9 +145,12 @@ export const createHybridEndpoint = () => {
     const [scriptureData, metadata] = await Promise.all([
       fetchScriptureData(config, params, context),
       fetchMetadata(
-        { ...config, dcsEndpoint: "/api/v1/repos/{organization}/{language}_ult" },
+        {
+          ...config,
+          dcsEndpoint: "/api/v1/repos/{organization}/{language}_ult",
+        },
         params,
-        context
+        context,
       ),
     ]);
 

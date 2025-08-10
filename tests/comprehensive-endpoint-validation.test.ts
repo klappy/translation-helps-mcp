@@ -27,7 +27,12 @@ const KNOWN_GOOD_DATA = {
   },
   translationNotes: {
     "John 3:16": {
-      expectedPhrases: ["loved the world", "only Son", "eternal life", "believes in him"],
+      expectedPhrases: [
+        "loved the world",
+        "only Son",
+        "eternal life",
+        "believes in him",
+      ],
       minNoteCount: 4,
     },
   },
@@ -44,7 +49,10 @@ const KNOWN_GOOD_DATA = {
 };
 
 // Helper to make API calls
-async function callEndpoint(endpoint: string, params: Record<string, any> = {}) {
+async function callEndpoint(
+  endpoint: string,
+  params: Record<string, any> = {},
+) {
   const url = new URL(`${BASE_URL}/api/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
@@ -133,7 +141,9 @@ describe("Scripture Endpoint Validation", () => {
     expect(text).toContain("condemn the world"); // from v17
 
     // Should be longer than single verse
-    expect(text.length).toBeGreaterThan(KNOWN_GOOD_DATA.scripture["John 3:16"].ult.length);
+    expect(text.length).toBeGreaterThan(
+      KNOWN_GOOD_DATA.scripture["John 3:16"].ult.length,
+    );
   });
 });
 
@@ -150,7 +160,7 @@ describe("Translation Notes Validation", () => {
     // Should have multiple notes
     expect(Array.isArray(notes)).toBe(true);
     expect(notes.length).toBeGreaterThan(
-      KNOWN_GOOD_DATA.translationNotes["John 3:16"].minNoteCount
+      KNOWN_GOOD_DATA.translationNotes["John 3:16"].minNoteCount,
     );
 
     // Each note should have real content
@@ -164,10 +174,11 @@ describe("Translation Notes Validation", () => {
 
     // Check for expected phrases
     const phrases = notes.map((n: any) => n.phrase);
-    const expectedPhrases = KNOWN_GOOD_DATA.translationNotes["John 3:16"].expectedPhrases;
+    const expectedPhrases =
+      KNOWN_GOOD_DATA.translationNotes["John 3:16"].expectedPhrases;
 
     const foundPhrases = expectedPhrases.filter((ep) =>
-      phrases.some((p: string) => p.includes(ep))
+      phrases.some((p: string) => p.includes(ep)),
     );
 
     expect(foundPhrases.length).toBeGreaterThan(2); // At least 3 of 4 expected phrases
@@ -187,9 +198,11 @@ describe("Translation Words Validation", () => {
     const examples = result.data?.examples || [];
 
     // Check definition contains expected terms
-    KNOWN_GOOD_DATA.translationWords.love.expectedInDefinition.forEach((term) => {
-      expect(definition.toLowerCase()).toContain(term.toLowerCase());
-    });
+    KNOWN_GOOD_DATA.translationWords.love.expectedInDefinition.forEach(
+      (term) => {
+        expect(definition.toLowerCase()).toContain(term.toLowerCase());
+      },
+    );
 
     // Check examples
     expect(Array.isArray(examples)).toBe(true);
@@ -252,7 +265,9 @@ describe("Context Aggregation Validation", () => {
     expect(context.scripture).not.toEqual({});
     expect(context.notes).not.toEqual([]);
 
-    console.log(`✅ Context aggregated ${Object.keys(context).length} resource types`);
+    console.log(
+      `✅ Context aggregated ${Object.keys(context).length} resource types`,
+    );
   });
 });
 

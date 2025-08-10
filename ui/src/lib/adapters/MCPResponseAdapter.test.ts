@@ -10,7 +10,7 @@ describe('MCPResponseAdapter', () => {
 					{ type: 'text', text: 'Second paragraph' }
 				]
 			};
-			
+
 			const result = MCPResponseAdapter.extractText(response);
 			expect(result).toBe('Hello world\n\nSecond paragraph');
 		});
@@ -30,12 +30,12 @@ describe('MCPResponseAdapter', () => {
 		it('should extract numbered items from object', () => {
 			const response = {
 				content: {
-					"1": "First item",
-					"2": "Second item",
-					"3": "Third item"
+					'1': 'First item',
+					'2': 'Second item',
+					'3': 'Third item'
 				}
 			};
-			
+
 			const result = MCPResponseAdapter.extractText(response);
 			expect(result).toBe('1. First item\n\n2. Second item\n\n3. Third item');
 		});
@@ -55,24 +55,28 @@ describe('MCPResponseAdapter', () => {
 	describe('formatTranslationNotes', () => {
 		it('should format pre-formatted translation notes', () => {
 			const response = {
-				content: [{
-					type: 'text',
-					text: '**1.** First note\n\n**2.** Second note'
-				}]
+				content: [
+					{
+						type: 'text',
+						text: '**1.** First note\n\n**2.** Second note'
+					}
+				]
 			};
-			
+
 			const result = MCPResponseAdapter.formatTranslationNotes(response, 'Titus 1:1');
 			expect(result).toBe('**1.** First note\n\n**2.** Second note');
 		});
 
 		it('should format unformatted multiline text into numbered items', () => {
 			const response = {
-				content: [{
-					type: 'text',
-					text: 'First note\nSecond note\nThird note'
-				}]
+				content: [
+					{
+						type: 'text',
+						text: 'First note\nSecond note\nThird note'
+					}
+				]
 			};
-			
+
 			const result = MCPResponseAdapter.formatTranslationNotes(response, 'Titus 1:1');
 			expect(result).toContain('1. First note');
 			expect(result).toContain('2. Second note');
@@ -81,12 +85,9 @@ describe('MCPResponseAdapter', () => {
 
 		it('should handle structured data array', () => {
 			const response = {
-				data: [
-					{ note: 'First translation note' },
-					{ note: 'Second translation note' }
-				]
+				data: [{ note: 'First translation note' }, { note: 'Second translation note' }]
 			};
-			
+
 			const result = MCPResponseAdapter.formatTranslationNotes(response, 'Titus 1:1');
 			expect(result).toContain('1. First translation note');
 			expect(result).toContain('2. Second translation note');
@@ -102,24 +103,28 @@ describe('MCPResponseAdapter', () => {
 	describe('formatScripture', () => {
 		it('should preserve pre-formatted scripture with verse numbers', () => {
 			const response = {
-				content: [{
-					type: 'text',
-					text: '**1** In the beginning God created the heavens and the earth.'
-				}]
+				content: [
+					{
+						type: 'text',
+						text: '**1** In the beginning God created the heavens and the earth.'
+					}
+				]
 			};
-			
+
 			const result = MCPResponseAdapter.formatScripture(response, 'Genesis 1:1');
 			expect(result).toBe('**1** In the beginning God created the heavens and the earth.');
 		});
 
 		it('should add verse numbers to unformatted scripture', () => {
 			const response = {
-				content: [{
-					type: 'text',
-					text: 'Paul, a servant of God\nand an apostle of Jesus Christ'
-				}]
+				content: [
+					{
+						type: 'text',
+						text: 'Paul, a servant of God\nand an apostle of Jesus Christ'
+					}
+				]
 			};
-			
+
 			const result = MCPResponseAdapter.formatScripture(response, 'Titus 1:1');
 			expect(result).toContain('**1** Paul, a servant of God');
 			expect(result).toContain('**2** and an apostle of Jesus Christ');
@@ -127,12 +132,14 @@ describe('MCPResponseAdapter', () => {
 
 		it('should handle scripture without verse reference', () => {
 			const response = {
-				content: [{
-					type: 'text',
-					text: 'Some scripture text'
-				}]
+				content: [
+					{
+						type: 'text',
+						text: 'Some scripture text'
+					}
+				]
 			};
-			
+
 			const result = MCPResponseAdapter.formatScripture(response, 'Titus 1');
 			expect(result).toBe('Some scripture text');
 		});
@@ -141,12 +148,14 @@ describe('MCPResponseAdapter', () => {
 	describe('formatTranslationWord', () => {
 		it('should format word definition with examples', () => {
 			const response = {
-				content: [{
-					definition: 'A person who serves',
-					examples: ['servant of God', 'servant of Christ']
-				}]
+				content: [
+					{
+						definition: 'A person who serves',
+						examples: ['servant of God', 'servant of Christ']
+					}
+				]
 			};
-			
+
 			const result = MCPResponseAdapter.formatTranslationWord(response, 'servant');
 			expect(result).toContain('A person who serves');
 			expect(result).toContain('Examples:');
@@ -156,12 +165,14 @@ describe('MCPResponseAdapter', () => {
 
 		it('should extract simple text definition', () => {
 			const response = {
-				content: [{
-					type: 'text',
-					text: 'Definition: A person who serves another'
-				}]
+				content: [
+					{
+						type: 'text',
+						text: 'Definition: A person who serves another'
+					}
+				]
 			};
-			
+
 			const result = MCPResponseAdapter.formatTranslationWord(response, 'servant');
 			expect(result).toBe('Definition: A person who serves another');
 		});
@@ -172,7 +183,7 @@ describe('MCPResponseAdapter', () => {
 			const response = {
 				content: [{ type: 'text', text: 'Some content' }]
 			};
-			
+
 			expect(MCPResponseAdapter.isSuccessResponse(response)).toBe(true);
 		});
 
@@ -180,7 +191,7 @@ describe('MCPResponseAdapter', () => {
 			const response = {
 				error: 'Something went wrong'
 			};
-			
+
 			expect(MCPResponseAdapter.isSuccessResponse(response)).toBe(false);
 		});
 

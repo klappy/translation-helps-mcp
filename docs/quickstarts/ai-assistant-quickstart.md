@@ -282,7 +282,7 @@ class TranslationToolsClient {
         capabilities: {
           tools: {},
         },
-      }
+      },
     );
 
     await this.client.connect(transport);
@@ -444,7 +444,10 @@ class CachedTranslationClient {
     }
 
     // Fetch fresh data
-    const result = await this.client.callTool({ name: toolName, arguments: args });
+    const result = await this.client.callTool({
+      name: toolName,
+      arguments: args,
+    });
 
     // Cache result
     this.cache.set(key, result.content);
@@ -468,7 +471,9 @@ class RateLimitedClient {
     const elapsed = now - this.lastRequest;
 
     if (elapsed < this.minInterval) {
-      await new Promise((resolve) => setTimeout(resolve, this.minInterval - elapsed));
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.minInterval - elapsed),
+      );
     }
 
     this.lastRequest = Date.now();

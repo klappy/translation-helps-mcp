@@ -73,7 +73,10 @@ export class RequestCoalescer {
   /**
    * Coalesce a request - main public method
    */
-  async coalesce<T>(key: string, fetcher: () => Promise<T>): Promise<CoalescingResult<T>> {
+  async coalesce<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+  ): Promise<CoalescingResult<T>> {
     const startTime = Date.now();
 
     if (this.options.enableMetrics) {
@@ -112,7 +115,8 @@ export class RequestCoalescer {
         };
       } catch (error) {
         if (this.options.enableMetrics) {
-          this.metrics.errorRate = (this.metrics.errorRate + 1) / this.metrics.totalRequests;
+          this.metrics.errorRate =
+            (this.metrics.errorRate + 1) / this.metrics.totalRequests;
         }
         throw error;
       }
@@ -156,7 +160,8 @@ export class RequestCoalescer {
       };
     } catch (error) {
       if (this.options.enableMetrics) {
-        this.metrics.errorRate = (this.metrics.errorRate + 1) / this.metrics.totalRequests;
+        this.metrics.errorRate =
+          (this.metrics.errorRate + 1) / this.metrics.totalRequests;
       }
       throw error;
     }
@@ -253,8 +258,10 @@ export class RequestCoalescer {
   }
 
   private updateAverageWaitTime(waitTime: number): void {
-    const totalWaitTime = this.metrics.averageWaitTime * (this.metrics.totalRequests - 1);
-    this.metrics.averageWaitTime = (totalWaitTime + waitTime) / this.metrics.totalRequests;
+    const totalWaitTime =
+      this.metrics.averageWaitTime * (this.metrics.totalRequests - 1);
+    this.metrics.averageWaitTime =
+      (totalWaitTime + waitTime) / this.metrics.totalRequests;
   }
 
   private updateTimeWindowStats(): void {
@@ -263,7 +270,8 @@ export class RequestCoalescer {
 
     this.metrics.timeWindowStats.windowDuration = now - windowStart;
     this.metrics.timeWindowStats.requestsInWindow = this.metrics.totalRequests;
-    this.metrics.timeWindowStats.coalescedInWindow = this.metrics.coalescedRequests;
+    this.metrics.timeWindowStats.coalescedInWindow =
+      this.metrics.coalescedRequests;
   }
 
   private cleanupExpiredRequests(): void {
@@ -277,7 +285,9 @@ export class RequestCoalescer {
     }
 
     if (expiredKeys.length > 0) {
-      logger.info(`[RequestCoalescer] Cleaning up expired requests`, { count: expiredKeys.length });
+      logger.info(`[RequestCoalescer] Cleaning up expired requests`, {
+        count: expiredKeys.length,
+      });
       expiredKeys.forEach((key) => this.pendingRequests.delete(key));
 
       if (this.options.enableMetrics) {
@@ -292,7 +302,7 @@ export class RequestCoalescer {
  */
 export function withCoalescing<T extends (...args: any[]) => Promise<any>>(
   fn: T,
-  coalescer: RequestCoalescer
+  coalescer: RequestCoalescer,
 ): T {
   return ((...args: any[]) => {
     return coalescer.coalesceCall(fn, ...args).then((result) => result.data);
@@ -306,7 +316,7 @@ export function Coalesceable(coalescer?: RequestCoalescer) {
   return function <T extends (...args: any[]) => Promise<any>>(
     target: any,
     propertyKey: string,
-    descriptor: TypedPropertyDescriptor<T>
+    descriptor: TypedPropertyDescriptor<T>,
   ) {
     const originalMethod = descriptor.value!;
     const instanceCoalescer = coalescer || new RequestCoalescer();
@@ -340,14 +350,22 @@ export class CoalescingUtils {
   /**
    * Create key for scripture references
    */
-  static scriptureKey(reference: string, language: string, version: string): string {
+  static scriptureKey(
+    reference: string,
+    language: string,
+    version: string,
+  ): string {
     return `scripture:${language}:${version}:${reference}`;
   }
 
   /**
    * Create key for translation resources
    */
-  static resourceKey(type: string, language: string, reference?: string): string {
+  static resourceKey(
+    type: string,
+    language: string,
+    reference?: string,
+  ): string {
     const parts = ["resource", type, language];
     if (reference) parts.push(reference);
     return parts.join(":");
@@ -372,14 +390,17 @@ export const defaultCoalescer = new RequestCoalescer({
 });
 
 // Export middleware for platform handlers
-export function createCoalescingMiddleware(coalescer: RequestCoalescer = defaultCoalescer) {
-  return function coalescingMiddleware<T extends (...args: any[]) => Promise<any>>(
-    handler: T,
-    keyGenerator?: (args: any[]) => string
-  ): T {
+export function createCoalescingMiddleware(
+  coalescer: RequestCoalescer = defaultCoalescer,
+) {
+  return function coalescingMiddleware<
+    T extends (...args: any[]) => Promise<any>,
+  >(handler: T, keyGenerator?: (args: any[]) => string): T {
     return ((...args: any[]) => {
       const key = keyGenerator ? keyGenerator(args) : JSON.stringify(args);
-      return coalescer.coalesce(key, () => handler(...args)).then((result) => result.data);
+      return coalescer
+        .coalesce(key, () => handler(...args))
+        .then((result) => result.data);
     }) as T;
   };
 }

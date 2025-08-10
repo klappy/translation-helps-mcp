@@ -241,17 +241,26 @@ class LoadTestRunner {
     };
 
     // Save JSON report
-    const reportFile = path.join(CONFIG.resultsDir, "load-test-suite-report.json");
+    const reportFile = path.join(
+      CONFIG.resultsDir,
+      "load-test-suite-report.json",
+    );
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
 
     // Generate HTML report
     const htmlReport = this.generateHtmlReport(report);
-    const htmlFile = path.join(CONFIG.resultsDir, "load-test-suite-report.html");
+    const htmlFile = path.join(
+      CONFIG.resultsDir,
+      "load-test-suite-report.html",
+    );
     fs.writeFileSync(htmlFile, htmlReport);
 
     // Generate text summary
     const textSummary = this.generateTextSummary(report);
-    const textFile = path.join(CONFIG.resultsDir, "load-test-suite-summary.txt");
+    const textFile = path.join(
+      CONFIG.resultsDir,
+      "load-test-suite-summary.txt",
+    );
     fs.writeFileSync(textFile, textSummary);
 
     console.log(`\n📊 Reports generated:`);
@@ -262,7 +271,9 @@ class LoadTestRunner {
 
   generateSummary() {
     const totalTests = Object.keys(this.results).length;
-    const successfulTests = Object.values(this.results).filter((r) => r.success).length;
+    const successfulTests = Object.values(this.results).filter(
+      (r) => r.success,
+    ).length;
     const failedTests = totalTests - successfulTests;
 
     return {
@@ -302,7 +313,7 @@ ${Object.entries(report.results)
    ├── Status: ${result.success ? "✅ PASS" : "❌ FAIL"}
    ├── Duration: ${Math.round(result.duration / 1000 / 60)} minutes
    ${result.error ? `└── Error: ${result.error}` : "└── Completed successfully"}
-`
+`,
   )
   .join("")}
 
@@ -382,7 +393,7 @@ Generated: ${new Date().toISOString()}
             <p><strong>Duration:</strong> ${Math.round(result.duration / 1000 / 60)} minutes</p>
             ${result.error ? `<p><strong>Error:</strong> ${result.error}</p>` : ""}
         </div>
-        `
+        `,
           )
           .join("")}
         
@@ -429,7 +440,11 @@ Generated: ${new Date().toISOString()}
           color: summary.overallStatus === "PASS" ? "good" : "danger",
           fields: [
             { title: "Tests Run", value: summary.totalTests, short: true },
-            { title: "Success Rate", value: `${summary.successRate}%`, short: true },
+            {
+              title: "Success Rate",
+              value: `${summary.successRate}%`,
+              short: true,
+            },
             { title: "Target", value: CONFIG.baseUrl, short: false },
           ],
         },

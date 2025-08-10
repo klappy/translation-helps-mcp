@@ -25,8 +25,14 @@ The API automatically discovers and returns ALL available Bible translations:
 {
   "scriptures": [
     { "text": "For God so loved the world...", "translation": "ULT" },
-    { "text": "God loved the people of the world so much...", "translation": "UST" },
-    { "text": "God loved the people in the world so much...", "translation": "T4T" },
+    {
+      "text": "God loved the people of the world so much...",
+      "translation": "UST"
+    },
+    {
+      "text": "God loved the people in the world so much...",
+      "translation": "T4T"
+    },
     { "text": "For God loved the world in this way...", "translation": "UEB" }
   ]
 }
@@ -102,7 +108,11 @@ Raw USFM contains extensive markup that must be carefully removed:
 
 ```javascript
 // 1. Dynamic Resource Discovery
-const resources = await fetchScriptureResources(reference, language, organization);
+const resources = await fetchScriptureResources(
+  reference,
+  language,
+  organization,
+);
 
 // 2. Extract USFM Content
 const usfmContent = await fetchUSFMFile(resourceUrl);
@@ -264,7 +274,9 @@ function checkExtractionEfficiency(originalSize, cleanSize) {
   const reduction = ((originalSize - cleanSize) / originalSize) * 100;
 
   if (reduction < 90) {
-    console.warn(`Low extraction efficiency: ${reduction.toFixed(1)}% reduction`);
+    console.warn(
+      `Low extraction efficiency: ${reduction.toFixed(1)}% reduction`,
+    );
     console.warn("Check for remaining USFM markers");
   }
 
@@ -279,9 +291,15 @@ function checkExtractionEfficiency(originalSize, cleanSize) {
 ```javascript
 async function validateAndExtract(usfmContent, chapter, verse) {
   const methods = [
-    { name: "semantic", fn: () => extractWithSemanticParser(usfmContent, chapter, verse) },
+    {
+      name: "semantic",
+      fn: () => extractWithSemanticParser(usfmContent, chapter, verse),
+    },
     { name: "regex", fn: () => extractVerseText(usfmContent, chapter, verse) },
-    { name: "emergency", fn: () => emergencyExtraction(usfmContent, chapter, verse) },
+    {
+      name: "emergency",
+      fn: () => emergencyExtraction(usfmContent, chapter, verse),
+    },
   ];
 
   for (const method of methods) {
@@ -292,7 +310,9 @@ async function validateAndExtract(usfmContent, chapter, verse) {
         return result;
       }
 
-      console.warn(`${method.name} extraction had USFM markers, trying next method`);
+      console.warn(
+        `${method.name} extraction had USFM markers, trying next method`,
+      );
     } catch (error) {
       console.warn(`${method.name} extraction failed:`, error.message);
     }
@@ -378,7 +398,11 @@ const testCases = [
 
 function testExtraction() {
   testCases.forEach((test) => {
-    const result = extractVerseText(test.usfm, 1, parseInt(test.usfm.match(/\\v (\d+)/)[1]));
+    const result = extractVerseText(
+      test.usfm,
+      1,
+      parseInt(test.usfm.match(/\\v (\d+)/)[1]),
+    );
     console.assert(result === test.expected, `Failed: ${test.name}`);
   });
 }

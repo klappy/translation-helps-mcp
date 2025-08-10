@@ -25,7 +25,7 @@ export function formatCitation(
   reference: Reference,
   translation: string,
   organization: string = "unfoldingWord",
-  language: string = "en"
+  language: string = "en",
 ): Citation {
   const formattedRef = formatReference(reference);
 

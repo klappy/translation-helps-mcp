@@ -24,7 +24,9 @@
 <div class="container mx-auto px-4 py-8">
 	<!-- Hero Section -->
 	<section class="mb-16 text-center">
-		<div class="mb-4 inline-block rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-300 backdrop-blur-xl">
+		<div
+			class="mb-4 inline-block rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-300 backdrop-blur-xl"
+		>
 			Translation Helps Platform
 		</div>
 		<h1 class="mb-8 text-5xl font-bold text-white md:text-6xl">
@@ -38,7 +40,8 @@
 			High-performance API platform providing <strong class="text-blue-300"
 				>instant access to unfoldingWord translation resources</strong
 			>
-			with <strong class="text-cyan-300">word-level alignment precision</strong> for Mother Tongue Translators worldwide.
+			with <strong class="text-cyan-300">word-level alignment precision</strong> for Mother Tongue Translators
+			worldwide.
 		</p>
 
 		<div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -91,7 +94,9 @@
 			<!-- Form-Centric (Literal) -->
 			<div class="rounded-3xl border border-orange-500/30 bg-orange-500/5 p-8 backdrop-blur-2xl">
 				<div class="mb-4 flex items-center">
-					<div class="mr-4 flex h-12 w-12 items-center justify-center rounded-lg bg-orange-500/20 backdrop-blur-xl">
+					<div
+						class="mr-4 flex h-12 w-12 items-center justify-center rounded-lg bg-orange-500/20 backdrop-blur-xl"
+					>
 						<span class="text-xl font-bold text-orange-300">ULT</span>
 					</div>
 					<div>
@@ -114,7 +119,9 @@
 			<!-- Meaning-Based (Simplified) -->
 			<div class="rounded-3xl border border-green-500/30 bg-green-500/5 p-8 backdrop-blur-2xl">
 				<div class="mb-4 flex items-center">
-					<div class="mr-4 flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/20 backdrop-blur-xl">
+					<div
+						class="mr-4 flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/20 backdrop-blur-xl"
+					>
 						<span class="text-xl font-bold text-green-300">UST</span>
 					</div>
 					<div>
@@ -138,9 +145,7 @@
 
 	<!-- Translation Helps Section -->
 	<section class="mb-16">
-		<h2 class="mb-12 text-center text-3xl font-bold text-white">
-			Comprehensive Translation Helps
-		</h2>
+		<h2 class="mb-12 text-center text-3xl font-bold text-white">Comprehensive Translation Helps</h2>
 
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 			<div class="rounded-3xl border border-blue-500/30 bg-white/5 p-6 backdrop-blur-2xl">

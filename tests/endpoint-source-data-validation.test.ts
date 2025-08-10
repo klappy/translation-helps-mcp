@@ -18,7 +18,11 @@ describe("Endpoint Source Data Validation", () => {
   const ENDPOINT_TESTS = {
     "translation-notes": {
       endpoint: "fetch-translation-notes",
-      params: { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
+      params: {
+        reference: "John 3:16",
+        language: "en",
+        organization: "unfoldingWord",
+      },
       requiredFields: [
         "Reference",
         "ID",
@@ -56,8 +60,19 @@ describe("Endpoint Source Data Validation", () => {
 
     "translation-word-links": {
       endpoint: "fetch-translation-word-links",
-      params: { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
-      requiredFields: ["Reference", "ID", "Tags", "OrigWords", "Occurrence", "TWLink"],
+      params: {
+        reference: "John 3:16",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+      requiredFields: [
+        "Reference",
+        "ID",
+        "Tags",
+        "OrigWords",
+        "Occurrence",
+        "TWLink",
+      ],
       validateContent: (data: any) => {
         expect(data.links).toBeDefined();
         expect(Array.isArray(data.links)).toBe(true);
@@ -107,8 +122,20 @@ describe("Endpoint Source Data Validation", () => {
 
     "translation-questions": {
       endpoint: "fetch-translation-questions",
-      params: { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
-      requiredFields: ["Reference", "ID", "Tags", "Quote", "Occurrence", "Question", "Response"],
+      params: {
+        reference: "John 3:16",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+      requiredFields: [
+        "Reference",
+        "ID",
+        "Tags",
+        "Quote",
+        "Occurrence",
+        "Question",
+        "Response",
+      ],
       validateContent: (data: any) => {
         expect(data.translationQuestions).toBeDefined();
         expect(Array.isArray(data.translationQuestions)).toBe(true);
@@ -201,7 +228,7 @@ describe("Endpoint Source Data Validation", () => {
             config.validateContent!(data);
           }
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -209,14 +236,25 @@ describe("Endpoint Source Data Validation", () => {
   describe("Response Consistency Tests", () => {
     it("should have consistent response wrapper structure", async () => {
       const endpoints = [
-        { path: "fetch-scripture", params: { reference: "John 3:16", language: "en" } },
+        {
+          path: "fetch-scripture",
+          params: { reference: "John 3:16", language: "en" },
+        },
         {
           path: "fetch-translation-notes",
-          params: { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
+          params: {
+            reference: "John 3:16",
+            language: "en",
+            organization: "unfoldingWord",
+          },
         },
         {
           path: "fetch-translation-word-links",
-          params: { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
+          params: {
+            reference: "John 3:16",
+            language: "en",
+            organization: "unfoldingWord",
+          },
         },
       ];
 
@@ -229,7 +267,7 @@ describe("Endpoint Source Data Validation", () => {
 
           const response = await fetch(url.toString());
           return { path, data: await response.json() };
-        })
+        }),
       );
 
       // Check for consistent top-level structure

@@ -42,7 +42,7 @@ export interface ExtractReferencesResult {
  * Core reference extraction logic
  */
 export async function extractReferences(
-  options: ExtractReferencesOptions
+  options: ExtractReferencesOptions,
 ): Promise<ExtractReferencesResult> {
   const startTime = Date.now();
   const { text, includeContext = false } = options;
@@ -89,11 +89,16 @@ export async function extractReferences(
       if (includeContext) {
         const contextRadius = 50;
         const beforeStart = Math.max(0, match.index - contextRadius);
-        const afterEnd = Math.min(text.length, match.index + fullMatch.length + contextRadius);
+        const afterEnd = Math.min(
+          text.length,
+          match.index + fullMatch.length + contextRadius,
+        );
 
         extractedRef.context = {
           before: text.substring(beforeStart, match.index).trim(),
-          after: text.substring(match.index + fullMatch.length, afterEnd).trim(),
+          after: text
+            .substring(match.index + fullMatch.length, afterEnd)
+            .trim(),
         };
       }
 
@@ -103,7 +108,8 @@ export async function extractReferences(
 
   // Remove duplicates based on reference string
   const uniqueReferences = references.filter(
-    (ref, index, arr) => arr.findIndex((r) => r.reference === ref.reference) === index
+    (ref, index, arr) =>
+      arr.findIndex((r) => r.reference === ref.reference) === index,
   );
 
   logger.info(`Extracted references`, { count: uniqueReferences.length });

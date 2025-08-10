@@ -20,7 +20,7 @@ interface TranslationWordLink {
 }
 
 export async function handleGetWordsForReference(
-  params: GetWordsForReferenceParams
+  params: GetWordsForReferenceParams,
 ): Promise<{ content: TranslationWordLink[] }> {
   const client = new DCSApiClient();
   const organization = params.organization || "unfoldingWord";
@@ -53,12 +53,17 @@ export async function handleGetWordsForReference(
     const notePath = `${book}/${chapter}/${verse}.md`;
 
     try {
-      const noteResponse = await client.getRawFileContent(organization, tnRepo, notePath);
+      const noteResponse = await client.getRawFileContent(
+        organization,
+        tnRepo,
+        notePath,
+      );
 
       if (noteResponse.success && noteResponse.data) {
         // Extract translation word links from the notes
         // Translation words are typically linked as [[rc://*/tw/dict/bible/kt/term]]
-        const twLinkPattern = /\[\[rc:\/\/\*\/tw\/dict\/bible\/([^\/]+)\/([^\]]+)\]\]/g;
+        const twLinkPattern =
+          /\[\[rc:\/\/\*\/tw\/dict\/bible\/([^\/]+)\/([^\]]+)\]\]/g;
         let match;
 
         while ((match = twLinkPattern.exec(noteResponse.data)) !== null) {
@@ -88,10 +93,15 @@ export async function handleGetWordsForReference(
     const introPath = `${book}/${chapter}/intro.md`;
 
     try {
-      const introResponse = await client.getRawFileContent(organization, tnRepo, introPath);
+      const introResponse = await client.getRawFileContent(
+        organization,
+        tnRepo,
+        introPath,
+      );
 
       if (introResponse.success && introResponse.data) {
-        const twLinkPattern = /\[\[rc:\/\/\*\/tw\/dict\/bible\/([^\/]+)\/([^\]]+)\]\]/g;
+        const twLinkPattern =
+          /\[\[rc:\/\/\*\/tw\/dict\/bible\/([^\/]+)\/([^\]]+)\]\]/g;
         let match;
 
         while ((match = twLinkPattern.exec(introResponse.data)) !== null) {

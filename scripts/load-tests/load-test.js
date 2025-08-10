@@ -58,7 +58,8 @@ const TEST_SCENARIOS = {
       name: "Get Languages",
     },
     {
-      endpoint: "/.netlify/functions/fetch-resources?language=en&organization=unfoldingWord",
+      endpoint:
+        "/.netlify/functions/fetch-resources?language=en&organization=unfoldingWord",
       name: "Fetch Resources",
     },
   ],
@@ -136,14 +137,17 @@ class PerformanceMetrics {
       p95Duration: this.getPercentile(durations, 95),
       p99Duration: this.getPercentile(durations, 99),
       totalDuration: Date.now() - this.startTime,
-      requestsPerSecond: this.requests.length / ((Date.now() - this.startTime) / 1000),
+      requestsPerSecond:
+        this.requests.length / ((Date.now() - this.startTime) / 1000),
     };
   }
 
   getMedian(arr) {
     const sorted = arr.slice().sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    return sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
   }
 
   getPercentile(arr, percentile) {
@@ -209,12 +213,12 @@ class LoadTester {
         this.metrics.addRequest(test.name, result.duration, result.statusCode);
 
         console.log(
-          `✅ ${test.name.padEnd(35)} | ${result.duration.toString().padStart(6)}ms | ${result.statusCode}`
+          `✅ ${test.name.padEnd(35)} | ${result.duration.toString().padStart(6)}ms | ${result.statusCode}`,
         );
       } catch (error) {
         this.metrics.addRequest(test.name, error.duration, 0, error.error);
         console.log(
-          `❌ ${test.name.padEnd(35)} | ${error.duration.toString().padStart(6)}ms | ERROR: ${error.error}`
+          `❌ ${test.name.padEnd(35)} | ${error.duration.toString().padStart(6)}ms | ERROR: ${error.error}`,
         );
       }
 
@@ -225,7 +229,7 @@ class LoadTester {
 
   async runConcurrentTests(concurrency, duration = 30000) {
     console.log(
-      `\n⚡ Running Concurrent Tests (${concurrency} concurrent requests for ${duration / 1000}s)...`
+      `\n⚡ Running Concurrent Tests (${concurrency} concurrent requests for ${duration / 1000}s)...`,
     );
     console.log("=".repeat(60));
 
@@ -266,19 +270,21 @@ class LoadTester {
         this.metrics.addRequest(
           `Concurrent-${selectedTest.endpoint.split("?")[0].split("/").pop()}`,
           result.duration,
-          result.statusCode
+          result.statusCode,
         );
       } catch (error) {
         this.metrics.addRequest(
           `Concurrent-${selectedTest.endpoint.split("?")[0].split("/").pop()}`,
           error.duration,
           0,
-          error.error
+          error.error,
         );
       }
 
       // Random delay between 100-500ms
-      await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 400));
+      await new Promise((resolve) =>
+        setTimeout(resolve, 100 + Math.random() * 400),
+      );
     }
   }
 
@@ -295,10 +301,15 @@ class LoadTester {
 
       // Create batch of requests
       for (let i = 0; i < batchSize; i++) {
-        const test = TEST_SCENARIOS.individual[i % TEST_SCENARIOS.individual.length];
+        const test =
+          TEST_SCENARIOS.individual[i % TEST_SCENARIOS.individual.length];
         const promise = makeRequest(this.baseUrl, test.endpoint)
           .then((result) => {
-            this.metrics.addRequest(test.name, result.duration, result.statusCode);
+            this.metrics.addRequest(
+              test.name,
+              result.duration,
+              result.statusCode,
+            );
           })
           .catch((error) => {
             this.metrics.addRequest(test.name, error.duration, 0, error.error);
@@ -311,7 +322,7 @@ class LoadTester {
 
       const stats = this.metrics.getStats();
       console.log(
-        `   Duration: ${totalTime}ms | Avg: ${stats.averageDuration.toFixed(0)}ms | Success: ${stats.successRate.toFixed(1)}%`
+        `   Duration: ${totalTime}ms | Avg: ${stats.averageDuration.toFixed(0)}ms | Success: ${stats.successRate.toFixed(1)}%`,
       );
     }
   }
@@ -327,10 +338,19 @@ class LoadTester {
       // First request (cache miss)
       try {
         const result1 = await makeRequest(this.baseUrl, test.endpoint);
-        this.metrics.addRequest(`${test.name} (Miss)`, result1.duration, result1.statusCode);
+        this.metrics.addRequest(
+          `${test.name} (Miss)`,
+          result1.duration,
+          result1.statusCode,
+        );
         console.log(`   Cache Miss: ${result1.duration}ms`);
       } catch (error) {
-        this.metrics.addRequest(`${test.name} (Miss)`, error.duration, 0, error.error);
+        this.metrics.addRequest(
+          `${test.name} (Miss)`,
+          error.duration,
+          0,
+          error.error,
+        );
         console.log(`   Cache Miss: ERROR - ${error.error}`);
       }
 
@@ -340,10 +360,19 @@ class LoadTester {
       // Second request (cache hit)
       try {
         const result2 = await makeRequest(this.baseUrl, test.endpoint);
-        this.metrics.addRequest(`${test.name} (Hit)`, result2.duration, result2.statusCode);
+        this.metrics.addRequest(
+          `${test.name} (Hit)`,
+          result2.duration,
+          result2.statusCode,
+        );
         console.log(`   Cache Hit:  ${result2.duration}ms`);
       } catch (error) {
-        this.metrics.addRequest(`${test.name} (Hit)`, error.duration, 0, error.error);
+        this.metrics.addRequest(
+          `${test.name} (Hit)`,
+          error.duration,
+          0,
+          error.error,
+        );
         console.log(`   Cache Hit:  ERROR - ${error.error}`);
       }
     }
@@ -351,7 +380,7 @@ class LoadTester {
 
   async runStressTest(maxConcurrency = 200, duration = 60000) {
     console.log(
-      `\n💥 Running Stress Test (${maxConcurrency} max concurrent, ${duration / 1000}s duration)...`
+      `\n💥 Running Stress Test (${maxConcurrency} max concurrent, ${duration / 1000}s duration)...`,
     );
     console.log("=".repeat(60));
 
@@ -369,7 +398,7 @@ class LoadTester {
 
     for (const phase of phases) {
       console.log(
-        `\n📈 Phase: ${phase.concurrency} concurrent requests for ${phase.duration / 1000}s`
+        `\n📈 Phase: ${phase.concurrency} concurrent requests for ${phase.duration / 1000}s`,
       );
       await this.runConcurrentTests(phase.concurrency, phase.duration);
     }
@@ -386,7 +415,7 @@ class LoadTester {
     console.log("=".repeat(60));
     console.log(`Total Requests:     ${stats.totalRequests}`);
     console.log(
-      `Successful:         ${stats.successfulRequests} (${stats.successRate.toFixed(1)}%)`
+      `Successful:         ${stats.successfulRequests} (${stats.successRate.toFixed(1)}%)`,
     );
     console.log(`Failed:             ${stats.failedRequests}`);
     console.log(`Errors:             ${stats.errorRequests}`);

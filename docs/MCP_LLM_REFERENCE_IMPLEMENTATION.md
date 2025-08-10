@@ -20,13 +20,13 @@ Instead of hardcoding tool definitions, discover them dynamically:
 
 ```typescript
 async function discoverMCPTools(baseUrl: URL): Promise<any[]> {
-  const mcpUrl = new URL('/api/mcp', baseUrl);
+  const mcpUrl = new URL("/api/mcp", baseUrl);
   const response = await fetch(mcpUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ method: 'tools/list' })
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method: "tools/list" }),
   });
-  
+
   const data = await response.json();
   return data.tools || getDefaultTools();
 }
@@ -53,24 +53,24 @@ Let the LLM decide which tools to use:
 
 ```typescript
 const openAIResponse = await fetch(OPENAI_API_URL, {
-  method: 'POST',
+  method: "POST",
   headers: {
-    'Authorization': `Bearer ${apiKey}`,
-    'Content-Type': 'application/json'
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: 'gpt-4o-mini',
+    model: "gpt-4o-mini",
     messages,
-    tools: tools.map(tool => ({
-      type: 'function',
+    tools: tools.map((tool) => ({
+      type: "function",
       function: {
         name: tool.name,
         description: tool.description,
-        parameters: tool.inputSchema
-      }
+        parameters: tool.inputSchema,
+      },
     })),
-    tool_choice: 'auto'  // Let LLM decide
-  })
+    tool_choice: "auto", // Let LLM decide
+  }),
 });
 ```
 
@@ -79,27 +79,30 @@ const openAIResponse = await fetch(OPENAI_API_URL, {
 Execute the tools the LLM requests:
 
 ```typescript
-async function executeToolCalls(toolCalls: any[], baseUrl: URL): Promise<any[]> {
+async function executeToolCalls(
+  toolCalls: any[],
+  baseUrl: URL,
+): Promise<any[]> {
   return Promise.all(
     toolCalls.map(async (toolCall) => {
       const { name, arguments: args } = toolCall.function;
-      
-      const mcpUrl = new URL('/api/mcp', baseUrl);
+
+      const mcpUrl = new URL("/api/mcp", baseUrl);
       const response = await fetch(mcpUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          method: 'tools/call',
-          params: { name, arguments: args }
-        })
+          method: "tools/call",
+          params: { name, arguments: args },
+        }),
       });
-      
+
       const result = await response.json();
       return {
         tool_call_id: toolCall.id,
-        content: result.content?.[0]?.text || JSON.stringify(result)
+        content: result.content?.[0]?.text || JSON.stringify(result),
       };
-    })
+    }),
   );
 }
 ```
@@ -111,28 +114,28 @@ Send tool results back to the LLM for natural formatting:
 ```typescript
 if (assistantMessage.tool_calls) {
   const toolResults = await executeToolCalls(assistantMessage.tool_calls, url);
-  
+
   // Get final formatted response
   const finalResponse = await fetch(OPENAI_API_URL, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: "gpt-4o-mini",
       messages: [
         ...messages,
         assistantMessage,
-        ...toolResults.map(result => ({
-          role: 'tool',
+        ...toolResults.map((result) => ({
+          role: "tool",
           tool_call_id: result.tool_call_id,
-          content: JSON.stringify(result.content)
-        }))
-      ]
-    })
+          content: JSON.stringify(result.content),
+        })),
+      ],
+    }),
   });
-  
+
   const finalAIResponse = await finalResponse.json();
   return finalAIResponse.choices[0].message.content;
 }
@@ -143,11 +146,12 @@ if (assistantMessage.tool_calls) {
 ### 1. Let the LLM Handle Formatting
 
 **DON'T** create elaborate formatting functions:
+
 ```typescript
 // ❌ BAD: Brittle and hard to maintain
 function formatTranslationNotes(data) {
   if (data.notes) {
-    return data.notes.map(note => `- ${note.text}`).join('\n');
+    return data.notes.map((note) => `- ${note.text}`).join("\n");
   } else if (data.verseNotes) {
     // More brittle logic...
   }
@@ -155,6 +159,7 @@ function formatTranslationNotes(data) {
 ```
 
 **DO** provide formatting guidelines in the system prompt:
+
 ```typescript
 // ✅ GOOD: Flexible and maintainable
 const SYSTEM_PROMPT = `Format translation notes as a numbered list...`;
@@ -184,7 +189,7 @@ const xrayData = {
   tools: [],
   timeline: [],
   totalTime: 0,
-  citations: []
+  citations: [],
 };
 
 // Add to xrayData during execution
@@ -192,7 +197,7 @@ xrayData.tools.push({
   name: toolName,
   params: args,
   duration: Date.now() - startTime,
-  response: responsePreview
+  response: responsePreview,
 });
 ```
 
@@ -202,7 +207,7 @@ Convert resource links to actionable prompts:
 
 ```typescript
 function handleRCLinkClick(href: string) {
-  if (href.includes('rc://words/')) {
+  if (href.includes("rc://words/")) {
     const word = extractWordFromLink(href);
     return `Define the biblical term "${word}" and explain its significance`;
   }
@@ -224,28 +229,32 @@ OPENAI_API_KEY=sk-...
 ```typescript
 // Required for Cloudflare Pages
 export const config = {
-  runtime: 'edge'
+  runtime: "edge",
 };
 ```
 
 ## Testing Your Implementation
 
 ### 1. Basic Functionality
+
 - Ask for a Bible verse: "Show me John 3:16"
 - Request translation notes: "Notes for Titus 1:1"
 - Define a word: "What does agape mean?"
 
 ### 2. Error Handling
+
 - Invalid reference: "Show me John 99:99"
 - Unavailable resource: "Notes for a non-existent book"
 - Network failures: Disconnect and test
 
 ### 3. Edge Cases
+
 - Multiple tools in one request
 - Long responses requiring truncation
 - Special characters in references
 
 ### 4. Performance
+
 - Check X-ray timing data
 - Monitor cache hit rates
 - Measure total response time
@@ -261,6 +270,7 @@ export const config = {
 ## Example Implementation
 
 See `/ui/src/routes/api/chat/+server.ts` for the complete reference implementation that:
+
 - Discovers MCP tools dynamically
 - Uses OpenAI function calling
 - Handles errors gracefully

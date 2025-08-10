@@ -114,25 +114,7 @@ export async function fetchTranslationQuestions(
     organization,
   });
 
-  // Check cache first
-  const responseKey = `questions:${reference}:${language}:${organization}`;
-  const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
-
-  if (cachedResponse.value) {
-    logger.info(`FAST cache hit for processed questions`, { key: responseKey });
-    return {
-      translationQuestions: cachedResponse.value.translationQuestions,
-      citation: cachedResponse.value.citation,
-      metadata: {
-        responseTime: Date.now() - startTime,
-        cached: true,
-        timestamp: new Date().toISOString(),
-        questionsFound: cachedResponse.value.translationQuestions?.length || 0,
-      },
-    };
-  }
-
-  logger.info(`Processing fresh questions request`, { key: responseKey });
+  logger.info(`Processing fresh questions request`);
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
   logger.debug(`Using unified resource discovery for translation questions...`);
@@ -142,8 +124,14 @@ export async function fetchTranslationQuestions(
     throw new Error(`No translation questions found for ${language}/${organization}`);
   }
 
-  logger.info(`Using resource`, { name: resourceInfo.name, title: resourceInfo.title });
-  logger.debug(`Looking for book`, { book: parsedRef.book, lower: parsedRef.book.toLowerCase() });
+  logger.info(`Using resource`, {
+    name: resourceInfo.name,
+    title: resourceInfo.title,
+  });
+  logger.debug(`Looking for book`, {
+    book: parsedRef.book,
+    lower: parsedRef.book.toLowerCase(),
+  });
   logger.debug(`Ingredients available`, {
     ingredients: resourceInfo.ingredients?.map((i: any) => i.identifier),
   });
@@ -207,11 +195,7 @@ export async function fetchTranslationQuestions(
     },
   };
 
-  // Cache the transformed response
-  await cache.setTransformedResponse(responseKey, {
-    translationQuestions: result.translationQuestions,
-    citation: result.citation,
-  });
+  // Do not cache transformed responses
 
   logger.info(`Parsed translation questions`, { count: questions.length });
 

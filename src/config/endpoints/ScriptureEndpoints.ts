@@ -54,17 +54,18 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     format: {
       type: "string",
       required: false,
-      default: "text",
+      default: "json",
       description:
-        "Output format - 'json' for structured data, 'text' for plain text with citation, 'md' for markdown, 'usfm' for USFM formatted",
-      example: "text",
+        "Output format - 'json' (default) for structured data, 'text' for plain text with citation, 'md' for markdown, 'usfm' for USFM formatted",
+      example: "json",
       options: ["json", "text", "md", "markdown", "usfm"],
     },
     includeAlignment: {
       type: "boolean",
       required: false,
       default: false,
-      description: "Include word alignment data (only available with USFM format)",
+      description:
+        "Include word alignment data (only available with USFM format)",
       example: false,
     },
   },
@@ -89,7 +90,8 @@ export const FETCH_SCRIPTURE_CONFIG: EndpointConfig = {
   name: "fetch-scripture",
   path: "/fetch-scripture",
   title: "Fetch Scripture",
-  description: "Retrieve scripture text from multiple translations in any supported language",
+  description:
+    "Retrieve scripture text from multiple translations in any supported language",
   category: "core",
   responseShape: SCRIPTURE_SHAPE,
   params: SCRIPTURE_PARAMS,
@@ -141,7 +143,8 @@ export const FETCH_SCRIPTURE_CONFIG: EndpointConfig = {
     },
     {
       name: "Romans 8:28 (Spanish translation)",
-      description: "Fetch scripture in Spanish to demonstrate multi-language support",
+      description:
+        "Fetch scripture in Spanish to demonstrate multi-language support",
       params: {
         reference: "Romans 8:28",
         language: "es",
@@ -164,7 +167,8 @@ const FETCH_ULT_SCRIPTURE_CONFIG: EndpointConfig = {
   name: "fetch-ult-scripture",
   path: "/fetch-ult-scripture",
   title: "Fetch ULT Scripture",
-  description: "Retrieve Unlocked Literal Text (ULT) scripture with word-for-word accuracy",
+  description:
+    "Retrieve Unlocked Literal Text (ULT) scripture with word-for-word accuracy",
 
   dataSource: {
     type: "zip-cached",
@@ -183,7 +187,11 @@ const FETCH_ULT_SCRIPTURE_CONFIG: EndpointConfig = {
         format: "text",
       },
       expectedContent: {
-        contains: ["For God loved the world in this way", "gave", "only begotten Son"],
+        contains: [
+          "For God loved the world in this way",
+          "gave",
+          "only begotten Son",
+        ],
         minLength: 80,
         fields: {
           scripture: { translation: "ULT" },

@@ -11,7 +11,11 @@ import { logger } from "./logger.js";
 /**
  * Extract clean text for a specific verse from USFM
  */
-export function extractVerseText(usfm: string, chapter: number, verse: number): string {
+export function extractVerseText(
+  usfm: string,
+  chapter: number,
+  verse: number,
+): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
   }
@@ -70,7 +74,7 @@ export function extractVerseRange(
   usfm: string,
   chapter: number,
   startVerse: number,
-  endVerse: number
+  endVerse: number,
 ): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
@@ -128,7 +132,9 @@ export function extractVerseRange(
 
     return verses.join(" ");
   } catch (error) {
-    logger.error("USFM verse range extraction failed", { error: String(error) });
+    logger.error("USFM verse range extraction failed", {
+      error: String(error),
+    });
     return "";
   }
 }
@@ -140,7 +146,7 @@ export function extractVerseRange(
 export function extractChapterRange(
   usfm: string,
   startChapter: number,
-  endChapter: number
+  endChapter: number,
 ): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
@@ -158,7 +164,9 @@ export function extractChapterRange(
 
       if (chapterNum >= startChapter && chapterNum <= endChapter) {
         // Find all verses in this chapter
-        const verseMatches = chapterContent.matchAll(/\\v\s+(\d+)\s+([^\\]*(?:\\(?!v)[^\\]*)*)/g);
+        const verseMatches = chapterContent.matchAll(
+          /\\v\s+(\d+)\s+([^\\]*(?:\\(?!v)[^\\]*)*)/g,
+        );
         const verses: string[] = [];
 
         for (const match of verseMatches) {
@@ -179,7 +187,9 @@ export function extractChapterRange(
 
     return chapters.join("\n\n");
   } catch (error) {
-    logger.error("USFM chapter range extraction failed", { error: String(error) });
+    logger.error("USFM chapter range extraction failed", {
+      error: String(error),
+    });
     return "";
   }
 }
@@ -212,7 +222,9 @@ export function extractChapterText(usfm: string, chapter: number): string {
     }
 
     // Find all verses
-    const verseMatches = chapterContent.matchAll(/\\v\s+(\d+)\s+([^\\]*(?:\\(?!v)[^\\]*)*)/g);
+    const verseMatches = chapterContent.matchAll(
+      /\\v\s+(\d+)\s+([^\\]*(?:\\(?!v)[^\\]*)*)/g,
+    );
     const verses: string[] = [];
 
     for (const match of verseMatches) {

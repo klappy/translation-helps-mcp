@@ -31,7 +31,7 @@
 	}
 </script>
 
-<div 
+<div
 	class="translation-word {theme}"
 	class:expanded={theme === 'expanded' || isExpanded}
 	class:compact={theme === 'compact'}
@@ -39,7 +39,7 @@
 >
 	<div class="word-header">
 		<div class="word-icon">
-			<Code class="w-5 h-5" />
+			<Code class="h-5 w-5" />
 		</div>
 		<div class="word-info">
 			<h3 class="word-title">{word.word}</h3>
@@ -53,15 +53,11 @@
 				on:click={copyDefinition}
 				title="Copy definition"
 			>
-				<Copy class="w-4 h-4" />
+				<Copy class="h-4 w-4" />
 			</button>
 			{#if theme === 'default'}
-				<button
-					class="action-btn"
-					on:click={toggleExpansion}
-					title="Toggle details"
-				>
-					<BookOpen class="w-4 h-4" />
+				<button class="action-btn" on:click={toggleExpansion} title="Toggle details">
+					<BookOpen class="h-4 w-4" />
 				</button>
 			{/if}
 		</div>
@@ -70,7 +66,7 @@
 	{#if word.title && theme !== 'compact'}
 		<div class="word-definition" in:slide={{ duration: 200 }}>
 			<div class="definition-header">
-				<Lightbulb class="w-4 h-4 text-yellow-400" />
+				<Lightbulb class="h-4 w-4 text-yellow-400" />
 				<span class="definition-label">Definition</span>
 			</div>
 			<p class="definition-text">{word.title}</p>
@@ -376,4 +372,4 @@
 			box-shadow: 0 10px 30px rgba(59, 130, 246, 0.1);
 		}
 	}
-</style> 
+</style>

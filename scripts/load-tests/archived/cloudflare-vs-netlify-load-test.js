@@ -41,7 +41,10 @@ const PLATFORMS = {
 const TEST_SCENARIOS = {
   basic: [
     { endpoint: "/api/health", name: "Health Check" },
-    { endpoint: "/api/get-languages?organization=unfoldingWord", name: "Get Languages" },
+    {
+      endpoint: "/api/get-languages?organization=unfoldingWord",
+      name: "Get Languages",
+    },
   ],
 
   scripture: [
@@ -110,7 +113,13 @@ class PlatformMetrics {
     this.startTime = Date.now();
   }
 
-  addRequest(endpoint, duration, statusCode, error = null, cacheStatus = "unknown") {
+  addRequest(
+    endpoint,
+    duration,
+    statusCode,
+    error = null,
+    cacheStatus = "unknown",
+  ) {
     this.requests.push({
       endpoint,
       duration,
@@ -144,9 +153,12 @@ class PlatformMetrics {
       p95Duration: sorted[Math.floor(sorted.length * 0.95)],
       p99Duration: sorted[Math.floor(sorted.length * 0.99)],
       totalDuration: Date.now() - this.startTime,
-      requestsPerSecond: successful.length / ((Date.now() - this.startTime) / 1000),
-      cacheHits: this.requests.filter((r) => r.cacheStatus?.includes("hit")).length,
-      cacheMisses: this.requests.filter((r) => r.cacheStatus?.includes("miss")).length,
+      requestsPerSecond:
+        successful.length / ((Date.now() - this.startTime) / 1000),
+      cacheHits: this.requests.filter((r) => r.cacheStatus?.includes("hit"))
+        .length,
+      cacheMisses: this.requests.filter((r) => r.cacheStatus?.includes("miss"))
+        .length,
     };
   }
 
@@ -229,19 +241,24 @@ class PlatformComparison {
             result.duration,
             result.statusCode,
             null,
-            result.cacheStatus
+            result.cacheStatus,
           );
           results[platformKey] = result;
 
           console.log(
-            `${platform.name.padEnd(20)} | ${result.duration.toString().padStart(6)}ms | ${result.statusCode} | Cache: ${result.cacheStatus}`
+            `${platform.name.padEnd(20)} | ${result.duration.toString().padStart(6)}ms | ${result.statusCode} | Cache: ${result.cacheStatus}`,
           );
         } catch (error) {
-          this.metrics[platformKey].addRequest(test.name, error.duration, 0, error.error);
+          this.metrics[platformKey].addRequest(
+            test.name,
+            error.duration,
+            0,
+            error.error,
+          );
           results[platformKey] = error;
 
           console.log(
-            `${platform.name.padEnd(20)} | ${error.duration.toString().padStart(6)}ms | ERROR | ${error.error}`
+            `${platform.name.padEnd(20)} | ${error.duration.toString().padStart(6)}ms | ERROR | ${error.error}`,
           );
         }
 
@@ -259,7 +276,9 @@ class PlatformComparison {
         const diff = results.netlify.duration - results.cloudflare.duration;
         const faster = diff > 0 ? "Cloudflare" : "Netlify";
         const improvement = Math.abs(
-          (diff / Math.max(results.netlify.duration, results.cloudflare.duration)) * 100
+          (diff /
+            Math.max(results.netlify.duration, results.cloudflare.duration)) *
+            100,
         );
 
         console.log(`🏆 Winner: ${faster} (${improvement.toFixed(1)}% faster)`);
@@ -272,7 +291,7 @@ class PlatformComparison {
 
   async runConcurrentLoadTest(concurrency, duration = 30000) {
     console.log(
-      `\n⚡ Concurrent Load Test - ${concurrency} concurrent requests for ${duration / 1000}s`
+      `\n⚡ Concurrent Load Test - ${concurrency} concurrent requests for ${duration / 1000}s`,
     );
     console.log("=".repeat(80));
 
@@ -283,10 +302,16 @@ class PlatformComparison {
 
     // Start concurrent tests for each platform
     for (const [platformKey, platform] of Object.entries(PLATFORMS)) {
-      console.log(`🚀 Starting ${concurrency} concurrent requests on ${platform.name}...`);
+      console.log(
+        `🚀 Starting ${concurrency} concurrent requests on ${platform.name}...`,
+      );
 
       for (let i = 0; i < concurrency; i++) {
-        const promise = this.runConcurrentLoop(platformKey, platform.url, duration);
+        const promise = this.runConcurrentLoop(
+          platformKey,
+          platform.url,
+          duration,
+        );
         promises.push(promise);
       }
     }
@@ -321,19 +346,21 @@ class PlatformComparison {
           result.duration,
           result.statusCode,
           null,
-          result.cacheStatus
+          result.cacheStatus,
         );
       } catch (error) {
         this.metrics[platformKey].addRequest(
           `Concurrent-${selectedTest.endpoint.split("?")[0].split("/").pop()}`,
           error.duration,
           0,
-          error.error
+          error.error,
         );
       }
 
       // Random delay between requests (100-500ms)
-      await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 400));
+      await new Promise((resolve) =>
+        setTimeout(resolve, 100 + Math.random() * 400),
+      );
     }
   }
 
@@ -380,12 +407,14 @@ class PlatformComparison {
 
     if (platform === "netlify") {
       const executionCost =
-        (stats.averageDuration / 100) * platformConfig.pricing.functionExecution;
+        (stats.averageDuration / 100) *
+        platformConfig.pricing.functionExecution;
       const requestCost = platformConfig.pricing.requests;
       const costPerRequest = executionCost + requestCost;
 
       if (requestsPerMonth > platformConfig.pricing.freeTier) {
-        monthlyCost = (requestsPerMonth - platformConfig.pricing.freeTier) * costPerRequest;
+        monthlyCost =
+          (requestsPerMonth - platformConfig.pricing.freeTier) * costPerRequest;
       }
     } else if (platform === "cloudflare") {
       const dailyRequests = stats.totalRequests;
@@ -412,36 +441,53 @@ class PlatformComparison {
       if (!stats || stats.error) continue;
 
       console.log(`\n🔷 ${platform.name} Results:`);
-      console.log(`   Requests: ${stats.totalRequests} (${stats.successRate.toFixed(1)}% success)`);
+      console.log(
+        `   Requests: ${stats.totalRequests} (${stats.successRate.toFixed(1)}% success)`,
+      );
       console.log(`   Average Response: ${stats.averageDuration.toFixed(0)}ms`);
       console.log(`   Median Response: ${stats.medianDuration.toFixed(0)}ms`);
       console.log(`   95th Percentile: ${stats.p95Duration.toFixed(0)}ms`);
       console.log(`   Requests/Second: ${stats.requestsPerSecond.toFixed(2)}`);
-      console.log(`   Cache Hits: ${stats.cacheHits} | Cache Misses: ${stats.cacheMisses}`);
+      console.log(
+        `   Cache Hits: ${stats.cacheHits} | Cache Misses: ${stats.cacheMisses}`,
+      );
     }
 
     // Direct comparison
     const netlifyStats = this.metrics.netlify.getStats();
     const cloudflareStats = this.metrics.cloudflare.getStats();
 
-    if (netlifyStats && cloudflareStats && !netlifyStats.error && !cloudflareStats.error) {
+    if (
+      netlifyStats &&
+      cloudflareStats &&
+      !netlifyStats.error &&
+      !cloudflareStats.error
+    ) {
       console.log(`\n🏆 HEAD-TO-HEAD COMPARISON:`);
 
-      const avgDiff = netlifyStats.averageDuration - cloudflareStats.averageDuration;
-      const rpsDiff = cloudflareStats.requestsPerSecond - netlifyStats.requestsPerSecond;
+      const avgDiff =
+        netlifyStats.averageDuration - cloudflareStats.averageDuration;
+      const rpsDiff =
+        cloudflareStats.requestsPerSecond - netlifyStats.requestsPerSecond;
 
       console.log(`   Average Response Time:`);
       console.log(`     Netlify: ${netlifyStats.averageDuration.toFixed(0)}ms`);
-      console.log(`     Cloudflare: ${cloudflareStats.averageDuration.toFixed(0)}ms`);
       console.log(
-        `     Difference: ${avgDiff > 0 ? "Cloudflare" : "Netlify"} faster by ${Math.abs(avgDiff).toFixed(0)}ms`
+        `     Cloudflare: ${cloudflareStats.averageDuration.toFixed(0)}ms`,
+      );
+      console.log(
+        `     Difference: ${avgDiff > 0 ? "Cloudflare" : "Netlify"} faster by ${Math.abs(avgDiff).toFixed(0)}ms`,
       );
 
       console.log(`   Throughput:`);
-      console.log(`     Netlify: ${netlifyStats.requestsPerSecond.toFixed(2)} req/s`);
-      console.log(`     Cloudflare: ${cloudflareStats.requestsPerSecond.toFixed(2)} req/s`);
       console.log(
-        `     Difference: ${rpsDiff > 0 ? "Cloudflare" : "Netlify"} higher by ${Math.abs(rpsDiff).toFixed(2)} req/s`
+        `     Netlify: ${netlifyStats.requestsPerSecond.toFixed(2)} req/s`,
+      );
+      console.log(
+        `     Cloudflare: ${cloudflareStats.requestsPerSecond.toFixed(2)} req/s`,
+      );
+      console.log(
+        `     Difference: ${rpsDiff > 0 ? "Cloudflare" : "Netlify"} higher by ${Math.abs(rpsDiff).toFixed(2)} req/s`,
       );
     }
   }
@@ -460,17 +506,25 @@ class PlatformComparison {
         console.log(`   📊 Performance:`);
         console.log(`      Total Requests: ${stats.totalRequests}`);
         console.log(`      Success Rate: ${stats.successRate.toFixed(1)}%`);
-        console.log(`      Average Response: ${stats.averageDuration.toFixed(0)}ms`);
+        console.log(
+          `      Average Response: ${stats.averageDuration.toFixed(0)}ms`,
+        );
         console.log(`      95th Percentile: ${stats.p95Duration.toFixed(0)}ms`);
-        console.log(`      Requests/Second: ${stats.requestsPerSecond.toFixed(2)}`);
+        console.log(
+          `      Requests/Second: ${stats.requestsPerSecond.toFixed(2)}`,
+        );
 
         console.log(`   💰 Cost Analysis:`);
         if (costs.error) {
           console.log(`      Error calculating costs: ${costs.error}`);
         } else {
-          console.log(`      Cost per Request: $${costs.costPerRequest.toFixed(8)}`);
+          console.log(
+            `      Cost per Request: $${costs.costPerRequest.toFixed(8)}`,
+          );
           console.log(`      Monthly Cost: $${costs.monthlyCost.toFixed(4)}`);
-          console.log(`      Free Tier: ${costs.freeTierCovered ? "COVERED" : "EXCEEDED"}`);
+          console.log(
+            `      Free Tier: ${costs.freeTierCovered ? "COVERED" : "EXCEEDED"}`,
+          );
         }
       } else {
         console.log(`   ❌ No valid performance data`);
@@ -483,9 +537,16 @@ class PlatformComparison {
     const netlifyStats = this.metrics.netlify.getStats();
     const cloudflareStats = this.metrics.cloudflare.getStats();
 
-    if (netlifyStats && cloudflareStats && !netlifyStats.error && !cloudflareStats.error) {
+    if (
+      netlifyStats &&
+      cloudflareStats &&
+      !netlifyStats.error &&
+      !cloudflareStats.error
+    ) {
       const betterPerformance =
-        cloudflareStats.averageDuration < netlifyStats.averageDuration ? "Cloudflare" : "Netlify";
+        cloudflareStats.averageDuration < netlifyStats.averageDuration
+          ? "Cloudflare"
+          : "Netlify";
       const betterThroughput =
         cloudflareStats.requestsPerSecond > netlifyStats.requestsPerSecond
           ? "Cloudflare"
@@ -499,13 +560,17 @@ class PlatformComparison {
           ((netlifyStats.averageDuration - cloudflareStats.averageDuration) /
             netlifyStats.averageDuration) *
           100;
-        console.log(`   📈 Cloudflare is ${improvement.toFixed(1)}% faster on average`);
+        console.log(
+          `   📈 Cloudflare is ${improvement.toFixed(1)}% faster on average`,
+        );
       } else {
         const improvement =
           ((cloudflareStats.averageDuration - netlifyStats.averageDuration) /
             cloudflareStats.averageDuration) *
           100;
-        console.log(`   📈 Netlify is ${improvement.toFixed(1)}% faster on average`);
+        console.log(
+          `   📈 Netlify is ${improvement.toFixed(1)}% faster on average`,
+        );
       }
     }
 
@@ -530,10 +595,16 @@ async function main() {
     await comparison.runSideBySideTest("Basic Endpoints", TEST_SCENARIOS.basic);
 
     // Test scripture endpoints (high-value)
-    await comparison.runSideBySideTest("Scripture Endpoints", TEST_SCENARIOS.scripture);
+    await comparison.runSideBySideTest(
+      "Scripture Endpoints",
+      TEST_SCENARIOS.scripture,
+    );
 
     // Test translation endpoints
-    await comparison.runSideBySideTest("Translation Endpoints", TEST_SCENARIOS.translation);
+    await comparison.runSideBySideTest(
+      "Translation Endpoints",
+      TEST_SCENARIOS.translation,
+    );
 
     // Run concurrent load tests
     await comparison.runConcurrentLoadTest(10, 20000); // 10 concurrent for 20s

@@ -12,7 +12,6 @@ import {
 import { DCSApiClient } from "../../services/DCSApiClient.js";
 import { logger } from "../../utils/logger.js";
 import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
-import { unifiedCache } from "../unified-cache.js";
 
 interface RCLink {
   id: string;
@@ -110,24 +109,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
     // Create cache key
     const cacheKey = `rc-links:${language}:${organization}:${resourceType}:${includeManifest}`;
 
-    // Try to get from cache first
-    if (!bypassCache) {
-      const cachedResult = await unifiedCache.get(cacheKey);
-      if (cachedResult) {
-        logger.info(`🚀 RC Links cache HIT for: ${cacheKey}`);
-        return {
-          statusCode: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "max-age=3600",
-          },
-          body: JSON.stringify({
-            ...cachedResult,
-            timestamp: new Date().toISOString(),
-          }),
-        };
-      }
-    }
+    // Response caching disabled by policy; skip transformed response reads
 
     logger.info(`🔄 RC Links cache MISS, fetching fresh data for: ${language}:${resourceType}`);
 
@@ -158,11 +140,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
       };
     }
 
-    // Cache the result
-    if (!bypassCache) {
-      await unifiedCache.set(cacheKey, result, "transformedResponse");
-      logger.info(`💾 Cached RC Links response: ${cacheKey}`);
-    }
+    // Do not cache transformed responses
 
     const responseTime = Date.now() - startTime;
 
@@ -188,7 +166,9 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
       body: JSON.stringify(response),
     };
   } catch (error) {
-    logger.error("Resource Container Links API Error", { error: String(error) });
+    logger.error("Resource Container Links API Error", {
+      error: String(error),
+    });
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     const errorResponse: RCLinksResponse = {

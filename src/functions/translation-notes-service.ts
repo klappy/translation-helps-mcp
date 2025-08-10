@@ -77,25 +77,7 @@ export async function fetchTranslationNotes(
     includeContext,
   });
 
-  // Check cache first
-  const responseKey = `notes:${reference}:${language}:${organization}`;
-  const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
-
-  if (cachedResponse.value) {
-    logger.info(`FAST cache hit for processed notes`, { key: responseKey });
-
-    // Return cached response as-is
-    return {
-      ...cachedResponse.value,
-      metadata: {
-        ...cachedResponse.value.metadata,
-        cached: true,
-        responseTime: Date.now() - startTime,
-      },
-    };
-  }
-
-  logger.info(`Processing fresh notes request`, { key: responseKey });
+  logger.info(`Processing fresh notes request`);
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
   logger.debug(`Using unified resource discovery for translation notes...`);
@@ -105,8 +87,14 @@ export async function fetchTranslationNotes(
     throw new Error(`No translation notes found for ${language}/${organization}`);
   }
 
-  logger.info(`Using resource`, { name: resourceInfo.name, title: resourceInfo.title });
-  logger.debug(`Looking for book`, { book: parsedRef.book, lower: parsedRef.book.toLowerCase() });
+  logger.info(`Using resource`, {
+    name: resourceInfo.name,
+    title: resourceInfo.title,
+  });
+  logger.debug(`Looking for book`, {
+    book: parsedRef.book,
+    lower: parsedRef.book.toLowerCase(),
+  });
   logger.debug(`Ingredients available`, {
     ingredients: resourceInfo.ingredients?.map((i: any) => i.identifier),
   });
@@ -185,8 +173,7 @@ export async function fetchTranslationNotes(
     },
   };
 
-  // Cache the response
-  await cache.setTransformedResponse(responseKey, result);
+  // Do not cache transformed responses
 
   return result;
 }
@@ -199,7 +186,11 @@ export async function fetchTranslationNotes(
  */
 export async function getTranslationNotes(args: {
   reference: { book: string; chapter: number; verse?: number };
-  options?: { includeContext?: boolean; language?: string; organization?: string };
+  options?: {
+    includeContext?: boolean;
+    language?: string;
+    organization?: string;
+  };
 }): Promise<{
   notes: Array<{
     id: string;

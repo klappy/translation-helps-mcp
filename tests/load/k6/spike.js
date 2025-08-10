@@ -139,10 +139,14 @@ function selectEndpoint() {
       const endpointCopy = { ...endpoint };
 
       // During spike, focus on viral content
-      if (endpoint.name.includes("Scripture") || endpoint.name.includes("Viral")) {
+      if (
+        endpoint.name.includes("Scripture") ||
+        endpoint.name.includes("Viral")
+      ) {
         endpointCopy.params = {
           ...endpoint.params,
-          reference: viralReferences[Math.floor(Math.random() * viralReferences.length)],
+          reference:
+            viralReferences[Math.floor(Math.random() * viralReferences.length)],
         };
       }
 
@@ -179,7 +183,8 @@ export default function () {
       "User-Agent": "K6-Spike-Test/1.0",
       Accept: "application/json",
       "X-Test-Type": "spike-test",
-      "X-Spike-Phase": currentVUs > 500 ? "PEAK" : currentVUs > 100 ? "SPIKE" : "BASELINE",
+      "X-Spike-Phase":
+        currentVUs > 500 ? "PEAK" : currentVUs > 100 ? "SPIKE" : "BASELINE",
       "X-VU-Count": currentVUs.toString(),
     },
     timeout: "45s", // Longer timeout during spike
@@ -196,7 +201,11 @@ export default function () {
   timeToFirstByte.add(response.timings.waiting);
 
   // Establish baseline
-  if (currentVUs <= 20 && baselineResponseTime === null && response.status === 200) {
+  if (
+    currentVUs <= 20 &&
+    baselineResponseTime === null &&
+    response.status === 200
+  ) {
     baselineResponseTime = requestDuration;
   }
 
@@ -214,7 +223,8 @@ export default function () {
 
   // Rate limiting detection
   const isRateLimited =
-    response.status === 429 || (response.status === 503 && response.body.includes("rate"));
+    response.status === 429 ||
+    (response.status === 503 && response.body.includes("rate"));
   rateLimitHits.add(isRateLimited);
 
   // Spike-tolerant validation
@@ -222,8 +232,10 @@ export default function () {
     "status is successful": (r) => r.status === 200 || r.status === 429, // Rate limiting is OK
     "response time reasonable": (r) => r.timings.duration < 5000, // Allow higher latency
     "has response": (r) => r.body && r.body.length > 0,
-    "not server error": (r) => r.status !== 500 && r.status !== 502 && r.status !== 503,
-    [`${endpoint.name} handles spike`]: (r) => r.status === 200 || r.status === 429,
+    "not server error": (r) =>
+      r.status !== 500 && r.status !== 502 && r.status !== 503,
+    [`${endpoint.name} handles spike`]: (r) =>
+      r.status === 200 || r.status === 429,
   });
 
   errorRate.add(!isSuccess);
@@ -231,17 +243,18 @@ export default function () {
   // Enhanced spike logging
   if (Math.random() < 0.01) {
     // 1% sampling
-    const phase = currentVUs > 500 ? "PEAK" : currentVUs > 100 ? "SPIKE" : "BASELINE";
+    const phase =
+      currentVUs > 500 ? "PEAK" : currentVUs > 100 ? "SPIKE" : "BASELINE";
     const rateLimited = isRateLimited ? "RATE-LIMITED" : "OK";
     console.log(
-      `[${phase}] ${endpoint.name} ${response.status} ${Math.round(requestDuration)}ms VUs:${currentVUs} [${rateLimited}]`
+      `[${phase}] ${endpoint.name} ${response.status} ${Math.round(requestDuration)}ms VUs:${currentVUs} [${rateLimited}]`,
     );
   }
 
   // Alert on severe degradation
   if (baselineResponseTime && requestDuration > baselineResponseTime * 10) {
     console.warn(
-      `[SPIKE STRESS] ${endpoint.name} ${Math.round(requestDuration)}ms (${Math.round(requestDuration / baselineResponseTime)}x baseline)`
+      `[SPIKE STRESS] ${endpoint.name} ${Math.round(requestDuration)}ms (${Math.round(requestDuration / baselineResponseTime)}x baseline)`,
     );
   }
 
@@ -257,7 +270,9 @@ export default function () {
 export function handleSummary(data) {
   const avgRPS = Math.round(data.metrics.http_reqs.values.rate);
   const maxVUs = data.metrics.vus_max.values.max;
-  const rateLimitRate = (data.metrics.rate_limit_hits.values.rate * 100).toFixed(2);
+  const rateLimitRate = (
+    data.metrics.rate_limit_hits.values.rate * 100
+  ).toFixed(2);
 
   return {
     "spike-test-results.json": JSON.stringify(data, null, 2),
@@ -268,8 +283,13 @@ export function handleSummary(data) {
 
 function textSummary(data) {
   const avgRPS = Math.round(data.metrics.http_reqs.values.rate);
-  const successRate = (100 - data.metrics.http_req_failed.values.rate * 100).toFixed(2);
-  const rateLimitRate = (data.metrics.rate_limit_hits.values.rate * 100).toFixed(2);
+  const successRate = (
+    100 -
+    data.metrics.http_req_failed.values.rate * 100
+  ).toFixed(2);
+  const rateLimitRate = (
+    data.metrics.rate_limit_hits.values.rate * 100
+  ).toFixed(2);
   const autoScalingFactor = data.metrics.auto_scaling.values.avg.toFixed(2);
 
   return `
@@ -297,7 +317,11 @@ function textSummary(data) {
 🔄 AUTO-SCALING ANALYSIS:
    Auto-scaling Factor: ${autoScalingFactor}x baseline
    Scaling Response: ${
-     autoScalingFactor < 3 ? "✅ EXCELLENT" : autoScalingFactor < 5 ? "⚠️ ADEQUATE" : "❌ SLOW"
+     autoScalingFactor < 3
+       ? "✅ EXCELLENT"
+       : autoScalingFactor < 5
+         ? "⚠️ ADEQUATE"
+         : "❌ SLOW"
    }
    TTFB Avg: ${Math.round(data.metrics.ttfb.values.avg)}ms
 
@@ -350,8 +374,13 @@ Spike Simulation: ${new Date().toISOString()}
 
 function htmlSummary(data) {
   const avgRPS = Math.round(data.metrics.http_reqs.values.rate);
-  const successRate = (100 - data.metrics.http_req_failed.values.rate * 100).toFixed(2);
-  const rateLimitRate = (data.metrics.rate_limit_hits.values.rate * 100).toFixed(2);
+  const successRate = (
+    100 -
+    data.metrics.http_req_failed.values.rate * 100
+  ).toFixed(2);
+  const rateLimitRate = (
+    data.metrics.rate_limit_hits.values.rate * 100
+  ).toFixed(2);
 
   return `
 <!DOCTYPE html>

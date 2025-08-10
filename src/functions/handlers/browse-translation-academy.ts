@@ -5,7 +5,10 @@
  */
 
 import * as yaml from "yaml";
-import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";
+import {
+  DEFAULT_STRATEGIC_LANGUAGE,
+  Organization,
+} from "../../constants/terminology.js";
 import { logger } from "../../utils/logger.js";
 import { EdgeXRayTracer, trackedFetch } from "../edge-xray.js";
 import type { PlatformHandler } from "../platform-adapter.js";
@@ -26,7 +29,10 @@ interface CategoryTOC {
 const CACHE_TTL = 43200; // 12 hours for TOC data
 
 // Helper to get X-ray metadata
-function getXRayMetadata(tracer: EdgeXRayTracer | null, additionalMetadata: any = {}) {
+function getXRayMetadata(
+  tracer: EdgeXRayTracer | null,
+  additionalMetadata: any = {},
+) {
   if (!tracer) {
     return additionalMetadata;
   }
@@ -42,13 +48,16 @@ function getXRayMetadata(tracer: EdgeXRayTracer | null, additionalMetadata: any 
   };
 }
 
-export const browseTranslationAcademyHandler: PlatformHandler = async (request) => {
+export const browseTranslationAcademyHandler: PlatformHandler = async (
+  request,
+) => {
   // Extract query parameters
   const url = new URL(request.url);
   const params = new URLSearchParams(url.search);
 
   const language = params.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
-  const organization = params.get("organization") || Organization.UNFOLDING_WORD;
+  const organization =
+    params.get("organization") || Organization.UNFOLDING_WORD;
   const category = params.get("category"); // Optional: specific category to browse
   const format = params.get("format") || "markdown"; // Default to markdown for LLM-friendly output
 
@@ -147,10 +156,15 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
 
     // Filter for directories only (these are our categories)
     const categoryDirs = rootContents.filter(
-      (item: any) => item.type === "dir" && !item.name.startsWith(".") && item.name !== "media"
+      (item: any) =>
+        item.type === "dir" &&
+        !item.name.startsWith(".") &&
+        item.name !== "media",
     );
 
-    logger.debug("Found categories", { categories: categoryDirs.map((d: any) => d.name) });
+    logger.debug("Found categories", {
+      categories: categoryDirs.map((d: any) => d.name),
+    });
 
     // Fetch TOC for each category
     const allCategories = await Promise.all(
@@ -174,21 +188,31 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
             totalModules: countModules(transformedTOC),
           };
         } catch (error) {
-          logger.warn(`Failed to parse TOC`, { dir: dir.name, error: String(error) });
+          logger.warn(`Failed to parse TOC`, {
+            dir: dir.name,
+            error: String(error),
+          });
           return null;
         }
-      })
+      }),
     );
 
     // Filter out failed categories
     const validCategories = allCategories.filter((cat) => cat !== null);
 
     // Calculate total modules
-    const totalModules = validCategories.reduce((sum, cat) => sum + (cat.modules?.length || 0), 0);
+    const totalModules = validCategories.reduce(
+      (sum, cat) => sum + (cat.modules?.length || 0),
+      0,
+    );
 
     // Return markdown if requested
     if (format === "markdown") {
-      const markdown = allCategoriesToMarkdown(validCategories, language, organization);
+      const markdown = allCategoriesToMarkdown(
+        validCategories,
+        language,
+        organization,
+      );
 
       return {
         statusCode: 200,
@@ -241,7 +265,10 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
         "Access-Control-Allow-Origin": "*",
       },
       body: JSON.stringify({
-        error: error instanceof Error ? error.message : "Failed to browse Translation Academy",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to browse Translation Academy",
         details: error instanceof Error ? error.stack : undefined,
       }),
     };
@@ -251,7 +278,10 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (request) 
 /**
  * Transform TOC entries to include proper links for fetching articles
  */
-function transformTOCWithLinks(toc: CategoryTOC, category: string): CategoryTOC {
+function transformTOCWithLinks(
+  toc: CategoryTOC,
+  category: string,
+): CategoryTOC {
   const transform = (entries: TOCEntry[]): TOCEntry[] => {
     return entries.map((entry) => {
       // Build the article path from the category and link
@@ -346,7 +376,7 @@ function categoryTocToMarkdown(title: string, modules: TOCEntry[]): string {
 function allCategoriesToMarkdown(
   categories: any[],
   language: string,
-  organization: string
+  organization: string,
 ): string {
   let markdown = `# Translation Academy - Table of Contents\n\n`;
   markdown += `**Language:** ${language}\n`;

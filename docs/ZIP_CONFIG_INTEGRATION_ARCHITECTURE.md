@@ -49,7 +49,11 @@ interface DataSourceConfig {
   // NEW fields for ZIP support
   zipConfig?: {
     // Which ZIP fetcher method to use
-    fetchMethod: "getScripture" | "getTSVData" | "getUSFMContent" | "getMarkdownContent";
+    fetchMethod:
+      | "getScripture"
+      | "getTSVData"
+      | "getUSFMContent"
+      | "getMarkdownContent";
 
     // Resource type for ZIP downloads
     resourceType: "ult" | "ust" | "tn" | "tq" | "tw" | "ta" | "twl";
@@ -75,7 +79,7 @@ class RouteGenerator {
   private async fetchData(
     config: EndpointConfig,
     params: ParsedParams,
-    traceId: string
+    traceId: string,
   ): Promise<unknown> {
     switch (config.dataSource.type) {
       case "dcs-api":
@@ -96,18 +100,22 @@ class RouteGenerator {
         return this.computeData(config, params, baseData);
 
       default:
-        throw new Error(`Unsupported data source type: ${config.dataSource.type}`);
+        throw new Error(
+          `Unsupported data source type: ${config.dataSource.type}`,
+        );
     }
   }
 
   private async fetchFromZIP(
     dataSource: DataSourceConfig,
     params: ParsedParams,
-    traceId: string
+    traceId: string,
   ): Promise<unknown> {
     // Lazy initialize ZIP fetcher
     if (!this.zipFetcher) {
-      this.zipFetcher = new ZipResourceFetcher2(new EdgeXRayTracer(traceId, "route-generator"));
+      this.zipFetcher = new ZipResourceFetcher2(
+        new EdgeXRayTracer(traceId, "route-generator"),
+      );
     }
 
     const { zipConfig } = dataSource;
@@ -122,7 +130,7 @@ class RouteGenerator {
           params.parsedReference,
           params.language,
           params.organization,
-          params.resource || zipConfig.resourceType
+          params.resource || zipConfig.resourceType,
         );
 
       case "getTSVData":
@@ -131,7 +139,7 @@ class RouteGenerator {
           params.organization,
           zipConfig.resourceType,
           params.book,
-          params.chapter
+          params.chapter,
         );
 
       case "getMarkdownContent":
@@ -139,7 +147,7 @@ class RouteGenerator {
           params.language,
           params.organization,
           zipConfig.resourceType,
-          params.path
+          params.path,
         );
 
       // Add other methods as needed

@@ -10,7 +10,10 @@
 
 import { ResourceType } from "../constants/terminology.js";
 import type { Resource } from "../types/dcs.js";
-import { detectResourceType, type DetectionResult } from "./resource-detector.js";
+import {
+  detectResourceType,
+  type DetectionResult,
+} from "./resource-detector.js";
 
 /**
  * Filter criteria for advanced resource search
@@ -119,7 +122,13 @@ const STRATEGIC_LANGUAGES = new Set([
 /**
  * Recommended organizations for quality content
  */
-const TRUSTED_ORGANIZATIONS = new Set(["unfoldingWord", "Door43-Catalog", "STR", "WA", "BCS"]);
+const TRUSTED_ORGANIZATIONS = new Set([
+  "unfoldingWord",
+  "Door43-Catalog",
+  "STR",
+  "WA",
+  "BCS",
+]);
 
 /**
  * Calculate relevance score for a resource based on criteria
@@ -127,7 +136,7 @@ const TRUSTED_ORGANIZATIONS = new Set(["unfoldingWord", "Door43-Catalog", "STR",
 function calculateRelevanceScore(
   resource: Resource,
   detection: DetectionResult,
-  criteria: FilterCriteria
+  criteria: FilterCriteria,
 ): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
@@ -188,7 +197,8 @@ function calculateRelevanceScore(
   if (resource.updated_at) {
     const lastUpdate = new Date(resource.updated_at);
     const now = new Date();
-    const daysSinceUpdate = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
+    const daysSinceUpdate =
+      (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
 
     if (daysSinceUpdate < 30) {
       score += 8;
@@ -209,7 +219,9 @@ function calculateRelevanceScore(
   if (criteria.searchText) {
     const searchLower = criteria.searchText.toLowerCase();
     const nameMatch = (resource.name || "").toLowerCase().includes(searchLower);
-    const descMatch = (resource.description || "").toLowerCase().includes(searchLower);
+    const descMatch = (resource.description || "")
+      .toLowerCase()
+      .includes(searchLower);
 
     if (nameMatch && descMatch) {
       score += 15;
@@ -238,7 +250,7 @@ function calculateRelevanceScore(
 function passesFilters(
   resource: Resource,
   detection: DetectionResult,
-  criteria: FilterCriteria
+  criteria: FilterCriteria,
 ): { passes: boolean; failures: string[] } {
   const failures: string[] = [];
 
@@ -249,7 +261,9 @@ function passesFilters(
       : [criteria.language];
 
     if (!targetLanguages.includes(resource.language)) {
-      failures.push(`Language ${resource.language} not in ${targetLanguages.join(", ")}`);
+      failures.push(
+        `Language ${resource.language} not in ${targetLanguages.join(", ")}`,
+      );
     }
   }
 
@@ -261,7 +275,7 @@ function passesFilters(
 
     if (!detection.type || !targetTypes.includes(detection.type)) {
       failures.push(
-        `Resource type ${detection.type || "unknown"} not in ${targetTypes.join(", ")}`
+        `Resource type ${detection.type || "unknown"} not in ${targetTypes.join(", ")}`,
       );
     }
   }
@@ -274,7 +288,9 @@ function passesFilters(
 
     const resourceOrg = resource.owner?.username;
     if (!resourceOrg || !targetOrgs.includes(resourceOrg)) {
-      failures.push(`Organization ${resourceOrg || "unknown"} not in ${targetOrgs.join(", ")}`);
+      failures.push(
+        `Organization ${resourceOrg || "unknown"} not in ${targetOrgs.join(", ")}`,
+      );
     }
   }
 
@@ -290,12 +306,15 @@ function passesFilters(
   // Confidence filter
   if (criteria.minConfidence && detection.confidence < criteria.minConfidence) {
     failures.push(
-      `Confidence ${detection.confidence.toFixed(2)} below minimum ${criteria.minConfidence}`
+      `Confidence ${detection.confidence.toFixed(2)} below minimum ${criteria.minConfidence}`,
     );
   }
 
   // Description requirement
-  if (criteria.hasDescription && (!resource.description || resource.description.length < 10)) {
+  if (
+    criteria.hasDescription &&
+    (!resource.description || resource.description.length < 10)
+  ) {
     failures.push("Missing adequate description");
   }
 
@@ -310,7 +329,10 @@ function passesFilters(
   }
 
   // Strategic language filter
-  if (criteria.strategicLanguageOnly && !STRATEGIC_LANGUAGES.has(resource.language)) {
+  if (
+    criteria.strategicLanguageOnly &&
+    !STRATEGIC_LANGUAGES.has(resource.language)
+  ) {
     failures.push(`${resource.language} is not a strategic language`);
   }
 
@@ -318,7 +340,9 @@ function passesFilters(
   if (criteria.onlyRecommended) {
     const orgName = resource.owner?.username;
     if (!orgName || !TRUSTED_ORGANIZATIONS.has(orgName)) {
-      failures.push(`${orgName || "unknown"} is not a recommended organization`);
+      failures.push(
+        `${orgName || "unknown"} is not a recommended organization`,
+      );
     }
   }
 
@@ -327,7 +351,9 @@ function passesFilters(
     const afterDate = new Date(criteria.updatedAfter);
     const resourceDate = new Date(resource.updated_at);
     if (resourceDate < afterDate) {
-      failures.push(`Updated ${resource.updated_at} before required date ${criteria.updatedAfter}`);
+      failures.push(
+        `Updated ${resource.updated_at} before required date ${criteria.updatedAfter}`,
+      );
     }
   }
 
@@ -335,7 +361,9 @@ function passesFilters(
     const beforeDate = new Date(criteria.updatedBefore);
     const resourceDate = new Date(resource.updated_at);
     if (resourceDate > beforeDate) {
-      failures.push(`Updated ${resource.updated_at} after required date ${criteria.updatedBefore}`);
+      failures.push(
+        `Updated ${resource.updated_at} after required date ${criteria.updatedBefore}`,
+      );
     }
   }
 
@@ -343,7 +371,9 @@ function passesFilters(
   if (criteria.searchText) {
     const searchLower = criteria.searchText.toLowerCase();
     const nameMatch = (resource.name || "").toLowerCase().includes(searchLower);
-    const descMatch = (resource.description || "").toLowerCase().includes(searchLower);
+    const descMatch = (resource.description || "")
+      .toLowerCase()
+      .includes(searchLower);
 
     if (!nameMatch && !descMatch) {
       failures.push(`No match for search text: ${criteria.searchText}`);
@@ -358,7 +388,7 @@ function passesFilters(
  */
 function calculateQualityIndicators(
   resource: Resource,
-  detection: DetectionResult
+  detection: DetectionResult,
 ): FilteredResource["qualityIndicators"] {
   // Confidence from detection
   const confidence = detection.confidence;
@@ -375,7 +405,10 @@ function calculateQualityIndicators(
     else if (resource.size > 1000000)
       completeness = 0.6; // NT likely
     else completeness = 0.3; // Partial content
-  } else if (detection.type && ["tn", "tw", "tq", "ta"].includes(detection.type)) {
+  } else if (
+    detection.type &&
+    ["tn", "tw", "tq", "ta"].includes(detection.type)
+  ) {
     // Translation helps completeness
     if (resource.size > 1000000) completeness = 1.0;
     else if (resource.size > 500000) completeness = 0.8;
@@ -388,7 +421,8 @@ function calculateQualityIndicators(
   if (resource.updated_at) {
     const lastUpdate = new Date(resource.updated_at);
     const now = new Date();
-    const daysSinceUpdate = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
+    const daysSinceUpdate =
+      (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
 
     if (daysSinceUpdate < 30) freshness = 1.0;
     else if (daysSinceUpdate < 90) freshness = 0.8;
@@ -417,7 +451,7 @@ function calculateQualityIndicators(
 function generateSuggestions(
   allResources: Resource[],
   criteria: FilterCriteria,
-  results: FilteredResource[]
+  results: FilteredResource[],
 ): FilterResults["suggestions"] {
   const suggestions: FilterResults["suggestions"] = {
     alternativeLanguages: [],
@@ -441,7 +475,7 @@ function generateSuggestions(
       .map(([lang]) => lang);
 
     suggestions.alternativeLanguages = sortedLangs.filter(
-      (lang) => lang !== criteria.language && STRATEGIC_LANGUAGES.has(lang)
+      (lang) => lang !== criteria.language && STRATEGIC_LANGUAGES.has(lang),
     );
   }
 
@@ -484,7 +518,7 @@ function generateSuggestions(
  */
 export async function filterResources(
   resources: Resource[],
-  criteria: FilterCriteria
+  criteria: FilterCriteria,
 ): Promise<FilterResults> {
   const startTime = Date.now();
   const filtersApplied: string[] = [];
@@ -508,7 +542,11 @@ export async function filterResources(
 
     if (filterResult.passes) {
       // Calculate relevance and quality
-      const relevanceResult = calculateRelevanceScore(resource, detection, criteria);
+      const relevanceResult = calculateRelevanceScore(
+        resource,
+        detection,
+        criteria,
+      );
       const qualityIndicators = calculateQualityIndicators(resource, detection);
 
       candidateResources.push({
@@ -541,7 +579,9 @@ export async function filterResources(
         comparison = a.resource.size - b.resource.size;
         break;
       case "name":
-        comparison = (a.resource.name || "").localeCompare(b.resource.name || "");
+        comparison = (a.resource.name || "").localeCompare(
+          b.resource.name || "",
+        );
         break;
       case "confidence":
         comparison = a.detection.confidence - b.detection.confidence;
@@ -557,7 +597,11 @@ export async function filterResources(
   const paginatedResults = candidateResources.slice(offset, offset + limit);
 
   // Generate suggestions
-  const suggestions = generateSuggestions(resources, criteria, candidateResources);
+  const suggestions = generateSuggestions(
+    resources,
+    criteria,
+    candidateResources,
+  );
 
   const processingTime = Date.now() - startTime;
 
@@ -577,7 +621,10 @@ export async function filterResources(
 /**
  * Helper function to create common filter presets
  */
-export function createFilterPreset(preset: string, language?: string): FilterCriteria {
+export function createFilterPreset(
+  preset: string,
+  language?: string,
+): FilterCriteria {
   switch (preset) {
     case "complete-translation-kit":
       return {
@@ -613,14 +660,18 @@ export function createFilterPreset(preset: string, language?: string): FilterCri
         strategicLanguageOnly: true,
         onlyRecommended: true,
         minConfidence: 0.7,
-        updatedAfter: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedAfter: new Date(
+          Date.now() - 365 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         sortBy: "relevance",
       };
 
     case "recent-updates":
       return {
         language,
-        updatedAfter: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedAfter: new Date(
+          Date.now() - 90 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         sortBy: "updated",
         sortOrder: "desc",
         limit: 20,

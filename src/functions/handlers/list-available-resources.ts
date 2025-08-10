@@ -3,12 +3,19 @@
  * Can be used by both Netlify and SvelteKit/Cloudflare
  */
 
-import { ResourceDescriptions, ResourceType } from "../../constants/terminology.js";
+import {
+  ResourceDescriptions,
+  ResourceType,
+} from "../../constants/terminology.js";
 import { logger } from "../../utils/logger.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 export const listAvailableResourcesHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -31,7 +38,11 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
     const organization = request.queryStringParameters.organization;
     const query = request.queryStringParameters.query;
 
-    logger.info("Listing available resources", { language, organization, query });
+    logger.info("Listing available resources", {
+      language,
+      organization,
+      query,
+    });
     const resourceTypes = [
       {
         type: ResourceType.ULT,
@@ -120,7 +131,9 @@ export const listAvailableResourcesHandler: PlatformHandler = async (
       }),
     };
   } catch (error) {
-    logger.error("List Available Resources API Error", { error: String(error) });
+    logger.error("List Available Resources API Error", {
+      error: String(error),
+    });
     const duration = Date.now() - startTime;
 
     return {

@@ -3,7 +3,10 @@ import { apiGet } from "./helpers/http";
 
 const TIMEOUT = 15000; // Shorter timeout for smoke tests
 
-async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
+async function makeRequest(
+  endpoint: string,
+  params: Record<string, string | undefined> = {},
+) {
   return apiGet(endpoint, params);
 }
 
@@ -18,7 +21,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.endpoints).toBeDefined();
       expect(response.endpoints.length).toBeGreaterThan(0);
     },
-    TIMEOUT
+    TIMEOUT,
   );
 
   it(
@@ -36,7 +39,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.language).toBe("en");
       expect(response.organization).toBe("unfoldingWord");
     },
-    TIMEOUT
+    TIMEOUT,
   );
 
   it(
@@ -54,7 +57,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.language).toBe("en");
       expect(response.organization).toBe("unfoldingWord");
     },
-    TIMEOUT
+    TIMEOUT,
   );
 
   it(
@@ -75,7 +78,10 @@ describe("Smoke Tests - Quick Health Check", () => {
 
       // Remove timestamps and response times for comparison
       const normalizeTimestamps = (obj: unknown) => {
-        const normalized = JSON.parse(JSON.stringify(obj)) as Record<string, unknown>;
+        const normalized = JSON.parse(JSON.stringify(obj)) as Record<
+          string,
+          unknown
+        >;
         if ("responseTime" in normalized) delete normalized.responseTime;
         if (
           normalized.metadata &&
@@ -90,9 +96,11 @@ describe("Smoke Tests - Quick Health Check", () => {
         return normalized;
       };
 
-      expect(normalizeTimestamps(mcpResponse)).toEqual(normalizeTimestamps(apiResponse));
+      expect(normalizeTimestamps(mcpResponse)).toEqual(
+        normalizeTimestamps(apiResponse),
+      );
     },
-    TIMEOUT
+    TIMEOUT,
   );
 
   it(
@@ -111,7 +119,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.metadata).toBeDefined();
       expect(response.citations).toBeDefined();
     },
-    TIMEOUT
+    TIMEOUT,
   );
 
   it(
@@ -126,6 +134,6 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.organization).toBe("unfoldingWord");
       expect(response.metadata).toBeDefined();
     },
-    TIMEOUT
+    TIMEOUT,
   );
 });

@@ -10,7 +10,9 @@ import { languageCoverageHandler } from "../src/functions/handlers/language-cove
 import type { PlatformRequest } from "../src/functions/platform-adapter.js";
 
 // Helper to create test platform requests
-const createRequest = (queryParams: Record<string, string> = {}): PlatformRequest => ({
+const createRequest = (
+  queryParams: Record<string, string> = {},
+): PlatformRequest => ({
   method: "GET",
   url: `https://api.example.com/language-coverage?${new URLSearchParams(queryParams).toString()}`,
   headers: { "Content-Type": "application/json" },
@@ -142,11 +144,17 @@ describe("Language Coverage Integration", () => {
     expect(typeof data.metadata.totalLanguages).toBe("number");
     expect(typeof data.metadata.completeLanguages).toBe("number");
     expect(typeof data.metadata.recommendedLanguages).toBe("number");
-    expect(data.metadata.lastUpdated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(data.metadata.lastUpdated).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+    );
 
     // Metadata should be consistent
-    expect(data.metadata.completeLanguages).toBeLessThanOrEqual(data.metadata.totalLanguages);
-    expect(data.metadata.recommendedLanguages).toBeLessThanOrEqual(data.metadata.totalLanguages);
+    expect(data.metadata.completeLanguages).toBeLessThanOrEqual(
+      data.metadata.totalLanguages,
+    );
+    expect(data.metadata.recommendedLanguages).toBeLessThanOrEqual(
+      data.metadata.totalLanguages,
+    );
   });
 });
 

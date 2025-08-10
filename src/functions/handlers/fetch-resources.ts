@@ -4,12 +4,16 @@
  */
 
 import { Errors } from "../../utils/errorEnvelope.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 import { fetchResources } from "../resources-service";
 import type { CacheBypassOptions } from "../unified-cache";
 
 export const fetchResourcesHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -30,7 +34,8 @@ export const fetchResourcesHandler: PlatformHandler = async (
   try {
     const referenceParam = request.queryStringParameters.reference;
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
     const resourcesParam = request.queryStringParameters.resources;
 
     if (!referenceParam) {

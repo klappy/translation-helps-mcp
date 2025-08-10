@@ -116,7 +116,9 @@ describe("Performance Monitor", () => {
 
       const insights = monitor.getInsights();
       expect(insights.cacheOptimization.missedOpportunities).toBe(10);
-      expect(insights.cacheOptimization.recommendations.length).toBeGreaterThan(0);
+      expect(insights.cacheOptimization.recommendations.length).toBeGreaterThan(
+        0,
+      );
     });
 
     it("generates bottleneck reports", () => {

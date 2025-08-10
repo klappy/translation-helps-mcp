@@ -34,7 +34,7 @@ export function errorResponse(
   statusCode: number,
   message: string,
   code?: string,
-  details?: Record<string, any>
+  details?: Record<string, any>,
 ): ApiResponse {
   return {
     statusCode,
@@ -51,7 +51,10 @@ export function errorResponse(
 /**
  * Create a standardized success response
  */
-export function successResponse(data: any, headers?: Record<string, string>): ApiResponse {
+export function successResponse(
+  data: any,
+  headers?: Record<string, string>,
+): ApiResponse {
   return {
     statusCode: 200,
     headers: {
@@ -66,7 +69,10 @@ export function successResponse(data: any, headers?: Record<string, string>): Ap
  * Validate API key if required
  */
 export function validateApiKey(headers: Record<string, string>): boolean {
-  if (typeof process === "undefined" || process.env?.REQUIRE_API_KEY !== "true") {
+  if (
+    typeof process === "undefined" ||
+    process.env?.REQUIRE_API_KEY !== "true"
+  ) {
     return true;
   }
 
@@ -90,7 +96,10 @@ export function parseJsonBody<T>(body: string | null): T | null {
 /**
  * Log metrics for monitoring
  */
-export function logMetric(functionName: string, metrics: Record<string, any>): void {
+export function logMetric(
+  functionName: string,
+  metrics: Record<string, any>,
+): void {
   logger.info("METRIC", {
     function: functionName,
     timestamp: new Date().toISOString(),
@@ -136,7 +145,9 @@ export function getResourceTTL(resourceType: string): number {
 
   return (
     ttls[resourceType] ||
-    parseInt((typeof process !== "undefined" && process.env?.DEFAULT_TTL) || "3600")
+    parseInt(
+      (typeof process !== "undefined" && process.env?.DEFAULT_TTL) || "3600",
+    )
   );
 }
 
@@ -170,11 +181,18 @@ export function chunk<T>(array: T[], size: number): T[][] {
 /**
  * Deep merge objects
  */
-export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+export function deepMerge<T extends Record<string, any>>(
+  target: T,
+  source: Partial<T>,
+): T {
   const result = { ...target };
 
   for (const key in source) {
-    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+    if (
+      source[key] &&
+      typeof source[key] === "object" &&
+      !Array.isArray(source[key])
+    ) {
       result[key] = deepMerge((result[key] || {}) as any, source[key] as any);
     } else {
       result[key] = source[key] as any;
@@ -190,7 +208,7 @@ export function deepMerge<T extends Record<string, any>>(target: T, source: Part
 export function addMetadata<T extends Record<string, any>>(
   data: T,
   startTime: number,
-  additionalMetadata?: Record<string, any>
+  additionalMetadata?: Record<string, any>,
 ): T & {
   metadata: {
     timestamp: string;
@@ -219,7 +237,7 @@ export function addMetadata<T extends Record<string, any>>(
  */
 export function addResponseTime<T extends Record<string, any>>(
   data: T,
-  startTime: number
+  startTime: number,
 ): T & { responseTime: number } {
   const responseTime = Date.now() - startTime;
   return {
@@ -235,7 +253,12 @@ export function timedResponse<T extends Record<string, any>>(
   data: T,
   startTime: number,
   headers?: Record<string, string>,
-  cacheInfo?: { cached: boolean; cacheType?: string; expiresAt?: string; ttlSeconds?: number }
+  cacheInfo?: {
+    cached: boolean;
+    cacheType?: string;
+    expiresAt?: string;
+    ttlSeconds?: number;
+  },
 ): ApiResponse {
   const additionalMetadata = cacheInfo
     ? {
@@ -267,7 +290,7 @@ export async function withConservativeCache<T>(
       | "transformedResponse";
     customTtl?: number;
     bypassCache?: boolean;
-  }
+  },
 ): Promise<{
   data: T;
   cached: boolean;
@@ -278,7 +301,11 @@ export async function withConservativeCache<T>(
     version?: string;
   };
 }> {
-  const { cacheType = "transformedResponse", customTtl, bypassCache = false } = options || {};
+  const {
+    cacheType = "transformedResponse",
+    customTtl,
+    bypassCache = false,
+  } = options || {};
 
   // Check for cache bypass headers
   const shouldBypassCache =
@@ -370,7 +397,10 @@ export async function withConservativeCache<T>(
 /**
  * Build a versioned cache key for DCS resources
  */
-export function buildDCSCacheKey(endpoint: string, params: Record<string, any> = {}): string {
+export function buildDCSCacheKey(
+  endpoint: string,
+  params: Record<string, any> = {},
+): string {
   const appVersion = packageVersion;
   const paramString = Object.keys(params)
     .sort()
@@ -385,7 +415,7 @@ export function buildDCSCacheKey(endpoint: string, params: Record<string, any> =
  */
 export function buildTransformedCacheKey(
   endpoint: string,
-  params: Record<string, any> = {}
+  params: Record<string, any> = {},
 ): string {
   const appVersion = packageVersion;
   const paramString = Object.keys(params)

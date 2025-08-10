@@ -28,7 +28,7 @@ interface CacheResponse {
 
 async function makeRequestWithCache(
   endpoint: string,
-  params: Record<string, string | undefined> = {}
+  params: Record<string, string | undefined> = {},
 ): Promise<CacheResponse> {
   // Delegate URL resolution, readiness, and JSON parsing to shared helper
   return apiGet(endpoint, params);
@@ -50,12 +50,18 @@ describe("Cache Performance Validation", () => {
         };
 
         // First request (cache miss)
-        const missResponse = await makeRequestWithCache("fetch-scripture", testParams);
+        const missResponse = await makeRequestWithCache(
+          "fetch-scripture",
+          testParams,
+        );
         expect(missResponse._metadata?.cacheStatus).toBe("miss");
         expect(missResponse._metadata?.responseTime).toBeDefined();
 
         // Second request (cache hit)
-        const hitResponse = await makeRequestWithCache("fetch-scripture", testParams);
+        const hitResponse = await makeRequestWithCache(
+          "fetch-scripture",
+          testParams,
+        );
         expect(hitResponse._metadata?.cacheStatus).toBe("hit");
         expect(hitResponse._metadata?.responseTime).toBeDefined();
         expect(hitResponse._metadata?.responseTime).toBeLessThan(50);
@@ -64,7 +70,7 @@ describe("Cache Performance Validation", () => {
         expect(hitResponse.scripture).toEqual(missResponse.scripture);
         expect(hitResponse.language).toEqual(missResponse.language);
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -77,11 +83,17 @@ describe("Cache Performance Validation", () => {
         };
 
         // Cache miss
-        const missResponse = await makeRequestWithCache("fetch-scripture", testParams);
+        const missResponse = await makeRequestWithCache(
+          "fetch-scripture",
+          testParams,
+        );
         const missTime = missResponse._metadata?.responseTime || 0;
 
         // Cache hit
-        const hitResponse = await makeRequestWithCache("fetch-scripture", testParams);
+        const hitResponse = await makeRequestWithCache(
+          "fetch-scripture",
+          testParams,
+        );
         const hitTime = hitResponse._metadata?.responseTime || 0;
 
         console.log(`Cache miss: ${missTime}ms, Cache hit: ${hitTime}ms`);
@@ -90,7 +102,7 @@ describe("Cache Performance Validation", () => {
         expect(hitTime).toBeLessThan(missTime / 3);
         expect(hitTime).toBeLessThan(50);
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -109,7 +121,7 @@ describe("Cache Performance Validation", () => {
         expect(response._metadata?.success).toBe(true);
         expect(response._metadata?.status).toBe(200);
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -126,7 +138,7 @@ describe("Cache Performance Validation", () => {
           expect(["miss", "bypass"]).toContain(response._metadata.cacheStatus);
         }
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -162,12 +174,16 @@ describe("Cache Performance Validation", () => {
 
           if (hitResponse._metadata?.cacheStatus === "hit") {
             expect(hitResponse._metadata.responseTime).toBeLessThan(50);
-            console.log(`✅ ${name} cache hit: ${hitResponse._metadata.responseTime}ms`);
+            console.log(
+              `✅ ${name} cache hit: ${hitResponse._metadata.responseTime}ms`,
+            );
           } else {
-            console.log(`⚠️ ${name} no cache hit detected (${hitResponse._metadata?.cacheStatus})`);
+            console.log(
+              `⚠️ ${name} no cache hit detected (${hitResponse._metadata?.cacheStatus})`,
+            );
           }
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -183,17 +199,23 @@ describe("Cache Performance Validation", () => {
         };
 
         // Get miss response
-        const missResponse = await makeRequestWithCache("fetch-scripture", testParams);
+        const missResponse = await makeRequestWithCache(
+          "fetch-scripture",
+          testParams,
+        );
 
         // Get hit response
-        const hitResponse = await makeRequestWithCache("fetch-scripture", testParams);
+        const hitResponse = await makeRequestWithCache(
+          "fetch-scripture",
+          testParams,
+        );
 
         // Compare content without metadata
         expect(hitResponse.scripture?.text).toBe(missResponse.scripture?.text);
         expect(hitResponse.language).toBe(missResponse.language);
         expect(hitResponse.scripture?.text).toBeTruthy();
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -204,18 +226,27 @@ describe("Cache Performance Validation", () => {
           language: "en",
         };
 
-        const response1 = await makeRequestWithCache("fetch-scripture", testParams);
-        const response2 = await makeRequestWithCache("fetch-scripture", testParams);
+        const response1 = await makeRequestWithCache(
+          "fetch-scripture",
+          testParams,
+        );
+        const response2 = await makeRequestWithCache(
+          "fetch-scripture",
+          testParams,
+        );
 
         expect(response1.scripture?.text).toBe(response2.scripture?.text);
         expect(response1.scripture?.text).toContain("3 ");
         expect(response1.scripture?.text).toContain("8 ");
 
         // At least one should be a cache hit
-        const statuses = [response1._metadata?.cacheStatus, response2._metadata?.cacheStatus];
+        const statuses = [
+          response1._metadata?.cacheStatus,
+          response2._metadata?.cacheStatus,
+        ];
         expect(statuses).toContain("hit");
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 });

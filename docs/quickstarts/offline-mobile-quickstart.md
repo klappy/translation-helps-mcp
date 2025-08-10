@@ -112,8 +112,12 @@ class OfflineStorage {
       upgrade(db) {
         // Scripture store
         if (!db.objectStoreNames.contains("scripture")) {
-          const scriptureStore = db.createObjectStore("scripture", { keyPath: "id" });
-          scriptureStore.createIndex("reference", "reference", { unique: false });
+          const scriptureStore = db.createObjectStore("scripture", {
+            keyPath: "id",
+          });
+          scriptureStore.createIndex("reference", "reference", {
+            unique: false,
+          });
           scriptureStore.createIndex("language", "language", { unique: false });
           scriptureStore.createIndex("book", "book", { unique: false });
         }
@@ -134,17 +138,27 @@ class OfflineStorage {
 
         // Translation questions store
         if (!db.objectStoreNames.contains("questions")) {
-          const questionsStore = db.createObjectStore("questions", { keyPath: "id" });
-          questionsStore.createIndex("reference", "reference", { unique: false });
+          const questionsStore = db.createObjectStore("questions", {
+            keyPath: "id",
+          });
+          questionsStore.createIndex("reference", "reference", {
+            unique: false,
+          });
           questionsStore.createIndex("language", "language", { unique: false });
         }
 
         // User translations store
         if (!db.objectStoreNames.contains("translations")) {
-          const translationsStore = db.createObjectStore("translations", { keyPath: "id" });
-          translationsStore.createIndex("reference", "reference", { unique: false });
+          const translationsStore = db.createObjectStore("translations", {
+            keyPath: "id",
+          });
+          translationsStore.createIndex("reference", "reference", {
+            unique: false,
+          });
           translationsStore.createIndex("status", "status", { unique: false });
-          translationsStore.createIndex("lastModified", "lastModified", { unique: false });
+          translationsStore.createIndex("lastModified", "lastModified", {
+            unique: false,
+          });
         }
 
         // Sync queue store
@@ -169,7 +183,9 @@ class OfflineStorage {
 
         // Resource metadata store
         if (!db.objectStoreNames.contains("metadata")) {
-          const metadataStore = db.createObjectStore("metadata", { keyPath: "key" });
+          const metadataStore = db.createObjectStore("metadata", {
+            keyPath: "key",
+          });
         }
       },
     });
@@ -488,7 +504,7 @@ class BackgroundSync {
           this.triggerSync();
         }
       },
-      5 * 60 * 1000
+      5 * 60 * 1000,
     );
   }
 
@@ -541,7 +557,7 @@ class BackgroundSync {
     await this.storage.saveUserTranslation(
       translation.reference,
       translation.translation,
-      translation.status
+      translation.status,
     );
   }
 
@@ -586,7 +602,9 @@ class BackgroundSync {
       const response = await this.api.getScripture(reference);
       await this.storage.saveScripture(reference, response);
     } catch (error) {
-      throw new Error(`Failed to download scripture for ${reference}: ${error.message}`);
+      throw new Error(
+        `Failed to download scripture for ${reference}: ${error.message}`,
+      );
     }
   }
 
@@ -595,16 +613,23 @@ class BackgroundSync {
       const response = await this.api.getTranslationNotes(reference);
       await this.storage.saveTranslationNotes(reference, response.notes);
     } catch (error) {
-      throw new Error(`Failed to download notes for ${reference}: ${error.message}`);
+      throw new Error(
+        `Failed to download notes for ${reference}: ${error.message}`,
+      );
     }
   }
 
   async downloadQuestions(reference) {
     try {
       const response = await this.api.getTranslationQuestions(reference);
-      await this.storage.saveTranslationQuestions(reference, response.questions);
+      await this.storage.saveTranslationQuestions(
+        reference,
+        response.questions,
+      );
     } catch (error) {
-      throw new Error(`Failed to download questions for ${reference}: ${error.message}`);
+      throw new Error(
+        `Failed to download questions for ${reference}: ${error.message}`,
+      );
     }
   }
 
@@ -615,7 +640,9 @@ class BackgroundSync {
         await this.storage.saveTranslationWord(word.word, word.definition);
       }
     } catch (error) {
-      throw new Error(`Failed to download words for ${query}: ${error.message}`);
+      throw new Error(
+        `Failed to download words for ${query}: ${error.message}`,
+      );
     }
   }
 
@@ -633,9 +660,10 @@ class BackgroundSync {
     const chapter = parseInt(currentReference.split(" ")[1].split(":")[0]);
 
     // Queue adjacent chapters for download
-    const adjacentRefs = [`${book} ${chapter - 1}`, `${book} ${chapter + 1}`].filter(
-      (ref) => chapter > 1 || !ref.includes("0")
-    );
+    const adjacentRefs = [
+      `${book} ${chapter - 1}`,
+      `${book} ${chapter + 1}`,
+    ].filter((ref) => chapter > 1 || !ref.includes("0"));
 
     for (const ref of adjacentRefs) {
       await this.storage.queueForDownload("scripture", ref, 2);
@@ -689,7 +717,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(STATIC_CACHE)
       .then((cache) => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -701,11 +729,14 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames
-            .filter((cacheName) => cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE)
-            .map((cacheName) => caches.delete(cacheName))
+            .filter(
+              (cacheName) =>
+                cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE,
+            )
+            .map((cacheName) => caches.delete(cacheName)),
         );
       })
-      .then(() => self.clients.claim())
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -722,7 +753,9 @@ self.addEventListener("fetch", (event) => {
 
   // Static assets - cache-first
   if (STATIC_ASSETS.some((asset) => request.url.endsWith(asset))) {
-    event.respondWith(caches.match(request).then((response) => response || fetch(request)));
+    event.respondWith(
+      caches.match(request).then((response) => response || fetch(request)),
+    );
     return;
   }
 
@@ -732,11 +765,13 @@ self.addEventListener("fetch", (event) => {
       .then((response) => {
         if (response.status === 200) {
           const responseClone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, responseClone));
+          caches
+            .open(DYNAMIC_CACHE)
+            .then((cache) => cache.put(request, responseClone));
         }
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(() => caches.match(request)),
   );
 });
 
@@ -777,7 +812,7 @@ async function handleAPIRequest(request) {
       {
         status: 503,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 }
@@ -802,7 +837,9 @@ async function notifyMainApp() {
 // Push notifications (for future use)
 self.addEventListener("push", (event) => {
   const options = {
-    body: event.data ? event.data.text() : "New translation resources available",
+    body: event.data
+      ? event.data.text()
+      : "New translation resources available",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-72.png",
     vibrate: [200, 100, 200],
@@ -824,7 +861,9 @@ self.addEventListener("push", (event) => {
     ],
   };
 
-  event.waitUntil(self.registration.showNotification("Translation Helps", options));
+  event.waitUntil(
+    self.registration.showNotification("Translation Helps", options),
+  );
 });
 
 // Notification click
@@ -879,7 +918,10 @@ async function handleShareTarget(request) {
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
     <meta name="theme-color" content="#3498db" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -962,9 +1004,15 @@ async function handleShareTarget(request) {
               </div>
 
               <div class="translation-switcher">
-                <button class="translation-btn active" data-translation="ult">ULT</button>
-                <button class="translation-btn" data-translation="ust">UST</button>
-                <button class="translation-btn" data-translation="both">Both</button>
+                <button class="translation-btn active" data-translation="ult">
+                  ULT
+                </button>
+                <button class="translation-btn" data-translation="ust">
+                  UST
+                </button>
+                <button class="translation-btn" data-translation="both">
+                  Both
+                </button>
               </div>
 
               <div class="scripture-text">
@@ -1014,7 +1062,9 @@ async function handleShareTarget(request) {
               </div>
               <div class="status-item">
                 <span class="status-label">Sync:</span>
-                <span class="status-value sync-status" id="syncStatus">Pending</span>
+                <span class="status-value sync-status" id="syncStatus"
+                  >Pending</span
+                >
               </div>
             </div>
           </div>
@@ -1042,7 +1092,11 @@ async function handleShareTarget(request) {
             <div class="help-content" id="wordsHelp" style="display: none;">
               <h4>Key Words</h4>
               <div class="word-search">
-                <input type="text" id="wordSearch" placeholder="Search words..." />
+                <input
+                  type="text"
+                  id="wordSearch"
+                  placeholder="Search words..."
+                />
                 <button id="wordSearchBtn">Search</button>
               </div>
               <div id="wordsContent">No words available</div>
@@ -1071,7 +1125,9 @@ async function handleShareTarget(request) {
             <div class="library-sections">
               <div class="section-header">
                 <h4>Recent Translations</h4>
-                <button class="section-btn" id="viewAllTranslations">View All</button>
+                <button class="section-btn" id="viewAllTranslations">
+                  View All
+                </button>
               </div>
               <div class="recent-list" id="recentTranslations">
                 <!-- Populated by JS -->
@@ -1089,10 +1145,18 @@ async function handleShareTarget(request) {
                 <h4>Quick Actions</h4>
               </div>
               <div class="action-buttons">
-                <button class="action-button" id="exportData">📤 Export Data</button>
-                <button class="action-button" id="importData">📥 Import Data</button>
-                <button class="action-button" id="clearCache">🗑️ Clear Cache</button>
-                <button class="action-button" id="forceSync">🔄 Force Sync</button>
+                <button class="action-button" id="exportData">
+                  📤 Export Data
+                </button>
+                <button class="action-button" id="importData">
+                  📥 Import Data
+                </button>
+                <button class="action-button" id="clearCache">
+                  🗑️ Clear Cache
+                </button>
+                <button class="action-button" id="forceSync">
+                  🔄 Force Sync
+                </button>
               </div>
             </div>
           </div>
@@ -1108,10 +1172,16 @@ async function handleShareTarget(request) {
         <div class="sheet-content">
           <h4>Quick Actions</h4>
           <div class="quick-actions">
-            <button class="quick-action" data-action="bookmark">⭐ Bookmark</button>
+            <button class="quick-action" data-action="bookmark">
+              ⭐ Bookmark
+            </button>
             <button class="quick-action" data-action="share">📤 Share</button>
-            <button class="quick-action" data-action="download">⬇️ Download</button>
-            <button class="quick-action" data-action="translate">✏️ Translate</button>
+            <button class="quick-action" data-action="download">
+              ⬇️ Download
+            </button>
+            <button class="quick-action" data-action="translate">
+              ✏️ Translate
+            </button>
           </div>
         </div>
       </div>
@@ -1127,7 +1197,9 @@ async function handleShareTarget(request) {
         <p>Install this app for offline access and better performance</p>
         <div class="prompt-actions">
           <button class="prompt-btn cancel" id="cancelInstall">Cancel</button>
-          <button class="prompt-btn install" id="confirmInstall">Install</button>
+          <button class="prompt-btn install" id="confirmInstall">
+            Install
+          </button>
         </div>
       </div>
     </div>
@@ -1198,7 +1270,10 @@ class TranslationApp {
         registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
           newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            if (
+              newWorker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
               this.showUpdatePrompt();
             }
           });
@@ -1227,11 +1302,13 @@ class TranslationApp {
       this.searchReference();
     });
 
-    document.getElementById("referenceInput").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        this.searchReference();
-      }
-    });
+    document
+      .getElementById("referenceInput")
+      .addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          this.searchReference();
+        }
+      });
 
     // Quick references
     document.querySelectorAll(".ref-btn").forEach((btn) => {
@@ -1336,7 +1413,7 @@ class TranslationApp {
       "input",
       this.debounce(() => {
         this.autoSaveTranslation();
-      }, 2000)
+      }, 2000),
     );
   }
 
@@ -1406,14 +1483,23 @@ class TranslationApp {
 
   formatTextWithHighlights(text) {
     // Add click handlers for key terms
-    const keyTerms = ["God", "Lord", "Jesus", "Christ", "Spirit", "faith", "grace", "love"];
+    const keyTerms = [
+      "God",
+      "Lord",
+      "Jesus",
+      "Christ",
+      "Spirit",
+      "faith",
+      "grace",
+      "love",
+    ];
     let formatted = text;
 
     keyTerms.forEach((term) => {
       const regex = new RegExp(`\\b${term}\\b`, "gi");
       formatted = formatted.replace(
         regex,
-        `<span class="key-term" onclick="app.lookupWord('${term}')">${term}</span>`
+        `<span class="key-term" onclick="app.lookupWord('${term}')">${term}</span>`,
       );
     });
 
@@ -1429,8 +1515,14 @@ class TranslationApp {
       // Fetch if not available and online
       if (!notes && this.isOnline) {
         const response = await this.api.getTranslationHelps(reference);
-        notes = await this.storage.saveTranslationNotes(reference, response.notes);
-        questions = await this.storage.saveTranslationQuestions(reference, response.questions);
+        notes = await this.storage.saveTranslationNotes(
+          reference,
+          response.notes,
+        );
+        questions = await this.storage.saveTranslationQuestions(
+          reference,
+          response.questions,
+        );
       }
 
       this.displayTranslationHelps(notes, questions);
@@ -1450,11 +1542,12 @@ class TranslationApp {
         <div class="note-item">
           <div class="note-text">${note.text}</div>
         </div>
-      `
+      `,
         )
         .join("");
     } else {
-      notesContent.innerHTML = '<div class="offline-message">Notes not available offline</div>';
+      notesContent.innerHTML =
+        '<div class="offline-message">Notes not available offline</div>';
     }
 
     if (questions && questions.questions) {
@@ -1465,7 +1558,7 @@ class TranslationApp {
           <div class="question-text"><strong>Q:</strong> ${q.question}</div>
           ${q.answer ? `<div class="answer-text"><strong>A:</strong> ${q.answer}</div>` : ""}
         </div>
-      `
+      `,
         )
         .join("");
     } else {
@@ -1522,7 +1615,7 @@ class TranslationAPI {
 
   async getSourceTexts(reference) {
     const response = await fetch(
-      `${this.baseUrl}/fetch-scripture?reference=${encodeURIComponent(reference)}`
+      `${this.baseUrl}/fetch-scripture?reference=${encodeURIComponent(reference)}`,
     );
     if (!response.ok) throw new Error("Network error");
     return await response.json();
@@ -1530,9 +1623,11 @@ class TranslationAPI {
 
   async getTranslationHelps(reference) {
     const [notes, questions] = await Promise.all([
-      fetch(`${this.baseUrl}/fetch-translation-notes?reference=${encodeURIComponent(reference)}`),
       fetch(
-        `${this.baseUrl}/fetch-translation-questions?reference=${encodeURIComponent(reference)}`
+        `${this.baseUrl}/fetch-translation-notes?reference=${encodeURIComponent(reference)}`,
+      ),
+      fetch(
+        `${this.baseUrl}/fetch-translation-questions?reference=${encodeURIComponent(reference)}`,
       ),
     ]);
 
@@ -1577,7 +1672,8 @@ window.app = app; // Make available globally for onclick handlers
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   line-height: 1.6;
   color: var(--text-color);
   background: var(--bg-light);

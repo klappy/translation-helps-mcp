@@ -4,7 +4,11 @@
  */
 
 import { logger } from "../../utils/logger.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 interface TranslationWordArticle {
   id: string;
@@ -15,7 +19,7 @@ interface TranslationWordArticle {
 }
 
 export const getTranslationWordHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -35,9 +39,11 @@ export const getTranslationWordHandler: PlatformHandler = async (
 
   try {
     // Use 'word' parameter as per user preference, fallback to 'term'
-    const word = request.queryStringParameters.word || request.queryStringParameters.term;
+    const word =
+      request.queryStringParameters.word || request.queryStringParameters.term;
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
 
     if (!word) {
       return {
@@ -49,7 +55,8 @@ export const getTranslationWordHandler: PlatformHandler = async (
         body: JSON.stringify({
           error: "Missing required parameter: 'word'",
           code: "MISSING_PARAMETER",
-          message: "Please provide a word to look up. Example: ?word=love&language=en",
+          message:
+            "Please provide a word to look up. Example: ?word=love&language=en",
           validEndpoints: [
             "/api/list-available-resources - Find available organizations/languages",
             "/api/browse-translation-words - Browse available words",
@@ -132,7 +139,11 @@ export const getTranslationWordHandler: PlatformHandler = async (
     }
 
     // Parse the markdown content
-    const article = parseTranslationWordArticle(articleContent, word, foundCategory!);
+    const article = parseTranslationWordArticle(
+      articleContent,
+      word,
+      foundCategory!,
+    );
 
     const duration = Date.now() - startTime;
 
@@ -172,7 +183,8 @@ export const getTranslationWordHandler: PlatformHandler = async (
       body: JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        message: "An error occurred while fetching the translation word. Please try again.",
+        message:
+          "An error occurred while fetching the translation word. Please try again.",
         details: error instanceof Error ? error.message : String(error),
       }),
     };
@@ -185,7 +197,7 @@ export const getTranslationWordHandler: PlatformHandler = async (
 function parseTranslationWordArticle(
   content: string,
   word: string,
-  category: string
+  category: string,
 ): TranslationWordArticle {
   // Extract title from first heading (skip YAML frontmatter if present)
   let title = word;

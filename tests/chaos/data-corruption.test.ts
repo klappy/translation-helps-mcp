@@ -14,17 +14,23 @@ import { buildUrl } from "../helpers/http";
 // Mock API functions for testing
 const mockApi = {
   fetchScripture: async (reference: string) => {
-    const response = await fetch(await buildUrl(`/api/fetch-scripture`, { reference }));
+    const response = await fetch(
+      await buildUrl(`/api/fetch-scripture`, { reference }),
+    );
     return response.json();
   },
 
   fetchTranslationNotes: async (reference: string) => {
-    const response = await fetch(await buildUrl(`/api/fetch-translation-notes`, { reference }));
+    const response = await fetch(
+      await buildUrl(`/api/fetch-translation-notes`, { reference }),
+    );
     return response.json();
   },
 
   getTranslationWord: async (word: string) => {
-    const response = await fetch(await buildUrl(`/api/get-translation-word`, { word }));
+    const response = await fetch(
+      await buildUrl(`/api/get-translation-word`, { word }),
+    );
     return response.json();
   },
 
@@ -146,7 +152,9 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
           tamperedResponse.warning.includes("integrity check failed")
         ) {
           expect(tamperedResponse.source).toBe("cache"); // Fell back to trusted source
-          console.log("✅ Detected response tampering and used trusted fallback");
+          console.log(
+            "✅ Detected response tampering and used trusted fallback",
+          );
         } else {
           // If no warning, data should be consistent
           expect(tamperedResponse.scripture.ult.text).toBe(baselineText);
@@ -203,8 +211,12 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
       }
 
       // Analyze corruption handling
-      const validResponses = corruptionResults.filter((r) => r.textValid).length;
-      const cacheResponses = corruptionResults.filter((r) => r.source === "cache").length;
+      const validResponses = corruptionResults.filter(
+        (r) => r.textValid,
+      ).length;
+      const cacheResponses = corruptionResults.filter(
+        (r) => r.source === "cache",
+      ).length;
 
       // Should either provide valid text or use cache fallback
       expect(validResponses + cacheResponses).toBeGreaterThan(0);
@@ -212,12 +224,12 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
       corruptionResults.forEach((result, index) => {
         const status = result.textValid ? "✅" : "❌";
         console.log(
-          `${status} Attempt ${result.attempt}: ${result.textValid ? "valid" : "corrupted"} text from ${result.source}`
+          `${status} Attempt ${result.attempt}: ${result.textValid ? "valid" : "corrupted"} text from ${result.source}`,
         );
       });
 
       console.log(
-        `✅ Scripture corruption handling: ${validResponses}/5 valid, ${cacheResponses}/5 from cache`
+        `✅ Scripture corruption handling: ${validResponses}/5 valid, ${cacheResponses}/5 from cache`,
       );
     }, 12000);
 
@@ -304,9 +316,15 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
       });
 
       const typeValidationTests = [
-        { name: "Scripture Text", call: () => mockApi.fetchScripture("John 1:1") },
+        {
+          name: "Scripture Text",
+          call: () => mockApi.fetchScripture("John 1:1"),
+        },
         { name: "Language List", call: () => mockApi.getLanguages() },
-        { name: "Translation Word", call: () => mockApi.getTranslationWord("love") },
+        {
+          name: "Translation Word",
+          call: () => mockApi.getTranslationWord("love"),
+        },
       ];
 
       const validationResults: Array<{
@@ -329,7 +347,10 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
               validationError = "Scripture text not string";
             }
           } else if (test.name === "Language List") {
-            if (!Array.isArray(response.languages) && !Array.isArray(response)) {
+            if (
+              !Array.isArray(response.languages) &&
+              !Array.isArray(response)
+            ) {
               passed = false;
               validationError = "Languages not array";
             }
@@ -356,7 +377,9 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
 
       validationResults.forEach((result) => {
         const status = result.passed ? "✅" : "❌";
-        console.log(`${status} ${result.name}: ${result.passed ? "passed" : result.error}`);
+        console.log(
+          `${status} ${result.name}: ${result.passed ? "passed" : result.error}`,
+        );
       });
 
       // At least some validation should work
@@ -364,7 +387,7 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
       expect(passedCount).toBeGreaterThan(0);
 
       console.log(
-        `✅ Data type validation: ${passedCount}/${validationResults.length} tests passed`
+        `✅ Data type validation: ${passedCount}/${validationResults.length} tests passed`,
       );
     }, 10000);
 
@@ -501,7 +524,8 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
       // Should automatically recover
-      const recoveredResponse = await mockApi.fetchScripture("Philippians 4:13");
+      const recoveredResponse =
+        await mockApi.fetchScripture("Philippians 4:13");
       expect(recoveredResponse.scripture.ult.text).toBe(baselineText);
 
       // Verify recovery metrics
@@ -563,18 +587,22 @@ describe("🗃️ Data Corruption & Invalid Responses - Chaos Tests", () => {
       integrityResults.forEach((result, index) => {
         const status = result.dataConsistent ? "✅" : "⚠️";
         console.log(
-          `${status} ${result.corruption}: ${result.dataConsistent ? "consistent" : "inconsistent"} from ${result.source}`
+          `${status} ${result.corruption}: ${result.dataConsistent ? "consistent" : "inconsistent"} from ${result.source}`,
         );
       });
 
-      const consistentCount = integrityResults.filter((r) => r.dataConsistent).length;
-      const trustedSourceCount = integrityResults.filter((r) => r.source === "cache").length;
+      const consistentCount = integrityResults.filter(
+        (r) => r.dataConsistent,
+      ).length;
+      const trustedSourceCount = integrityResults.filter(
+        (r) => r.source === "cache",
+      ).length;
 
       // Should maintain integrity through trusted sources
       expect(consistentCount + trustedSourceCount).toBeGreaterThan(0);
 
       console.log(
-        `✅ Data integrity: ${consistentCount}/3 consistent, ${trustedSourceCount}/3 from trusted source`
+        `✅ Data integrity: ${consistentCount}/3 consistent, ${trustedSourceCount}/3 from trusted source`,
       );
     }, 15000);
   });

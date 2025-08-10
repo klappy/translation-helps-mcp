@@ -26,18 +26,53 @@ const CLOUDFLARE = {
 // Baseline metrics from UI performance page (Netlify era)
 const BASELINE_METRICS = {
   endpoints: [
-    { name: "Health Check", avgTime: 176, grade: "A+", requestsPerSecond: 5.68 },
+    {
+      name: "Health Check",
+      avgTime: 176,
+      grade: "A+",
+      requestsPerSecond: 5.68,
+    },
     { name: "Languages", avgTime: 180, grade: "A+", requestsPerSecond: 5.56 },
-    { name: "Translation Notes", avgTime: 176, grade: "A+", requestsPerSecond: 5.68 },
+    {
+      name: "Translation Notes",
+      avgTime: 176,
+      grade: "A+",
+      requestsPerSecond: 5.68,
+    },
     { name: "Scripture", avgTime: 176, grade: "A+", requestsPerSecond: 5.68 },
-    { name: "Translation Questions", avgTime: 180, grade: "A+", requestsPerSecond: 5.56 },
-    { name: "Translation Words", avgTime: 199, grade: "A+", requestsPerSecond: 5.03 },
+    {
+      name: "Translation Questions",
+      avgTime: 180,
+      grade: "A+",
+      requestsPerSecond: 5.56,
+    },
+    {
+      name: "Translation Words",
+      avgTime: 199,
+      grade: "A+",
+      requestsPerSecond: 5.03,
+    },
   ],
   cacheImprovements: [
     { reference: "Languages", miss: 250, hit: 180, improvement: 28.0 },
-    { reference: "Translation Notes - Titus 1:1", miss: 241, hit: 176, improvement: 27.0 },
-    { reference: "Scripture - John 3:16", miss: 234, hit: 176, improvement: 25.0 },
-    { reference: "Translation Words - Genesis 1:1", miss: 286, hit: 199, improvement: 30.6 },
+    {
+      reference: "Translation Notes - Titus 1:1",
+      miss: 241,
+      hit: 176,
+      improvement: 27.0,
+    },
+    {
+      reference: "Scripture - John 3:16",
+      miss: 234,
+      hit: 176,
+      improvement: 25.0,
+    },
+    {
+      reference: "Translation Words - Genesis 1:1",
+      miss: 286,
+      hit: 199,
+      improvement: 30.6,
+    },
   ],
   loadTesting: [
     { concurrency: 10, successRate: 100, avgResponse: 180, rps: 5.6 },
@@ -59,7 +94,11 @@ const NETLIFY_PRICING = {
 const TEST_SCENARIOS = {
   endpoints: [
     { endpoint: "/api/health", name: "Health Check", baseline: 176 },
-    { endpoint: "/api/get-languages?organization=unfoldingWord", name: "Languages", baseline: 180 },
+    {
+      endpoint: "/api/get-languages?organization=unfoldingWord",
+      name: "Languages",
+      baseline: 180,
+    },
     {
       endpoint:
         "/api/fetch-scripture?reference=John+3:16&language=en&organization=unfoldingWord&translation=all",
@@ -133,7 +172,13 @@ class CloudflareMetrics {
     this.startTime = Date.now();
   }
 
-  addRequest(endpoint, duration, statusCode, error = null, cacheStatus = "unknown") {
+  addRequest(
+    endpoint,
+    duration,
+    statusCode,
+    error = null,
+    cacheStatus = "unknown",
+  ) {
     this.requests.push({
       endpoint,
       duration,
@@ -166,9 +211,12 @@ class CloudflareMetrics {
       p95Duration: sorted[Math.floor(sorted.length * 0.95)],
       p99Duration: sorted[Math.floor(sorted.length * 0.99)],
       totalDuration: Date.now() - this.startTime,
-      requestsPerSecond: successful.length / ((Date.now() - this.startTime) / 1000),
-      cacheHits: this.requests.filter((r) => r.cacheStatus?.includes("HIT")).length,
-      cacheMisses: this.requests.filter((r) => r.cacheStatus?.includes("MISS")).length,
+      requestsPerSecond:
+        successful.length / ((Date.now() - this.startTime) / 1000),
+      cacheHits: this.requests.filter((r) => r.cacheStatus?.includes("HIT"))
+        .length,
+      cacheMisses: this.requests.filter((r) => r.cacheStatus?.includes("MISS"))
+        .length,
     };
   }
 
@@ -246,10 +294,10 @@ class CloudflareTester {
             result.duration,
             result.statusCode,
             null,
-            result.cacheStatus
+            result.cacheStatus,
           );
           console.log(
-            `   Test ${i + 1}: ${result.duration}ms | ${result.statusCode} | Cache: ${result.cacheStatus}`
+            `   Test ${i + 1}: ${result.duration}ms | ${result.statusCode} | Cache: ${result.cacheStatus}`,
           );
         } catch (error) {
           this.metrics.addRequest(test.name, error.duration, 0, error.error);
@@ -262,15 +310,20 @@ class CloudflareTester {
       // Compare to baseline
       const successful = results.filter((r) => r.statusCode === 200);
       if (successful.length > 0) {
-        const avgDuration = successful.reduce((sum, r) => sum + r.duration, 0) / successful.length;
-        const baselineComparison = ((test.baseline - avgDuration) / test.baseline) * 100;
+        const avgDuration =
+          successful.reduce((sum, r) => sum + r.duration, 0) /
+          successful.length;
+        const baselineComparison =
+          ((test.baseline - avgDuration) / test.baseline) * 100;
         const comparison = baselineComparison > 0 ? "FASTER" : "SLOWER";
         const color = baselineComparison > 0 ? "🟢" : "🔴";
 
         console.log(
-          `   ${color} Cloudflare: ${avgDuration.toFixed(0)}ms vs Baseline: ${test.baseline}ms`
+          `   ${color} Cloudflare: ${avgDuration.toFixed(0)}ms vs Baseline: ${test.baseline}ms`,
         );
-        console.log(`   📈 Performance: ${Math.abs(baselineComparison).toFixed(1)}% ${comparison}`);
+        console.log(
+          `   📈 Performance: ${Math.abs(baselineComparison).toFixed(1)}% ${comparison}`,
+        );
       }
 
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -293,9 +346,11 @@ class CloudflareTester {
           result1.duration,
           result1.statusCode,
           null,
-          result1.cacheStatus
+          result1.cacheStatus,
         );
-        console.log(`   First Request: ${result1.duration}ms | Cache: ${result1.cacheStatus}`);
+        console.log(
+          `   First Request: ${result1.duration}ms | Cache: ${result1.cacheStatus}`,
+        );
         console.log(`   Baseline Miss: ${test.baselineMiss}ms`);
 
         // Wait a moment
@@ -308,19 +363,26 @@ class CloudflareTester {
           result2.duration,
           result2.statusCode,
           null,
-          result2.cacheStatus
+          result2.cacheStatus,
         );
-        console.log(`   Second Request: ${result2.duration}ms | Cache: ${result2.cacheStatus}`);
+        console.log(
+          `   Second Request: ${result2.duration}ms | Cache: ${result2.cacheStatus}`,
+        );
         console.log(`   Baseline Hit: ${test.baselineHit}ms`);
 
         // Calculate improvement
         if (result1.duration > result2.duration) {
-          const improvement = ((result1.duration - result2.duration) / result1.duration) * 100;
-          console.log(`   🚀 Cache Improvement: ${improvement.toFixed(1)}% faster`);
+          const improvement =
+            ((result1.duration - result2.duration) / result1.duration) * 100;
+          console.log(
+            `   🚀 Cache Improvement: ${improvement.toFixed(1)}% faster`,
+          );
 
           const baselineImprovement =
             ((test.baselineMiss - test.baselineHit) / test.baselineMiss) * 100;
-          console.log(`   📊 Baseline Improvement: ${baselineImprovement.toFixed(1)}% faster`);
+          console.log(
+            `   📊 Baseline Improvement: ${baselineImprovement.toFixed(1)}% faster`,
+          );
         }
       } catch (error) {
         console.log(`   ❌ Cache test failed: ${error.error}`);
@@ -331,7 +393,9 @@ class CloudflareTester {
   }
 
   async runLoadTest(concurrency, duration = 30000) {
-    console.log(`\n⚡ Load Test - ${concurrency} concurrent requests for ${duration / 1000}s`);
+    console.log(
+      `\n⚡ Load Test - ${concurrency} concurrent requests for ${duration / 1000}s`,
+    );
     console.log("=".repeat(80));
 
     this.metrics.reset();
@@ -347,33 +411,40 @@ class CloudflareTester {
     const stats = this.metrics.getStats();
     if (stats && !stats.error) {
       console.log(`\n📈 Load Test Results:`);
-      console.log(`   Requests: ${stats.totalRequests} (${stats.successRate.toFixed(1)}% success)`);
+      console.log(
+        `   Requests: ${stats.totalRequests} (${stats.successRate.toFixed(1)}% success)`,
+      );
       console.log(`   Average Response: ${stats.averageDuration.toFixed(0)}ms`);
       console.log(`   Median Response: ${stats.medianDuration.toFixed(0)}ms`);
       console.log(`   95th Percentile: ${stats.p95Duration.toFixed(0)}ms`);
       console.log(`   Requests/Second: ${stats.requestsPerSecond.toFixed(2)}`);
 
       // Compare to baseline
-      const baselineLoad = BASELINE_METRICS.loadTesting.find((l) => l.concurrency === concurrency);
+      const baselineLoad = BASELINE_METRICS.loadTesting.find(
+        (l) => l.concurrency === concurrency,
+      );
       if (baselineLoad) {
         console.log(`\n📊 vs Baseline (${concurrency} concurrent):`);
         console.log(
-          `   Cloudflare RPS: ${stats.requestsPerSecond.toFixed(2)} vs Baseline: ${baselineLoad.rps}`
+          `   Cloudflare RPS: ${stats.requestsPerSecond.toFixed(2)} vs Baseline: ${baselineLoad.rps}`,
         );
         console.log(
-          `   Cloudflare Avg: ${stats.averageDuration.toFixed(0)}ms vs Baseline: ${baselineLoad.avgResponse}ms`
+          `   Cloudflare Avg: ${stats.averageDuration.toFixed(0)}ms vs Baseline: ${baselineLoad.avgResponse}ms`,
         );
 
         const rpsImprovement =
-          ((stats.requestsPerSecond - baselineLoad.rps) / baselineLoad.rps) * 100;
+          ((stats.requestsPerSecond - baselineLoad.rps) / baselineLoad.rps) *
+          100;
         const responseImprovement =
-          ((baselineLoad.avgResponse - stats.averageDuration) / baselineLoad.avgResponse) * 100;
+          ((baselineLoad.avgResponse - stats.averageDuration) /
+            baselineLoad.avgResponse) *
+          100;
 
         console.log(
-          `   🚀 Throughput: ${rpsImprovement > 0 ? "+" : ""}${rpsImprovement.toFixed(1)}%`
+          `   🚀 Throughput: ${rpsImprovement > 0 ? "+" : ""}${rpsImprovement.toFixed(1)}%`,
         );
         console.log(
-          `   ⚡ Response: ${responseImprovement > 0 ? "+" : ""}${responseImprovement.toFixed(1)}% faster`
+          `   ⚡ Response: ${responseImprovement > 0 ? "+" : ""}${responseImprovement.toFixed(1)}% faster`,
         );
       }
     }
@@ -403,19 +474,21 @@ class CloudflareTester {
           result.duration,
           result.statusCode,
           null,
-          result.cacheStatus
+          result.cacheStatus,
         );
       } catch (error) {
         this.metrics.addRequest(
           `Load-${selectedTest.endpoint.split("?")[0].split("/").pop()}`,
           error.duration,
           0,
-          error.error
+          error.error,
         );
       }
 
       // Random delay between requests (100-500ms)
-      await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 400));
+      await new Promise((resolve) =>
+        setTimeout(resolve, 100 + Math.random() * 400),
+      );
     }
   }
 
@@ -434,7 +507,8 @@ class CloudflareTester {
     const cloudflareMonthly = cloudflareDailyCost * 30;
 
     // Netlify costs (for comparison)
-    const executionCost = (stats.averageDuration / 100) * NETLIFY_PRICING.functionExecution;
+    const executionCost =
+      (stats.averageDuration / 100) * NETLIFY_PRICING.functionExecution;
     const requestCost = NETLIFY_PRICING.requests;
     const netlifyPerRequest = executionCost + requestCost;
 
@@ -442,7 +516,8 @@ class CloudflareTester {
     let netlifyMonthly = 0;
 
     if (monthlyRequests > NETLIFY_PRICING.freeTier) {
-      netlifyMonthly = (monthlyRequests - NETLIFY_PRICING.freeTier) * netlifyPerRequest;
+      netlifyMonthly =
+        (monthlyRequests - NETLIFY_PRICING.freeTier) * netlifyPerRequest;
     }
 
     return {
@@ -459,7 +534,9 @@ class CloudflareTester {
       },
       savings: netlifyMonthly - cloudflareMonthly,
       savingsPercent:
-        netlifyMonthly > 0 ? ((netlifyMonthly - cloudflareMonthly) / netlifyMonthly) * 100 : 0,
+        netlifyMonthly > 0
+          ? ((netlifyMonthly - cloudflareMonthly) / netlifyMonthly) * 100
+          : 0,
     };
   }
 
@@ -478,32 +555,44 @@ class CloudflareTester {
       console.log(`   Median Response: ${stats.medianDuration.toFixed(0)}ms`);
       console.log(`   95th Percentile: ${stats.p95Duration.toFixed(0)}ms`);
       console.log(`   Requests/Second: ${stats.requestsPerSecond.toFixed(2)}`);
-      console.log(`   Cache Hits: ${stats.cacheHits} | Cache Misses: ${stats.cacheMisses}`);
+      console.log(
+        `   Cache Hits: ${stats.cacheHits} | Cache Misses: ${stats.cacheMisses}`,
+      );
 
       if (costs && !costs.error) {
         console.log(`\n💰 COST ANALYSIS:`);
         console.log(`   🔷 Cloudflare:`);
-        console.log(`      Daily Cost: $${costs.cloudflare.dailyCost.toFixed(6)}`);
-        console.log(`      Monthly Cost: $${costs.cloudflare.monthlyCost.toFixed(4)}`);
-        console.log(`      Cost per Request: $${costs.cloudflare.costPerRequest.toFixed(8)}`);
         console.log(
-          `      Free Tier: ${costs.cloudflare.freeTierCovered ? "✅ COVERED" : "❌ EXCEEDED"}`
+          `      Daily Cost: $${costs.cloudflare.dailyCost.toFixed(6)}`,
+        );
+        console.log(
+          `      Monthly Cost: $${costs.cloudflare.monthlyCost.toFixed(4)}`,
+        );
+        console.log(
+          `      Cost per Request: $${costs.cloudflare.costPerRequest.toFixed(8)}`,
+        );
+        console.log(
+          `      Free Tier: ${costs.cloudflare.freeTierCovered ? "✅ COVERED" : "❌ EXCEEDED"}`,
         );
 
         console.log(`   🔶 Netlify (for comparison):`);
-        console.log(`      Monthly Cost: $${costs.netlify.monthlyCost.toFixed(4)}`);
-        console.log(`      Cost per Request: $${costs.netlify.costPerRequest.toFixed(8)}`);
         console.log(
-          `      Free Tier: ${costs.netlify.freeTierCovered ? "✅ COVERED" : "❌ EXCEEDED"}`
+          `      Monthly Cost: $${costs.netlify.monthlyCost.toFixed(4)}`,
+        );
+        console.log(
+          `      Cost per Request: $${costs.netlify.costPerRequest.toFixed(8)}`,
+        );
+        console.log(
+          `      Free Tier: ${costs.netlify.freeTierCovered ? "✅ COVERED" : "❌ EXCEEDED"}`,
         );
 
         if (costs.savings > 0) {
           console.log(
-            `   💸 Cloudflare Savings: $${costs.savings.toFixed(4)}/month (${costs.savingsPercent.toFixed(1)}%)`
+            `   💸 Cloudflare Savings: $${costs.savings.toFixed(4)}/month (${costs.savingsPercent.toFixed(1)}%)`,
           );
         } else if (costs.savings < 0) {
           console.log(
-            `   💸 Cloudflare Cost Increase: $${Math.abs(costs.savings).toFixed(4)}/month (${Math.abs(costs.savingsPercent).toFixed(1)}%)`
+            `   💸 Cloudflare Cost Increase: $${Math.abs(costs.savings).toFixed(4)}/month (${Math.abs(costs.savingsPercent).toFixed(1)}%)`,
           );
         }
       }
@@ -518,14 +607,19 @@ class CloudflareTester {
       BASELINE_METRICS.endpoints.reduce((sum, e) => sum + e.avgTime, 0) /
       BASELINE_METRICS.endpoints.length;
     if (stats && !stats.error) {
-      const performanceVsBaseline = ((baselineAvg - stats.averageDuration) / baselineAvg) * 100;
+      const performanceVsBaseline =
+        ((baselineAvg - stats.averageDuration) / baselineAvg) * 100;
       console.log(
-        `   📊 Overall Performance: ${performanceVsBaseline > 0 ? "+" : ""}${performanceVsBaseline.toFixed(1)}% vs baseline`
+        `   📊 Overall Performance: ${performanceVsBaseline > 0 ? "+" : ""}${performanceVsBaseline.toFixed(1)}% vs baseline`,
       );
     }
 
-    console.log(`   🧊 Cold Starts: Cloudflare Workers ~1ms vs Netlify Functions ~100ms`);
-    console.log(`   🗄️  Caching: Memory-only (KV implementation needed for persistence)`);
+    console.log(
+      `   🧊 Cold Starts: Cloudflare Workers ~1ms vs Netlify Functions ~100ms`,
+    );
+    console.log(
+      `   🗄️  Caching: Memory-only (KV implementation needed for persistence)`,
+    );
     console.log(`   🌍 Global: 300+ edge locations vs Netlify's limited edge`);
 
     console.log(`\n⚠️  NEXT STEPS:`);

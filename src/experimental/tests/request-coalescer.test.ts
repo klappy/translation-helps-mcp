@@ -224,7 +224,8 @@ describe("Request Coalescing System", () => {
 
     test("tracks pending requests correctly", async () => {
       const mockFetcher = vi.fn(
-        () => new Promise((resolve) => setTimeout(() => resolve("result"), 200))
+        () =>
+          new Promise((resolve) => setTimeout(() => resolve("result"), 200)),
       );
 
       const promise = coalescer.coalesce("pending-key", mockFetcher);
@@ -316,7 +317,7 @@ describe("Request Coalescing System", () => {
       for (let i = 0; i < 5; i++) {
         promises.push(
           coalescer.coalesce(`key-${i}`, mockFetcher),
-          coalescer.coalesce(`key-${i}`, mockFetcher)
+          coalescer.coalesce(`key-${i}`, mockFetcher),
         );
       }
 
@@ -332,7 +333,10 @@ describe("Request Coalescing System", () => {
     test("does not increase response time significantly", async () => {
       const baseResponseTime = 100;
       const mockFetcher = vi.fn(
-        () => new Promise((resolve) => setTimeout(() => resolve("result"), baseResponseTime))
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve("result"), baseResponseTime),
+          ),
       );
 
       const singleStart = Date.now();

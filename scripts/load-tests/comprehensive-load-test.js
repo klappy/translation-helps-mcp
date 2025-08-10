@@ -78,7 +78,14 @@ class LoadTestResult {
     this.startTime = Date.now();
   }
 
-  addRequest(endpoint, duration, statusCode, cacheStatus, error = null, bypassMethod = null) {
+  addRequest(
+    endpoint,
+    duration,
+    statusCode,
+    cacheStatus,
+    error = null,
+    bypassMethod = null,
+  ) {
     this.requests.push({
       endpoint,
       duration,
@@ -103,11 +110,11 @@ class LoadTestResult {
 
     // Cache statistics
     const cacheHits = this.requests.filter(
-      (r) => r.cacheStatus?.includes("HIT") || r.cacheStatus?.includes("hit")
+      (r) => r.cacheStatus?.includes("HIT") || r.cacheStatus?.includes("hit"),
     ).length;
 
     const cacheMisses = this.requests.filter(
-      (r) => r.cacheStatus?.includes("MISS") || r.cacheStatus?.includes("miss")
+      (r) => r.cacheStatus?.includes("MISS") || r.cacheStatus?.includes("miss"),
     ).length;
 
     const bypassed = this.requests.filter((r) => r.bypassMethod).length;
@@ -133,13 +140,18 @@ class LoadTestResult {
       // Cache statistics
       cacheHits,
       cacheMisses,
-      cacheHitRate: cacheHits + cacheMisses > 0 ? (cacheHits / (cacheHits + cacheMisses)) * 100 : 0,
+      cacheHitRate:
+        cacheHits + cacheMisses > 0
+          ? (cacheHits / (cacheHits + cacheMisses)) * 100
+          : 0,
       bypassedRequests: bypassed,
 
       // Cache performance breakdown
-      cachedRequests: this.requests.filter((r) => r.cacheStatus?.includes("HIT")),
+      cachedRequests: this.requests.filter((r) =>
+        r.cacheStatus?.includes("HIT"),
+      ),
       uncachedRequests: this.requests.filter(
-        (r) => r.cacheStatus?.includes("MISS") || r.bypassMethod
+        (r) => r.cacheStatus?.includes("MISS") || r.bypassMethod,
       ),
     };
   }
@@ -185,29 +197,32 @@ function makeRequest(endpoint, params = {}, bypassMethod = null, headers = {}) {
       headers: requestHeaders,
     };
 
-    const req = (url.protocol === "https:" ? https : require("http")).get(options, (res) => {
-      let data = "";
-      res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => {
-        const duration = Date.now() - startTime;
+    const req = (url.protocol === "https:" ? https : require("http")).get(
+      options,
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          const duration = Date.now() - startTime;
 
-        // Extract cache status from headers
-        const cacheStatus =
-          res.headers["x-cache"] ||
-          res.headers["x-cache-status"] ||
-          res.headers["cf-cache-status"] ||
-          "unknown";
+          // Extract cache status from headers
+          const cacheStatus =
+            res.headers["x-cache"] ||
+            res.headers["x-cache-status"] ||
+            res.headers["cf-cache-status"] ||
+            "unknown";
 
-        resolve({
-          duration,
-          statusCode: res.statusCode,
-          cacheStatus,
-          dataSize: data.length,
-          headers: res.headers,
-          bypassMethod,
+          resolve({
+            duration,
+            statusCode: res.statusCode,
+            cacheStatus,
+            dataSize: data.length,
+            headers: res.headers,
+            bypassMethod,
+          });
         });
-      });
-    });
+      },
+    );
 
     req.on("error", (error) => {
       const duration = Date.now() - startTime;
@@ -238,7 +253,9 @@ class ComprehensiveLoadTester {
       for (let i = 0; i < TEST_CONFIG.warmupRequests; i++) {
         try {
           const result = await makeRequest(endpoint);
-          console.log(`   ${endpoint.name}: ${result.duration}ms (${result.cacheStatus})`);
+          console.log(
+            `   ${endpoint.name}: ${result.duration}ms (${result.cacheStatus})`,
+          );
           await new Promise((resolve) => setTimeout(resolve, 500));
         } catch (error) {
           console.log(`   ${endpoint.name}: ERROR - ${error.error}`);
@@ -267,15 +284,23 @@ class ComprehensiveLoadTester {
             endpoint.name,
             result.duration,
             result.statusCode,
-            result.cacheStatus
+            result.cacheStatus,
           );
 
-          const cacheStatusIcon = result.cacheStatus?.includes("HIT") ? "🟢" : "🔴";
+          const cacheStatusIcon = result.cacheStatus?.includes("HIT")
+            ? "🟢"
+            : "🔴";
           console.log(
-            `   Request ${i + 1}: ${result.duration}ms | ${result.statusCode} | ${cacheStatusIcon} ${result.cacheStatus}`
+            `   Request ${i + 1}: ${result.duration}ms | ${result.statusCode} | ${cacheStatusIcon} ${result.cacheStatus}`,
           );
         } catch (error) {
-          this.results.cached.addRequest(endpoint.name, error.duration, 0, "error", error.error);
+          this.results.cached.addRequest(
+            endpoint.name,
+            error.duration,
+            0,
+            "error",
+            error.error,
+          );
           console.log(`   Request ${i + 1}: ERROR - ${error.error}`);
         }
 
@@ -308,11 +333,11 @@ class ComprehensiveLoadTester {
             result.statusCode,
             result.cacheStatus,
             null,
-            bypassMethod
+            bypassMethod,
           );
 
           console.log(
-            `   Request ${i + 1} (${bypassMethod}): ${result.duration}ms | ${result.statusCode} | ${result.cacheStatus}`
+            `   Request ${i + 1} (${bypassMethod}): ${result.duration}ms | ${result.statusCode} | ${result.cacheStatus}`,
           );
         } catch (error) {
           this.results.uncached.addRequest(
@@ -321,9 +346,11 @@ class ComprehensiveLoadTester {
             0,
             "error",
             error.error,
-            bypassMethod
+            bypassMethod,
           );
-          console.log(`   Request ${i + 1} (${bypassMethod}): ERROR - ${error.error}`);
+          console.log(
+            `   Request ${i + 1} (${bypassMethod}): ERROR - ${error.error}`,
+          );
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -332,7 +359,9 @@ class ComprehensiveLoadTester {
   }
 
   async testConcurrentLoad(concurrency, testType = "mixed") {
-    console.log(`\n⚡ Concurrent Load Test - ${concurrency} concurrent ${testType} requests`);
+    console.log(
+      `\n⚡ Concurrent Load Test - ${concurrency} concurrent ${testType} requests`,
+    );
     console.log("=".repeat(80));
 
     const testResult =
@@ -365,7 +394,7 @@ class ComprehensiveLoadTester {
       console.log(`   Requests/Second: ${stats.requestsPerSecond.toFixed(2)}`);
       console.log(`   Cache Hit Rate: ${stats.cacheHitRate.toFixed(1)}%`);
       console.log(
-        `   Cache Hits: ${stats.cacheHits} | Misses: ${stats.cacheMisses} | Bypassed: ${stats.bypassedRequests}`
+        `   Cache Hits: ${stats.cacheHits} | Misses: ${stats.cacheMisses} | Bypassed: ${stats.bypassedRequests}`,
       );
     }
   }
@@ -374,7 +403,9 @@ class ComprehensiveLoadTester {
     while (Date.now() < endTime) {
       // Select random endpoint
       const endpoint =
-        TEST_CONFIG.endpoints[Math.floor(Math.random() * TEST_CONFIG.endpoints.length)];
+        TEST_CONFIG.endpoints[
+          Math.floor(Math.random() * TEST_CONFIG.endpoints.length)
+        ];
 
       // Determine bypass method based on test type
       let bypassMethod = null;
@@ -397,14 +428,23 @@ class ComprehensiveLoadTester {
           result.statusCode,
           result.cacheStatus,
           null,
-          bypassMethod
+          bypassMethod,
         );
       } catch (error) {
-        testResult.addRequest(endpoint.name, error.duration, 0, "error", error.error, bypassMethod);
+        testResult.addRequest(
+          endpoint.name,
+          error.duration,
+          0,
+          "error",
+          error.error,
+          bypassMethod,
+        );
       }
 
       // Random delay between requests (100-500ms)
-      await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 400));
+      await new Promise((resolve) =>
+        setTimeout(resolve, 100 + Math.random() * 400),
+      );
     }
   }
 
@@ -418,30 +458,53 @@ class ComprehensiveLoadTester {
 
     console.log(`\n🔷 CACHED PERFORMANCE:`);
     if (cachedStats && !cachedStats.error) {
-      console.log(`   Average Response: ${cachedStats.averageDuration.toFixed(0)}ms`);
-      console.log(`   95th Percentile: ${cachedStats.p95Duration.toFixed(0)}ms`);
+      console.log(
+        `   Average Response: ${cachedStats.averageDuration.toFixed(0)}ms`,
+      );
+      console.log(
+        `   95th Percentile: ${cachedStats.p95Duration.toFixed(0)}ms`,
+      );
       console.log(`   Cache Hit Rate: ${cachedStats.cacheHitRate.toFixed(1)}%`);
-      console.log(`   Requests/Second: ${cachedStats.requestsPerSecond.toFixed(2)}`);
+      console.log(
+        `   Requests/Second: ${cachedStats.requestsPerSecond.toFixed(2)}`,
+      );
     }
 
     console.log(`\n🔶 UNCACHED PERFORMANCE:`);
     if (uncachedStats && !uncachedStats.error) {
-      console.log(`   Average Response: ${uncachedStats.averageDuration.toFixed(0)}ms`);
-      console.log(`   95th Percentile: ${uncachedStats.p95Duration.toFixed(0)}ms`);
-      console.log(`   Cache Hit Rate: ${uncachedStats.cacheHitRate.toFixed(1)}%`);
-      console.log(`   Requests/Second: ${uncachedStats.requestsPerSecond.toFixed(2)}`);
+      console.log(
+        `   Average Response: ${uncachedStats.averageDuration.toFixed(0)}ms`,
+      );
+      console.log(
+        `   95th Percentile: ${uncachedStats.p95Duration.toFixed(0)}ms`,
+      );
+      console.log(
+        `   Cache Hit Rate: ${uncachedStats.cacheHitRate.toFixed(1)}%`,
+      );
+      console.log(
+        `   Requests/Second: ${uncachedStats.requestsPerSecond.toFixed(2)}`,
+      );
     }
 
     console.log(`\n📊 MIXED WORKLOAD:`);
     if (mixedStats && !mixedStats.error) {
-      console.log(`   Average Response: ${mixedStats.averageDuration.toFixed(0)}ms`);
+      console.log(
+        `   Average Response: ${mixedStats.averageDuration.toFixed(0)}ms`,
+      );
       console.log(`   95th Percentile: ${mixedStats.p95Duration.toFixed(0)}ms`);
       console.log(`   Cache Hit Rate: ${mixedStats.cacheHitRate.toFixed(1)}%`);
-      console.log(`   Requests/Second: ${mixedStats.requestsPerSecond.toFixed(2)}`);
+      console.log(
+        `   Requests/Second: ${mixedStats.requestsPerSecond.toFixed(2)}`,
+      );
     }
 
     // Calculate cache effectiveness
-    if (cachedStats && uncachedStats && !cachedStats.error && !uncachedStats.error) {
+    if (
+      cachedStats &&
+      uncachedStats &&
+      !cachedStats.error &&
+      !uncachedStats.error
+    ) {
       const cacheSpeedup =
         ((uncachedStats.averageDuration - cachedStats.averageDuration) /
           uncachedStats.averageDuration) *
@@ -453,10 +516,10 @@ class ComprehensiveLoadTester {
 
       console.log(`\n🎯 CACHE EFFECTIVENESS:`);
       console.log(
-        `   Speed Improvement: ${cacheSpeedup > 0 ? "+" : ""}${cacheSpeedup.toFixed(1)}%`
+        `   Speed Improvement: ${cacheSpeedup > 0 ? "+" : ""}${cacheSpeedup.toFixed(1)}%`,
       );
       console.log(
-        `   Throughput Increase: ${throughputIncrease > 0 ? "+" : ""}${throughputIncrease.toFixed(1)}%`
+        `   Throughput Increase: ${throughputIncrease > 0 ? "+" : ""}${throughputIncrease.toFixed(1)}%`,
       );
     }
 

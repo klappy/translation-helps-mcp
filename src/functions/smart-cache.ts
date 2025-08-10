@@ -237,7 +237,8 @@ export class SmartCache {
     }
 
     // If accessed frequently, cache longer
-    const accessFrequency = pattern.count / ((Date.now() - pattern.lastAccess) / 1000);
+    const accessFrequency =
+      pattern.count / ((Date.now() - pattern.lastAccess) / 1000);
 
     let adaptedTTL = baseTTL;
 
@@ -255,7 +256,11 @@ export class SmartCache {
   /**
    * Compress data if beneficial
    */
-  private compressData(data: any): { compressed: boolean; size: number; data: any } {
+  private compressData(data: any): {
+    compressed: boolean;
+    size: number;
+    data: any;
+  } {
     if (!this.config.compressionEnabled) {
       const jsonString = JSON.stringify(data);
       return {
@@ -307,7 +312,8 @@ export class SmartCache {
     if (existing) {
       const interval = now - existing.lastAccess;
       const newAverageInterval =
-        (existing.averageInterval * existing.count + interval) / (existing.count + 1);
+        (existing.averageInterval * existing.count + interval) /
+        (existing.count + 1);
 
       accessPatterns.set(key, {
         count: existing.count + 1,
@@ -326,7 +332,11 @@ export class SmartCache {
   /**
    * Update cache metrics
    */
-  private updateMetrics(hit: boolean, responseTime: number, dataSize?: number): void {
+  private updateMetrics(
+    hit: boolean,
+    responseTime: number,
+    dataSize?: number,
+  ): void {
     if (!this.config.metricsEnabled) return;
 
     if (hit) {
@@ -336,7 +346,8 @@ export class SmartCache {
     }
 
     const totalRequests = cacheMetrics.hits + cacheMetrics.misses;
-    cacheMetrics.hitRate = totalRequests > 0 ? (cacheMetrics.hits / totalRequests) * 100 : 0;
+    cacheMetrics.hitRate =
+      totalRequests > 0 ? (cacheMetrics.hits / totalRequests) * 100 : 0;
 
     // Update average response time (simple moving average)
     const weight = 0.1; // Weight for new value
@@ -380,7 +391,10 @@ export class SmartCache {
       this.updateMetrics(false, responseTime);
       return null;
     } catch (error) {
-      logger.error(`[SmartCache] Error retrieving`, { key, error: String(error) });
+      logger.error(`[SmartCache] Error retrieving`, {
+        key,
+        error: String(error),
+      });
       const responseTime = Date.now() - startTime;
       this.updateMetrics(false, responseTime);
       return null;
@@ -415,13 +429,17 @@ export class SmartCache {
       }
 
       // Store in cache with computed TTL
-      await cache.set(key, cacheData, "transformedResponse", adaptiveTTL);
+      // Do not cache transformed responses
 
       // Update metrics
       const responseTime = Date.now() - startTime;
       this.updateMetrics(false, responseTime, dataSize);
 
-      logger.info(`[SmartCache] Cached data`, { type, ttl: adaptiveTTL, size: dataSize });
+      logger.info(`[SmartCache] Cached data`, {
+        type,
+        ttl: adaptiveTTL,
+        size: dataSize,
+      });
     } catch (error) {
       logger.error(`[SmartCache] Error caching`, { key, error: String(error) });
     }
@@ -440,7 +458,9 @@ export class SmartCache {
       .filter(([, pattern]) => pattern.tags.includes(tag))
       .map(([name]) => name);
 
-    logger.debug(`[SmartCache] Invalidating patterns`, { patterns: patternsToInvalidate });
+    logger.debug(`[SmartCache] Invalidating patterns`, {
+      patterns: patternsToInvalidate,
+    });
 
     // In a real implementation, this would use a proper tag-based cache
     // For now, return simulated count
@@ -508,7 +528,9 @@ export class SmartCache {
   /**
    * Warm up cache with frequently accessed data
    */
-  async warmUp(warmupData: Array<{ type: string; params: any; data: any }>): Promise<void> {
+  async warmUp(
+    warmupData: Array<{ type: string; params: any; data: any }>,
+  ): Promise<void> {
     logger.info(`[SmartCache] Warmup start`, { count: warmupData.length });
 
     for (const item of warmupData) {
@@ -558,22 +580,40 @@ export const CacheHelpers = {
   /**
    * Cache scripture content
    */
-  cacheScripture: async (language: string, resource: string, book: string, data: any) => {
+  cacheScripture: async (
+    language: string,
+    resource: string,
+    book: string,
+    data: any,
+  ) => {
     await smartCache.set("scripture", { language, resource, book }, data);
   },
 
   /**
    * Get cached scripture content
    */
-  getScripture: async <T>(language: string, resource: string, book: string): Promise<T | null> => {
+  getScripture: async <T>(
+    language: string,
+    resource: string,
+    book: string,
+  ): Promise<T | null> => {
     return smartCache.get<T>("scripture", { language, resource, book });
   },
 
   /**
    * Cache translation helps
    */
-  cacheTranslationHelps: async (language: string, resource: string, book: string, data: any) => {
-    await smartCache.set("translation-helps", { language, resource, book }, data);
+  cacheTranslationHelps: async (
+    language: string,
+    resource: string,
+    book: string,
+    data: any,
+  ) => {
+    await smartCache.set(
+      "translation-helps",
+      { language, resource, book },
+      data,
+    );
   },
 
   /**
@@ -582,7 +622,7 @@ export const CacheHelpers = {
   getTranslationHelps: async <T>(
     language: string,
     resource: string,
-    book: string
+    book: string,
   ): Promise<T | null> => {
     return smartCache.get<T>("translation-helps", { language, resource, book });
   },
@@ -590,14 +630,19 @@ export const CacheHelpers = {
   /**
    * Cache resource listings
    */
-  cacheResourceListings: async (params: CatalogSearchParams, data: Resource[]) => {
+  cacheResourceListings: async (
+    params: CatalogSearchParams,
+    data: Resource[],
+  ) => {
     await smartCache.set("resources", params, data);
   },
 
   /**
    * Get cached resource listings
    */
-  getResourceListings: async (params: CatalogSearchParams): Promise<Resource[] | null> => {
+  getResourceListings: async (
+    params: CatalogSearchParams,
+  ): Promise<Resource[] | null> => {
     return smartCache.get<Resource[]>("resources", params);
   },
 

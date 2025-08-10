@@ -10,7 +10,11 @@ const TEST_CASES = {
     { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
     { reference: "Titus 1:1", language: "en", organization: "unfoldingWord" },
     { reference: "Genesis 1:1", language: "en", organization: "unfoldingWord" },
-    { reference: "Revelation 22:21", language: "en", organization: "unfoldingWord" },
+    {
+      reference: "Revelation 22:21",
+      language: "en",
+      organization: "unfoldingWord",
+    },
   ],
   translationNotes: [
     { reference: "John 3:16", language: "en", organization: "unfoldingWord" },
@@ -61,7 +65,10 @@ const TEST_CASES = {
 };
 
 // Helper functions
-async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
+async function makeRequest(
+  endpoint: string,
+  params: Record<string, string | undefined> = {},
+) {
   const url = new URL(`${BASE_URL}/api/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
@@ -151,7 +158,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(mcpResponse.scripture).toBeDefined();
           expect(mcpResponse.scripture.length).toBeGreaterThan(0);
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -161,12 +168,24 @@ describe("API/MCP Endpoint Parity Tests", () => {
       it(
         `should return identical responses for translation notes test case ${index + 1}: ${testCase.reference}`,
         async () => {
-          const apiResponse = await makeRequest("fetch-translation-notes", testCase);
-          const mcpResponse = await makeRequest("fetch-translation-notes", testCase);
+          const apiResponse = await makeRequest(
+            "fetch-translation-notes",
+            testCase,
+          );
+          const mcpResponse = await makeRequest(
+            "fetch-translation-notes",
+            testCase,
+          );
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["translationNotes", "metadata"]);
-          validateResponseStructure(mcpResponse, ["translationNotes", "metadata"]);
+          validateResponseStructure(apiResponse, [
+            "translationNotes",
+            "metadata",
+          ]);
+          validateResponseStructure(mcpResponse, [
+            "translationNotes",
+            "metadata",
+          ]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
@@ -178,7 +197,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(apiResponse.translationNotes).toBeDefined();
           expect(mcpResponse.translationNotes).toBeDefined();
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -188,12 +207,24 @@ describe("API/MCP Endpoint Parity Tests", () => {
       it(
         `should return identical responses for translation questions test case ${index + 1}: ${testCase.reference}`,
         async () => {
-          const apiResponse = await makeRequest("fetch-translation-questions", testCase);
-          const mcpResponse = await makeRequest("fetch-translation-questions", testCase);
+          const apiResponse = await makeRequest(
+            "fetch-translation-questions",
+            testCase,
+          );
+          const mcpResponse = await makeRequest(
+            "fetch-translation-questions",
+            testCase,
+          );
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["translationQuestions", "metadata"]);
-          validateResponseStructure(mcpResponse, ["translationQuestions", "metadata"]);
+          validateResponseStructure(apiResponse, [
+            "translationQuestions",
+            "metadata",
+          ]);
+          validateResponseStructure(mcpResponse, [
+            "translationQuestions",
+            "metadata",
+          ]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
@@ -205,7 +236,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(apiResponse.translationQuestions).toBeDefined();
           expect(mcpResponse.translationQuestions).toBeDefined();
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -215,12 +246,24 @@ describe("API/MCP Endpoint Parity Tests", () => {
       it(
         `should return identical responses for translation word links test case ${index + 1}: ${testCase.reference}`,
         async () => {
-          const apiResponse = await makeRequest("fetch-translation-word-links", testCase);
-          const mcpResponse = await makeRequest("fetch-translation-word-links", testCase);
+          const apiResponse = await makeRequest(
+            "fetch-translation-word-links",
+            testCase,
+          );
+          const mcpResponse = await makeRequest(
+            "fetch-translation-word-links",
+            testCase,
+          );
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["translationWordLinks", "metadata"]);
-          validateResponseStructure(mcpResponse, ["translationWordLinks", "metadata"]);
+          validateResponseStructure(apiResponse, [
+            "translationWordLinks",
+            "metadata",
+          ]);
+          validateResponseStructure(mcpResponse, [
+            "translationWordLinks",
+            "metadata",
+          ]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
@@ -232,7 +275,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(apiResponse.translationWordLinks).toBeDefined();
           expect(mcpResponse.translationWordLinks).toBeDefined();
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -242,12 +285,24 @@ describe("API/MCP Endpoint Parity Tests", () => {
       it(
         `should return identical responses for translation words test case ${index + 1}: ${testCase.word}`,
         async () => {
-          const apiResponse = await makeRequest("fetch-translation-words", testCase);
-          const mcpResponse = await makeRequest("fetch-translation-words", testCase);
+          const apiResponse = await makeRequest(
+            "fetch-translation-words",
+            testCase,
+          );
+          const mcpResponse = await makeRequest(
+            "fetch-translation-words",
+            testCase,
+          );
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["translationWords", "metadata"]);
-          validateResponseStructure(mcpResponse, ["translationWords", "metadata"]);
+          validateResponseStructure(apiResponse, [
+            "translationWords",
+            "metadata",
+          ]);
+          validateResponseStructure(mcpResponse, [
+            "translationWords",
+            "metadata",
+          ]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
@@ -259,7 +314,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(apiResponse.translationWords).toBeDefined();
           expect(mcpResponse.translationWords).toBeDefined();
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -282,7 +337,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
 
           expect(normalizedMcp).toEqual(normalizedApi);
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -311,7 +366,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(mcpResponse.languages).toBeDefined();
           expect(mcpResponse.languages.length).toBeGreaterThan(0);
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -322,7 +377,10 @@ describe("API/MCP Endpoint Parity Tests", () => {
         `should return identical responses for extract references test case ${index + 1}`,
         async () => {
           const apiResponse = await makeRequest("extract-references", testCase);
-          const mcpResponse = await makeRequest("mcp-extract-references", testCase);
+          const mcpResponse = await makeRequest(
+            "mcp-extract-references",
+            testCase,
+          );
 
           // Validate response structure
           validateResponseStructure(apiResponse, ["references", "metadata"]);
@@ -338,7 +396,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(apiResponse.references).toBeDefined();
           expect(mcpResponse.references).toBeDefined();
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -348,12 +406,24 @@ describe("API/MCP Endpoint Parity Tests", () => {
       it(
         `should return identical responses for browse translation words test case ${index + 1}`,
         async () => {
-          const apiResponse = await makeRequest("browse-translation-words", testCase);
-          const mcpResponse = await makeRequest("mcp-browse-translation-words", testCase);
+          const apiResponse = await makeRequest(
+            "browse-translation-words",
+            testCase,
+          );
+          const mcpResponse = await makeRequest(
+            "mcp-browse-translation-words",
+            testCase,
+          );
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["translationWords", "metadata"]);
-          validateResponseStructure(mcpResponse, ["translationWords", "metadata"]);
+          validateResponseStructure(apiResponse, [
+            "translationWords",
+            "metadata",
+          ]);
+          validateResponseStructure(mcpResponse, [
+            "translationWords",
+            "metadata",
+          ]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
@@ -365,7 +435,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(apiResponse.translationWords).toBeDefined();
           expect(mcpResponse.translationWords).toBeDefined();
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -375,12 +445,26 @@ describe("API/MCP Endpoint Parity Tests", () => {
       it(
         `should return identical responses for list available resources test case ${index + 1}`,
         async () => {
-          const apiResponse = await makeRequest("list-available-resources", testCase);
-          const mcpResponse = await makeRequest("mcp-list-available-resources", testCase);
+          const apiResponse = await makeRequest(
+            "list-available-resources",
+            testCase,
+          );
+          const mcpResponse = await makeRequest(
+            "mcp-list-available-resources",
+            testCase,
+          );
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["resources", "query", "totalResults"]);
-          validateResponseStructure(mcpResponse, ["resources", "query", "totalResults"]);
+          validateResponseStructure(apiResponse, [
+            "resources",
+            "query",
+            "totalResults",
+          ]);
+          validateResponseStructure(mcpResponse, [
+            "resources",
+            "query",
+            "totalResults",
+          ]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
@@ -396,7 +480,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(apiResponse.totalResults).toBeGreaterThanOrEqual(0);
           expect(mcpResponse.totalResults).toBeGreaterThanOrEqual(0);
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -410,8 +494,16 @@ describe("API/MCP Endpoint Parity Tests", () => {
           const mcpResponse = await makeRequest("mcp-get-context", testCase);
 
           // Validate response structure
-          validateResponseStructure(apiResponse, ["reference", "language", "organization"]);
-          validateResponseStructure(mcpResponse, ["reference", "language", "organization"]);
+          validateResponseStructure(apiResponse, [
+            "reference",
+            "language",
+            "organization",
+          ]);
+          validateResponseStructure(mcpResponse, [
+            "reference",
+            "language",
+            "organization",
+          ]);
 
           // Normalize and compare
           const normalizedApi = normalizeResponse(apiResponse);
@@ -423,7 +515,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(apiResponse.reference).toBeDefined();
           expect(mcpResponse.reference).toBeDefined();
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -433,8 +525,14 @@ describe("API/MCP Endpoint Parity Tests", () => {
       it(
         `should return identical responses for get words for reference test case ${index + 1}`,
         async () => {
-          const apiResponse = await makeRequest("get-words-for-reference", testCase);
-          const mcpResponse = await makeRequest("mcp-get-words-for-reference", testCase);
+          const apiResponse = await makeRequest(
+            "get-words-for-reference",
+            testCase,
+          );
+          const mcpResponse = await makeRequest(
+            "mcp-get-words-for-reference",
+            testCase,
+          );
 
           // Validate response structure
           validateResponseStructure(apiResponse, ["reference", "words"]);
@@ -452,7 +550,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(mcpResponse.words).toBeDefined();
           expect(Array.isArray(mcpResponse.words)).toBe(true);
         },
-        TIMEOUT
+        TIMEOUT,
       );
     });
   });
@@ -483,22 +581,26 @@ describe("API/MCP Endpoint Parity Tests", () => {
         // They should be different content
         expect(john316.scripture).not.toEqual(genesis11.scripture);
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
       "should return consistent language data",
       async () => {
-        const languages = await makeRequest("get-languages", { organization: "unfoldingWord" });
+        const languages = await makeRequest("get-languages", {
+          organization: "unfoldingWord",
+        });
 
         expect(languages.languages).toBeDefined();
         expect(languages.languages.length).toBeGreaterThan(0);
 
         // Should contain English
-        const english = languages.languages.find((lang: any) => lang.language_code === "en");
+        const english = languages.languages.find(
+          (lang: any) => lang.language_code === "en",
+        );
         expect(english).toBeDefined();
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -513,11 +615,11 @@ describe("API/MCP Endpoint Parity Tests", () => {
 
         // Should contain John 3:16
         const johnRef = extracted.references.find(
-          (ref: any) => ref.book === "John" || ref.book === "JHN"
+          (ref: any) => ref.book === "John" || ref.book === "JHN",
         );
         expect(johnRef).toBeDefined();
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -540,7 +642,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
         // Should respond within 10 seconds
         expect(duration).toBeLessThan(10000);
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -571,7 +673,7 @@ describe("API/MCP Endpoint Parity Tests", () => {
           expect(result.metadata).toBeDefined();
         });
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 

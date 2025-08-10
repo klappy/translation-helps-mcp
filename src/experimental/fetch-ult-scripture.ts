@@ -7,13 +7,20 @@
  * GLT = Gateway Literal Text (Strategic Languages) - Form-centric translation
  */
 
-import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../constants/terminology.js";
+import {
+  DEFAULT_STRATEGIC_LANGUAGE,
+  Organization,
+} from "../constants/terminology.js";
 import type { PlatformHandler } from "../functions/platform-adapter.js";
 import { unifiedCache } from "../functions/unified-cache.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import type { XRayTrace } from "../types/dcs.js";
 import { logger } from "../utils/logger.js";
-import { ParsedUSFM, WordAlignment, parseUSFMAlignment } from "./usfm-alignment-parser.js";
+import {
+  ParsedUSFM,
+  WordAlignment,
+  parseUSFMAlignment,
+} from "./usfm-alignment-parser.js";
 
 interface VerseMapping {
   text: string;
@@ -76,10 +83,13 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
 
   // Extract parameters
   const reference = url.searchParams.get("reference");
-  const language = url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
-  const organization = url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
+  const language =
+    url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
+  const organization =
+    url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
   const includeAlignment = url.searchParams.get("includeAlignment") !== "false";
-  const includeVerseMapping = url.searchParams.get("includeVerseMapping") !== "false";
+  const includeVerseMapping =
+    url.searchParams.get("includeVerseMapping") !== "false";
   const bypassCache = url.searchParams.get("bypassCache") === "true";
 
   // Validate required parameters
@@ -172,12 +182,17 @@ export const fetchULTScriptureHandler: PlatformHandler = async (request) => {
       language,
       organization,
       resourceType,
-      reference
+      reference,
     );
 
-    if (!scriptureData || (scriptureData.book === "ERROR" && scriptureData.version === "error")) {
+    if (
+      !scriptureData ||
+      (scriptureData.book === "ERROR" && scriptureData.version === "error")
+    ) {
       // Show the actual error
-      logger.error("Scripture fetch error", { message: scriptureData?.cleanText });
+      logger.error("Scripture fetch error", {
+        message: scriptureData?.cleanText,
+      });
       // Disable tracing before error response
       dcsClient.disableTracing();
 
@@ -301,7 +316,7 @@ async function fetchULTResource(
   language: string,
   organization: string,
   resourceType: "ult" | "glt",
-  reference: string
+  reference: string,
 ): Promise<{
   usfmText: string;
   cleanText: string;
@@ -331,7 +346,9 @@ async function fetchULTResource(
 
     const catalogResponse = await fetch(catalogUrl.toString());
     if (!catalogResponse.ok) {
-      logger.error("Failed to fetch catalog", { status: catalogResponse.status });
+      logger.error("Failed to fetch catalog", {
+        status: catalogResponse.status,
+      });
       return null;
     }
 
@@ -361,7 +378,7 @@ async function fetchULTResource(
     const bookIngredient = resource.ingredients.find(
       (ing: any) =>
         ing.identifier.toLowerCase() === book.toLowerCase() ||
-        ing.identifier.toLowerCase() === getBookCode(book).toLowerCase()
+        ing.identifier.toLowerCase() === getBookCode(book).toLowerCase(),
     );
 
     if (!bookIngredient || !bookIngredient.path) {
@@ -391,7 +408,12 @@ async function fetchULTResource(
 
     const directResponse = await fetch(fileUrl);
     if (!directResponse.ok) {
-      dcsClient.addCustomTrace(traceId, "fetch_usfm", fileUrl, `Failed: ${directResponse.status}`);
+      dcsClient.addCustomTrace(
+        traceId,
+        "fetch_usfm",
+        fileUrl,
+        `Failed: ${directResponse.status}`,
+      );
       logger.error("Failed to fetch", {
         status: directResponse.status,
         statusText: directResponse.statusText,
@@ -422,7 +444,9 @@ async function fetchULTResource(
       book: book.toUpperCase(),
     };
   } catch (error: any) {
-    logger.error(`Error fetching ${resourceType} resource`, { error: String(error) });
+    logger.error(`Error fetching ${resourceType} resource`, {
+      error: String(error),
+    });
     // Return error details for debugging
     return {
       usfmText: "",
@@ -476,11 +500,18 @@ function extractPassageFromUSFM(usfmText: string, reference: string): string {
 /**
  * Extract verse range from chapter text
  */
-function extractVerseRange(chapterText: string, startVerse: number, endVerse: number): string {
+function extractVerseRange(
+  chapterText: string,
+  startVerse: number,
+  endVerse: number,
+): string {
   const verses: string[] = [];
 
   for (let v = startVerse; v <= endVerse; v++) {
-    const verseRegex = new RegExp(`\\\\v\\s+${v}\\s(.*?)(?=\\\\v\\s+${v + 1}|$)`, "s");
+    const verseRegex = new RegExp(
+      `\\\\v\\s+${v}\\s(.*?)(?=\\\\v\\s+${v + 1}|$)`,
+      "s",
+    );
     const verseMatch = chapterText.match(verseRegex);
 
     if (verseMatch) {
@@ -502,7 +533,10 @@ function generateCleanText(usfmText: string): string {
   cleanText = cleanText.replace(/\\\\zaln-e\\\\\*/g, "");
 
   // Remove word markers but keep the text
-  cleanText = cleanText.replace(/\\\\w\\s+([^|\\\\]+)\\|[^\\\\]*?\\\\w\\\*/g, "$1");
+  cleanText = cleanText.replace(
+    /\\\\w\\s+([^|\\\\]+)\\|[^\\\\]*?\\\\w\\\*/g,
+    "$1",
+  );
 
   // Remove verse and chapter markers
   cleanText = cleanText.replace(/\\\\[cv]\\s+\d+/g, "");
@@ -522,7 +556,7 @@ function generateCleanText(usfmText: string): string {
  */
 function buildVerseMapping(
   usfmText: string,
-  alignmentData: ParsedUSFM
+  alignmentData: ParsedUSFM,
 ): Record<number, VerseMapping> {
   const mapping: Record<number, VerseMapping> = {};
 
@@ -538,7 +572,7 @@ function buildVerseMapping(
 
     // Find alignments for this verse
     const verseAlignments = alignmentData.alignments.filter(
-      (a: WordAlignment) => a.position.verse === verseNum
+      (a: WordAlignment) => a.position.verse === verseNum,
     );
 
     mapping[verseNum] = {
@@ -593,7 +627,10 @@ function calculateAlignmentStats(alignments: WordAlignment[]) {
   }
 
   const total = alignments.length;
-  const totalConfidence = alignments.reduce((sum, a) => sum + (a.confidence || 0), 0);
+  const totalConfidence = alignments.reduce(
+    (sum, a) => sum + (a.confidence || 0),
+    0,
+  );
   const averageConfidence = totalConfidence / total;
 
   const high = alignments.filter((a) => (a.confidence || 0) > 0.8).length;

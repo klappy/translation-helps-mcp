@@ -114,8 +114,12 @@ function generateReport(currentResults) {
   console.log(`Version: 3.5.1 (Netlify Blobs Enabled)`);
 
   console.log("\n🔍 Individual Endpoint Performance Comparison");
-  console.log("| Endpoint                            | Baseline | Current | Change      |");
-  console.log("| ----------------------------------- | -------- | ------- | ----------- |");
+  console.log(
+    "| Endpoint                            | Baseline | Current | Change      |",
+  );
+  console.log(
+    "| ----------------------------------- | -------- | ------- | ----------- |",
+  );
 
   let totalImprovement = 0;
   let validComparisons = 0;
@@ -127,10 +131,12 @@ function generateReport(currentResults) {
     if (current !== null && current !== undefined) {
       const change = ((current - baseline) / baseline) * 100;
       const changeStr =
-        change > 0 ? `+${change.toFixed(1)}% slower` : `${Math.abs(change).toFixed(1)}% faster`;
+        change > 0
+          ? `+${change.toFixed(1)}% slower`
+          : `${Math.abs(change).toFixed(1)}% faster`;
 
       console.log(
-        `| ${endpoint.padEnd(35)} | ${baseline.toString().padStart(6)}ms | ${current.toString().padStart(5)}ms | ${changeStr.padStart(11)} |`
+        `| ${endpoint.padEnd(35)} | ${baseline.toString().padStart(6)}ms | ${current.toString().padStart(5)}ms | ${changeStr.padStart(11)} |`,
       );
 
       totalImprovement += Math.abs(change);
@@ -153,7 +159,9 @@ function generateReport(currentResults) {
 
   console.log(`Baseline Performance Grade: ${BASELINE_DATA.grade}`);
   console.log(`Current Performance Grade:  ${newGrade}`);
-  console.log(`Success Rate: 100.0% (vs ${BASELINE_DATA.successRate}% baseline)`);
+  console.log(
+    `Success Rate: 100.0% (vs ${BASELINE_DATA.successRate}% baseline)`,
+  );
 
   console.log("\n💾 Netlify Blobs Status");
   console.log("==================================================");
@@ -205,7 +213,9 @@ async function main() {
 
   console.log("\n✅ Performance Comparison Complete");
   console.log(`🎯 Overall Grade: ${newGrade} (was ${BASELINE_DATA.grade})`);
-  console.log("🚀 Netlify Blobs successfully enabled and working in production!");
+  console.log(
+    "🚀 Netlify Blobs successfully enabled and working in production!",
+  );
 }
 
 // USFM Parsing Performance Analysis
@@ -272,10 +282,10 @@ console.log("-".repeat(60));
 scenarios.forEach((scenario) => {
   console.log(`\n📖 ${scenario.name}`);
   console.log(
-    `   Before: ${scenario.oldOps.chapterFinds} chapter finds, ${scenario.oldOps.verseFinds} verse finds, ${scenario.oldOps.usfmSplits} USFM splits`
+    `   Before: ${scenario.oldOps.chapterFinds} chapter finds, ${scenario.oldOps.verseFinds} verse finds, ${scenario.oldOps.usfmSplits} USFM splits`,
   );
   console.log(
-    `   After:  ${scenario.newOps.chapterFinds} chapter finds, ${scenario.newOps.verseFinds} verse finds, ${scenario.newOps.usfmSplits} USFM splits`
+    `   After:  ${scenario.newOps.chapterFinds} chapter finds, ${scenario.newOps.verseFinds} verse finds, ${scenario.newOps.usfmSplits} USFM splits`,
   );
   console.log(`   📈 Impact: ${scenario.improvement}`);
 });
@@ -305,7 +315,9 @@ scenarios.forEach((scenario) => {
   const percentSaved = oldTime > 0 ? Math.round((savings / oldTime) * 100) : 0;
 
   if (savings > 0) {
-    console.log(`📊 ${scenario.name}: ${savings}ms saved (${percentSaved}% faster)`);
+    console.log(
+      `📊 ${scenario.name}: ${savings}ms saved (${percentSaved}% faster)`,
+    );
   }
 });
 
@@ -314,7 +326,9 @@ console.log("-".repeat(60));
 console.log("• Long verse ranges (10+ verses): Up to 98% fewer operations");
 console.log("• Chapter ranges (3+ chapters): Up to 90% fewer operations");
 console.log("• High-frequency requests: Exponential improvement");
-console.log("• Large books (Matthew, Luke, etc.): Significant memory/CPU savings");
+console.log(
+  "• Large books (Matthew, Luke, etc.): Significant memory/CPU savings",
+);
 
 console.log("\n📝 Real-World Impact:");
 console.log("-".repeat(60));
@@ -333,7 +347,11 @@ console.log("• Mobile apps (faster loading, less battery usage)");
 console.log("• Translation workflows (processing multiple verses)");
 
 console.log("\n" + "=".repeat(60));
-console.log("Summary: Smart caching of chapter parsing eliminates redundant work,");
-console.log("providing linear performance improvements that scale with request size.");
+console.log(
+  "Summary: Smart caching of chapter parsing eliminates redundant work,",
+);
+console.log(
+  "providing linear performance improvements that scale with request size.",
+);
 
 main().catch(console.error);

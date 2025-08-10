@@ -9,7 +9,7 @@ import { DCSApiClient } from "../services/DCSApiClient.js";
 import { logger } from "../utils/logger.js";
 import { parseReference } from "./reference-parser.js";
 import { discoverAvailableResources } from "./resource-detector.js";
-import { CacheBypassOptions, unifiedCache } from "./unified-cache.js";
+import { CacheBypassOptions } from "./unified-cache.js";
 import {
   extractChapterRange,
   extractChapterRangeWithNumbers,
@@ -117,34 +117,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     throw new Error(`Invalid reference format: ${referenceParam}`);
   }
 
-  // Create cache key that includes ALL parameters
-  const responseKey = `scripture:${referenceParam}:${language}:${organization}:${includeVerseNumbers}:${format}:${specificTranslations?.join(",")}`;
-
-  // Try to get cached response first
-  const cachedResponse = await unifiedCache.getWithDeduplication(
-    responseKey,
-    async () => {
-      logger.debug(`Processing fresh scripture request`, { key: responseKey });
-      return await fetchFreshScripture();
-    },
-    "transformedResponse",
-    bypassCache
-  );
-
-  if (cachedResponse.fromCache) {
-    logger.info(`FAST cache hit for processed scripture`, { key: responseKey });
-    return {
-      ...cachedResponse.data,
-      metadata: {
-        ...cachedResponse.data.metadata,
-        responseTime: Date.now() - startTime,
-        cached: true,
-        timestamp: new Date().toISOString(),
-        cacheKey: responseKey,
-        cacheType: cachedResponse.cacheInfo?.cacheType || "unknown",
-      },
-    };
-  }
+  // Response caching disabled by policy. Always fetch fresh scripture.
 
   async function fetchFreshScripture(): Promise<ScriptureResult> {
     const executionId = Math.random().toString(36).substr(2, 9);
@@ -160,7 +133,9 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
       throw new Error(`No scripture resources found for ${language}/${organization}`);
     }
 
-    logger.info(`Found scripture resources from unified discovery`, { count: allResources.length });
+    logger.info(`Found scripture resources from unified discovery`, {
+      count: allResources.length,
+    });
 
     // Filter by specific translations if requested
     let filteredResources = allResources;
@@ -174,7 +149,9 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
       });
 
       if (filteredResources.length === 0) {
-        logger.warn(`No resources found for specified translations`, { specificTranslations });
+        logger.warn(`No resources found for specified translations`, {
+          specificTranslations,
+        });
         // Fall back to all available resources if none of the specified ones exist
         filteredResources = allResources;
       }
@@ -190,7 +167,10 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
     const scriptures = [] as ScriptureResult["scriptures"];
     for (const resource of resourcesToProcess) {
-      logger.debug(`Processing resource`, { name: resource.name, title: resource.title });
+      logger.debug(`Processing resource`, {
+        name: resource.name,
+        title: resource.title,
+      });
 
       // Find the correct file from ingredients
       const ingredient = resource.ingredients?.find(
@@ -293,7 +273,9 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
           if (includeAlignment && format !== "usfm") {
             try {
-              logger.debug(`Processing alignment data`, { resource: resource.name });
+              logger.debug(`Processing alignment data`, {
+                resource: resource.name,
+              });
               const alignmentStart = Date.now();
 
               // Parse alignment from the full USFM data for the passage
@@ -389,15 +371,6 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
   }
 
   const result = await fetchFreshScripture();
-
-  // Cache the result (unless explicitly bypassed)
-  if (!cachedResponse.cacheInfo?.bypassReason) {
-    await unifiedCache.set(responseKey, result, "transformedResponse");
-    logger.info(`Cached transformed scripture response`, { key: responseKey });
-  } else {
-    logger.info(`Skipping cache due to bypass`, { reason: cachedResponse.cacheInfo?.bypassReason });
-  }
-
   return result;
 }
 

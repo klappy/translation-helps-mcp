@@ -1,6 +1,6 @@
 /**
  * MCPResponseAdapter - Provides robust data extraction from MCP tool responses
- * 
+ *
  * This adapter handles various response formats from MCP tools and provides
  * safe extraction methods that prevent brittle failures due to data shape changes.
  */
@@ -26,10 +26,10 @@ export class MCPResponseAdapter {
 		// Strategy 1: Standard MCP content array format
 		if (Array.isArray(response.content)) {
 			const textContent = response.content
-				.filter(item => item.type === 'text' && item.text)
-				.map(item => item.text)
+				.filter((item) => item.type === 'text' && item.text)
+				.map((item) => item.text)
 				.join('\n\n');
-			
+
 			if (textContent) return textContent;
 		}
 
@@ -44,9 +44,13 @@ export class MCPResponseAdapter {
 		}
 
 		// Strategy 4: Content as an object with text field
-		if (response.content && typeof response.content === 'object' && !Array.isArray(response.content)) {
+		if (
+			response.content &&
+			typeof response.content === 'object' &&
+			!Array.isArray(response.content)
+		) {
 			if (response.content.text) return response.content.text;
-			
+
 			// Try to extract numbered items (like "1.", "2.", etc.)
 			const numberedItems = this.extractNumberedItems(response.content);
 			if (numberedItems) return numberedItems;
@@ -74,13 +78,11 @@ export class MCPResponseAdapter {
 		if (!obj || typeof obj !== 'object') return null;
 
 		const numberedKeys = Object.keys(obj)
-			.filter(key => /^\d+$/.test(key))
+			.filter((key) => /^\d+$/.test(key))
 			.sort((a, b) => parseInt(a) - parseInt(b));
 
 		if (numberedKeys.length > 0) {
-			return numberedKeys
-				.map(key => `${key}. ${obj[key]}`)
-				.join('\n\n');
+			return numberedKeys.map((key) => `${key}. ${obj[key]}`).join('\n\n');
 		}
 
 		return null;
@@ -114,11 +116,11 @@ export class MCPResponseAdapter {
 
 		// If response has numbered properties, convert to array
 		const numberedKeys = Object.keys(response)
-			.filter(key => /^\d+$/.test(key))
+			.filter((key) => /^\d+$/.test(key))
 			.sort((a, b) => parseInt(a) - parseInt(b));
 
 		if (numberedKeys.length > 0) {
-			return numberedKeys.map(key => ({
+			return numberedKeys.map((key) => ({
 				index: key,
 				content: response[key]
 			}));
@@ -132,20 +134,20 @@ export class MCPResponseAdapter {
 	 */
 	static formatTranslationNotes(response: MCPResponse, reference: string): string {
 		const text = this.extractText(response);
-		
+
 		// If we got properly formatted text, use it
 		if (text && text !== '' && !text.includes('No translation notes found')) {
 			// Check if it's already formatted with numbered items
 			if (text.includes('**1.**') || text.includes('1.')) {
 				return text;
 			}
-			
+
 			// If it's a single block of text, try to split it into numbered items
-			const lines = text.split('\n').filter(line => line.trim());
+			const lines = text.split('\n').filter((line) => line.trim());
 			if (lines.length > 1) {
 				return lines.map((line, index) => `${index + 1}. ${line}`).join('\n\n');
 			}
-			
+
 			return text;
 		}
 
@@ -154,9 +156,10 @@ export class MCPResponseAdapter {
 		if (structuredData.length > 0) {
 			return structuredData
 				.map((item, index) => {
-					const content = typeof item === 'string' ? item : 
-									item.content || item.text || item.note || 
-									JSON.stringify(item);
+					const content =
+						typeof item === 'string'
+							? item
+							: item.content || item.text || item.note || JSON.stringify(item);
 					return `${index + 1}. ${content}`;
 				})
 				.join('\n\n');
@@ -170,7 +173,7 @@ export class MCPResponseAdapter {
 	 */
 	static formatTranslationQuestions(response: MCPResponse, reference: string): string {
 		const text = this.extractText(response);
-		
+
 		if (text && text !== '' && !text.includes('No translation questions found')) {
 			return text;
 		}
@@ -179,9 +182,10 @@ export class MCPResponseAdapter {
 		if (structuredData.length > 0) {
 			return structuredData
 				.map((item, index) => {
-					const question = typeof item === 'string' ? item :
-									 item.question || item.text || item.content ||
-									 JSON.stringify(item);
+					const question =
+						typeof item === 'string'
+							? item
+							: item.question || item.text || item.content || JSON.stringify(item);
 					return `${index + 1}. ${question}`;
 				})
 				.join('\n\n');
@@ -195,21 +199,21 @@ export class MCPResponseAdapter {
 	 */
 	static formatScripture(response: MCPResponse, reference: string): string {
 		const text = this.extractText(response);
-		
+
 		if (text && text !== '' && !text.includes('Scripture not found')) {
 			// Check if it already has verse numbers
 			if (/\*\*\d+\*\*/.test(text) || /\b\d+\.\s/.test(text)) {
 				return text;
 			}
-			
+
 			// Try to add verse numbers if missing
-			const lines = text.split('\n').filter(line => line.trim());
+			const lines = text.split('\n').filter((line) => line.trim());
 			if (lines.length > 0 && reference.includes(':')) {
 				const [, verseStart] = reference.split(':');
 				const startVerse = parseInt(verseStart) || 1;
 				return lines.map((line, index) => `**${startVerse + index}** ${line}`).join(' ');
 			}
-			
+
 			return text;
 		}
 
@@ -221,7 +225,7 @@ export class MCPResponseAdapter {
 	 */
 	static formatTranslationWord(response: MCPResponse, wordId: string): string {
 		const text = this.extractText(response);
-		
+
 		if (text && text !== '' && !text.includes('Word definition not found')) {
 			return text;
 		}
@@ -232,14 +236,15 @@ export class MCPResponseAdapter {
 			// Look for definition-specific fields
 			const wordData = structuredData[0];
 			if (typeof wordData === 'object') {
-				const definition = wordData.definition || wordData.content || wordData.text || wordData.meaning;
+				const definition =
+					wordData.definition || wordData.content || wordData.text || wordData.meaning;
 				const examples = wordData.examples || wordData.usage || [];
-				
+
 				let result = definition || '';
 				if (Array.isArray(examples) && examples.length > 0) {
 					result += '\n\nExamples:\n' + examples.map((ex, i) => `${i + 1}. ${ex}`).join('\n');
 				}
-				
+
 				if (result) return result;
 			}
 		}
@@ -263,11 +268,11 @@ export class MCPResponseAdapter {
 	static isSuccessResponse(response: MCPResponse): boolean {
 		// Check for explicit error
 		if (this.extractError(response)) return false;
-		
+
 		// Check for content
-		const hasContent = this.extractText(response, '') !== '' ||
-						  this.extractStructuredData(response).length > 0;
-		
+		const hasContent =
+			this.extractText(response, '') !== '' || this.extractStructuredData(response).length > 0;
+
 		return hasContent;
 	}
 }

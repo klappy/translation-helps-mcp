@@ -12,7 +12,11 @@ import { estimateTokens } from "../utils/tokenCounter.js";
 // Input schema
 export const FetchScriptureArgs = z.object({
   reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
-  language: z.string().optional().default("en").describe('Language code (default: "en")'),
+  language: z
+    .string()
+    .optional()
+    .default("en")
+    .describe('Language code (default: "en")'),
   organization: z
     .string()
     .optional()

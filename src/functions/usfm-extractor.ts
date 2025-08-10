@@ -16,7 +16,11 @@ interface VerseRange {
 /**
  * Extract clean text for a specific verse from USFM
  */
-export function extractVerseText(usfm: string, chapter: number, verse: number): string {
+export function extractVerseText(
+  usfm: string,
+  chapter: number,
+  verse: number,
+): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
   }
@@ -61,7 +65,11 @@ export function extractVerseText(usfm: string, chapter: number, verse: number): 
     // Clean the text without verse numbers
     return cleanUSFMText(verseContent, false);
   } catch (error) {
-    logger.error(`Error extracting verse`, { chapter, verse, error: String(error) });
+    logger.error(`Error extracting verse`, {
+      chapter,
+      verse,
+      error: String(error),
+    });
     return "";
   }
 }
@@ -69,7 +77,11 @@ export function extractVerseText(usfm: string, chapter: number, verse: number): 
 /**
  * Extract clean text for a specific verse from USFM WITH verse numbers
  */
-export function extractVerseTextWithNumbers(usfm: string, chapter: number, verse: number): string {
+export function extractVerseTextWithNumbers(
+  usfm: string,
+  chapter: number,
+  verse: number,
+): string {
   const text = extractVerseText(usfm, chapter, verse);
   return text ? `${verse} ${text}` : "";
 }
@@ -81,7 +93,7 @@ export function extractVerseRange(
   usfm: string,
   chapter: number,
   startVerse: number,
-  endVerse: number
+  endVerse: number,
 ): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
@@ -145,7 +157,7 @@ export function extractVerseRangeWithNumbers(
   usfm: string,
   chapter: number,
   startVerse: number,
-  endVerse: number
+  endVerse: number,
 ): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
@@ -200,7 +212,10 @@ export function extractChapterText(usfm: string, chapter: number): string {
 /**
  * Extract clean text for a full chapter from USFM WITH verse numbers
  */
-export function extractChapterTextWithNumbers(usfm: string, chapter: number): string {
+export function extractChapterTextWithNumbers(
+  usfm: string,
+  chapter: number,
+): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
   }
@@ -226,7 +241,9 @@ export function extractChapterTextWithNumbers(usfm: string, chapter: number): st
 
     // Extract verses with numbers
     const verses: string[] = [];
-    const verseMatches = chapterContent.matchAll(/\\v\s+(\d+)\s*(.*?)(?=\\v\s+\d+|$)/gs);
+    const verseMatches = chapterContent.matchAll(
+      /\\v\s+(\d+)\s*(.*?)(?=\\v\s+\d+|$)/gs,
+    );
 
     for (const match of verseMatches) {
       const verseNumber = match[1];
@@ -239,7 +256,10 @@ export function extractChapterTextWithNumbers(usfm: string, chapter: number): st
 
     return verses.join(" ");
   } catch (error) {
-    logger.error(`Error extracting chapter with numbers`, { chapter, error: String(error) });
+    logger.error(`Error extracting chapter with numbers`, {
+      chapter,
+      error: String(error),
+    });
     return "";
   }
 }
@@ -250,7 +270,7 @@ export function extractChapterTextWithNumbers(usfm: string, chapter: number): st
 export function extractChapterRange(
   usfm: string,
   startChapter: number,
-  endChapter: number
+  endChapter: number,
 ): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
@@ -273,7 +293,7 @@ export function extractChapterRange(
 export function extractChapterRangeWithNumbers(
   usfm: string,
   startChapter: number,
-  endChapter: number
+  endChapter: number,
 ): string {
   if (!usfm || typeof usfm !== "string") {
     return "";
@@ -293,14 +313,20 @@ export function extractChapterRangeWithNumbers(
 /**
  * Clean USFM text by removing all markup - COMPLETELY REWRITTEN for real-world complexity
  */
-function cleanUSFMText(text: string, includeVerseNumbers: boolean = true): string {
+function cleanUSFMText(
+  text: string,
+  includeVerseNumbers: boolean = true,
+): string {
   if (!text) return "";
 
   let cleaned = text;
 
   // STEP 1: Remove alignment blocks completely: \zaln-s |...| \*...\zaln-e\*
   // This handles the complex nested structures we found
-  cleaned = cleaned.replace(/\\zaln-s\s*\|[^|]*\|\s*\\?\*[^\\]*\\zaln-e\\\*/g, " ");
+  cleaned = cleaned.replace(
+    /\\zaln-s\s*\|[^|]*\|\s*\\?\*[^\\]*\\zaln-e\\\*/g,
+    " ",
+  );
 
   // STEP 2: Clean up any orphaned zaln markers
   cleaned = cleaned.replace(/\\zaln-[se]\s*\|[^|]*\|\s*\\?\*/g, " ");
@@ -352,7 +378,9 @@ export function parseVerseRange(rangeStr: string): VerseRange[] {
   for (const part of parts) {
     const trimmed = part.trim();
     if (trimmed.includes("-")) {
-      const [start, end] = trimmed.split("-").map((n) => parseInt(n.trim(), 10));
+      const [start, end] = trimmed
+        .split("-")
+        .map((n) => parseInt(n.trim(), 10));
       if (!isNaN(start) && !isNaN(end)) {
         ranges.push({ start, end });
       }
@@ -384,7 +412,9 @@ export function validateCleanUSFM(text: string): boolean {
 
   for (const pattern of usfmPatterns) {
     if (pattern.test(text)) {
-      logger.warn(`USFM validation failed - detected markup`, { pattern: String(pattern) });
+      logger.warn(`USFM validation failed - detected markup`, {
+        pattern: String(pattern),
+      });
       return false;
     }
   }

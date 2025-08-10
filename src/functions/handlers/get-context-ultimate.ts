@@ -3,10 +3,14 @@
  * No imports, no services, just HTTP calls to our working endpoints
  */
 
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 export const getContextHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -26,7 +30,8 @@ export const getContextHandler: PlatformHandler = async (
   try {
     const reference = request.queryStringParameters.reference;
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
 
     if (!reference) {
       return {
@@ -38,29 +43,39 @@ export const getContextHandler: PlatformHandler = async (
         body: JSON.stringify({
           error: "Missing required parameter: 'reference'",
           code: "MISSING_PARAMETER",
-          message: "Please provide a Bible reference. Example: ?reference=John+3:16",
+          message:
+            "Please provide a Bible reference. Example: ?reference=John+3:16",
         }),
       };
     }
 
     // Get the host from the request headers
-    const host = request.headers?.host || request.headers?.Host || 'localhost:8174';
-    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const host =
+      request.headers?.host || request.headers?.Host || "localhost:8174";
+    const protocol = host.includes("localhost") ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
 
     // Build query string
     const params = new URLSearchParams({
       reference,
       language,
-      organization
+      organization,
     });
 
     // Make parallel requests to our own endpoints
     const [scriptureRes, notesRes, questionsRes, linksRes] = await Promise.all([
-      fetch(`${baseUrl}/api/fetch-scripture?${params}`).then(r => r.json()).catch(() => null),
-      fetch(`${baseUrl}/api/fetch-translation-notes?${params}`).then(r => r.json()).catch(() => null),
-      fetch(`${baseUrl}/api/fetch-translation-questions?${params}`).then(r => r.json()).catch(() => null),
-      fetch(`${baseUrl}/api/fetch-translation-word-links?${params}`).then(r => r.json()).catch(() => null)
+      fetch(`${baseUrl}/api/fetch-scripture?${params}`)
+        .then((r) => r.json())
+        .catch(() => null),
+      fetch(`${baseUrl}/api/fetch-translation-notes?${params}`)
+        .then((r) => r.json())
+        .catch(() => null),
+      fetch(`${baseUrl}/api/fetch-translation-questions?${params}`)
+        .then((r) => r.json())
+        .catch(() => null),
+      fetch(`${baseUrl}/api/fetch-translation-word-links?${params}`)
+        .then((r) => r.json())
+        .catch(() => null),
     ]);
 
     const contextArray = [];
@@ -71,7 +86,7 @@ export const getContextHandler: PlatformHandler = async (
         type: "scripture",
         data: scriptureRes.data,
         count: scriptureRes.data.length,
-        note: "All available scripture versions"
+        note: "All available scripture versions",
       });
     }
 
@@ -80,7 +95,7 @@ export const getContextHandler: PlatformHandler = async (
       contextArray.push({
         type: "translation-notes",
         data: notesRes.notes,
-        count: notesRes.notes.length
+        count: notesRes.notes.length,
       });
     }
 
@@ -89,7 +104,7 @@ export const getContextHandler: PlatformHandler = async (
       contextArray.push({
         type: "translation-questions",
         data: questionsRes.translationQuestions,
-        count: questionsRes.translationQuestions.length
+        count: questionsRes.translationQuestions.length,
       });
     }
 
@@ -101,7 +116,7 @@ export const getContextHandler: PlatformHandler = async (
           uniqueWords.set(link.TWLink, {
             word: link.TWLink,
             occurrences: link.Occurrence || 1,
-            originalWords: link.OrigWords || ""
+            originalWords: link.OrigWords || "",
           });
         }
       });
@@ -111,7 +126,7 @@ export const getContextHandler: PlatformHandler = async (
           type: "translation-words",
           data: Array.from(uniqueWords.values()),
           count: uniqueWords.size,
-          note: "Use /api/get-translation-word to fetch full articles"
+          note: "Use /api/get-translation-word to fetch full articles",
         });
       }
     }
@@ -134,9 +149,12 @@ export const getContextHandler: PlatformHandler = async (
         metadata: {
           responseTime: duration,
           timestamp: new Date().toISOString(),
-          resourceTypes: contextArray.map(r => r.type),
-          totalResourcesReturned: contextArray.reduce((sum, r) => sum + r.count, 0)
-        }
+          resourceTypes: contextArray.map((r) => r.type),
+          totalResourcesReturned: contextArray.reduce(
+            (sum, r) => sum + r.count,
+            0,
+          ),
+        },
       }),
     };
   } catch (error) {
@@ -149,7 +167,7 @@ export const getContextHandler: PlatformHandler = async (
       body: JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        message: error instanceof Error ? error.message : "Unknown error"
+        message: error instanceof Error ? error.message : "Unknown error",
       }),
     };
   }

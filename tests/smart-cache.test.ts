@@ -37,7 +37,11 @@ describe("Smart Cache System", () => {
   describe("Cache Patterns", () => {
     test("uses appropriate TTL for scripture content", async () => {
       const scriptureData = { verses: ["In the beginning..."] };
-      await smartCache.set("scripture", { lang: "en", book: "gen" }, scriptureData);
+      await smartCache.set(
+        "scripture",
+        { lang: "en", book: "gen" },
+        scriptureData,
+      );
 
       const metrics = smartCache.getMetrics();
       expect(metrics.entriesCount).toBeGreaterThan(0);

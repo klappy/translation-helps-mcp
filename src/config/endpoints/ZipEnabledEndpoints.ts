@@ -20,7 +20,8 @@ export const FETCH_SCRIPTURE_ZIP_CONFIG: EndpointConfig = {
   name: "fetch-scripture",
   path: "/fetch-scripture",
   title: "Fetch Scripture (ZIP Cached)",
-  description: "Retrieve scripture text using ZIP-based caching for 90% faster responses",
+  description:
+    "Retrieve scripture text using ZIP-based caching for 90% faster responses",
   category: "core",
   responseShape: SCRIPTURE_SHAPE,
 
@@ -308,5 +309,9 @@ export const ZIP_MIGRATION_PRIORITY = {
     "get-available-books",
   ],
 
-  future: ["ai-translation-assistant", "parallel-passage-finder", "translation-memory"],
+  future: [
+    "ai-translation-assistant",
+    "parallel-passage-finder",
+    "translation-memory",
+  ],
 };

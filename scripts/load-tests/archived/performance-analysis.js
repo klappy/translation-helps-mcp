@@ -84,7 +84,9 @@ class PerformanceAnalyzer {
   getMedian(arr) {
     const sorted = arr.slice().sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    return sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
   }
 
   getPercentile(arr, percentile) {
@@ -144,7 +146,11 @@ async function runCachePerformanceTest() {
     // First request (cache miss)
     try {
       const result1 = await makeRequest(BASE_URL, endpoint);
-      analyzer.addResult(`${test.name} (Miss)`, result1.duration, result1.statusCode);
+      analyzer.addResult(
+        `${test.name} (Miss)`,
+        result1.duration,
+        result1.statusCode,
+      );
       console.log(`   Cache Miss: ${result1.duration}ms`);
     } catch (error) {
       analyzer.addResult(`${test.name} (Miss)`, error.duration, 0, error.error);
@@ -157,7 +163,11 @@ async function runCachePerformanceTest() {
     // Second request (cache hit)
     try {
       const result2 = await makeRequest(BASE_URL, endpoint);
-      analyzer.addResult(`${test.name} (Hit)`, result2.duration, result2.statusCode);
+      analyzer.addResult(
+        `${test.name} (Hit)`,
+        result2.duration,
+        result2.statusCode,
+      );
       console.log(`   Cache Hit:  ${result2.duration}ms`);
 
       const improvement = (
@@ -178,7 +188,9 @@ async function runCachePerformanceTest() {
 }
 
 async function runConcurrentLoadTest(concurrency, duration = 30000) {
-  console.log(`\n⚡ CONCURRENT LOAD TEST (${concurrency} concurrent, ${duration / 1000}s)`);
+  console.log(
+    `\n⚡ CONCURRENT LOAD TEST (${concurrency} concurrent, ${duration / 1000}s)`,
+  );
   console.log("=".repeat(50));
 
   const analyzer = new PerformanceAnalyzer();
@@ -199,7 +211,9 @@ async function runConcurrentLoadTest(concurrency, duration = 30000) {
 
   const stats = analyzer.getStats();
   console.log(`\n🚀 Performance Metrics:`);
-  console.log(`Requests/Second: ${(stats.totalRequests / (totalTime / 1000)).toFixed(2)}`);
+  console.log(
+    `Requests/Second: ${(stats.totalRequests / (totalTime / 1000)).toFixed(2)}`,
+  );
   console.log(`Average Response Time: ${stats.averageDuration.toFixed(0)}ms`);
   console.log(`95th Percentile: ${stats.p95Duration.toFixed(0)}ms`);
 }
@@ -221,19 +235,21 @@ async function runConcurrentLoop(duration, analyzer) {
       analyzer.addResult(
         `Concurrent-${endpoint.split("?")[0].split("/").pop()}`,
         result.duration,
-        result.statusCode
+        result.statusCode,
       );
     } catch (error) {
       analyzer.addResult(
         `Concurrent-${endpoint.split("?")[0].split("/").pop()}`,
         error.duration,
         0,
-        error.error
+        error.error,
       );
     }
 
     // Random delay between 200-800ms
-    await new Promise((resolve) => setTimeout(resolve, 200 + Math.random() * 600));
+    await new Promise((resolve) =>
+      setTimeout(resolve, 200 + Math.random() * 600),
+    );
   }
 }
 
@@ -260,10 +276,19 @@ async function runBatchSizeTest(batchSizes = [5, 10, 20, 50]) {
       const endpoint = endpoints[i % endpoints.length];
       const promise = makeRequest(BASE_URL, endpoint)
         .then((result) => {
-          analyzer.addResult(`Batch-${batchSize}`, result.duration, result.statusCode);
+          analyzer.addResult(
+            `Batch-${batchSize}`,
+            result.duration,
+            result.statusCode,
+          );
         })
         .catch((error) => {
-          analyzer.addResult(`Batch-${batchSize}`, error.duration, 0, error.error);
+          analyzer.addResult(
+            `Batch-${batchSize}`,
+            error.duration,
+            0,
+            error.error,
+          );
         });
       promises.push(promise);
     }
@@ -273,9 +298,11 @@ async function runBatchSizeTest(batchSizes = [5, 10, 20, 50]) {
 
     const stats = analyzer.getStats();
     console.log(
-      `   Duration: ${totalTime}ms | Avg: ${stats.averageDuration.toFixed(0)}ms | Success: ${stats.successRate.toFixed(1)}%`
+      `   Duration: ${totalTime}ms | Avg: ${stats.averageDuration.toFixed(0)}ms | Success: ${stats.successRate.toFixed(1)}%`,
     );
-    console.log(`   Throughput: ${(batchSize / (totalTime / 1000)).toFixed(2)} requests/second`);
+    console.log(
+      `   Throughput: ${(batchSize / (totalTime / 1000)).toFixed(2)} requests/second`,
+    );
   }
 }
 
@@ -327,7 +354,7 @@ async function runEndpointComparison() {
 
     const stats = analyzer.getStats();
     console.log(
-      `   Average: ${stats.averageDuration.toFixed(0)}ms | Success: ${stats.successRate.toFixed(1)}%`
+      `   Average: ${stats.averageDuration.toFixed(0)}ms | Success: ${stats.successRate.toFixed(1)}%`,
     );
   }
 }

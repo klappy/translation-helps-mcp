@@ -5,11 +5,15 @@
 
 import { Errors } from "../../utils/errorEnvelope.js";
 import { logger } from "../../utils/logger.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 import { getResourceCatalogInfo } from "../resources-service";
 
 export const resourceCatalogHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -29,7 +33,8 @@ export const resourceCatalogHandler: PlatformHandler = async (
   try {
     const referenceParam = request.queryStringParameters.reference;
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
 
     if (!referenceParam) {
       return {
@@ -38,10 +43,18 @@ export const resourceCatalogHandler: PlatformHandler = async (
       };
     }
 
-    logger.info(`Resource catalog request`, { reference: referenceParam, language, organization });
+    logger.info(`Resource catalog request`, {
+      reference: referenceParam,
+      language,
+      organization,
+    });
 
     // Get the detailed catalog information
-    const catalogInfo = await getResourceCatalogInfo(referenceParam, language, organization);
+    const catalogInfo = await getResourceCatalogInfo(
+      referenceParam,
+      language,
+      organization,
+    );
 
     const duration = Date.now() - startTime;
 

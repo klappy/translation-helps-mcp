@@ -70,8 +70,8 @@ const UNIFIED_CACHE_TTLS = {
   fileContent: 1800, // 30 minutes - USFM files don't change often
   metadata: 900, // 15 minutes - catalog info
 
-  // Transformed data (processed responses)
-  transformedResponse: 1800, // 30 minutes - processed scripture/notes
+  // Transformed data (processed responses) - disabled by policy
+  transformedResponse: 0,
 
   // Short-lived caches for deduplication
   deduplication: 60, // 1 minute - just to prevent duplicate requests

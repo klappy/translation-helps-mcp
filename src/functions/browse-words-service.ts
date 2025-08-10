@@ -5,7 +5,6 @@
  */
 
 import { logger } from "../utils/logger.js";
-import { cache } from "./cache";
 
 export interface BrowseWordsOptions {
   language?: string;
@@ -55,26 +54,7 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
     limit,
   });
 
-  // Check for cached transformed response FIRST
-  const responseKey = `browse:${language}:${organization}:${category || "all"}:${search || "none"}:${limit}`;
-  const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
-
-  if (cachedResponse.value) {
-    logger.info(`Browse words cache HIT`, { responseKey });
-    return {
-      words: cachedResponse.value.words || [],
-      metadata: {
-        responseTime: Date.now() - startTime,
-        cached: true,
-        timestamp: new Date().toISOString(),
-        wordsFound: cachedResponse.value.words?.length || 0,
-        category,
-        search,
-      },
-    };
-  }
-
-  logger.info(`Browse words cache MISS`, { responseKey });
+  logger.info(`Browse words fresh request`);
 
   // Search catalog for Translation Words
   const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Translation%20Words&lang=${language}&owner=${organization}`;
@@ -140,7 +120,10 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
         }
       }
     } catch (error) {
-      logger.warn(`Failed to browse category`, { category: cat, error: String(error) });
+      logger.warn(`Failed to browse category`, {
+        category: cat,
+        error: String(error),
+      });
     }
 
     if (words.length >= limit) {
@@ -162,10 +145,7 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
     },
   };
 
-  // Cache the transformed response
-  await cache.setTransformedResponse(responseKey, {
-    words: result.words,
-  });
+  // Do not cache transformed responses
 
   return result;
 }

@@ -12,7 +12,11 @@ import { estimateTokens } from "../utils/tokenCounter.js";
 // Input schema
 export const FetchResourcesArgs = z.object({
   reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
-  language: z.string().optional().default("en").describe('Language code (default: "en")'),
+  language: z
+    .string()
+    .optional()
+    .default("en")
+    .describe('Language code (default: "en")'),
   organization: z
     .string()
     .optional()
@@ -23,9 +27,21 @@ export const FetchResourcesArgs = z.object({
     .optional()
     .default(["scripture", "notes", "questions", "words"])
     .describe("Resource types to fetch"),
-  includeIntro: z.boolean().optional().default(true).describe("Include introduction notes"),
-  includeVerseNumbers: z.boolean().optional().default(true).describe("Include verse numbers"),
-  format: z.enum(["text", "usfm"]).optional().default("text").describe("Output format"),
+  includeIntro: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe("Include introduction notes"),
+  includeVerseNumbers: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe("Include verse numbers"),
+  format: z
+    .enum(["text", "usfm"])
+    .optional()
+    .default("text")
+    .describe("Output format"),
 });
 
 export type FetchResourcesArgs = z.infer<typeof FetchResourcesArgs>;

@@ -21,7 +21,8 @@ const REFERENCE_PARAMS = {
   reference: {
     type: "string" as const,
     required: true,
-    description: 'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
+    description:
+      'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
     example: "John 3:16",
     pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(?::\\d+(?:-\\d+)?)?$",
     min: 3,
@@ -52,7 +53,8 @@ const TERM_PARAMS = {
   term: {
     type: "string" as const,
     required: false,
-    description: 'Translation word term to lookup (e.g., "love", "grace", "salvation")',
+    description:
+      'Translation word term to lookup (e.g., "love", "grace", "salvation")',
     example: "love",
     min: 2,
     max: 50,
@@ -77,7 +79,8 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
   name: "fetch-translation-questions",
   path: "/fetch-translation-questions",
   title: "Fetch Translation Questions",
-  description: "Retrieve comprehension and checking questions for scripture passages",
+  description:
+    "Retrieve comprehension and checking questions for scripture passages",
   category: "core",
   responseShape: TRANSLATION_QUESTIONS_SHAPE,
   params: REFERENCE_PARAMS,
@@ -91,14 +94,19 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
   examples: [
     {
       name: "John 3:16 Questions",
-      description: "Get comprehension questions for the most famous Bible verse",
+      description:
+        "Get comprehension questions for the most famous Bible verse",
       params: {
         reference: "John 3:16",
         language: "en",
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["How did God show he loved the world", "giving his Only Son", "eternal life"],
+        contains: [
+          "How did God show he loved the world",
+          "giving his Only Son",
+          "eternal life",
+        ],
         minLength: 100,
         fields: {
           translationQuestions: "array",
@@ -163,7 +171,8 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
   name: "get-translation-word",
   path: "/get-translation-word",
   title: "Get Translation Word",
-  description: "Retrieve detailed explanation of a specific biblical term or concept",
+  description:
+    "Retrieve detailed explanation of a specific biblical term or concept",
   category: "core",
   responseShape: TRANSLATION_WORDS_SHAPE,
 
@@ -266,7 +275,8 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
     format: {
       type: "string" as const,
       required: false,
-      description: "Response format - markdown for LLM-friendly output, json for structured data",
+      description:
+        "Response format - markdown for LLM-friendly output, json for structured data",
       example: "markdown",
       options: ["markdown", "json"],
       default: "json",
@@ -354,7 +364,8 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
   name: "browse-translation-academy",
   path: "/browse-translation-academy",
   title: "Browse Translation Academy",
-  description: "Browse available Translation Academy modules and categories (Table of Contents)",
+  description:
+    "Browse available Translation Academy modules and categories (Table of Contents)",
   category: "core",
   responseShape: TRANSLATION_ACADEMY_SHAPE,
 
@@ -442,7 +453,8 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
   name: "fetch-translation-word-links",
   path: "/fetch-translation-word-links",
   title: "Fetch Translation Word Links",
-  description: "Retrieve links between scripture references and translation word articles",
+  description:
+    "Retrieve links between scripture references and translation word articles",
   category: "core",
   responseShape: TRANSLATION_WORD_LINKS_SHAPE,
 
@@ -500,7 +512,8 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
   name: "fetch-translation-notes",
   path: "/fetch-translation-notes",
   title: "Fetch Translation Notes",
-  description: "Retrieve detailed translation notes explaining difficult passages and terms",
+  description:
+    "Retrieve detailed translation notes explaining difficult passages and terms",
   category: "core",
   responseShape: TRANSLATION_NOTES_SHAPE,
 

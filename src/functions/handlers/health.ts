@@ -33,7 +33,11 @@ export const healthHandler: PlatformHandler = async (request) => {
     if (clearKv) {
       const kv = getKVCache();
       try {
-        const deleted = await kv.clearPrefixes(["zip:", "zipfile:", "catalog:"]);
+        const deleted = await kv.clearPrefixes([
+          "zip:",
+          "zipfile:",
+          "catalog:",
+        ]);
         // Also clear in-memory layer of the KV cache
         await kv.clear();
         cacheInfo = {
@@ -43,8 +47,14 @@ export const healthHandler: PlatformHandler = async (request) => {
         };
         logger.warn("KV caches cleared via health endpoint", { deleted });
       } catch (error) {
-        cacheInfo = { ...cacheInfo, kvCleared: false, kvClearError: String(error) };
-        logger.error("KV clear error via health endpoint", { error: String(error) });
+        cacheInfo = {
+          ...cacheInfo,
+          kvCleared: false,
+          kvClearError: String(error),
+        };
+        logger.error("KV clear error via health endpoint", {
+          error: String(error),
+        });
       }
     }
 

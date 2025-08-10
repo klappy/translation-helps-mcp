@@ -23,7 +23,11 @@ export interface ResourceDetectionResult {
   type: ResourceType | null;
   confidence: number;
   reasoning: string[];
-  alternatives: Array<{ type: ResourceType; confidence: number; reason: string }>;
+  alternatives: Array<{
+    type: ResourceType;
+    confidence: number;
+    reason: string;
+  }>;
   context?: ResourceContext;
 }
 
@@ -36,9 +40,15 @@ export interface CatalogDetectionResult {
  * Detect resource type from identifier and subject patterns
  * Implements the algorithm from Task 7 implementation plan
  */
-export function detectResourceType(context: ResourceContext): ResourceDetectionResult {
+export function detectResourceType(
+  context: ResourceContext,
+): ResourceDetectionResult {
   const reasoning: string[] = [];
-  const alternatives: Array<{ type: ResourceType; confidence: number; reason: string }> = [];
+  const alternatives: Array<{
+    type: ResourceType;
+    confidence: number;
+    reason: string;
+  }> = [];
   let bestMatch: { type: ResourceType; confidence: number } | null = null;
 
   if (!context.identifier || !context.subject) {
@@ -79,7 +89,9 @@ export function detectResourceType(context: ResourceContext): ResourceDetectionR
           identifier[identifier.length - pattern.length - 1] === "_"))
     ) {
       bestMatch = { type, confidence: 0.95 };
-      reasoning.push(`Exact identifier match: found '${pattern}' in '${identifier}'`);
+      reasoning.push(
+        `Exact identifier match: found '${pattern}' in '${identifier}'`,
+      );
       break;
     }
   }
@@ -90,10 +102,14 @@ export function detectResourceType(context: ResourceContext): ResourceDetectionR
     if (subject.includes("bible") || subject.includes("aligned bible")) {
       if (identifier.includes("ult") || identifier.includes("glt")) {
         bestMatch = { type: ResourceType.ULT, confidence: 0.8 };
-        reasoning.push(`Bible subject with literal identifier: '${identifier}'`);
+        reasoning.push(
+          `Bible subject with literal identifier: '${identifier}'`,
+        );
       } else if (identifier.includes("ust") || identifier.includes("gst")) {
         bestMatch = { type: ResourceType.UST, confidence: 0.8 };
-        reasoning.push(`Bible subject with simplified identifier: '${identifier}'`);
+        reasoning.push(
+          `Bible subject with simplified identifier: '${identifier}'`,
+        );
       } else {
         // Default to ULT for generic Bible subjects
         bestMatch = { type: ResourceType.ULT, confidence: 0.6 };
@@ -120,7 +136,10 @@ export function detectResourceType(context: ResourceContext): ResourceDetectionR
     } else if (subject.includes("hebrew bible")) {
       bestMatch = { type: ResourceType.UHB, confidence: 0.9 };
       reasoning.push(`Hebrew Bible subject detected`);
-    } else if (subject.includes("greek new testament") || subject.includes("greek nt")) {
+    } else if (
+      subject.includes("greek new testament") ||
+      subject.includes("greek nt")
+    ) {
       bestMatch = { type: ResourceType.UGNT, confidence: 0.9 };
       reasoning.push(`Greek New Testament subject detected`);
     }
@@ -129,7 +148,7 @@ export function detectResourceType(context: ResourceContext): ResourceDetectionR
   // Low confidence fallback patterns
   if (!bestMatch) {
     reasoning.push(
-      `No clear pattern match for identifier '${identifier}' and subject '${subject}'`
+      `No clear pattern match for identifier '${identifier}' and subject '${subject}'`,
     );
     return {
       type: null,
@@ -154,7 +173,10 @@ export function detectResourceType(context: ResourceContext): ResourceDetectionR
   }
 
   // Boost confidence for organization match
-  if (context.organization === "unfoldingWord" || context.organization === "Door43-Catalog") {
+  if (
+    context.organization === "unfoldingWord" ||
+    context.organization === "Door43-Catalog"
+  ) {
     finalConfidence = Math.min(1.0, finalConfidence + 0.05);
     reasoning.push(`Trusted organization: ${context.organization}`);
   }
@@ -173,7 +195,7 @@ export function detectResourceType(context: ResourceContext): ResourceDetectionR
  * Processes multiple resources at once for efficiency
  */
 export function detectResourcesFromCatalog(
-  catalogData: Record<string, unknown>[]
+  catalogData: Record<string, unknown>[],
 ): CatalogDetectionResult[] {
   return catalogData.map((resource) => {
     const context: ResourceContext = {
@@ -184,13 +206,15 @@ export function detectResourcesFromCatalog(
           ? resource.organization
           : typeof resource.owner === "object" &&
               resource.owner &&
-              typeof (resource.owner as Record<string, unknown>).login === "string"
+              typeof (resource.owner as Record<string, unknown>).login ===
+                "string"
             ? ((resource.owner as Record<string, unknown>).login as string)
             : "",
       language: typeof resource.language === "string" ? resource.language : "",
       name: typeof resource.name === "string" ? resource.name : "",
       title: typeof resource.title === "string" ? resource.title : "",
-      description: typeof resource.description === "string" ? resource.description : "",
+      description:
+        typeof resource.description === "string" ? resource.description : "",
     };
 
     const detection = detectResourceType(context);
@@ -232,7 +256,7 @@ export interface ResourceAvailability {
 export async function discoverAvailableResources(
   reference: string,
   language: string = "en",
-  organization: string = "unfoldingWord"
+  organization: string = "unfoldingWord",
 ): Promise<ResourceAvailability> {
   const parsedRef = parseReference(reference);
   if (!parsedRef) {
@@ -246,7 +270,11 @@ export async function discoverAvailableResources(
   // Try cache first
   const cached = await cache.getWithCacheInfo(cacheKey, "metadata");
   if (cached.value) {
-    logger.info(`Resource discovery cache HIT`, { book, language, organization });
+    logger.info(`Resource discovery cache HIT`, {
+      book,
+      language,
+      organization,
+    });
     return cached.value;
   }
 
@@ -296,7 +324,10 @@ export async function discoverAvailableResources(
 
         const response = await fetch(catalogUrl);
         if (!response.ok) {
-          logger.warn(`Catalog search failed`, { subject, status: response.status });
+          logger.warn(`Catalog search failed`, {
+            subject,
+            status: response.status,
+          });
           return { type: search.type, resources: [] };
         }
 
@@ -306,7 +337,10 @@ export async function discoverAvailableResources(
 
         const resources = (data.data || []).map((resource) => ({
           name: resource.name,
-          title: resource.title || resource.door43_metadata?.title || resource.description,
+          title:
+            resource.title ||
+            resource.door43_metadata?.title ||
+            resource.description,
           subject,
           url: `https://git.door43.org/${organization}/${resource.name}`,
           ingredients:
@@ -322,7 +356,7 @@ export async function discoverAvailableResources(
         logger.warn(`Catalog search error`, { subject, error: String(error) });
         return { type: search.type, resources: [] };
       }
-    })
+    }),
   );
 
   // Wait for all searches to complete
@@ -336,19 +370,24 @@ export async function discoverAvailableResources(
 
   // Remove duplicates within each resource type
   availability.scripture = availability.scripture.filter(
-    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+    (resource, index, arr) =>
+      arr.findIndex((r) => r.name === resource.name) === index,
   );
   availability.notes = availability.notes.filter(
-    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+    (resource, index, arr) =>
+      arr.findIndex((r) => r.name === resource.name) === index,
   );
   availability.questions = availability.questions.filter(
-    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+    (resource, index, arr) =>
+      arr.findIndex((r) => r.name === resource.name) === index,
   );
   availability.words = availability.words.filter(
-    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+    (resource, index, arr) =>
+      arr.findIndex((r) => r.name === resource.name) === index,
   );
   availability.wordLinks = availability.wordLinks.filter(
-    (resource, index, arr) => arr.findIndex((r) => r.name === resource.name) === index
+    (resource, index, arr) =>
+      arr.findIndex((r) => r.name === resource.name) === index,
   );
 
   // Cache the discovery results
@@ -374,13 +413,25 @@ export async function getResourceForBook(
   reference: string,
   resourceType: "scripture" | "notes" | "questions" | "words" | "wordLinks",
   language: string = "en",
-  organization: string = "unfoldingWord"
+  organization: string = "unfoldingWord",
 ): Promise<ResourceCatalogInfo | null> {
-  logger.debug(`getResourceForBook called`, { reference, resourceType, language, organization });
-  const availability = await discoverAvailableResources(reference, language, organization);
+  logger.debug(`getResourceForBook called`, {
+    reference,
+    resourceType,
+    language,
+    organization,
+  });
+  const availability = await discoverAvailableResources(
+    reference,
+    language,
+    organization,
+  );
   const resources = availability[resourceType];
 
-  logger.debug(`Resources found`, { resourceType, count: resources?.length || 0 });
+  logger.debug(`Resources found`, {
+    resourceType,
+    count: resources?.length || 0,
+  });
 
   if (!resources || resources.length === 0) {
     logger.error(`No resources found`, { resourceType });
@@ -398,7 +449,7 @@ export async function getResourceForBook(
 export async function checkResourceAvailability(
   reference: string,
   language: string = "en",
-  organization: string = "unfoldingWord"
+  organization: string = "unfoldingWord",
 ): Promise<{
   hasScripture: boolean;
   hasNotes: boolean;
@@ -407,7 +458,11 @@ export async function checkResourceAvailability(
   hasWordLinks: boolean;
   totalResources: number;
 }> {
-  const availability = await discoverAvailableResources(reference, language, organization);
+  const availability = await discoverAvailableResources(
+    reference,
+    language,
+    organization,
+  );
 
   return {
     hasScripture: availability.scripture.length > 0,

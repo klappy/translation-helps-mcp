@@ -36,12 +36,15 @@ app.use(express.static("public"));
 // Scripture endpoint
 app.get("/api/scripture/:reference", async (req, res) => {
   try {
-    const response = await axios.get("https://translation.tools/api/fetch-scripture", {
-      params: {
-        reference: req.params.reference,
-        format: "json",
+    const response = await axios.get(
+      "https://translation.tools/api/fetch-scripture",
+      {
+        params: {
+          reference: req.params.reference,
+          format: "json",
+        },
       },
-    });
+    );
     res.json(response.data);
   } catch (error) {
     console.error("Scripture fetch error:", error.message);
@@ -55,12 +58,15 @@ app.get("/api/scripture/:reference", async (req, res) => {
 // Translation notes endpoint
 app.get("/api/notes/:reference", async (req, res) => {
   try {
-    const response = await axios.get("https://translation.tools/api/fetch-translation-notes", {
-      params: {
-        reference: req.params.reference,
-        language: "en",
+    const response = await axios.get(
+      "https://translation.tools/api/fetch-translation-notes",
+      {
+        params: {
+          reference: req.params.reference,
+          language: "en",
+        },
       },
-    });
+    );
     res.json(response.data);
   } catch (error) {
     res.status(500).json({
@@ -73,12 +79,15 @@ app.get("/api/notes/:reference", async (req, res) => {
 // Word definition endpoint
 app.get("/api/word/:term", async (req, res) => {
   try {
-    const response = await axios.get("https://translation.tools/api/get-translation-word", {
-      params: {
-        word: req.params.term,
-        language: "en",
+    const response = await axios.get(
+      "https://translation.tools/api/get-translation-word",
+      {
+        params: {
+          word: req.params.term,
+          language: "en",
+        },
       },
-    });
+    );
     res.json(response.data);
   } catch (error) {
     res.status(500).json({
@@ -205,7 +214,8 @@ Create `public/index.html`:
         const content = document.getElementById("content");
 
         if (!reference.trim()) {
-          content.innerHTML = '<div class="error">Please enter a scripture reference</div>';
+          content.innerHTML =
+            '<div class="error">Please enter a scripture reference</div>';
           return;
         }
 
@@ -258,7 +268,7 @@ Create `public/index.html`:
                             <div style="margin-bottom: 15px;">
                                 <strong>${note.reference || reference}</strong>: ${note.text}
                             </div>
-                        `
+                        `,
                           )
                           .join("")}
                     </div>
@@ -290,7 +300,7 @@ Create `public/index.html`:
           const regex = new RegExp(`\\b${term}\\b`, "gi");
           formattedText = formattedText.replace(
             regex,
-            `<span class="word-link" onclick="lookupWord('${term}')">${term}</span>`
+            `<span class="word-link" onclick="lookupWord('${term}')">${term}</span>`,
           );
         });
 
@@ -363,7 +373,9 @@ Add these features to make it even better:
 ```javascript
 app.get("/api/languages", async (req, res) => {
   try {
-    const response = await axios.get("https://translation.tools/api/get-languages");
+    const response = await axios.get(
+      "https://translation.tools/api/get-languages",
+    );
     res.json(response.data);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch languages" });

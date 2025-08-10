@@ -15,12 +15,22 @@ import type { QualityCheckType } from "./ai-quality-checker.js";
 /**
  * Content source types
  */
-export type ContentSourceType = "git" | "api" | "webhook" | "manual" | "scheduled";
+export type ContentSourceType =
+  | "git"
+  | "api"
+  | "webhook"
+  | "manual"
+  | "scheduled";
 
 /**
  * Ingestion status
  */
-export type IngestionStatus = "pending" | "processing" | "completed" | "failed" | "skipped";
+export type IngestionStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "skipped";
 
 /**
  * Content source configuration
@@ -204,7 +214,7 @@ export class AutomatedContentIngestion {
   constructor(
     private aiSummarizer?: any,
     private qualityChecker?: any,
-    private resourceDetector?: any
+    private resourceDetector?: any,
   ) {
     this.stats = this.initializeStats();
     this.startProcessingLoop();
@@ -256,7 +266,9 @@ export class AutomatedContentIngestion {
    */
   async discoverContent(sourceIds?: string[]): Promise<DiscoveredContent[]> {
     const targetSources = sourceIds
-      ? (sourceIds.map((id) => this.sources.get(id)).filter(Boolean) as ContentSource[])
+      ? (sourceIds
+          .map((id) => this.sources.get(id))
+          .filter(Boolean) as ContentSource[])
       : Array.from(this.sources.values()).filter((s) => s.enabled);
 
     const allContent: DiscoveredContent[] = [];
@@ -266,7 +278,9 @@ export class AutomatedContentIngestion {
         const content = await this.discoverFromSource(source);
         allContent.push(...content);
       } catch (error) {
-        logger.warn(`Discovery failed for source ${source.id}`, { error: String(error) });
+        logger.warn(`Discovery failed for source ${source.id}`, {
+          error: String(error),
+        });
         source.metadata.errorCount++;
       }
     }
@@ -277,7 +291,9 @@ export class AutomatedContentIngestion {
   /**
    * Discover content from specific source
    */
-  private async discoverFromSource(source: ContentSource): Promise<DiscoveredContent[]> {
+  private async discoverFromSource(
+    source: ContentSource,
+  ): Promise<DiscoveredContent[]> {
     switch (source.type) {
       case "git":
         return this.discoverFromGit(source);
@@ -297,7 +313,9 @@ export class AutomatedContentIngestion {
   /**
    * Discover content from Git repositories
    */
-  private async discoverFromGit(source: ContentSource): Promise<DiscoveredContent[]> {
+  private async discoverFromGit(
+    source: ContentSource,
+  ): Promise<DiscoveredContent[]> {
     // Mock implementation for Git discovery
     const mockContent: DiscoveredContent[] = [
       {
@@ -327,7 +345,9 @@ export class AutomatedContentIngestion {
   /**
    * Discover content from API endpoints
    */
-  private async discoverFromAPI(source: ContentSource): Promise<DiscoveredContent[]> {
+  private async discoverFromAPI(
+    source: ContentSource,
+  ): Promise<DiscoveredContent[]> {
     // Mock implementation for API discovery
     const mockContent: DiscoveredContent[] = [
       {
@@ -355,9 +375,13 @@ export class AutomatedContentIngestion {
   /**
    * Discover content from scheduled sources
    */
-  private async discoverFromScheduled(source: ContentSource): Promise<DiscoveredContent[]> {
+  private async discoverFromScheduled(
+    source: ContentSource,
+  ): Promise<DiscoveredContent[]> {
     // Check if it's time to sync based on cron schedule
-    const lastSync = source.metadata.lastSync ? new Date(source.metadata.lastSync) : null;
+    const lastSync = source.metadata.lastSync
+      ? new Date(source.metadata.lastSync)
+      : null;
     const now = new Date();
 
     // Simple check: sync if last sync was more than an hour ago
@@ -374,12 +398,16 @@ export class AutomatedContentIngestion {
    */
   private applyFilters(
     content: DiscoveredContent[],
-    filters: ContentFilter[]
+    filters: ContentFilter[],
   ): DiscoveredContent[] {
     return content.filter((item) => {
       return filters.every((filter) => {
         const fieldValue = this.getFieldValue(item, filter.field);
-        const matches = this.evaluateFilter(fieldValue, filter.operator, filter.value);
+        const matches = this.evaluateFilter(
+          fieldValue,
+          filter.operator,
+          filter.value,
+        );
         return filter.include ? matches : !matches;
       });
     });
@@ -408,7 +436,11 @@ export class AutomatedContentIngestion {
   /**
    * Evaluate filter condition
    */
-  private evaluateFilter(value: any, operator: string, filterValue: any): boolean {
+  private evaluateFilter(
+    value: any,
+    operator: string,
+    filterValue: any,
+  ): boolean {
     switch (operator) {
       case "equals":
         return value === filterValue;
@@ -478,21 +510,27 @@ export class AutomatedContentIngestion {
       const source = this.sources.get(job.sourceId);
       const transformedContent = await this.transformContent(
         rawContent,
-        source?.config.transformRules || []
+        source?.config.transformRules || [],
       );
       job.progress = 70;
 
       // 4. AI Analysis (if enabled)
       let aiAnalysis;
       if (this.config.enableAIAnalysis && this.aiSummarizer) {
-        aiAnalysis = await this.performAIAnalysis(transformedContent, job.content);
+        aiAnalysis = await this.performAIAnalysis(
+          transformedContent,
+          job.content,
+        );
       }
       job.progress = 85;
 
       // 5. Quality checks (if enabled)
       let qualityScore;
       if (this.config.enableQualityChecks && this.qualityChecker) {
-        qualityScore = await this.performQualityChecks(transformedContent, job.content);
+        qualityScore = await this.performQualityChecks(
+          transformedContent,
+          job.content,
+        );
         job.qualityScore = qualityScore;
       }
       job.progress = 95;
@@ -508,8 +546,11 @@ export class AutomatedContentIngestion {
         content: transformedContent,
         metadata: {
           processingTime: Date.now() - new Date(job.startTime).getTime(),
-          transformationsApplied: source?.config.transformRules?.map((r) => r.type) || [],
-          qualityChecks: this.config.enableQualityChecks ? ["accuracy", "consistency"] : [],
+          transformationsApplied:
+            source?.config.transformRules?.map((r) => r.type) || [],
+          qualityChecks: this.config.enableQualityChecks
+            ? ["accuracy", "consistency"]
+            : [],
           aiAnalysis,
         },
         validation,
@@ -548,7 +589,7 @@ export class AutomatedContentIngestion {
           () => {
             this.processingQueue.push(job);
           },
-          this.config.retryDelayMs * Math.pow(2, job.retryCount)
+          this.config.retryDelayMs * Math.pow(2, job.retryCount),
         );
       }
     }
@@ -571,7 +612,7 @@ export class AutomatedContentIngestion {
    */
   private async validateContent(
     content: string,
-    metadata: DiscoveredContent
+    metadata: DiscoveredContent,
   ): Promise<{
     passed: boolean;
     errors: string[];
@@ -606,7 +647,10 @@ export class AutomatedContentIngestion {
   /**
    * Transform content using configured rules
    */
-  private async transformContent(content: string, rules: TransformRule[]): Promise<string> {
+  private async transformContent(
+    content: string,
+    rules: TransformRule[],
+  ): Promise<string> {
     let transformed = content;
 
     for (const rule of rules) {
@@ -631,7 +675,10 @@ export class AutomatedContentIngestion {
   /**
    * Perform AI analysis on content
    */
-  private async performAIAnalysis(content: string, metadata: DiscoveredContent): Promise<any> {
+  private async performAIAnalysis(
+    content: string,
+    metadata: DiscoveredContent,
+  ): Promise<any> {
     if (!this.aiSummarizer) return null;
 
     try {
@@ -646,7 +693,9 @@ export class AutomatedContentIngestion {
         summary: summary.summary,
         keyTerms: summary.keyTerms,
         complexity: Math.floor(Math.random() * 10) + 1, // Mock complexity score
-        recommendations: summary.metadata ? ["Consider reviewing for clarity"] : [],
+        recommendations: summary.metadata
+          ? ["Consider reviewing for clarity"]
+          : [],
       };
     } catch (error) {
       logger.warn("AI analysis failed", { error: String(error) });
@@ -659,7 +708,7 @@ export class AutomatedContentIngestion {
    */
   private async performQualityChecks(
     content: string,
-    metadata: DiscoveredContent
+    metadata: DiscoveredContent,
   ): Promise<number> {
     if (!this.qualityChecker) return 85; // Mock score
 
@@ -702,7 +751,10 @@ export class AutomatedContentIngestion {
   /**
    * Handle webhook content
    */
-  async handleWebhook(payload: WebhookPayload, sourceId: string): Promise<void> {
+  async handleWebhook(
+    payload: WebhookPayload,
+    sourceId: string,
+  ): Promise<void> {
     const source = this.sources.get(sourceId);
     if (!source || !source.enabled || source.type !== "webhook") {
       throw new Error("Invalid webhook source");
@@ -740,7 +792,9 @@ export class AutomatedContentIngestion {
     };
   }> {
     const content = await this.discoverContent(request.sourceIds);
-    const filteredContent = request.filters ? this.applyFilters(content, request.filters) : content;
+    const filteredContent = request.filters
+      ? this.applyFilters(content, request.filters)
+      : content;
 
     const jobs = await this.ingestContent(filteredContent);
 
@@ -762,7 +816,10 @@ export class AutomatedContentIngestion {
       if (this.isProcessing || this.processingQueue.length === 0) return;
 
       this.isProcessing = true;
-      const concurrentJobs = this.processingQueue.splice(0, this.config.maxConcurrentJobs);
+      const concurrentJobs = this.processingQueue.splice(
+        0,
+        this.config.maxConcurrentJobs,
+      );
 
       try {
         await Promise.all(concurrentJobs.map((job) => this.processJob(job)));
@@ -797,17 +854,21 @@ export class AutomatedContentIngestion {
    */
   private updateStats(): void {
     this.stats.totalSources = this.sources.size;
-    this.stats.activeSources = Array.from(this.sources.values()).filter((s) => s.enabled).length;
+    this.stats.activeSources = Array.from(this.sources.values()).filter(
+      (s) => s.enabled,
+    ).length;
     this.stats.totalJobs = this.jobs.size;
     this.stats.completedJobs = Array.from(this.jobs.values()).filter(
-      (j) => j.status === "completed"
+      (j) => j.status === "completed",
     ).length;
     this.stats.failedJobs = Array.from(this.jobs.values()).filter(
-      (j) => j.status === "failed"
+      (j) => j.status === "failed",
     ).length;
 
     // Calculate averages
-    const completedJobs = Array.from(this.jobs.values()).filter((j) => j.status === "completed");
+    const completedJobs = Array.from(this.jobs.values()).filter(
+      (j) => j.status === "completed",
+    );
     if (completedJobs.length > 0) {
       this.stats.averageProcessingTime =
         completedJobs.reduce((sum, job) => {
@@ -828,8 +889,10 @@ export class AutomatedContentIngestion {
       const lang = job.content.language;
       const type = job.content.resourceType;
 
-      this.stats.contentByLanguage[lang] = (this.stats.contentByLanguage[lang] || 0) + 1;
-      this.stats.contentByType[type] = (this.stats.contentByType[type] || 0) + 1;
+      this.stats.contentByLanguage[lang] =
+        (this.stats.contentByLanguage[lang] || 0) + 1;
+      this.stats.contentByType[type] =
+        (this.stats.contentByType[type] || 0) + 1;
     });
   }
 
@@ -852,7 +915,9 @@ export class AutomatedContentIngestion {
    * Get all jobs for a source
    */
   getJobsBySource(sourceId: string): IngestionJob[] {
-    return Array.from(this.jobs.values()).filter((job) => job.sourceId === sourceId);
+    return Array.from(this.jobs.values()).filter(
+      (job) => job.sourceId === sourceId,
+    );
   }
 
   /**

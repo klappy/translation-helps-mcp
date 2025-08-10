@@ -7,10 +7,14 @@ import { parseReference } from "../../parsers/referenceParser.js";
 import { ResourceAggregator } from "../../services/ResourceAggregator.js";
 import { Errors } from "../../utils/errorEnvelope.js";
 import { logger } from "../../utils/logger.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 export const getContextHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -31,7 +35,8 @@ export const getContextHandler: PlatformHandler = async (
   try {
     const referenceParam = request.queryStringParameters.reference;
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
 
     if (!referenceParam) {
       return {
@@ -99,7 +104,10 @@ export const getContextHandler: PlatformHandler = async (
     }
 
     // Add translation questions
-    if (resources.translationQuestions && resources.translationQuestions.length > 0) {
+    if (
+      resources.translationQuestions &&
+      resources.translationQuestions.length > 0
+    ) {
       contextArray.push({
         type: "translation-questions",
         data: resources.translationQuestions,
@@ -108,7 +116,10 @@ export const getContextHandler: PlatformHandler = async (
     }
 
     // Add unique translation words via TWL
-    if (resources.translationWordLinks && resources.translationWordLinks.length > 0) {
+    if (
+      resources.translationWordLinks &&
+      resources.translationWordLinks.length > 0
+    ) {
       // Extract unique words from links
       const uniqueWords = new Set<string>();
       const wordDetails = [];

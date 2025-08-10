@@ -23,14 +23,22 @@ function registerScriptureEndpoints(): void {
   for (const config of SCRIPTURE_ENDPOINTS) {
     try {
       endpointRegistry.register(config);
-      logger.info(`Registered endpoint`, { name: config.name, path: config.path });
+      logger.info(`Registered endpoint`, {
+        name: config.name,
+        path: config.path,
+      });
     } catch (error) {
-      logger.error(`Failed to register endpoint`, { name: config.name, error: String(error) });
+      logger.error(`Failed to register endpoint`, {
+        name: config.name,
+        error: String(error),
+      });
       throw error;
     }
   }
 
-  logger.info(`Scripture endpoints registered`, { count: SCRIPTURE_ENDPOINTS.length });
+  logger.info(`Scripture endpoints registered`, {
+    count: SCRIPTURE_ENDPOINTS.length,
+  });
 }
 
 /**
@@ -42,9 +50,15 @@ function registerTranslationHelpsEndpoints(): void {
   for (const config of TRANSLATION_HELPS_ENDPOINTS) {
     try {
       endpointRegistry.register(config);
-      logger.info(`Registered endpoint`, { name: config.name, path: config.path });
+      logger.info(`Registered endpoint`, {
+        name: config.name,
+        path: config.path,
+      });
     } catch (error) {
-      logger.error(`Failed to register endpoint`, { name: config.name, error: String(error) });
+      logger.error(`Failed to register endpoint`, {
+        name: config.name,
+        error: String(error),
+      });
       throw error;
     }
   }
@@ -63,14 +77,22 @@ function registerDiscoveryEndpoints(): void {
   for (const config of DISCOVERY_ENDPOINTS) {
     try {
       endpointRegistry.register(config);
-      logger.info(`Registered endpoint`, { name: config.name, path: config.path });
+      logger.info(`Registered endpoint`, {
+        name: config.name,
+        path: config.path,
+      });
     } catch (error) {
-      logger.error(`Failed to register endpoint`, { name: config.name, error: String(error) });
+      logger.error(`Failed to register endpoint`, {
+        name: config.name,
+        error: String(error),
+      });
       throw error;
     }
   }
 
-  logger.info(`Discovery endpoints registered`, { count: DISCOVERY_ENDPOINTS.length });
+  logger.info(`Discovery endpoints registered`, {
+    count: DISCOVERY_ENDPOINTS.length,
+  });
 }
 
 /**
@@ -88,12 +110,17 @@ function registerContextEndpoints(): void {
         category: config.category,
       });
     } catch (error) {
-      logger.error(`Failed to register endpoint`, { name: config.name, error: String(error) });
+      logger.error(`Failed to register endpoint`, {
+        name: config.name,
+        error: String(error),
+      });
       throw error;
     }
   }
 
-  logger.info(`Context endpoints registered`, { count: CONTEXT_ENDPOINTS.length });
+  logger.info(`Context endpoints registered`, {
+    count: CONTEXT_ENDPOINTS.length,
+  });
 }
 
 /**
@@ -111,12 +138,17 @@ function registerExperimentalEndpoints(): void {
         experimental: true,
       });
     } catch (error) {
-      logger.error(`Failed to register endpoint`, { name: config.name, error: String(error) });
+      logger.error(`Failed to register endpoint`, {
+        name: config.name,
+        error: String(error),
+      });
       throw error;
     }
   }
 
-  logger.info(`Experimental endpoints registered`, { count: ExperimentalEndpoints.length });
+  logger.info(`Experimental endpoints registered`, {
+    count: ExperimentalEndpoints.length,
+  });
 }
 
 /**
@@ -169,7 +201,9 @@ export function validateAllEndpoints(): void {
         message: error.message,
       });
     });
-    throw new Error(`Found ${validationResult.errors.length} configuration errors`);
+    throw new Error(
+      `Found ${validationResult.errors.length} configuration errors`,
+    );
   }
 
   if (validationResult.warnings.length > 0) {
@@ -182,13 +216,17 @@ export function validateAllEndpoints(): void {
     });
   }
 
-  logger.info(`All configurations valid!`, { warnings: validationResult.warnings.length });
+  logger.info(`All configurations valid!`, {
+    warnings: validationResult.warnings.length,
+  });
 }
 
 /**
  * Get all endpoints by category
  */
-export function getEndpointsByCategory(category: "core" | "extended" | "experimental") {
+export function getEndpointsByCategory(
+  category: "core" | "extended" | "experimental",
+) {
   return endpointRegistry.getByCategory(category);
 }
 

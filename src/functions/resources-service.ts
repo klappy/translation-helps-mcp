@@ -5,7 +5,10 @@
  */
 
 import { logger } from "../utils/logger.js";
-import { checkResourceAvailability, discoverAvailableResources } from "./resource-detector";
+import {
+  checkResourceAvailability,
+  discoverAvailableResources,
+} from "./resource-detector";
 import { fetchScripture } from "./scripture-service";
 import { fetchTranslationNotes } from "./translation-notes-service";
 import { fetchTranslationQuestions } from "./translation-questions-service";
@@ -49,7 +52,9 @@ export interface ResourcesResult {
  * Core resources aggregation logic with intelligent resource discovery
  * Uses unified catalog discovery to minimize DCS API calls
  */
-export async function fetchResources(options: ResourcesOptions): Promise<ResourcesResult> {
+export async function fetchResources(
+  options: ResourcesOptions,
+): Promise<ResourcesResult> {
   const startTime = Date.now();
   const {
     reference,
@@ -70,7 +75,11 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
 
   // 🚀 OPTIMIZATION: Discover resource availability first with one unified call
   logger.debug(`Checking resource availability for optimized fetching...`);
-  const availability = await checkResourceAvailability(reference, language, organization);
+  const availability = await checkResourceAvailability(
+    reference,
+    language,
+    organization,
+  );
 
   logger.debug(`Resource availability discovered`, {
     scripture: availability.hasScripture,
@@ -122,7 +131,7 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
         .catch((error) => {
           logger.warn(`Scripture fetch failed`, { error: String(error) });
           return null;
-        })
+        }),
     );
   } else if (resources.includes("scripture")) {
     logger.info(`Scripture not available - skipping fetch`);
@@ -152,9 +161,11 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
           return res;
         })
         .catch((error) => {
-          logger.warn(`Translation notes fetch failed`, { error: String(error) });
+          logger.warn(`Translation notes fetch failed`, {
+            error: String(error),
+          });
           return null;
-        })
+        }),
     );
   } else if (resources.includes("notes")) {
     logger.info(`Translation notes not available - skipping fetch`);
@@ -172,13 +183,16 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
         .then((res) => {
           result.translationQuestions = res.translationQuestions;
           result.citations.push(res.citation);
-          if (res.translationQuestions?.length) result.metadata.resourcesFound++;
+          if (res.translationQuestions?.length)
+            result.metadata.resourcesFound++;
           return res;
         })
         .catch((error) => {
-          logger.warn(`Translation questions fetch failed`, { error: String(error) });
+          logger.warn(`Translation questions fetch failed`, {
+            error: String(error),
+          });
           return null;
-        })
+        }),
     );
   } else if (resources.includes("questions")) {
     logger.info(`Translation questions not available - skipping fetch`);
@@ -206,9 +220,11 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
           return res;
         })
         .catch((error) => {
-          logger.warn(`Translation words fetch failed`, { error: String(error) });
+          logger.warn(`Translation words fetch failed`, {
+            error: String(error),
+          });
           return null;
-        })
+        }),
     );
   } else if (resources.includes("words")) {
     logger.info(`Translation words not available - skipping fetch`);
@@ -238,10 +254,14 @@ export async function fetchResources(options: ResourcesOptions): Promise<Resourc
 export async function getResourceCatalogInfo(
   reference: string,
   language: string = "en",
-  organization: string = "unfoldingWord"
+  organization: string = "unfoldingWord",
 ) {
   logger.info(`Getting detailed catalog info`, { reference });
-  const catalog = await discoverAvailableResources(reference, language, organization);
+  const catalog = await discoverAvailableResources(
+    reference,
+    language,
+    organization,
+  );
 
   return {
     reference,

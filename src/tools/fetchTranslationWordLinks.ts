@@ -13,7 +13,11 @@ import { formatCitation } from "../utils/referenceFormatter.js";
 // Input schema
 export const FetchTranslationWordLinksArgs = z.object({
   reference: z.string().describe('Bible reference (e.g., "Titus 1:1")'),
-  language: z.string().optional().default("en").describe('Language code (default: "en")'),
+  language: z
+    .string()
+    .optional()
+    .default("en")
+    .describe('Language code (default: "en")'),
   organization: z
     .string()
     .optional()
@@ -21,12 +25,16 @@ export const FetchTranslationWordLinksArgs = z.object({
     .describe('Organization (default: "unfoldingWord")'),
 });
 
-export type FetchTranslationWordLinksArgs = z.infer<typeof FetchTranslationWordLinksArgs>;
+export type FetchTranslationWordLinksArgs = z.infer<
+  typeof FetchTranslationWordLinksArgs
+>;
 
 /**
  * Handle the fetch translation word links tool call
  */
-export async function handleFetchTranslationWordLinks(args: FetchTranslationWordLinksArgs) {
+export async function handleFetchTranslationWordLinks(
+  args: FetchTranslationWordLinksArgs,
+) {
   const startTime = Date.now();
 
   try {

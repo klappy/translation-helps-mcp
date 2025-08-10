@@ -22,4 +22,4 @@
 
 ---
 
-*Cache: 2 hits, 0 misses · Response time: 45ms*
+_Cache: 2 hits, 0 misses · Response time: 45ms_

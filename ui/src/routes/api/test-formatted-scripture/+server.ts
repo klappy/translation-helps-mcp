@@ -58,9 +58,9 @@ export async function GET({
 					reference,
 					hint: 'Use format like "John 3:16" or "John 3:16-18"'
 				}),
-				{ 
-					status: 400, 
-					headers: { 'Content-Type': 'application/json' } 
+				{
+					status: 400,
+					headers: { 'Content-Type': 'application/json' }
 				}
 			);
 		}
@@ -74,13 +74,13 @@ export async function GET({
 
 		for (const version of versions) {
 			const results = await zipFetcher.getScripture(parsedRef, language, organization, version);
-			
+
 			// Transform results to include proper citations
 			for (const result of results) {
 				// Extract version from xray trace if available
 				const xrayTrace = tracer.getTrace();
 				let versionNumber = 'master';
-				
+
 				if (xrayTrace?.apiCalls) {
 					for (const call of xrayTrace.apiCalls) {
 						if (call.url?.includes('/archive/')) {
@@ -115,7 +115,6 @@ export async function GET({
 		} else {
 			return formatJsonResponse(allResults, parsedRef, reference, startTime, tracer);
 		}
-
 	} catch (error) {
 		console.error('💥 Error in test-formatted-scripture:', error);
 		return new Response(
@@ -123,9 +122,9 @@ export async function GET({
 				error: 'Internal server error',
 				message: error instanceof Error ? error.message : 'Unknown error'
 			}),
-			{ 
-				status: 500, 
-				headers: { 'Content-Type': 'application/json' } 
+			{
+				status: 500,
+				headers: { 'Content-Type': 'application/json' }
 			}
 		);
 	}
@@ -155,12 +154,12 @@ function formatScriptureText(text: string, parsedRef: any, format: string): stri
 		const lines = text.split(/\s+/);
 		let result = '';
 		let currentVerse = `${verseNum}. `;
-		
+
 		// Simple heuristic: add verse numbers at sentence boundaries
 		for (const word of lines) {
 			result += currentVerse + word + ' ';
 			currentVerse = '';
-			
+
 			// Check for sentence end
 			if (word.match(/[.!?]$/)) {
 				verseNum++;
@@ -170,7 +169,7 @@ function formatScriptureText(text: string, parsedRef: any, format: string): stri
 				}
 			}
 		}
-		
+
 		return result.trim();
 	}
 
@@ -181,8 +180,8 @@ function formatScriptureText(text: string, parsedRef: any, format: string): stri
  * Format markdown response
  */
 function formatMarkdownResponse(
-	results: ScriptureResult[], 
-	parsedRef: any, 
+	results: ScriptureResult[],
+	parsedRef: any,
 	reference: string,
 	tracer: EdgeXRayTracer
 ): Response {
@@ -223,7 +222,7 @@ function formatMarkdownResponse(
 		status: 200,
 		headers: {
 			'Content-Type': 'text/markdown; charset=utf-8',
-			'X-Resources': results.map(r => r.translation).join(','),
+			'X-Resources': results.map((r) => r.translation).join(','),
 			'X-Cache-Status': trace?.cacheStats?.hits > 0 ? 'hit' : 'miss'
 		}
 	});
@@ -233,8 +232,8 @@ function formatMarkdownResponse(
  * Format text response
  */
 function formatTextResponse(
-	results: ScriptureResult[], 
-	parsedRef: any, 
+	results: ScriptureResult[],
+	parsedRef: any,
 	reference: string
 ): Response {
 	let body = '';
@@ -248,7 +247,7 @@ function formatTextResponse(
 		status: 200,
 		headers: {
 			'Content-Type': 'text/plain; charset=utf-8',
-			'X-Resources': results.map(r => r.translation).join(',')
+			'X-Resources': results.map((r) => r.translation).join(',')
 		}
 	});
 }
@@ -257,8 +256,8 @@ function formatTextResponse(
  * Format JSON response
  */
 function formatJsonResponse(
-	results: ScriptureResult[], 
-	parsedRef: any, 
+	results: ScriptureResult[],
+	parsedRef: any,
 	reference: string,
 	startTime: number,
 	tracer: EdgeXRayTracer
@@ -286,7 +285,7 @@ function formatJsonResponse(
 		status: 200,
 		headers: {
 			'Content-Type': 'application/json; charset=utf-8',
-			'X-Resources': results.map(r => r.translation).join(',')
+			'X-Resources': results.map((r) => r.translation).join(',')
 		}
 	});
 }

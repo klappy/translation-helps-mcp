@@ -13,7 +13,6 @@ import { parseUSFMAlignment } from "../../experimental/usfm-alignment-parser.js"
 import { DCSApiClient } from "../../services/DCSApiClient.js";
 import { logger } from "../../utils/logger.js";
 import type { PlatformHandler } from "../platform-adapter.js";
-import { unifiedCache } from "../unified-cache.js";
 
 interface WordLink {
   id: string;
@@ -94,25 +93,7 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
     // Create cache key
     const cacheKey = `twl:${reference}:${language}:${organization}:${includeMetadata}`;
 
-    // Try to get from cache first
-    if (!bypassCache) {
-      const cachedResult = await unifiedCache.get(cacheKey);
-      if (cachedResult) {
-        logger.info(`TWL cache HIT`, { cacheKey });
-        return {
-          statusCode: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "max-age=3600",
-            "X-Cache": "HIT",
-          },
-          body: JSON.stringify({
-            ...cachedResult,
-            timestamp: new Date().toISOString(),
-          }),
-        };
-      }
-    }
+    // Response caching disabled by policy; skip transformed response reads
 
     logger.info(`TWL cache MISS, fetching fresh data`, { reference });
 
@@ -144,11 +125,7 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
       };
     }
 
-    // Cache the result
-    if (!bypassCache) {
-      await unifiedCache.set(cacheKey, result, "transformedResponse");
-      logger.info(`Cached TWL response`, { cacheKey });
-    }
+    // Do not cache transformed responses
 
     const responseTime = Date.now() - startTime;
 
@@ -175,7 +152,9 @@ export const fetchTranslationWordLinksHandler: PlatformHandler = async (request)
       body: JSON.stringify(response),
     };
   } catch (error) {
-    logger.error("TWL error", { error: error instanceof Error ? error.message : String(error) });
+    logger.error("TWL error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     const errorResponse: TWLResponse = {

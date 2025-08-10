@@ -12,7 +12,11 @@ import { estimateTokens } from "../utils/tokenCounter.js";
 // Input schema
 export const FetchTranslationQuestionsArgs = z.object({
   reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
-  language: z.string().optional().default("en").describe('Language code (default: "en")'),
+  language: z
+    .string()
+    .optional()
+    .default("en")
+    .describe('Language code (default: "en")'),
   organization: z
     .string()
     .optional()
@@ -20,12 +24,16 @@ export const FetchTranslationQuestionsArgs = z.object({
     .describe('Organization (default: "unfoldingWord")'),
 });
 
-export type FetchTranslationQuestionsArgs = z.infer<typeof FetchTranslationQuestionsArgs>;
+export type FetchTranslationQuestionsArgs = z.infer<
+  typeof FetchTranslationQuestionsArgs
+>;
 
 /**
  * Handle the fetch translation questions tool call
  */
-export async function handleFetchTranslationQuestions(args: FetchTranslationQuestionsArgs) {
+export async function handleFetchTranslationQuestions(
+  args: FetchTranslationQuestionsArgs,
+) {
   const startTime = Date.now();
 
   try {

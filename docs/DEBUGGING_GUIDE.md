@@ -87,7 +87,7 @@ curl "https://git.door43.org/api/v1/catalog/search?lang=en&owner=unfoldingWord" 
 // ❌ Wrong - too specific
 name.endsWith("_twl")(
   // ✅ Right - includes variants
-  name.endsWith("_twl") || name.includes("twl")
+  name.endsWith("_twl") || name.includes("twl"),
 ) && !name.includes("obs");
 ```
 
@@ -102,7 +102,9 @@ name.endsWith("_twl")(
 const filePath = `tn_${bookId}.tsv`;
 
 // ✅ Right - use ingredients
-const ingredient = resourceData.ingredients.find((ing) => ing.identifier === bookId);
+const ingredient = resourceData.ingredients.find(
+  (ing) => ing.identifier === bookId,
+);
 const filePath = ingredient?.path || fallbackPath;
 ```
 
@@ -186,7 +188,9 @@ curl "http://localhost:5173/api/fetch-scripture?reference=Genesis%201:1&language
 ```typescript
 // Root cause: Code selected wrong TWL resource
 const wrongResource = data.find((r) => r.name.includes("obs-twl")); // OBS only
-const rightResource = data.find((r) => r.name.endsWith("_twl") && !r.name.includes("obs")); // Bible
+const rightResource = data.find(
+  (r) => r.name.endsWith("_twl") && !r.name.includes("obs"),
+); // Bible
 ```
 
 **Result:** 0 → 11 word links, 0 → 10 translation words ✅
@@ -199,7 +203,9 @@ const rightResource = data.find((r) => r.name.endsWith("_twl") && !r.name.includ
 ```typescript
 // This pattern solves 90% of file path issues
 const getResourceFile = (resourceData, bookId) => {
-  const ingredient = resourceData.ingredients?.find((ing) => ing.identifier === bookId);
+  const ingredient = resourceData.ingredients?.find(
+    (ing) => ing.identifier === bookId,
+  );
   return ingredient?.path?.replace("./", "") || `fallback_${bookId}.tsv`;
 };
 ```

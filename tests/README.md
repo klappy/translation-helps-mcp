@@ -237,7 +237,7 @@ it(
     expect(response).toBeDefined();
     // Add specific assertions
   },
-  TIMEOUT
+  TIMEOUT,
 );
 ```
 

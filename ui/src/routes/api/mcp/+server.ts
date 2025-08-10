@@ -48,7 +48,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					tools: [
 						{
 							name: 'get_system_prompt',
-							description: 'Get the complete system prompt and constraints for full transparency about AI behavior',
+							description:
+								'Get the complete system prompt and constraints for full transparency about AI behavior',
 							inputSchema: {
 								type: 'object',
 								properties: {
@@ -222,14 +223,14 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			case 'tools/call': {
 				const toolName = body.params?.name;
 				const args = body.params?.arguments || {};
-				
+
 				// Import the unified handler with proper base URL
 				// FORCE REBUILD: All tools now use UnifiedMCPHandler (no duplicate formatting)
 				console.log('[MCP ENDPOINT] Tool call:', toolName, 'Args:', JSON.stringify(args));
-				
+
 				const { UnifiedMCPHandler } = await import('$lib/mcp/UnifiedMCPHandler');
 				const handler = new UnifiedMCPHandler(url.origin);
-				
+
 				try {
 					console.log('[MCP ENDPOINT] Using UnifiedMCPHandler for:', toolName);
 					const result = await handler.handleToolCall(toolName, args);
@@ -246,13 +247,15 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						});
 					}
 					return json({
-						content: [{
-							type: 'text',
-							text: error instanceof Error ? error.message : 'Tool execution failed'
-						}]
+						content: [
+							{
+								type: 'text',
+								text: error instanceof Error ? error.message : 'Tool execution failed'
+							}
+						]
 					});
 				}
-				
+
 				// The code below is unreachable - all tools are handled by UnifiedMCPHandler above
 				/*
 				if (toolName === 'fetch_scripture') {

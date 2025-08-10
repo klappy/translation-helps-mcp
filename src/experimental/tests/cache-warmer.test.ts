@@ -70,14 +70,18 @@ describe("Intelligent Cache Warming System", () => {
       const patterns = await cacheWarmer.analyzePatterns();
 
       for (let i = 1; i < patterns.length; i++) {
-        expect(patterns[i].priority).toBeLessThanOrEqual(patterns[i - 1].priority);
+        expect(patterns[i].priority).toBeLessThanOrEqual(
+          patterns[i - 1].priority,
+        );
       }
     });
 
     test("includes popular scripture references", async () => {
       const patterns = await cacheWarmer.analyzePatterns();
 
-      const johnReference = patterns.find((p) => p.identifier.reference === "John 3:16");
+      const johnReference = patterns.find(
+        (p) => p.identifier.reference === "John 3:16",
+      );
       expect(johnReference).toBeDefined();
       expect(johnReference!.priority).toBeGreaterThan(20); // Should have high priority
     });
@@ -108,7 +112,9 @@ describe("Intelligent Cache Warming System", () => {
     test("includes high priority strategy for hourly warming", () => {
       const strategies = cacheWarmer.getWarmingStrategies();
 
-      const highPriorityStrategy = strategies.find((s) => s.priority === "high");
+      const highPriorityStrategy = strategies.find(
+        (s) => s.priority === "high",
+      );
       expect(highPriorityStrategy).toBeDefined();
       expect(highPriorityStrategy!.schedule).toBe("0 * * * *"); // Every hour
       expect(highPriorityStrategy!.maxConcurrency).toBeGreaterThan(0);
@@ -126,9 +132,12 @@ describe("Intelligent Cache Warming System", () => {
           expect(condition).toHaveProperty("value");
           expect(condition).toHaveProperty("description");
 
-          expect(["time_range", "cache_hit_ratio", "response_time", "load_threshold"]).toContain(
-            condition.type
-          );
+          expect([
+            "time_range",
+            "cache_hit_ratio",
+            "response_time",
+            "load_threshold",
+          ]).toContain(condition.type);
           expect(["gt", "lt", "eq", "between"]).toContain(condition.operator);
           expect(condition.description.length).toBeGreaterThan(5);
         });
@@ -165,7 +174,9 @@ describe("Intelligent Cache Warming System", () => {
 
       expect(result.resourcesWarmed).toBeGreaterThanOrEqual(0);
       expect(result.resourcesFailed).toBeGreaterThanOrEqual(0);
-      expect(result.resourcesWarmed + result.resourcesFailed).toBe(strategy.resources.length);
+      expect(result.resourcesWarmed + result.resourcesFailed).toBe(
+        strategy.resources.length,
+      );
       expect(result.duration).toBeGreaterThanOrEqual(0); // Allow for 0ms (very fast execution)
     });
 
@@ -193,7 +204,9 @@ describe("Intelligent Cache Warming System", () => {
 
       // More importantly, verify the result structure and metrics
       expect(result.metrics.totalRequests).toBe(10);
-      expect(result.metrics.successfulRequests + result.metrics.failedRequests).toBe(10);
+      expect(
+        result.metrics.successfulRequests + result.metrics.failedRequests,
+      ).toBe(10);
     });
 
     test("handles warming errors gracefully", async () => {
@@ -207,7 +220,9 @@ describe("Intelligent Cache Warming System", () => {
       (warmerWithFailingClient as any).dcsClient = mockDCSClient;
 
       const strategy: WarmingStrategy = {
-        resources: [{ type: "scripture", reference: "John 3:16", language: "en" }],
+        resources: [
+          { type: "scripture", reference: "John 3:16", language: "en" },
+        ],
         schedule: "0 * * * *",
         priority: "low",
         conditions: [],
@@ -228,7 +243,9 @@ describe("Intelligent Cache Warming System", () => {
 
     test("prevents concurrent warming operations", async () => {
       const strategy: WarmingStrategy = {
-        resources: [{ type: "scripture", reference: "John 3:16", language: "en" }],
+        resources: [
+          { type: "scripture", reference: "John 3:16", language: "en" },
+        ],
         schedule: "0 * * * *",
         priority: "high",
         conditions: [],
@@ -241,7 +258,7 @@ describe("Intelligent Cache Warming System", () => {
 
       // Try to start second warming operation
       await expect(cacheWarmer.warmCache(strategy)).rejects.toThrow(
-        "Cache warming already in progress"
+        "Cache warming already in progress",
       );
 
       // Wait for first to complete
@@ -255,7 +272,9 @@ describe("Intelligent Cache Warming System", () => {
   describe("Warming Conditions", () => {
     test("evaluates time range conditions correctly", async () => {
       const strategy: WarmingStrategy = {
-        resources: [{ type: "scripture", reference: "John 3:16", language: "en" }],
+        resources: [
+          { type: "scripture", reference: "John 3:16", language: "en" },
+        ],
         schedule: "0 * * * *",
         priority: "high",
         conditions: [
@@ -276,7 +295,9 @@ describe("Intelligent Cache Warming System", () => {
 
     test("skips warming when conditions not met", async () => {
       const strategy: WarmingStrategy = {
-        resources: [{ type: "scripture", reference: "John 3:16", language: "en" }],
+        resources: [
+          { type: "scripture", reference: "John 3:16", language: "en" },
+        ],
         schedule: "0 * * * *",
         priority: "high",
         conditions: [
@@ -291,7 +312,9 @@ describe("Intelligent Cache Warming System", () => {
         maxConcurrency: 1,
       };
 
-      await expect(cacheWarmer.warmCache(strategy)).rejects.toThrow("Warming conditions not met");
+      await expect(cacheWarmer.warmCache(strategy)).rejects.toThrow(
+        "Warming conditions not met",
+      );
     });
   });
 
@@ -311,7 +334,9 @@ describe("Intelligent Cache Warming System", () => {
 
     test("tracks metrics history", async () => {
       const strategy: WarmingStrategy = {
-        resources: [{ type: "scripture", reference: "John 3:16", language: "en" }],
+        resources: [
+          { type: "scripture", reference: "John 3:16", language: "en" },
+        ],
         schedule: "0 * * * *",
         priority: "high",
         conditions: [],
@@ -384,7 +409,9 @@ describe("Intelligent Cache Warming System", () => {
       };
 
       const result = await cacheWarmer.warmCache(strategy);
-      expect(result.resourcesWarmed + result.resourcesFailed).toBe(resources.length);
+      expect(result.resourcesWarmed + result.resourcesFailed).toBe(
+        resources.length,
+      );
     });
   });
 
@@ -413,7 +440,9 @@ describe("Intelligent Cache Warming System", () => {
 
     test("achieves target cache hit improvement", async () => {
       const strategy: WarmingStrategy = {
-        resources: [{ type: "scripture", reference: "John 3:16", language: "en" }],
+        resources: [
+          { type: "scripture", reference: "John 3:16", language: "en" },
+        ],
         schedule: "0 * * * *",
         priority: "high",
         conditions: [],
@@ -458,8 +487,12 @@ describe("Cache Warming Integration", () => {
     const result = await cacheWarmer.warmCache(modifiedStrategy);
 
     // Verify completion
-    expect(result.resourcesWarmed + result.resourcesFailed).toBe(modifiedStrategy.resources.length);
-    expect(result.metrics.totalRequests).toBe(modifiedStrategy.resources.length);
+    expect(result.resourcesWarmed + result.resourcesFailed).toBe(
+      modifiedStrategy.resources.length,
+    );
+    expect(result.metrics.totalRequests).toBe(
+      modifiedStrategy.resources.length,
+    );
 
     // Check status after warming
     const status = cacheWarmer.getWarmingStatus();

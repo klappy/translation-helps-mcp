@@ -33,9 +33,12 @@ export interface LanguagesResult {
 /**
  * Core languages fetching logic
  */
-export async function getLanguages(options: LanguagesOptions = {}): Promise<LanguagesResult> {
+export async function getLanguages(
+  options: LanguagesOptions = {},
+): Promise<LanguagesResult> {
   const startTime = Date.now();
-  const { organization = "unfoldingWord", includeAlternateNames = false } = options;
+  const { organization = "unfoldingWord", includeAlternateNames = false } =
+    options;
 
   logger.info(`Core languages service called`, {
     organization,
@@ -44,7 +47,8 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
 
   // Check for cached transformed response FIRST
   const responseKey = `languages:${organization}:${includeAlternateNames}`;
-  const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
+  const cachedResponse =
+    await cache.getTransformedResponseWithCacheInfo(responseKey);
 
   if (cachedResponse.value) {
     logger.info(`Languages cache HIT`, { responseKey });
@@ -81,7 +85,9 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
     }>;
   };
 
-  logger.debug(`Catalog resources found`, { count: catalogData.data?.length || 0 });
+  logger.debug(`Catalog resources found`, {
+    count: catalogData.data?.length || 0,
+  });
 
   if (!catalogData.data || catalogData.data.length === 0) {
     throw new Error(`No resources found for ${organization}`);
@@ -120,7 +126,9 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
     }
   }
 
-  const languages = Array.from(languageMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+  const languages = Array.from(languageMap.values()).sort((a, b) =>
+    a.code.localeCompare(b.code),
+  );
   logger.info(`Extracted unique languages`, { count: languages.length });
 
   const result: LanguagesResult = {

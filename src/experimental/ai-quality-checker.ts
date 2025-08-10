@@ -164,7 +164,13 @@ interface QualityMetrics {
 const DEFAULT_CONFIG: QualityCheckConfig = {
   aiProvider: "mock",
   model: "gpt-4",
-  enabledChecks: ["accuracy", "consistency", "theology", "cultural", "naturalness"],
+  enabledChecks: [
+    "accuracy",
+    "consistency",
+    "theology",
+    "cultural",
+    "naturalness",
+  ],
   severityThresholds: {
     accuracy: 0.8,
     consistency: 0.7,
@@ -183,7 +189,8 @@ const DEFAULT_CONFIG: QualityCheckConfig = {
  */
 const QUALITY_CRITERIA = {
   accuracy: {
-    description: "Checks if the translation accurately conveys the meaning of the source text",
+    description:
+      "Checks if the translation accurately conveys the meaning of the source text",
     prompts: [
       "Does the translation preserve the core meaning of the original?",
       "Are there any additions or omissions that change the meaning?",
@@ -223,7 +230,8 @@ const QUALITY_CRITERIA = {
     ],
   },
   naturalness: {
-    description: "Assesses how natural the translation sounds to native speakers",
+    description:
+      "Assesses how natural the translation sounds to native speakers",
     prompts: [
       "Does the translation sound natural to native speakers?",
       "Are word choices appropriate and idiomatic?",
@@ -261,7 +269,9 @@ export class AIQualityChecker {
   /**
    * Perform comprehensive quality check
    */
-  async checkQuality(request: QualityCheckRequest): Promise<QualityCheckResponse> {
+  async checkQuality(
+    request: QualityCheckRequest,
+  ): Promise<QualityCheckResponse> {
     const startTime = Date.now();
 
     // Generate cache key
@@ -295,7 +305,9 @@ export class AIQualityChecker {
         issues.push(...checkIssues);
 
         // Determine if check passed based on severity threshold
-        const criticalIssues = checkIssues.filter((i) => i.severity === "critical");
+        const criticalIssues = checkIssues.filter(
+          (i) => i.severity === "critical",
+        );
         const majorIssues = checkIssues.filter((i) => i.severity === "major");
 
         if (criticalIssues.length === 0 && majorIssues.length <= 1) {
@@ -304,7 +316,9 @@ export class AIQualityChecker {
           failedChecks.push(checkType);
         }
       } catch (error) {
-        logger.warn(`Quality check ${checkType} failed`, { error: String(error) });
+        logger.warn(`Quality check ${checkType} failed`, {
+          error: String(error),
+        });
         failedChecks.push(checkType);
       }
     }
@@ -355,7 +369,11 @@ export class AIQualityChecker {
     }>
   > {
     const maxConcurrency = request.maxConcurrency || 3;
-    const results: Array<{ id: string; result: QualityCheckResponse | null; error?: string }> = [];
+    const results: Array<{
+      id: string;
+      result: QualityCheckResponse | null;
+      error?: string;
+    }> = [];
 
     // Process in batches to respect concurrency limits
     for (let i = 0; i < request.translations.length; i += maxConcurrency) {
@@ -389,7 +407,7 @@ export class AIQualityChecker {
    */
   private async runQualityCheck(
     request: QualityCheckRequest,
-    checkType: QualityCheckType
+    checkType: QualityCheckType,
   ): Promise<QualityIssue[]> {
     const criteria = QUALITY_CRITERIA[checkType];
 
@@ -406,7 +424,10 @@ export class AIQualityChecker {
   /**
    * Build context for quality check
    */
-  private buildCheckContext(request: QualityCheckRequest, checkType: QualityCheckType): string {
+  private buildCheckContext(
+    request: QualityCheckRequest,
+    checkType: QualityCheckType,
+  ): string {
     let context = `Quality Check: ${checkType}\n\n`;
     context += `Reference: ${request.reference}\n`;
     context += `Source Language: ${request.sourceLanguage}\n`;
@@ -443,7 +464,7 @@ export class AIQualityChecker {
   private async callAIForCheck(
     context: string,
     criteria: unknown,
-    request: QualityCheckRequest
+    request: QualityCheckRequest,
   ): Promise<string> {
     if (this.config.aiProvider === "mock") {
       return this.generateMockAnalysis(request, criteria);
@@ -453,13 +474,18 @@ export class AIQualityChecker {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     // In real implementation, this would call actual AI API
-    throw new Error("Real AI integration not implemented - using mock responses");
+    throw new Error(
+      "Real AI integration not implemented - using mock responses",
+    );
   }
 
   /**
    * Generate mock analysis for demonstration
    */
-  private generateMockAnalysis(request: QualityCheckRequest, criteria: unknown): string {
+  private generateMockAnalysis(
+    request: QualityCheckRequest,
+    criteria: unknown,
+  ): string {
     const mockAnalyses: Record<string, string> = {
       accuracy:
         "The translation accurately conveys the core meaning with minor terminology variations.",
@@ -467,14 +493,22 @@ export class AIQualityChecker {
         "Key terms are generally consistent, with one instance of inconsistent rendering.",
       theology:
         "Theological concepts are preserved accurately with appropriate doctrinal emphasis.",
-      cultural: "Translation shows good cultural adaptation while respecting source context.",
-      linguistic: "Grammar and syntax are correct with natural target language expressions.",
-      naturalness: "Text flows naturally for target audience with appropriate register.",
-      completeness: "All source content is represented without unnecessary additions.",
+      cultural:
+        "Translation shows good cultural adaptation while respecting source context.",
+      linguistic:
+        "Grammar and syntax are correct with natural target language expressions.",
+      naturalness:
+        "Text flows naturally for target audience with appropriate register.",
+      completeness:
+        "All source content is represented without unnecessary additions.",
     };
 
-    const checkType = criteria.description.split(" ")[1]?.toLowerCase() || "default";
-    return mockAnalyses[checkType] || "Quality check completed with satisfactory results.";
+    const checkType =
+      criteria.description.split(" ")[1]?.toLowerCase() || "default";
+    return (
+      mockAnalyses[checkType] ||
+      "Quality check completed with satisfactory results."
+    );
   }
 
   /**
@@ -483,7 +517,7 @@ export class AIQualityChecker {
   private parseAIResponse(
     analysis: string,
     checkType: QualityCheckType,
-    _request: QualityCheckRequest // eslint-disable-line @typescript-eslint/no-unused-vars
+    _request: QualityCheckRequest, // eslint-disable-line @typescript-eslint/no-unused-vars
   ): QualityIssue[] {
     const issues: QualityIssue[] = [];
 
@@ -522,7 +556,10 @@ export class AIQualityChecker {
   /**
    * Calculate overall quality score
    */
-  private calculateOverallScore(issues: QualityIssue[], checkTypes: QualityCheckType[]): number {
+  private calculateOverallScore(
+    issues: QualityIssue[],
+    checkTypes: QualityCheckType[],
+  ): number {
     let score = 100;
 
     issues.forEach((issue) => {
@@ -553,7 +590,9 @@ export class AIQualityChecker {
   /**
    * Generate issue summary
    */
-  private generateSummary(issues: QualityIssue[]): QualityCheckResponse["summary"] {
+  private generateSummary(
+    issues: QualityIssue[],
+  ): QualityCheckResponse["summary"] {
     return {
       critical: issues.filter((i) => i.severity === "critical").length,
       major: issues.filter((i) => i.severity === "major").length,
@@ -565,7 +604,10 @@ export class AIQualityChecker {
   /**
    * Generate improvement recommendations
    */
-  private generateRecommendations(issues: QualityIssue[], _request: QualityCheckRequest): string[] {
+  private generateRecommendations(
+    issues: QualityIssue[],
+    _request: QualityCheckRequest,
+  ): string[] {
     // eslint-disable-line @typescript-eslint/no-unused-vars
     const recommendations: string[] = [];
 
@@ -575,14 +617,14 @@ export class AIQualityChecker {
         acc[issue.type] = (acc[issue.type] || 0) + 1;
         return acc;
       },
-      {} as Record<QualityCheckType, number>
+      {} as Record<QualityCheckType, number>,
     );
 
     // Generate type-specific recommendations
     Object.entries(issuesByType).forEach(([type, count]) => {
       if (count > 0) {
         recommendations.push(
-          `Review ${type} guidelines and consider consulting translation resources for ${count} identified ${type} issue(s)`
+          `Review ${type} guidelines and consider consulting translation resources for ${count} identified ${type} issue(s)`,
         );
       }
     });
@@ -590,10 +632,12 @@ export class AIQualityChecker {
     // General recommendations
     if (issues.length === 0) {
       recommendations.push(
-        "Translation quality is excellent. Consider peer review for final validation."
+        "Translation quality is excellent. Consider peer review for final validation.",
       );
     } else if (issues.filter((i) => i.severity === "critical").length > 0) {
-      recommendations.push("Critical issues require immediate attention before publication.");
+      recommendations.push(
+        "Critical issues require immediate attention before publication.",
+      );
     }
 
     return recommendations;
@@ -635,21 +679,26 @@ export class AIQualityChecker {
   private updateMetrics(response: QualityCheckResponse): void {
     this.metrics.totalChecks++;
     this.metrics.averageScore =
-      (this.metrics.averageScore * (this.metrics.totalChecks - 1) + response.overallScore) /
+      (this.metrics.averageScore * (this.metrics.totalChecks - 1) +
+        response.overallScore) /
       this.metrics.totalChecks;
 
     // Track common issues
     response.issues.forEach((issue) => {
       const key = `${issue.type}-${issue.severity}`;
-      this.metrics.commonIssues[key] = (this.metrics.commonIssues[key] || 0) + 1;
+      this.metrics.commonIssues[key] =
+        (this.metrics.commonIssues[key] || 0) + 1;
     });
 
     // Add to improvement trends (daily aggregation)
     const today = new Date().toISOString().split("T")[0];
-    const existingTrend = this.metrics.improvementTrends.find((t) => t.date === today);
+    const existingTrend = this.metrics.improvementTrends.find(
+      (t) => t.date === today,
+    );
 
     if (existingTrend) {
-      existingTrend.averageScore = (existingTrend.averageScore + response.overallScore) / 2;
+      existingTrend.averageScore =
+        (existingTrend.averageScore + response.overallScore) / 2;
       existingTrend.issueCount += response.issues.length;
     } else {
       this.metrics.improvementTrends.push({
@@ -740,7 +789,9 @@ export let globalQualityChecker: AIQualityChecker | null = null;
 /**
  * Initialize global quality checker
  */
-export function initializeQualityChecker(config?: Partial<QualityCheckConfig>): AIQualityChecker {
+export function initializeQualityChecker(
+  config?: Partial<QualityCheckConfig>,
+): AIQualityChecker {
   globalQualityChecker = new AIQualityChecker(config);
   return globalQualityChecker;
 }
@@ -753,7 +804,7 @@ export async function quickQualityCheck(
   targetText: string,
   sourceLanguage: string,
   targetLanguage: string,
-  reference: string
+  reference: string,
 ): Promise<number> {
   if (!globalQualityChecker) {
     globalQualityChecker = new AIQualityChecker();

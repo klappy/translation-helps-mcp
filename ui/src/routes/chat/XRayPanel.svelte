@@ -1,16 +1,16 @@
 <script>
 	import { X, ChevronDown, ChevronRight, Clock, Database, Zap, AlertCircle } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
-	
+
 	export let data = null;
-	
+
 	const dispatch = createEventDispatcher();
 	let expandedTools = {};
-	
+
 	function toggleTool(toolId) {
 		expandedTools[toolId] = !expandedTools[toolId];
 	}
-	
+
 	function getToolIcon(toolName) {
 		if (toolName.includes('scripture')) return '📖';
 		if (toolName.includes('notes')) return '📝';
@@ -19,15 +19,21 @@
 		if (toolName.includes('context')) return '🧩';
 		return '🔧';
 	}
-	
+
 	function formatDuration(ms) {
 		if (ms < 1000) return `${ms}ms`;
 		return `${(ms / 1000).toFixed(2)}s`;
 	}
 </script>
 
-<div class="fixed bottom-0 right-0 z-50 h-full w-96 shadow-2xl" style="background-color: #0f172a; transform: translateX(0); transition: transform 0.3s ease-out;">
-	<div class="flex items-center justify-between border-b border-gray-800 p-4" style="background-color: #0f172a;">
+<div
+	class="fixed right-0 bottom-0 z-50 h-full w-96 shadow-2xl"
+	style="background-color: #0f172a; transform: translateX(0); transition: transform 0.3s ease-out;"
+>
+	<div
+		class="flex items-center justify-between border-b border-gray-800 p-4"
+		style="background-color: #0f172a;"
+	>
 		<h3 class="text-lg font-semibold text-white">X-Ray Analysis</h3>
 		<button
 			class="rounded-lg p-2 transition-colors hover:bg-gray-800"
@@ -36,7 +42,7 @@
 			<X class="h-5 w-5 text-gray-400" />
 		</button>
 	</div>
-	
+
 	<div class="h-full overflow-y-auto p-4 pb-20">
 		{#if data}
 			<!-- Summary Section -->
@@ -53,7 +59,7 @@
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Tool List -->
 			<div>
 				<h4 class="mb-3 text-sm font-medium text-gray-300">Tool Calls</h4>
@@ -89,16 +95,31 @@
 									{/if}
 								</div>
 							</button>
-							
+
 							{#if expandedTools[tool.id]}
-								<div class="border-t border-gray-700 p-3" style="background-color: rgba(15, 23, 42, 0.5);">
+								<div
+									class="border-t border-gray-700 p-3"
+									style="background-color: rgba(15, 23, 42, 0.5);"
+								>
 									<div class="mb-2 text-sm">
 										<span class="font-medium text-gray-400">Parameters:</span>
-										<pre class="mt-1 rounded p-2 font-mono text-xs text-gray-300" style="background-color: #0f172a;">{JSON.stringify(tool.params, null, 2)}</pre>
+										<pre
+											class="mt-1 rounded p-2 font-mono text-xs text-gray-300"
+											style="background-color: #0f172a;">{JSON.stringify(
+												tool.params,
+												null,
+												2
+											)}</pre>
 									</div>
 									<div class="mb-2 text-sm">
 										<span class="font-medium text-gray-400">Response:</span>
-										<pre class="mt-1 rounded p-2 font-mono text-xs text-gray-300" style="background-color: #0f172a;">{JSON.stringify(tool.response, null, 2).substring(0, 200)}...</pre>
+										<pre
+											class="mt-1 rounded p-2 font-mono text-xs text-gray-300"
+											style="background-color: #0f172a;">{JSON.stringify(
+												tool.response,
+												null,
+												2
+											).substring(0, 200)}...</pre>
 									</div>
 									<div class="mb-2 text-sm">
 										<span class="font-medium text-gray-400">Cache Status:</span>
@@ -112,16 +133,16 @@
 					{/each}
 				</div>
 			</div>
-			
+
 			<!-- Timeline -->
 			{#if data.timeline}
 				<div class="mt-6">
 					<h4 class="mb-3 text-sm font-medium text-gray-300">Timeline</h4>
 					<div class="relative mt-6 pl-8">
-						<div class="absolute left-3 top-0 h-full w-0.5 bg-gray-700"></div>
+						<div class="absolute top-0 left-3 h-full w-0.5 bg-gray-700"></div>
 						{#each data.timeline as event}
 							<div class="relative mb-4">
-								<div class="absolute -left-5 top-1 h-2 w-2 rounded-full bg-blue-500"></div>
+								<div class="absolute top-1 -left-5 h-2 w-2 rounded-full bg-blue-500"></div>
 								<div class="text-sm">
 									<span class="text-gray-400">{event.time}ms</span>
 									<span class="ml-2 text-white">{event.event}</span>
@@ -131,7 +152,7 @@
 					</div>
 				</div>
 			{/if}
-			
+
 			<!-- Citations -->
 			{#if data.citations && data.citations.length > 0}
 				<div class="mt-6">
@@ -146,9 +167,7 @@
 				</div>
 			{/if}
 		{:else}
-			<div class="text-center text-gray-500">
-				No X-Ray data available
-			</div>
+			<div class="text-center text-gray-500">No X-Ray data available</div>
 		{/if}
 	</div>
 </div>

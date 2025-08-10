@@ -238,7 +238,9 @@ describe("Response Payload Optimization System", () => {
 
       expect(result._meta?.compression?.originalSize).toBeGreaterThan(0);
       expect(result._meta?.compression?.compressedSize).toBeGreaterThan(0);
-      expect(result._meta?.compression?.compressionRatio).toBeGreaterThanOrEqual(0);
+      expect(
+        result._meta?.compression?.compressionRatio,
+      ).toBeGreaterThanOrEqual(0);
     });
 
     test("warns when size targets are exceeded", () => {
@@ -248,9 +250,10 @@ describe("Response Payload Optimization System", () => {
       const largeData = {
         data: Array.from({ length: 1000 }, (_, i) => ({
           id: i,
-          content: "This is a very long content string that will make the response large ".repeat(
-            10
-          ),
+          content:
+            "This is a very long content string that will make the response large ".repeat(
+              10,
+            ),
         })),
       };
 
@@ -259,7 +262,7 @@ describe("Response Payload Optimization System", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Size target exceeded for wordArticles")
+        expect.stringContaining("Size target exceeded for wordArticles"),
       );
 
       consoleSpy.mockRestore();
@@ -281,7 +284,9 @@ describe("Response Payload Optimization System", () => {
       });
 
       const sizeTargets = optimizer.getSizeTargets();
-      expect(result._meta?.compression?.compressedSize).toBeLessThan(sizeTargets.scripture);
+      expect(result._meta?.compression?.compressedSize).toBeLessThan(
+        sizeTargets.scripture,
+      );
     });
   });
 
@@ -375,7 +380,9 @@ describe("Response Payload Optimization System", () => {
     });
 
     test("parses fields from query parameters", () => {
-      const query = new URLSearchParams("fields=name,email&exclude=password,role");
+      const query = new URLSearchParams(
+        "fields=name,email&exclude=password,role",
+      );
       const filter = OptimizationUtils.parseFieldsFromQuery(query);
 
       expect(filter?.include).toEqual(["name", "email"]);
@@ -503,7 +510,9 @@ describe("Response Payload Optimization System", () => {
 
     test("handles deep nesting limits", () => {
       const deeplyNested = {
-        level1: { level2: { level3: { level4: { value: "deep", null: null } } } },
+        level1: {
+          level2: { level3: { level4: { value: "deep", null: null } } },
+        },
       };
 
       const shallowOptimizer = new ResponseOptimizer({

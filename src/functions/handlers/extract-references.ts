@@ -4,11 +4,15 @@
  */
 
 import { Errors } from "../../utils/errorEnvelope.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 import { extractReferences } from "../reference-parser";
 
 export const extractReferencesHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 

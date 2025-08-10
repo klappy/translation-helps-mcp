@@ -29,7 +29,8 @@ const endpoints = [
     name: "fetch-translation-questions",
     path: "/api/fetch-translation-questions?reference=John+3:16&language=en&organization=unfoldingWord&format=json",
     check: (data) =>
-      Array.isArray(data.translationQuestions) && data.translationQuestions.length > 0,
+      Array.isArray(data.translationQuestions) &&
+      data.translationQuestions.length > 0,
     expected: "Array of translation questions",
   },
   {
@@ -49,7 +50,8 @@ const endpoints = [
   {
     name: "get-context",
     path: "/api/get-context?reference=John+3:16&language=en&organization=unfoldingWord&format=json",
-    check: (data) => !!(data.context || data.notes || data.questions || data.scripture),
+    check: (data) =>
+      !!(data.context || data.notes || data.questions || data.scripture),
     expected: "Aggregated context data",
   },
   {
@@ -61,7 +63,8 @@ const endpoints = [
   {
     name: "browse-translation-academy",
     path: "/api/browse-translation-academy?language=en&organization=unfoldingWord&format=json",
-    check: (data) => Array.isArray(data.categories) && data.categories.length > 0,
+    check: (data) =>
+      Array.isArray(data.categories) && data.categories.length > 0,
     expected: "Translation academy table of contents",
   },
   {

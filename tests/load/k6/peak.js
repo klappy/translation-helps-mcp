@@ -47,7 +47,16 @@ export const options = {
       },
     },
   },
-  summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)", "p(99.5)"],
+  summaryTrendStats: [
+    "avg",
+    "min",
+    "med",
+    "max",
+    "p(90)",
+    "p(95)",
+    "p(99)",
+    "p(99.5)",
+  ],
 };
 
 // Realistic production endpoint usage patterns
@@ -178,14 +187,19 @@ function selectEndpoint() {
       if (endpoint.name.includes("Scripture")) {
         endpointCopy.params = {
           ...endpoint.params,
-          reference: scriptureReferences[Math.floor(Math.random() * scriptureReferences.length)],
+          reference:
+            scriptureReferences[
+              Math.floor(Math.random() * scriptureReferences.length)
+            ],
         };
       }
 
       if (endpoint.name.includes("Translation Words")) {
         endpointCopy.params = {
           ...endpoint.params,
-          word: translationWords[Math.floor(Math.random() * translationWords.length)],
+          word: translationWords[
+            Math.floor(Math.random() * translationWords.length)
+          ],
         };
       }
 
@@ -263,13 +277,15 @@ export default function () {
     // 0.5% sampling to avoid log spam
     const cacheStatus = isCacheHit ? "HIT" : "MISS";
     console.log(
-      `[PEAK] ${endpoint.name} ${response.status} ${Math.round(response.timings.duration)}ms ${Math.round(response.body.length / 1024)}KB [${cacheStatus}]`
+      `[PEAK] ${endpoint.name} ${response.status} ${Math.round(response.timings.duration)}ms ${Math.round(response.body.length / 1024)}KB [${cacheStatus}]`,
     );
   }
 
   // Log performance warnings
   if (response.timings.duration > 1000) {
-    console.warn(`[SLOW] ${endpoint.name} took ${Math.round(response.timings.duration)}ms`);
+    console.warn(
+      `[SLOW] ${endpoint.name} took ${Math.round(response.timings.duration)}ms`,
+    );
   }
 
   // Realistic user behavior with some urgency
@@ -291,7 +307,10 @@ export function handleSummary(data) {
 
 function textSummary(data) {
   const avgRPS = Math.round(data.metrics.http_reqs.values.rate);
-  const peakSuccessRate = (100 - data.metrics.http_req_failed.values.rate * 100).toFixed(2);
+  const peakSuccessRate = (
+    100 -
+    data.metrics.http_req_failed.values.rate * 100
+  ).toFixed(2);
 
   return `
 🚀 PEAK LOAD TEST RESULTS - 1000 RPS TARGET

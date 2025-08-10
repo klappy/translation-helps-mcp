@@ -103,7 +103,9 @@ export class ChaosMonkey {
     await this.waitForRecovery();
     experiment.metrics.recoveryTime = Date.now() - recoveryStartTime;
 
-    console.log(`🐒 Chaos Monkey: Cleaned up ${experiment.type} (${experimentId})`);
+    console.log(
+      `🐒 Chaos Monkey: Cleaned up ${experiment.type} (${experimentId})`,
+    );
 
     // Remove chaos injection
     this.removeChaosInjection(experiment.type);
@@ -145,7 +147,7 @@ export class ChaosMonkey {
   private async applyChaosByType(
     type: ChaosType,
     config: ChaosConfig,
-    experimentId: string
+    experimentId: string,
   ): Promise<void> {
     switch (type) {
       case ChaosType.DCS_TIMEOUT:
@@ -171,12 +173,21 @@ export class ChaosMonkey {
     }
   }
 
-  private async injectDcsTimeout(config: ChaosConfig, experimentId: string): Promise<void> {
+  private async injectDcsTimeout(
+    config: ChaosConfig,
+    experimentId: string,
+  ): Promise<void> {
     // Mock fetch to simulate DCS API timeouts
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    global.fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> => {
       const url = input.toString();
 
-      if (url.includes("content.bibletranslationtools.org") || url.includes("git.door43.org")) {
+      if (
+        url.includes("content.bibletranslationtools.org") ||
+        url.includes("git.door43.org")
+      ) {
         // Simulate timeout by hanging for duration then throwing
         await new Promise((resolve) => setTimeout(resolve, 30000));
         throw new Error("Request timeout - DCS API unavailable");
@@ -186,12 +197,21 @@ export class ChaosMonkey {
     };
   }
 
-  private async injectDcsUnavailable(config: ChaosConfig, experimentId: string): Promise<void> {
+  private async injectDcsUnavailable(
+    config: ChaosConfig,
+    experimentId: string,
+  ): Promise<void> {
     // Mock fetch to simulate DCS API returning 503
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    global.fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> => {
       const url = input.toString();
 
-      if (url.includes("content.bibletranslationtools.org") || url.includes("git.door43.org")) {
+      if (
+        url.includes("content.bibletranslationtools.org") ||
+        url.includes("git.door43.org")
+      ) {
         // Simulate service unavailable
         if (Math.random() < config.intensity) {
           return new Response("Service Unavailable", {
@@ -205,13 +225,21 @@ export class ChaosMonkey {
     };
   }
 
-  private async injectCacheFailure(config: ChaosConfig, experimentId: string): Promise<void> {
+  private async injectCacheFailure(
+    config: ChaosConfig,
+    experimentId: string,
+  ): Promise<void> {
     // This would integrate with actual cache implementation
     // For now, simulate by forcing cache misses
-    console.log("🐒 Simulating cache layer failure - all requests will bypass cache");
+    console.log(
+      "🐒 Simulating cache layer failure - all requests will bypass cache",
+    );
 
     // Mock cache responses to always miss
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    global.fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> => {
       const response = await this.originalFetch(input, init);
 
       // Remove cache headers to simulate cache failure
@@ -229,9 +257,15 @@ export class ChaosMonkey {
     };
   }
 
-  private async injectNetworkPartition(config: ChaosConfig, experimentId: string): Promise<void> {
+  private async injectNetworkPartition(
+    config: ChaosConfig,
+    experimentId: string,
+  ): Promise<void> {
     // Simulate intermittent network connectivity
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    global.fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> => {
       // Random network failures based on intensity
       if (Math.random() < config.intensity) {
         throw new Error("Network Error: Connection failed");
@@ -241,11 +275,17 @@ export class ChaosMonkey {
     };
   }
 
-  private async injectSlowResponse(config: ChaosConfig, experimentId: string): Promise<void> {
+  private async injectSlowResponse(
+    config: ChaosConfig,
+    experimentId: string,
+  ): Promise<void> {
     // Add artificial delays to responses
     const delayMs = config.metadata?.delay || 5000;
 
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    global.fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> => {
       // Add delay before request
       if (Math.random() < config.intensity) {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -255,9 +295,15 @@ export class ChaosMonkey {
     };
   }
 
-  private async injectInvalidData(config: ChaosConfig, experimentId: string): Promise<void> {
+  private async injectInvalidData(
+    config: ChaosConfig,
+    experimentId: string,
+  ): Promise<void> {
     // Return corrupted or invalid JSON responses
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    global.fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ): Promise<Response> => {
       const response = await this.originalFetch(input, init);
 
       if (Math.random() < config.intensity) {
@@ -309,7 +355,11 @@ export class ChaosMonkey {
 class ChaosMetricsCollector {
   private metrics: Map<string, any[]> = new Map();
 
-  recordRequest(experimentId: string, success: boolean, responseTime: number): void {
+  recordRequest(
+    experimentId: string,
+    success: boolean,
+    responseTime: number,
+  ): void {
     if (!this.metrics.has(experimentId)) {
       this.metrics.set(experimentId, []);
     }
@@ -325,7 +375,8 @@ class ChaosMetricsCollector {
     const data = this.metrics.get(experimentId) || [];
     const totalRequests = data.length;
     const failedRequests = data.filter((d) => !d.success).length;
-    const avgResponseTime = data.reduce((sum, d) => sum + d.responseTime, 0) / totalRequests || 0;
+    const avgResponseTime =
+      data.reduce((sum, d) => sum + d.responseTime, 0) / totalRequests || 0;
 
     return {
       requestsAffected: totalRequests,

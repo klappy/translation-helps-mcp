@@ -15,7 +15,9 @@ export const ListAvailableResourcesArgs = z.object({
   subject: z.string().optional(),
 });
 
-export type ListAvailableResourcesArgs = z.infer<typeof ListAvailableResourcesArgs>;
+export type ListAvailableResourcesArgs = z.infer<
+  typeof ListAvailableResourcesArgs
+>;
 
 /**
  * Handle the list available resources tool call
@@ -53,7 +55,9 @@ export async function handleSearchResources(args: ListAvailableResourcesArgs) {
     const response = await client.getResources(searchParams);
 
     if (!response.success) {
-      throw new Error(`Failed to fetch resources: ${response.error || "Unknown error"}`);
+      throw new Error(
+        `Failed to fetch resources: ${response.error || "Unknown error"}`,
+      );
     }
 
     // Transform the response data into a more user-friendly format
@@ -104,7 +108,7 @@ export async function handleSearchResources(args: ListAvailableResourcesArgs) {
               timestamp: new Date().toISOString(),
             },
             null,
-            2
+            2,
           ),
         },
       ],

@@ -20,11 +20,13 @@ export default ts.config(
         "error",
         {
           selector: "Literal[value=/[Gg]ateway [Ll]anguage/]",
-          message: 'Use "Strategic Language" instead of "Gateway Language" per UW guidelines',
+          message:
+            'Use "Strategic Language" instead of "Gateway Language" per UW guidelines',
         },
         {
           selector: "Identifier[name=/.*[Gg]ateway[Ll]anguage.*/]",
-          message: 'Use "StrategicLanguage" instead of "GatewayLanguage" per UW guidelines',
+          message:
+            'Use "StrategicLanguage" instead of "GatewayLanguage" per UW guidelines',
         },
         {
           selector: 'Property[key.name="isGatewayLanguage"]',
@@ -50,7 +52,8 @@ export default ts.config(
         "warn",
         {
           name: "scripture",
-          message: "Consider using specific UW resource types: ULT, UST, TN, TW, TWL, TQ, TA",
+          message:
+            "Consider using specific UW resource types: ULT, UST, TN, TW, TWL, TQ, TA",
         },
       ],
     },
@@ -62,12 +65,16 @@ export default ts.config(
       "no-restricted-syntax": [
         "error",
         {
-          selector: 'Property[key.name="description"] Literal[value=/Bible texts/]',
-          message: 'Use UW-specific descriptions: "ULT/GLT (Literal)" or "UST/GST (Simplified)"',
+          selector:
+            'Property[key.name="description"] Literal[value=/Bible texts/]',
+          message:
+            'Use UW-specific descriptions: "ULT/GLT (Literal)" or "UST/GST (Simplified)"',
         },
         {
-          selector: 'Property[key.name="description"] Literal[value=/various translations/]',
-          message: 'Be specific about UW resource types instead of generic "translations"',
+          selector:
+            'Property[key.name="description"] Literal[value=/various translations/]',
+          message:
+            'Be specific about UW resource types instead of generic "translations"',
         },
       ],
     },
@@ -110,5 +117,5 @@ export default ts.config(
       "**/*.min.js",
       "**/vite.config.ts.timestamp-*",
     ],
-  }
+  },
 );

@@ -14,12 +14,16 @@ import { buildUrl } from "../helpers/http";
 // Mock API functions for testing
 const mockApi = {
   fetchScripture: async (reference: string) => {
-    const response = await fetch(await buildUrl(`/api/fetch-scripture`, { reference }));
+    const response = await fetch(
+      await buildUrl(`/api/fetch-scripture`, { reference }),
+    );
     return response.json();
   },
 
   fetchTranslationNotes: async (reference: string) => {
-    const response = await fetch(await buildUrl(`/api/fetch-translation-notes`, { reference }));
+    const response = await fetch(
+      await buildUrl(`/api/fetch-translation-notes`, { reference }),
+    );
     return response.json();
   },
 
@@ -49,11 +53,14 @@ describe("🔌 Network Partition - Chaos Tests", () => {
       expect(initialResponse).toBeDefined();
 
       // Inject complete network failure
-      const experimentId = await chaosMonkey.inject(ChaosType.NETWORK_PARTITION, {
-        duration: 5000, // 5 seconds
-        intensity: 1.0, // 100% network failure
-        target: "network",
-      });
+      const experimentId = await chaosMonkey.inject(
+        ChaosType.NETWORK_PARTITION,
+        {
+          duration: 5000, // 5 seconds
+          intensity: 1.0, // 100% network failure
+          target: "network",
+        },
+      );
 
       console.log(`🐒 Network partition experiment ${experimentId} started`);
 
@@ -67,7 +74,9 @@ describe("🔌 Network Partition - Chaos Tests", () => {
         expect(chaosResponse.warning).toContain("network unavailable");
         expect(chaosResponse.scripture).toBeDefined();
 
-        console.log("✅ Successfully served cached content during network outage");
+        console.log(
+          "✅ Successfully served cached content during network outage",
+        );
       } catch (error: any) {
         // Graceful offline mode is also acceptable
         expect(error.type).toBe("NETWORK_ERROR");
@@ -105,12 +114,22 @@ describe("🔌 Network Partition - Chaos Tests", () => {
 
       // Test offline capabilities
       const offlineTests = [
-        { name: "Cached Scripture", call: () => mockApi.fetchScripture("John 3:16") },
-        { name: "Cached Notes", call: () => mockApi.fetchTranslationNotes("John 3:16") },
+        {
+          name: "Cached Scripture",
+          call: () => mockApi.fetchScripture("John 3:16"),
+        },
+        {
+          name: "Cached Notes",
+          call: () => mockApi.fetchTranslationNotes("John 3:16"),
+        },
         { name: "Cached Languages", call: () => mockApi.getLanguages() },
       ];
 
-      const offlineResults: Array<{ name: string; success: boolean; fromCache: boolean }> = [];
+      const offlineResults: Array<{
+        name: string;
+        success: boolean;
+        fromCache: boolean;
+      }> = [];
 
       for (const test of offlineTests) {
         try {
@@ -142,7 +161,7 @@ describe("🔌 Network Partition - Chaos Tests", () => {
       });
 
       console.log(
-        `✅ Offline experience: ${offlineSuccess}/${offlineTests.length} services available`
+        `✅ Offline experience: ${offlineSuccess}/${offlineTests.length} services available`,
       );
     }, 12000);
 
@@ -150,11 +169,14 @@ describe("🔌 Network Partition - Chaos Tests", () => {
       console.log("🧪 Testing: Network recovery handling...");
 
       // Short network outage
-      const experimentId = await chaosMonkey.inject(ChaosType.NETWORK_PARTITION, {
-        duration: 2000, // 2 seconds
-        intensity: 1.0,
-        target: "network",
-      });
+      const experimentId = await chaosMonkey.inject(
+        ChaosType.NETWORK_PARTITION,
+        {
+          duration: 2000, // 2 seconds
+          intensity: 1.0,
+          target: "network",
+        },
+      );
 
       // Wait for network to recover
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -183,7 +205,11 @@ describe("🔌 Network Partition - Chaos Tests", () => {
         target: "network",
       });
 
-      const results: Array<{ success: boolean; attempt: number; responseTime?: number }> = [];
+      const results: Array<{
+        success: boolean;
+        attempt: number;
+        responseTime?: number;
+      }> = [];
       const totalAttempts = 10;
 
       // Make multiple requests during flaky connection
@@ -200,23 +226,30 @@ describe("🔌 Network Partition - Chaos Tests", () => {
         await new Promise((resolve) => setTimeout(resolve, 300)); // Brief pause
       }
 
-      const successRate = results.filter((r) => r.success).length / totalAttempts;
+      const successRate =
+        results.filter((r) => r.success).length / totalAttempts;
 
       // Should maintain reasonable success rate despite flaky connection
       expect(successRate).toBeGreaterThan(0.3); // At least 30% success
 
       console.log(
-        `✅ Maintained ${(successRate * 100).toFixed(1)}% success rate on flaky connection`
+        `✅ Maintained ${(successRate * 100).toFixed(1)}% success rate on flaky connection`,
       );
 
       // Successful requests should be reasonably fast (not excessively retrying)
-      const successfulRequests = results.filter((r) => r.success && r.responseTime);
+      const successfulRequests = results.filter(
+        (r) => r.success && r.responseTime,
+      );
       if (successfulRequests.length > 0) {
         const avgResponseTime =
-          successfulRequests.reduce((sum, r) => sum + (r.responseTime || 0), 0) /
-          successfulRequests.length;
+          successfulRequests.reduce(
+            (sum, r) => sum + (r.responseTime || 0),
+            0,
+          ) / successfulRequests.length;
         expect(avgResponseTime).toBeLessThan(5000); // Under 5 seconds average
-        console.log(`✅ Average response time: ${avgResponseTime.toFixed(0)}ms`);
+        console.log(
+          `✅ Average response time: ${avgResponseTime.toFixed(0)}ms`,
+        );
       }
     }, 15000);
 
@@ -230,7 +263,11 @@ describe("🔌 Network Partition - Chaos Tests", () => {
         target: "network",
       });
 
-      const retryResults: Array<{ attempts: number; success: boolean; totalTime: number }> = [];
+      const retryResults: Array<{
+        attempts: number;
+        success: boolean;
+        totalTime: number;
+      }> = [];
 
       // Test retry behavior for multiple requests
       for (let i = 0; i < 3; i++) {
@@ -248,7 +285,9 @@ describe("🔌 Network Partition - Chaos Tests", () => {
               break;
             } catch (error) {
               if (retry < 2) {
-                await new Promise((resolve) => setTimeout(resolve, 500 * (retry + 1))); // Exponential backoff
+                await new Promise((resolve) =>
+                  setTimeout(resolve, 500 * (retry + 1)),
+                ); // Exponential backoff
               }
             }
           }
@@ -265,7 +304,7 @@ describe("🔌 Network Partition - Chaos Tests", () => {
       // Verify retry behavior
       retryResults.forEach((result, index) => {
         console.log(
-          `✅ Request ${index + 1}: ${result.attempts} attempts, ${result.success ? "success" : "failed"}, ${result.totalTime}ms`
+          `✅ Request ${index + 1}: ${result.attempts} attempts, ${result.success ? "success" : "failed"}, ${result.totalTime}ms`,
         );
 
         // Should not exceed reasonable retry limits
@@ -273,8 +312,11 @@ describe("🔌 Network Partition - Chaos Tests", () => {
         expect(result.totalTime).toBeLessThan(10000); // Not stuck retrying forever
       });
 
-      const overallSuccessRate = retryResults.filter((r) => r.success).length / retryResults.length;
-      console.log(`✅ Retry success rate: ${(overallSuccessRate * 100).toFixed(1)}%`);
+      const overallSuccessRate =
+        retryResults.filter((r) => r.success).length / retryResults.length;
+      console.log(
+        `✅ Retry success rate: ${(overallSuccessRate * 100).toFixed(1)}%`,
+      );
     }, 12000);
 
     test("gracefully degrades during partial connectivity", async () => {
@@ -289,14 +331,26 @@ describe("🔌 Network Partition - Chaos Tests", () => {
 
       // Test different service priorities during degraded connectivity
       const services = [
-        { name: "Health Check", priority: "high", call: () => mockApi.healthCheck() },
-        { name: "Scripture", priority: "high", call: () => mockApi.fetchScripture("Isaiah 40:31") },
+        {
+          name: "Health Check",
+          priority: "high",
+          call: () => mockApi.healthCheck(),
+        },
+        {
+          name: "Scripture",
+          priority: "high",
+          call: () => mockApi.fetchScripture("Isaiah 40:31"),
+        },
         {
           name: "Translation Notes",
           priority: "medium",
           call: () => mockApi.fetchTranslationNotes("Isaiah 40:31"),
         },
-        { name: "Languages", priority: "low", call: () => mockApi.getLanguages() },
+        {
+          name: "Languages",
+          priority: "low",
+          call: () => mockApi.getLanguages(),
+        },
       ];
 
       const degradationResults: Array<{
@@ -334,7 +388,9 @@ describe("🔌 Network Partition - Chaos Tests", () => {
       degradationResults.forEach((result) => {
         const status = result.success ? "✅" : "❌";
         const time = result.responseTime ? `(${result.responseTime}ms)` : "";
-        console.log(`${status} ${result.name} [${result.priority} priority] ${time}`);
+        console.log(
+          `${status} ${result.name} [${result.priority} priority] ${time}`,
+        );
       });
 
       console.log("✅ Service degradation handled based on priority");
@@ -346,11 +402,14 @@ describe("🔌 Network Partition - Chaos Tests", () => {
       console.log("🧪 Testing: Automatic network recovery detection...");
 
       // Network outage
-      const experimentId = await chaosMonkey.inject(ChaosType.NETWORK_PARTITION, {
-        duration: 3000, // 3 seconds
-        intensity: 1.0,
-        target: "network",
-      });
+      const experimentId = await chaosMonkey.inject(
+        ChaosType.NETWORK_PARTITION,
+        {
+          duration: 3000, // 3 seconds
+          intensity: 1.0,
+          target: "network",
+        },
+      );
 
       // Wait for recovery
       await new Promise((resolve) => setTimeout(resolve, 4000));
@@ -368,10 +427,14 @@ describe("🔌 Network Partition - Chaos Tests", () => {
     }, 12000);
 
     test("synchronizes cached data after network recovery", async () => {
-      console.log("🧪 Testing: Cache synchronization after network recovery...");
+      console.log(
+        "🧪 Testing: Cache synchronization after network recovery...",
+      );
 
       // Get baseline data before network issues
-      const baselineResponse = await mockApi.fetchScripture("1 Corinthians 13:4-8");
+      const baselineResponse = await mockApi.fetchScripture(
+        "1 Corinthians 13:4-8",
+      );
       const baselineText = baselineResponse.scripture.ult.text;
 
       // Network outage (forces cache usage)
@@ -383,7 +446,9 @@ describe("🔌 Network Partition - Chaos Tests", () => {
 
       // During outage, should use cache
       try {
-        const cacheResponse = await mockApi.fetchScripture("1 Corinthians 13:4-8");
+        const cacheResponse = await mockApi.fetchScripture(
+          "1 Corinthians 13:4-8",
+        );
         expect(cacheResponse.source).toBe("cache");
         expect(cacheResponse.scripture.ult.text).toBe(baselineText);
       } catch (error) {
@@ -395,10 +460,14 @@ describe("🔌 Network Partition - Chaos Tests", () => {
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
       // After recovery, data should be synchronized and consistent
-      const syncedResponse = await mockApi.fetchScripture("1 Corinthians 13:4-8");
+      const syncedResponse = await mockApi.fetchScripture(
+        "1 Corinthians 13:4-8",
+      );
       expect(syncedResponse.scripture.ult.text).toBe(baselineText);
 
-      console.log("✅ Data remained consistent through network outage and recovery");
+      console.log(
+        "✅ Data remained consistent through network outage and recovery",
+      );
     }, 10000);
 
     test("handles multiple network partition cycles", async () => {
@@ -410,7 +479,11 @@ describe("🔌 Network Partition - Chaos Tests", () => {
         { duration: 1500, intensity: 1.0 }, // 1.5 seconds full outage
       ];
 
-      const cycleResults: Array<{ cycle: number; recovered: boolean; responseTime: number }> = [];
+      const cycleResults: Array<{
+        cycle: number;
+        recovered: boolean;
+        responseTime: number;
+      }> = [];
 
       for (let i = 0; i < partitionCycles.length; i++) {
         const cycle = partitionCycles[i];
@@ -423,12 +496,16 @@ describe("🔌 Network Partition - Chaos Tests", () => {
         });
 
         // Wait for partition to end + recovery time
-        await new Promise((resolve) => setTimeout(resolve, cycle.duration + 1000));
+        await new Promise((resolve) =>
+          setTimeout(resolve, cycle.duration + 1000),
+        );
 
         // Test recovery
         const start = Date.now();
         try {
-          const response = await mockApi.fetchScripture(`Ecclesiastes ${i + 1}:1`);
+          const response = await mockApi.fetchScripture(
+            `Ecclesiastes ${i + 1}:1`,
+          );
           const responseTime = Date.now() - start;
           cycleResults.push({
             cycle: i + 1,
@@ -447,17 +524,20 @@ describe("🔌 Network Partition - Chaos Tests", () => {
       }
 
       // System should recover from all partition cycles
-      const recoveryRate = cycleResults.filter((r) => r.recovered).length / cycleResults.length;
+      const recoveryRate =
+        cycleResults.filter((r) => r.recovered).length / cycleResults.length;
       expect(recoveryRate).toBeGreaterThan(0.6); // At least 60% recovery rate
 
       cycleResults.forEach((result, index) => {
         const status = result.recovered ? "✅" : "❌";
         console.log(
-          `${status} Cycle ${result.cycle}: ${result.recovered ? "recovered" : "failed"} (${result.responseTime}ms)`
+          `${status} Cycle ${result.cycle}: ${result.recovered ? "recovered" : "failed"} (${result.responseTime}ms)`,
         );
       });
 
-      console.log(`✅ Network partition cycle recovery rate: ${(recoveryRate * 100).toFixed(1)}%`);
+      console.log(
+        `✅ Network partition cycle recovery rate: ${(recoveryRate * 100).toFixed(1)}%`,
+      );
     }, 20000);
   });
 
@@ -480,9 +560,18 @@ describe("🔌 Network Partition - Chaos Tests", () => {
 
       // Test various request sizes during poor connection
       const testCases = [
-        { name: "Single Verse", call: () => mockApi.fetchScripture("John 11:35") },
-        { name: "Verse Range", call: () => mockApi.fetchScripture("Psalm 23:1-6") },
-        { name: "Translation Notes", call: () => mockApi.fetchTranslationNotes("John 11:35") },
+        {
+          name: "Single Verse",
+          call: () => mockApi.fetchScripture("John 11:35"),
+        },
+        {
+          name: "Verse Range",
+          call: () => mockApi.fetchScripture("Psalm 23:1-6"),
+        },
+        {
+          name: "Translation Notes",
+          call: () => mockApi.fetchTranslationNotes("John 11:35"),
+        },
       ];
 
       for (const testCase of testCases) {
@@ -510,11 +599,12 @@ describe("🔌 Network Partition - Chaos Tests", () => {
         console.log(`${status} ${test.name}: ${test.responseTime}ms`);
       });
 
-      const successRate = qualityTests.filter((t) => t.success).length / qualityTests.length;
+      const successRate =
+        qualityTests.filter((t) => t.success).length / qualityTests.length;
       expect(successRate).toBeGreaterThan(0.3); // Some adaptation success
 
       console.log(
-        `✅ Connection quality adaptation success rate: ${(successRate * 100).toFixed(1)}%`
+        `✅ Connection quality adaptation success rate: ${(successRate * 100).toFixed(1)}%`,
       );
     }, 15000);
   });

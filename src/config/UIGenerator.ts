@@ -18,10 +18,18 @@ import type {
  */
 export interface GeneratedUIComponent {
   /** Component type identifier */
-  type: "parameter-form" | "example-selector" | "response-display" | "performance-metrics";
+  type:
+    | "parameter-form"
+    | "example-selector"
+    | "response-display"
+    | "performance-metrics";
 
   /** Component configuration */
-  config: UIComponentConfig | ParameterFormConfig | ExampleSelectorConfig | ResponseDisplayConfig;
+  config:
+    | UIComponentConfig
+    | ParameterFormConfig
+    | ExampleSelectorConfig
+    | ResponseDisplayConfig;
 
   /** Associated endpoint configuration */
   endpointConfig: EndpointConfig;
@@ -67,7 +75,14 @@ export interface FormFieldConfig {
   label: string;
 
   /** Field type for UI rendering */
-  type: "text" | "number" | "select" | "multiselect" | "boolean" | "textarea" | "tags";
+  type:
+    | "text"
+    | "number"
+    | "select"
+    | "multiselect"
+    | "boolean"
+    | "textarea"
+    | "tags";
 
   /** Help text or description */
   description: string;
@@ -375,7 +390,10 @@ export class UIGenerator {
   /**
    * Create form field configuration from parameter config
    */
-  private createFormField(paramName: string, paramConfig: ParamConfig): FormFieldConfig {
+  private createFormField(
+    paramName: string,
+    paramConfig: ParamConfig,
+  ): FormFieldConfig {
     const field: FormFieldConfig = {
       name: paramName,
       label: this.generateFieldLabel(paramName),
@@ -417,7 +435,9 @@ export class UIGenerator {
   /**
    * Map parameter type to UI field type
    */
-  private mapParameterTypeToFieldType(paramConfig: ParamConfig): FormFieldConfig["type"] {
+  private mapParameterTypeToFieldType(
+    paramConfig: ParamConfig,
+  ): FormFieldConfig["type"] {
     switch (paramConfig.type) {
       case "boolean":
         return "boolean";
@@ -448,7 +468,9 @@ export class UIGenerator {
   /**
    * Create field validation configuration
    */
-  private createFieldValidation(paramConfig: ParamConfig): FormFieldConfig["validation"] {
+  private createFieldValidation(
+    paramConfig: ParamConfig,
+  ): FormFieldConfig["validation"] {
     const validation: FormFieldConfig["validation"] = {};
 
     if (paramConfig.pattern) {
@@ -478,7 +500,7 @@ export class UIGenerator {
    */
   private createFieldStyling(
     paramName: string,
-    paramConfig: ParamConfig
+    paramConfig: ParamConfig,
   ): FormFieldConfig["styling"] {
     const styling: FormFieldConfig["styling"] = {};
 
@@ -520,7 +542,10 @@ export class UIGenerator {
   /**
    * Generate option description
    */
-  private generateOptionDescription(option: string, paramName: string): string | undefined {
+  private generateOptionDescription(
+    option: string,
+    paramName: string,
+  ): string | undefined {
     // Common option descriptions
     const descriptions: Record<string, Record<string, string>> = {
       format: {
@@ -557,7 +582,9 @@ export class UIGenerator {
   /**
    * Detect conditional requirements
    */
-  private detectConditionalRequirements(config: EndpointConfig): ConditionalRequirement[] {
+  private detectConditionalRequirements(
+    config: EndpointConfig,
+  ): ConditionalRequirement[] {
     const requirements: ConditionalRequirement[] = [];
 
     // Example: If format is USFM, alignment might be available
@@ -575,7 +602,9 @@ export class UIGenerator {
   /**
    * Detect cross-field validations
    */
-  private detectCrossFieldValidations(config: EndpointConfig): CrossFieldValidation[] {
+  private detectCrossFieldValidations(
+    config: EndpointConfig,
+  ): CrossFieldValidation[] {
     const validations: CrossFieldValidation[] = [];
 
     // Example: Reference and language should be compatible
@@ -595,12 +624,13 @@ export class UIGenerator {
    */
   generateExampleSelector(config: EndpointConfig): ExampleSelectorConfig {
     const processedExamples = config.examples.map((example, index) =>
-      this.processExample(example, index, config)
+      this.processExample(example, index, config),
     );
 
     return {
       examples: processedExamples,
-      defaultExample: processedExamples.length > 0 ? processedExamples[0].id : undefined,
+      defaultExample:
+        processedExamples.length > 0 ? processedExamples[0].id : undefined,
       showDescriptions: true,
       allowCustom: true,
     };
@@ -612,7 +642,7 @@ export class UIGenerator {
   private processExample(
     example: RealDataExample,
     index: number,
-    config: EndpointConfig
+    config: EndpointConfig,
   ): ProcessedExample {
     return {
       id: `example-${index}`,
@@ -631,7 +661,10 @@ export class UIGenerator {
   /**
    * Generate tags for example categorization
    */
-  private generateExampleTags(example: RealDataExample, config: EndpointConfig): string[] {
+  private generateExampleTags(
+    example: RealDataExample,
+    config: EndpointConfig,
+  ): string[] {
     const tags: string[] = [];
 
     // Add category tag
@@ -672,7 +705,9 @@ export class UIGenerator {
   /**
    * Create response structure display configuration
    */
-  private createResponseStructureConfig(config: EndpointConfig): ResponseStructureConfig {
+  private createResponseStructureConfig(
+    config: EndpointConfig,
+  ): ResponseStructureConfig {
     const { structure } = config.responseShape;
 
     return {
@@ -688,7 +723,7 @@ export class UIGenerator {
    * Create field display customizations
    */
   private createFieldCustomizations(
-    config: EndpointConfig
+    config: EndpointConfig,
   ): Record<string, FieldDisplayCustomization> {
     const customizations: Record<string, FieldDisplayCustomization> = {};
 
@@ -744,7 +779,9 @@ export class UIGenerator {
   /**
    * Create performance display configuration
    */
-  private createPerformanceDisplayConfig(config: EndpointConfig): PerformanceDisplayConfig {
+  private createPerformanceDisplayConfig(
+    config: EndpointConfig,
+  ): PerformanceDisplayConfig {
     const maxResponseTime = config.responseShape.performance.maxResponseTime;
 
     return {
@@ -762,13 +799,16 @@ export class UIGenerator {
   /**
    * Create error display configuration
    */
-  private createErrorDisplayConfig(_config: EndpointConfig): ErrorDisplayConfig {
+  private createErrorDisplayConfig(
+    _config: EndpointConfig,
+  ): ErrorDisplayConfig {
     return {
       showDetails: true,
       showSuggestions: true,
       showRetry: true,
       customMessages: {
-        "Missing reference parameter": 'Please provide a scripture reference (e.g., "John 3:16")',
+        "Missing reference parameter":
+          'Please provide a scripture reference (e.g., "John 3:16")',
         "Invalid reference format":
           'Reference should be in format "Book Chapter:Verse" (e.g., "Genesis 1:1")',
         "Resource not found":
@@ -780,7 +820,9 @@ export class UIGenerator {
   /**
    * Create content formatting configuration
    */
-  private createContentFormattingConfig(_config: EndpointConfig): ContentFormattingConfig {
+  private createContentFormattingConfig(
+    _config: EndpointConfig,
+  ): ContentFormattingConfig {
     return {
       json: {
         indent: 2,

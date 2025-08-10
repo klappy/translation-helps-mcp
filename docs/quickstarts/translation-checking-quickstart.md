@@ -48,7 +48,9 @@ class TranslationAPI {
 
   async request(endpoint, params = {}) {
     const url = new URL(endpoint, this.baseUrl);
-    Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]));
+    Object.keys(params).forEach((key) =>
+      url.searchParams.append(key, params[key]),
+    );
 
     const cacheKey = url.toString();
     if (this.cache.has(cacheKey)) {
@@ -93,7 +95,10 @@ class TranslationAPI {
   }
 
   async analyzeWords(reference, language = "en") {
-    const words = await this.request("/get-words-for-reference", { reference, language });
+    const words = await this.request("/get-words-for-reference", {
+      reference,
+      language,
+    });
     return words.words || [];
   }
 
@@ -153,8 +158,12 @@ const translationAPI = new TranslationAPI();
               placeholder="Enter your translation here..."
             ></textarea>
             <div class="translation-controls">
-              <button onclick="runChecks()" class="check-btn">Run Checks</button>
-              <button onclick="clearTranslation()" class="secondary-btn">Clear</button>
+              <button onclick="runChecks()" class="check-btn">
+                Run Checks
+              </button>
+              <button onclick="clearTranslation()" class="secondary-btn">
+                Clear
+              </button>
             </div>
           </div>
         </section>
@@ -208,9 +217,15 @@ const translationAPI = new TranslationAPI();
           <h2>Translation Helps</h2>
 
           <div class="helps-tabs">
-            <button class="tab-btn active" onclick="showHelp('notes')">Translation Notes</button>
-            <button class="tab-btn" onclick="showHelp('questions')">Questions</button>
-            <button class="tab-btn" onclick="showHelp('words')">Key Words</button>
+            <button class="tab-btn active" onclick="showHelp('notes')">
+              Translation Notes
+            </button>
+            <button class="tab-btn" onclick="showHelp('questions')">
+              Questions
+            </button>
+            <button class="tab-btn" onclick="showHelp('words')">
+              Key Words
+            </button>
           </div>
 
           <div id="notesHelp" class="help-content active">
@@ -306,12 +321,10 @@ class TranslationChecker {
   }
 
   displaySourceTexts() {
-    document.getElementById("ultText").innerHTML = this.formatTextWithHighlights(
-      this.sourceTexts.ult
-    );
-    document.getElementById("ustText").innerHTML = this.formatTextWithHighlights(
-      this.sourceTexts.ust
-    );
+    document.getElementById("ultText").innerHTML =
+      this.formatTextWithHighlights(this.sourceTexts.ult);
+    document.getElementById("ustText").innerHTML =
+      this.formatTextWithHighlights(this.sourceTexts.ust);
   }
 
   formatTextWithHighlights(text) {
@@ -333,7 +346,7 @@ class TranslationChecker {
       const regex = new RegExp(`\\b${term}\\b`, "gi");
       formatted = formatted.replace(
         regex,
-        `<span class="key-term" onclick="lookupWord('${term}')">${term}</span>`
+        `<span class="key-term" onclick="lookupWord('${term}')">${term}</span>`,
       );
     });
 
@@ -341,7 +354,9 @@ class TranslationChecker {
   }
 
   async runChecks() {
-    const userTranslation = document.getElementById("userTranslation").value.trim();
+    const userTranslation = document
+      .getElementById("userTranslation")
+      .value.trim();
     if (!userTranslation) {
       alert("Please enter your translation first.");
       return;
@@ -391,7 +406,10 @@ class TranslationChecker {
 
       // Check for extra concepts not in source
       translationWords.forEach((word) => {
-        if (!this.hasEquivalent(word, sourceWords) && this.isSignificantWord(word)) {
+        if (
+          !this.hasEquivalent(word, sourceWords) &&
+          this.isSignificantWord(word)
+        ) {
           accuracyIssues.push({
             type: "extra_concept",
             word: word,
@@ -403,7 +421,8 @@ class TranslationChecker {
       this.displayAccuracyResults(accuracyIssues);
       this.checkResults.accuracy = this.calculateAccuracyScore(accuracyIssues);
     } catch (error) {
-      results.innerHTML = '<div class="error">Error running accuracy check</div>';
+      results.innerHTML =
+        '<div class="error">Error running accuracy check</div>';
     }
   }
 
@@ -422,7 +441,8 @@ class TranslationChecker {
           type: "long_sentence",
           sentence: sentence.trim(),
           wordCount: words.length,
-          suggestion: "Consider breaking this sentence into shorter parts for better clarity.",
+          suggestion:
+            "Consider breaking this sentence into shorter parts for better clarity.",
         });
       }
     });
@@ -433,7 +453,8 @@ class TranslationChecker {
       clarityIssues.push({
         type: "complex_words",
         words: complexWords,
-        suggestion: "Consider if these long words could be replaced with simpler alternatives.",
+        suggestion:
+          "Consider if these long words could be replaced with simpler alternatives.",
       });
     }
 
@@ -450,7 +471,7 @@ class TranslationChecker {
       (note) =>
         note.text.toLowerCase().includes("cultur") ||
         note.text.toLowerCase().includes("custom") ||
-        note.text.toLowerCase().includes("metaphor")
+        note.text.toLowerCase().includes("metaphor"),
     );
 
     const culturalIssues = [];
@@ -460,7 +481,8 @@ class TranslationChecker {
         type: "cultural_note",
         reference: note.reference,
         note: note.text,
-        suggestion: "Consider how this cultural element should be handled in your target culture.",
+        suggestion:
+          "Consider how this cultural element should be handled in your target culture.",
       });
     });
 
@@ -478,7 +500,9 @@ class TranslationChecker {
     for (const keyWord of this.keyWords.slice(0, 5)) {
       // Limit to 5 words
       try {
-        const definition = await translationAPI.checkWordDefinition(keyWord.word);
+        const definition = await translationAPI.checkWordDefinition(
+          keyWord.word,
+        );
 
         // Check if word appears in translation
         const regex = new RegExp(`\\b${keyWord.word}\\b`, "i");
@@ -505,7 +529,8 @@ class TranslationChecker {
     const container = document.getElementById("accuracyResults");
 
     if (issues.length === 0) {
-      container.innerHTML = '<div class="success">✓ No major accuracy issues detected!</div>';
+      container.innerHTML =
+        '<div class="success">✓ No major accuracy issues detected!</div>';
       return;
     }
 
@@ -528,7 +553,8 @@ class TranslationChecker {
     const container = document.getElementById("clarityResults");
 
     if (issues.length === 0) {
-      container.innerHTML = '<div class="success">✓ Translation appears clear and readable!</div>';
+      container.innerHTML =
+        '<div class="success">✓ Translation appears clear and readable!</div>';
       return;
     }
 
@@ -630,17 +656,27 @@ class TranslationChecker {
             "them",
             "well",
             "were",
-          ].includes(word)
+          ].includes(word),
       );
   }
 
   hasEquivalent(word, wordList) {
     // Simple check - could be enhanced with synonyms
-    return wordList.some((w) => w === word || w.includes(word) || word.includes(w));
+    return wordList.some(
+      (w) => w === word || w.includes(word) || word.includes(w),
+    );
   }
 
   isSignificantWord(word) {
-    const insignificant = ["very", "really", "quite", "also", "just", "even", "still"];
+    const insignificant = [
+      "very",
+      "really",
+      "quite",
+      "also",
+      "just",
+      "even",
+      "still",
+    ];
     return !insignificant.includes(word.toLowerCase());
   }
 
@@ -738,8 +774,10 @@ class TranslationChecker {
   }
 
   showLoading() {
-    document.getElementById("ultText").innerHTML = '<div class="loading">Loading ULT...</div>';
-    document.getElementById("ustText").innerHTML = '<div class="loading">Loading UST...</div>';
+    document.getElementById("ultText").innerHTML =
+      '<div class="loading">Loading ULT...</div>';
+    document.getElementById("ustText").innerHTML =
+      '<div class="loading">Loading UST...</div>';
   }
 
   showError(message) {
@@ -767,8 +805,12 @@ function clearTranslation() {
 
 function showHelp(type) {
   // Hide all help content
-  document.querySelectorAll(".help-content").forEach((el) => el.classList.remove("active"));
-  document.querySelectorAll(".tab-btn").forEach((el) => el.classList.remove("active"));
+  document
+    .querySelectorAll(".help-content")
+    .forEach((el) => el.classList.remove("active"));
+  document
+    .querySelectorAll(".tab-btn")
+    .forEach((el) => el.classList.remove("active"));
 
   // Show selected help content
   document.getElementById(type + "Help").classList.add("active");
@@ -801,7 +843,8 @@ window.addEventListener("load", () => {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   line-height: 1.6;
   color: #333;
   background: #f5f7fa;

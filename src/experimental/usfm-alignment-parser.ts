@@ -110,7 +110,7 @@ function calculateAlignmentConfidence(
     hasLemma: boolean;
     hasMorph: boolean;
     occurrenceMatch: boolean;
-  }
+  },
 ): number {
   let confidence = 0.5; // Base confidence
 
@@ -191,7 +191,9 @@ export class USFMAlignmentParser {
     // Extract chapter (get the last/current chapter)
     const chapterMatches = Array.from(usfmText.matchAll(USFM_PATTERNS.CHAPTER));
     if (chapterMatches.length > 0) {
-      this.currentChapter = parseInt(chapterMatches[chapterMatches.length - 1][1]);
+      this.currentChapter = parseInt(
+        chapterMatches[chapterMatches.length - 1][1],
+      );
     }
 
     // Extract verse (get the last/current verse)
@@ -210,14 +212,18 @@ export class USFMAlignmentParser {
 
     while (position < usfmText.length) {
       // Find next zaln-s marker
-      const startMatch = USFM_PATTERNS.ZALN_START.exec(usfmText.slice(position));
+      const startMatch = USFM_PATTERNS.ZALN_START.exec(
+        usfmText.slice(position),
+      );
       if (!startMatch) break;
 
       const startPosition = position + startMatch.index!;
       const attributes = parseAttributes(startMatch[1]);
 
       // Find corresponding zaln-e marker
-      const remainingText = usfmText.slice(startPosition + startMatch[0].length);
+      const remainingText = usfmText.slice(
+        startPosition + startMatch[0].length,
+      );
       const endMatch = USFM_PATTERNS.ZALN_END.exec(remainingText);
 
       if (!endMatch) {
@@ -227,10 +233,13 @@ export class USFMAlignmentParser {
       }
 
       const endPosition =
-        startPosition + startMatch[0].length + endMatch.index! + endMatch[0].length;
+        startPosition +
+        startMatch[0].length +
+        endMatch.index! +
+        endMatch[0].length;
       const groupContent = usfmText.slice(
         startPosition + startMatch[0].length,
-        endPosition - endMatch[0].length
+        endPosition - endMatch[0].length,
       );
 
       // Extract words within this group
@@ -259,11 +268,17 @@ export class USFMAlignmentParser {
   /**
    * Extract individual word alignments
    */
-  private extractWordAlignments(usfmText: string, groups: AlignmentGroup[]): WordAlignment[] {
+  private extractWordAlignments(
+    usfmText: string,
+    groups: AlignmentGroup[],
+  ): WordAlignment[] {
     const alignments: WordAlignment[] = [];
 
     for (const group of groups) {
-      const groupContent = usfmText.slice(group.span.startPosition, group.span.endPosition);
+      const groupContent = usfmText.slice(
+        group.span.startPosition,
+        group.span.endPosition,
+      );
       const wordMatches = Array.from(groupContent.matchAll(USFM_PATTERNS.WORD));
 
       for (const wordMatch of wordMatches) {
@@ -287,7 +302,8 @@ export class USFMAlignmentParser {
           targetWord: targetWord.trim(),
           position: {
             start: group.span.startPosition + wordMatch.index!,
-            end: group.span.startPosition + wordMatch.index! + wordMatch[0].length,
+            end:
+              group.span.startPosition + wordMatch.index! + wordMatch[0].length,
             verse: this.currentVerse,
             chapter: this.currentChapter,
           },
@@ -316,7 +332,10 @@ export class USFMAlignmentParser {
     }
 
     // Secondary source: x-lemma
-    if (attributes["x-lemma"] && attributes["x-lemma"] !== attributes["x-content"]) {
+    if (
+      attributes["x-lemma"] &&
+      attributes["x-lemma"] !== attributes["x-content"]
+    ) {
       sourceWords.push(attributes["x-lemma"]);
     }
 
@@ -383,7 +402,7 @@ export class USFMAlignmentParser {
    */
   public findAlignmentsByStrong(
     alignments: WordAlignment[],
-    strongNumber: string
+    strongNumber: string,
   ): WordAlignment[] {
     return alignments.filter((a) => a.attributes["x-strong"] === strongNumber);
   }
@@ -391,7 +410,10 @@ export class USFMAlignmentParser {
   /**
    * Find alignments by lemma
    */
-  public findAlignmentsByLemma(alignments: WordAlignment[], lemma: string): WordAlignment[] {
+  public findAlignmentsByLemma(
+    alignments: WordAlignment[],
+    lemma: string,
+  ): WordAlignment[] {
     return alignments.filter((a) => a.attributes["x-lemma"] === lemma);
   }
 
@@ -414,13 +436,18 @@ export class USFMAlignmentParser {
     };
 
     if (stats.total > 0) {
-      stats.averageConfidence = alignments.reduce((sum, a) => sum + a.confidence, 0) / stats.total;
+      stats.averageConfidence =
+        alignments.reduce((sum, a) => sum + a.confidence, 0) / stats.total;
 
-      stats.confidenceDistribution.high = alignments.filter((a) => a.confidence > 0.8).length;
-      stats.confidenceDistribution.medium = alignments.filter(
-        (a) => a.confidence >= 0.5 && a.confidence <= 0.8
+      stats.confidenceDistribution.high = alignments.filter(
+        (a) => a.confidence > 0.8,
       ).length;
-      stats.confidenceDistribution.low = alignments.filter((a) => a.confidence < 0.5).length;
+      stats.confidenceDistribution.medium = alignments.filter(
+        (a) => a.confidence >= 0.5 && a.confidence <= 0.8,
+      ).length;
+      stats.confidenceDistribution.low = alignments.filter(
+        (a) => a.confidence < 0.5,
+      ).length;
     }
 
     return stats;
@@ -497,7 +524,9 @@ export function validateUSFMAlignment(usfmText: string): {
   const endCount = (usfmText.match(/\\zaln-e/g) || []).length;
 
   if (startCount !== endCount) {
-    errors.push(`Unbalanced alignment markers: ${startCount} start, ${endCount} end`);
+    errors.push(
+      `Unbalanced alignment markers: ${startCount} start, ${endCount} end`,
+    );
   }
 
   // Check for word markers
@@ -518,7 +547,9 @@ export function validateUSFMAlignment(usfmText: string): {
       warnings.push("Low average alignment confidence");
     }
   } catch (error) {
-    errors.push(`Parsing error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    errors.push(
+      `Parsing error: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
   }
 
   return {

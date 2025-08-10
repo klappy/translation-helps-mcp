@@ -149,7 +149,9 @@ curl "https://translation-helps-mcp.pages.dev/api/fetch-scripture?reference=John
 
 ```javascript
 // Fetch John 3:16 in English
-const response = await fetch("/api/fetch-scripture?reference=John%203:16&language=en");
+const response = await fetch(
+  "/api/fetch-scripture?reference=John%203:16&language=en",
+);
 const data = await response.json();
 
 console.log(data.scripture.ult.text);
@@ -179,7 +181,9 @@ const response = await fetch("/api/get-languages");
 const data = await response.json();
 
 data.languages.forEach((lang) => {
-  console.log(`${lang.name} (${lang.code}): ${lang.coverage.scripture}% coverage`);
+  console.log(
+    `${lang.name} (${lang.code}): ${lang.coverage.scripture}% coverage`,
+  );
 });
 ```
 

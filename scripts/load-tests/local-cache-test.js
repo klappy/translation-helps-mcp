@@ -13,8 +13,14 @@ const BASE_URL = "http://localhost:5173";
 const ENDPOINTS = [
   { path: "/api/health", name: "Health Check" },
   { path: "/api/get-languages?organization=unfoldingWord", name: "Languages" },
-  { path: "/api/fetch-scripture?reference=John 3:16&language=en", name: "Scripture" },
-  { path: "/api/fetch-translation-notes?reference=Titus 1:1&language=en", name: "Notes" },
+  {
+    path: "/api/fetch-scripture?reference=John 3:16&language=en",
+    name: "Scripture",
+  },
+  {
+    path: "/api/fetch-translation-notes?reference=Titus 1:1&language=en",
+    name: "Notes",
+  },
 ];
 
 // Simple request function
@@ -60,7 +66,7 @@ async function testEndpoint(endpoint, description, headers = {}) {
     const cacheIcon = result.cacheStatus?.includes("HIT") ? "🟢" : "🔴";
 
     console.log(
-      `   ✅ ${result.duration}ms | ${result.statusCode} | ${cacheIcon} ${result.cacheStatus}`
+      `   ✅ ${result.duration}ms | ${result.statusCode} | ${cacheIcon} ${result.cacheStatus}`,
     );
     console.log(`   📄 ${result.dataSize} bytes | Version: ${result.version}`);
 
@@ -102,14 +108,22 @@ async function main() {
 
   for (const endpoint of ENDPOINTS) {
     // Test query parameter bypass
-    const bypassUrl = endpoint.path + (endpoint.path.includes("?") ? "&" : "?") + "nocache=true";
-    await testEndpoint({ ...endpoint, path: bypassUrl }, "Query Bypass (?nocache=true)");
+    const bypassUrl =
+      endpoint.path +
+      (endpoint.path.includes("?") ? "&" : "?") +
+      "nocache=true";
+    await testEndpoint(
+      { ...endpoint, path: bypassUrl },
+      "Query Bypass (?nocache=true)",
+    );
 
     // Test header bypass
     await testEndpoint(endpoint, "Header Bypass", { "X-Cache-Bypass": "true" });
 
     // Test cache-control bypass
-    await testEndpoint(endpoint, "Cache-Control Bypass", { "Cache-Control": "no-cache" });
+    await testEndpoint(endpoint, "Cache-Control Bypass", {
+      "Cache-Control": "no-cache",
+    });
 
     console.log("");
   }

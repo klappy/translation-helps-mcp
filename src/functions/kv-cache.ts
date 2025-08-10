@@ -6,18 +6,25 @@
 import { logger } from "../utils/logger.js";
 
 interface KVNamespace {
-  get(key: string, options?: { type?: "text" | "json" | "arrayBuffer" }): Promise<unknown>;
+  get(
+    key: string,
+    options?: { type?: "text" | "json" | "arrayBuffer" },
+  ): Promise<unknown>;
   put(
     key: string,
     value: string | ArrayBuffer,
-    options?: { expirationTtl?: number }
+    options?: { expirationTtl?: number },
   ): Promise<void>;
   delete(key: string): Promise<void>;
-  list(options?: { prefix?: string; limit?: number }): Promise<{ keys: Array<{ name: string }> }>;
+  list(options?: {
+    prefix?: string;
+    limit?: number;
+  }): Promise<{ keys: Array<{ name: string }> }>;
 }
 
 export class CloudflareKVCache {
-  private memoryCache: Map<string, { value: unknown; expires: number }> = new Map();
+  private memoryCache: Map<string, { value: unknown; expires: number }> =
+    new Map();
   private kv: KVNamespace | null = null;
   private kvAvailable = false;
 
@@ -27,7 +34,9 @@ export class CloudflareKVCache {
       this.kvAvailable = true;
       logger.info("🚀 CloudflareKVCache initialized with KV namespace");
     } else {
-      logger.warn("⚠️ CloudflareKVCache running in memory-only mode (no KV namespace)");
+      logger.warn(
+        "⚠️ CloudflareKVCache running in memory-only mode (no KV namespace)",
+      );
     }
   }
 
@@ -42,13 +51,16 @@ export class CloudflareKVCache {
     // KV second: persistent store, then warm memory for subsequent hits
     if (this.kvAvailable && this.kv) {
       try {
-        const kvStart = typeof performance !== "undefined" ? performance.now() : Date.now();
+        const kvStart =
+          typeof performance !== "undefined" ? performance.now() : Date.now();
         const kvValue = await this.kv.get(key, { type: "arrayBuffer" });
         const kvMs = Math.max(
           1,
           Math.round(
-            (typeof performance !== "undefined" ? performance.now() : Date.now()) - kvStart
-          )
+            (typeof performance !== "undefined"
+              ? performance.now()
+              : Date.now()) - kvStart,
+          ),
         );
         if (kvValue) {
           logger.info(`☁️ KV cache HIT for ${key} in ${kvMs}ms`);
@@ -69,7 +81,11 @@ export class CloudflareKVCache {
     return null;
   }
 
-  async set(key: string, value: ArrayBuffer | string, ttlSeconds: number = 1800): Promise<void> {
+  async set(
+    key: string,
+    value: ArrayBuffer | string,
+    ttlSeconds: number = 1800,
+  ): Promise<void> {
     // Always set in memory cache
     this.memoryCache.set(key, {
       value,
@@ -112,7 +128,9 @@ export class CloudflareKVCache {
     this.memoryCache.clear();
 
     if (this.kvAvailable && this.kv) {
-      logger.warn("KV clear called without prefixes - skipping full wipe for safety");
+      logger.warn(
+        "KV clear called without prefixes - skipping full wipe for safety",
+      );
     }
   }
 
@@ -120,7 +138,9 @@ export class CloudflareKVCache {
    * Delete all KV keys matching the provided prefixes. Memory cache is also cleared.
    * Returns the number of KV keys deleted.
    */
-  async clearPrefixes(prefixes: string[] = ["zip:", "catalog:", "zipfile:"]): Promise<number> {
+  async clearPrefixes(
+    prefixes: string[] = ["zip:", "catalog:", "zipfile:"],
+  ): Promise<number> {
     this.memoryCache.clear();
     let deletedCount = 0;
 

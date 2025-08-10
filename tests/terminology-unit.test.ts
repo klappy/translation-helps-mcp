@@ -43,28 +43,44 @@ describe("UW Terminology Compliance (Unit Tests)", () => {
     test("Resource descriptions use UW-compliant terminology", () => {
       // Check ULT description
       expect(ResourceDescriptions[ResourceType.ULT]).toContain("Form-centric");
-      expect(ResourceDescriptions[ResourceType.ULT]).toContain("word alignment");
+      expect(ResourceDescriptions[ResourceType.ULT]).toContain(
+        "word alignment",
+      );
 
       // Check GLT description
-      expect(ResourceDescriptions[ResourceType.GLT]).toContain("Strategic Language");
-      expect(ResourceDescriptions[ResourceType.GLT]).not.toContain("Gateway Language");
+      expect(ResourceDescriptions[ResourceType.GLT]).toContain(
+        "Strategic Language",
+      );
+      expect(ResourceDescriptions[ResourceType.GLT]).not.toContain(
+        "Gateway Language",
+      );
 
       // Check UST description
       expect(ResourceDescriptions[ResourceType.UST]).toContain("Meaning-based");
-      expect(ResourceDescriptions[ResourceType.UST]).toContain("word alignment");
+      expect(ResourceDescriptions[ResourceType.UST]).toContain(
+        "word alignment",
+      );
 
       // Check GST description
-      expect(ResourceDescriptions[ResourceType.GST]).toContain("Strategic Language");
-      expect(ResourceDescriptions[ResourceType.GST]).not.toContain("Gateway Language");
+      expect(ResourceDescriptions[ResourceType.GST]).toContain(
+        "Strategic Language",
+      );
+      expect(ResourceDescriptions[ResourceType.GST]).not.toContain(
+        "Gateway Language",
+      );
 
       // Check Translation Notes description
       expect(ResourceDescriptions[ResourceType.TN]).toContain("Verse-by-verse");
 
       // Check Translation Words description
-      expect(ResourceDescriptions[ResourceType.TW]).toContain("biblical term definitions");
+      expect(ResourceDescriptions[ResourceType.TW]).toContain(
+        "biblical term definitions",
+      );
 
       // Check Translation Questions description
-      expect(ResourceDescriptions[ResourceType.TQ]).toContain("Community checking");
+      expect(ResourceDescriptions[ResourceType.TQ]).toContain(
+        "Community checking",
+      );
     });
 
     test("User types use correct UW terminology", () => {
@@ -105,7 +121,9 @@ describe("UW Terminology Compliance (Unit Tests)", () => {
       expect(ResourceDescriptions[ResourceType.TW]).toContain("definitions");
 
       // TQ should reference checking
-      expect(ResourceDescriptions[ResourceType.TQ]).toContain("Community checking");
+      expect(ResourceDescriptions[ResourceType.TQ]).toContain(
+        "Community checking",
+      );
 
       // TA should reference methodology
       expect(ResourceDescriptions[ResourceType.TA]).toContain("methodology");
@@ -118,7 +136,9 @@ describe("UW Terminology Compliance (Unit Tests)", () => {
       const clientMethods = Object.getOwnPropertyNames(DCSApiClient.prototype);
 
       // Should not have methods with "gateway" in the name
-      const gatewayMethods = clientMethods.filter((name) => name.toLowerCase().includes("gateway"));
+      const gatewayMethods = clientMethods.filter((name) =>
+        name.toLowerCase().includes("gateway"),
+      );
       expect(gatewayMethods).toHaveLength(0);
     });
 
@@ -182,11 +202,15 @@ describe("UW Terminology Compliance (Unit Tests)", () => {
     test("Resource descriptions match UW ecosystem concepts", () => {
       // ULT/GLT should emphasize form and structure
       expect(ResourceDescriptions[ResourceType.ULT]).toContain("Form-centric");
-      expect(ResourceDescriptions[ResourceType.GLT]).toContain("source language structure");
+      expect(ResourceDescriptions[ResourceType.GLT]).toContain(
+        "source language structure",
+      );
 
       // UST/GST should emphasize meaning and clarity
       expect(ResourceDescriptions[ResourceType.UST]).toContain("Meaning-based");
-      expect(ResourceDescriptions[ResourceType.GST]).toContain("natural expression");
+      expect(ResourceDescriptions[ResourceType.GST]).toContain(
+        "natural expression",
+      );
 
       // All scripture resources should mention word alignment
       [ResourceType.ULT, ResourceType.UST].forEach((type) => {
@@ -206,7 +230,10 @@ describe("UW Terminology Compliance (Unit Tests)", () => {
  * Helper function to validate that a string contains UW-approved terminology
  * and doesn't contain deprecated terms
  */
-export function validateUWTerminology(text: string): { valid: boolean; issues: string[] } {
+export function validateUWTerminology(text: string): {
+  valid: boolean;
+  issues: string[];
+} {
   const issues: string[] = [];
 
   // Check for deprecated terms
@@ -235,7 +262,12 @@ export function validateUWTerminology(text: string): { valid: boolean; issues: s
  */
 export function validateResourceHierarchy(): boolean {
   // Scripture texts should be at top level
-  const scriptureTypes = [ResourceType.ULT, ResourceType.GLT, ResourceType.UST, ResourceType.GST];
+  const scriptureTypes = [
+    ResourceType.ULT,
+    ResourceType.GLT,
+    ResourceType.UST,
+    ResourceType.GST,
+  ];
 
   // Translation helps should support scripture
   const helpTypes = [

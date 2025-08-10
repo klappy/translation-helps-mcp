@@ -1,6 +1,6 @@
 /**
  * Sacred Text Constraints
- * 
+ *
  * Enforces verbatim scripture quotation and proper citation requirements
  * for the AI Assistant Chat Interface.
  */
@@ -56,9 +56,9 @@ CRITICAL RULES - NEVER VIOLATE:
  */
 export function validateScriptureQuote(quote: string, source: string): boolean {
   // Normalize whitespace for comparison
-  const normalizedQuote = quote.trim().replace(/\s+/g, ' ');
-  const normalizedSource = source.trim().replace(/\s+/g, ' ');
-  
+  const normalizedQuote = quote.trim().replace(/\s+/g, " ");
+  const normalizedSource = source.trim().replace(/\s+/g, " ");
+
   return normalizedQuote === normalizedSource;
 }
 
@@ -69,11 +69,11 @@ export function extractCitations(response: string): string[] {
   const citationRegex = /\[([^\]]+)\]/g;
   const citations: string[] = [];
   let match;
-  
+
   while ((match = citationRegex.exec(response)) !== null) {
     citations.push(match[1]);
   }
-  
+
   return citations;
 }
 
@@ -82,27 +82,28 @@ export function extractCitations(response: string): string[] {
  */
 export function checkForInterpretation(response: string): boolean {
   const interpretationPhrases = [
-    'this means',
-    'this teaches',
-    'this shows us',
-    'we learn',
-    'this reveals',
-    'the meaning is',
-    'this symbolizes',
-    'this represents',
-    'spiritually speaking',
-    'theologically'
+    "this means",
+    "this teaches",
+    "this shows us",
+    "we learn",
+    "this reveals",
+    "the meaning is",
+    "this symbolizes",
+    "this represents",
+    "spiritually speaking",
+    "theologically",
   ];
-  
+
   const lowerResponse = response.toLowerCase();
-  return interpretationPhrases.some(phrase => lowerResponse.includes(phrase));
+  return interpretationPhrases.some((phrase) => lowerResponse.includes(phrase));
 }
 
 /**
  * System prompt for the get-system-prompt tool
  */
 export const SYSTEM_PROMPT_TRANSPARENCY = {
-  name: 'get_system_prompt',
-  description: 'Returns the complete system prompt and constraints for transparency',
-  response: SACRED_TEXT_SYSTEM_PROMPT
+  name: "get_system_prompt",
+  description:
+    "Returns the complete system prompt and constraints for transparency",
+  response: SACRED_TEXT_SYSTEM_PROMPT,
 };

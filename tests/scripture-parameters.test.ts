@@ -51,13 +51,15 @@ describe("Scripture API Parameter Tests", () => {
         expect(usfmResponse.scripture.text).toContain("\\");
 
         // Content should be different
-        expect(textResponse.scripture.text).not.toBe(usfmResponse.scripture.text);
+        expect(textResponse.scripture.text).not.toBe(
+          usfmResponse.scripture.text,
+        );
 
         // Metadata should reflect the format
         expect(textResponse.metadata.format).toBe("text");
         expect(usfmResponse.metadata.format).toBe("usfm");
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -87,13 +89,15 @@ describe("Scripture API Parameter Tests", () => {
         expect(withoutNumbers.scripture.text).not.toMatch(/^16\s/);
 
         // Content should be different
-        expect(withNumbers.scripture.text).not.toBe(withoutNumbers.scripture.text);
+        expect(withNumbers.scripture.text).not.toBe(
+          withoutNumbers.scripture.text,
+        );
 
         // Metadata should reflect the setting
         expect(withNumbers.metadata.includeVerseNumbers).toBe(true);
         expect(withoutNumbers.metadata.includeVerseNumbers).toBe(false);
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -119,7 +123,7 @@ describe("Scripture API Parameter Tests", () => {
         expect(withoutNumbers.scripture.text).not.toMatch(/^16\s/);
         expect(withoutNumbers.scripture.text).not.toMatch(/\s17\s/);
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -135,7 +139,7 @@ describe("Scripture API Parameter Tests", () => {
         expect(response.scriptures).toBeUndefined();
         expect(response.metadata.translationsFound).toBe(1);
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -159,7 +163,7 @@ describe("Scripture API Parameter Tests", () => {
           expect(scripture.citation.resource).toBeDefined();
         });
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -178,7 +182,7 @@ describe("Scripture API Parameter Tests", () => {
         expect(response.metadata.format).toBe("usfm");
         expect(response.metadata.includeVerseNumbers).toBe(false);
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -199,7 +203,7 @@ describe("Scripture API Parameter Tests", () => {
           expect(scripture.text).toMatch(/^16\s/);
         });
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -210,11 +214,22 @@ describe("Scripture API Parameter Tests", () => {
         const baseParams = { reference: "John 3:16" };
 
         const responses = await Promise.all([
-          fetchScripture({ ...baseParams, format: "text", includeVerseNumbers: "false" }),
+          fetchScripture({
+            ...baseParams,
+            format: "text",
+            includeVerseNumbers: "false",
+          }),
           fetchScripture({ ...baseParams, format: "usfm" }),
           fetchScripture({ ...baseParams, includeVerseNumbers: "true" }),
-          fetchScripture({ ...baseParams, includeVerseNumbers: "true", format: "usfm" }), // Different combo
-          fetchScripture({ ...baseParams, includeMultipleTranslations: "true" }),
+          fetchScripture({
+            ...baseParams,
+            includeVerseNumbers: "true",
+            format: "usfm",
+          }), // Different combo
+          fetchScripture({
+            ...baseParams,
+            includeMultipleTranslations: "true",
+          }),
         ]);
 
         // All responses should have different cache keys
@@ -224,7 +239,7 @@ describe("Scripture API Parameter Tests", () => {
 
         expect(uniqueCacheKeys.size).toBe(cacheKeys.length);
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -241,7 +256,7 @@ describe("Scripture API Parameter Tests", () => {
         expect(response.metadata.format).toBe("text");
         expect(response.scripture.text).not.toContain("\\");
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 });

@@ -22,7 +22,11 @@ export type DataSourceType =
   | "zip-direct"; // NEW
 
 export interface ZipConfig {
-  fetchMethod: "getScripture" | "getTSVData" | "getUSFMContent" | "getMarkdownContent";
+  fetchMethod:
+    | "getScripture"
+    | "getTSVData"
+    | "getUSFMContent"
+    | "getMarkdownContent";
   resourceType: "ult" | "ust" | "tn" | "tq" | "tw" | "ta" | "twl";
   useIngredients?: boolean;
   zipCacheTtl?: number;

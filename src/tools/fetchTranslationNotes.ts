@@ -12,7 +12,11 @@ import { estimateTokens } from "../utils/tokenCounter.js";
 // Input schema
 export const FetchTranslationNotesArgs = z.object({
   reference: z.string().describe('Bible reference (e.g., "Titus 1:1")'),
-  language: z.string().optional().default("en").describe('Language code (default: "en")'),
+  language: z
+    .string()
+    .optional()
+    .default("en")
+    .describe('Language code (default: "en")'),
   organization: z
     .string()
     .optional()
@@ -22,7 +26,9 @@ export const FetchTranslationNotesArgs = z.object({
     .boolean()
     .optional()
     .default(true)
-    .describe("Include book and chapter introduction notes for context (default: true)"),
+    .describe(
+      "Include book and chapter introduction notes for context (default: true)",
+    ),
   includeContext: z
     .boolean()
     .optional()
@@ -30,12 +36,16 @@ export const FetchTranslationNotesArgs = z.object({
     .describe("Include contextual notes from related passages (default: true)"),
 });
 
-export type FetchTranslationNotesArgs = z.infer<typeof FetchTranslationNotesArgs>;
+export type FetchTranslationNotesArgs = z.infer<
+  typeof FetchTranslationNotesArgs
+>;
 
 /**
  * Handle the fetch translation notes tool call
  */
-export async function handleFetchTranslationNotes(args: FetchTranslationNotesArgs) {
+export async function handleFetchTranslationNotes(
+  args: FetchTranslationNotesArgs,
+) {
   const startTime = Date.now();
 
   try {

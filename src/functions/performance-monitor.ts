@@ -86,10 +86,18 @@ interface PerformanceInsights {
     recommendations: string[];
   };
   endpointOptimization: {
-    slowEndpoints: Array<{ endpoint: string; issue: string; recommendation: string }>;
+    slowEndpoints: Array<{
+      endpoint: string;
+      issue: string;
+      recommendation: string;
+    }>;
   };
   resourceOptimization: {
-    heavyResponses: Array<{ endpoint: string; size: number; recommendation: string }>;
+    heavyResponses: Array<{
+      endpoint: string;
+      size: number;
+      recommendation: string;
+    }>;
   };
 }
 
@@ -155,7 +163,10 @@ export class PerformanceMonitor {
   /**
    * Calculate percentile from sorted array
    */
-  private calculatePercentile(sortedValues: number[], percentile: number): number {
+  private calculatePercentile(
+    sortedValues: number[],
+    percentile: number,
+  ): number {
     if (sortedValues.length === 0) return 0;
 
     const index = Math.ceil((percentile / 100) * sortedValues.length) - 1;
@@ -166,9 +177,13 @@ export class PerformanceMonitor {
    * Detect performance bottlenecks
    */
   private detectBottlenecks(
-    stats: PerformanceStats
+    stats: PerformanceStats,
   ): Array<{ type: string; description: string; impact: number }> {
-    const bottlenecks: Array<{ type: string; description: string; impact: number }> = [];
+    const bottlenecks: Array<{
+      type: string;
+      description: string;
+      impact: number;
+    }> = [];
 
     // High response times
     if (stats.averageResponseTime > 1000) {
@@ -207,7 +222,9 @@ export class PerformanceMonitor {
     }
 
     // Slow endpoints
-    const verySlowEndpoints = stats.slowestEndpoints.filter((ep) => ep.avgTime > 3000);
+    const verySlowEndpoints = stats.slowestEndpoints.filter(
+      (ep) => ep.avgTime > 3000,
+    );
     if (verySlowEndpoints.length > 0) {
       bottlenecks.push({
         type: "slow_endpoints",
@@ -224,14 +241,18 @@ export class PerformanceMonitor {
    */
   private generateRecommendations(
     stats: PerformanceStats,
-    insights: PerformanceInsights
+    insights: PerformanceInsights,
   ): string[] {
     const recommendations: string[] = [];
 
     // Cache recommendations
     if (stats.cacheHitRate < 60) {
-      recommendations.push("Increase cache TTL for stable content like scripture texts");
-      recommendations.push("Implement cache warming for frequently accessed resources");
+      recommendations.push(
+        "Increase cache TTL for stable content like scripture texts",
+      );
+      recommendations.push(
+        "Implement cache warming for frequently accessed resources",
+      );
     }
 
     if (insights.cacheOptimization.missedOpportunities > 100) {
@@ -251,10 +272,12 @@ export class PerformanceMonitor {
     }
 
     // Endpoint-specific recommendations
-    const slowEndpoints = stats.slowestEndpoints.filter((ep) => ep.avgTime > 2000);
+    const slowEndpoints = stats.slowestEndpoints.filter(
+      (ep) => ep.avgTime > 2000,
+    );
     if (slowEndpoints.length > 0) {
       recommendations.push(
-        `Optimize slow endpoints: ${slowEndpoints.map((ep) => ep.endpoint).join(", ")}`
+        `Optimize slow endpoints: ${slowEndpoints.map((ep) => ep.endpoint).join(", ")}`,
       );
     }
 
@@ -276,29 +299,38 @@ export class PerformanceMonitor {
     // Cache optimization insights
     const cacheMisses = recentMetrics.filter((m) => !m.cacheHit).length;
     const avgResponseTimeForMisses =
-      recentMetrics.filter((m) => !m.cacheHit).reduce((sum, m) => sum + m.responseTime, 0) /
-      Math.max(1, cacheMisses);
+      recentMetrics
+        .filter((m) => !m.cacheHit)
+        .reduce((sum, m) => sum + m.responseTime, 0) / Math.max(1, cacheMisses);
 
     const avgResponseTimeForHits =
-      recentMetrics.filter((m) => m.cacheHit).reduce((sum, m) => sum + m.responseTime, 0) /
+      recentMetrics
+        .filter((m) => m.cacheHit)
+        .reduce((sum, m) => sum + m.responseTime, 0) /
       Math.max(1, recentMetrics.filter((m) => m.cacheHit).length);
 
     const potentialCacheSavings =
-      cacheMisses * Math.max(0, avgResponseTimeForMisses - avgResponseTimeForHits);
+      cacheMisses *
+      Math.max(0, avgResponseTimeForMisses - avgResponseTimeForHits);
 
     // Compression optimization insights
     const uncompressedRequests = recentMetrics.filter(
-      (m) => !m.compressed && m.contentSize > 1024
+      (m) => !m.compressed && m.contentSize > 1024,
     ).length;
     const avgUncompressedSize =
       recentMetrics
         .filter((m) => !m.compressed && m.contentSize > 1024)
-        .reduce((sum, m) => sum + m.contentSize, 0) / Math.max(1, uncompressedRequests);
+        .reduce((sum, m) => sum + m.contentSize, 0) /
+      Math.max(1, uncompressedRequests);
 
-    const potentialBandwidthSavings = uncompressedRequests * avgUncompressedSize * 0.3; // 30% compression
+    const potentialBandwidthSavings =
+      uncompressedRequests * avgUncompressedSize * 0.3; // 30% compression
 
     // Endpoint optimization insights
-    const endpointStats = new Map<string, { times: number[]; sizes: number[] }>();
+    const endpointStats = new Map<
+      string,
+      { times: number[]; sizes: number[] }
+    >();
 
     for (const metric of recentMetrics) {
       if (!endpointStats.has(metric.endpoint)) {
@@ -310,7 +342,10 @@ export class PerformanceMonitor {
     }
 
     const slowEndpoints = Array.from(endpointStats.entries())
-      .filter(([, stats]) => stats.times.reduce((a, b) => a + b, 0) / stats.times.length > 2000)
+      .filter(
+        ([, stats]) =>
+          stats.times.reduce((a, b) => a + b, 0) / stats.times.length > 2000,
+      )
       .map(([endpoint, stats]) => ({
         endpoint,
         issue: "Slow average response time",
@@ -318,7 +353,10 @@ export class PerformanceMonitor {
       }));
 
     const heavyResponses = Array.from(endpointStats.entries())
-      .filter(([, stats]) => stats.sizes.reduce((a, b) => a + b, 0) / stats.sizes.length > 100000) // >100KB
+      .filter(
+        ([, stats]) =>
+          stats.sizes.reduce((a, b) => a + b, 0) / stats.sizes.length > 100000,
+      ) // >100KB
       .map(([endpoint, stats]) => ({
         endpoint,
         size: stats.sizes.reduce((a, b) => a + b, 0) / stats.sizes.length,
@@ -364,7 +402,9 @@ export class PerformanceMonitor {
       alerts.push({
         type: "slow_response",
         severity:
-          metrics.responseTime > this.alertConfig.responseTimeThreshold * 2 ? "critical" : "high",
+          metrics.responseTime > this.alertConfig.responseTimeThreshold * 2
+            ? "critical"
+            : "high",
         message: `Slow response: ${metrics.responseTime}ms for ${metrics.endpoint}`,
         value: metrics.responseTime,
         threshold: this.alertConfig.responseTimeThreshold,
@@ -376,13 +416,18 @@ export class PerformanceMonitor {
     // Check recent error rate
     const recentMetrics = this.metrics.slice(-100); // Last 100 requests
     if (recentMetrics.length >= 10) {
-      const errorCount = recentMetrics.filter((m) => m.statusCode >= 400).length;
+      const errorCount = recentMetrics.filter(
+        (m) => m.statusCode >= 400,
+      ).length;
       const errorRate = (errorCount / recentMetrics.length) * 100;
 
       if (errorRate > this.alertConfig.errorRateThreshold) {
         alerts.push({
           type: "high_error_rate",
-          severity: errorRate > this.alertConfig.errorRateThreshold * 2 ? "critical" : "high",
+          severity:
+            errorRate > this.alertConfig.errorRateThreshold * 2
+              ? "critical"
+              : "high",
           message: `High error rate: ${errorRate.toFixed(1)}% in last 100 requests`,
           value: errorRate,
           threshold: this.alertConfig.errorRateThreshold,
@@ -396,7 +441,9 @@ export class PerformanceMonitor {
       if (this.alertConfig.alertCallback) {
         this.alertConfig.alertCallback(alert);
       } else {
-        logger.warn(`[PerformanceAlert] ${alert.severity.toUpperCase()}: ${alert.message}`);
+        logger.warn(
+          `[PerformanceAlert] ${alert.severity.toUpperCase()}: ${alert.message}`,
+        );
       }
     }
   }
@@ -446,7 +493,9 @@ export class PerformanceMonitor {
    */
   getStats(timeRangeHours: number = 24): PerformanceStats {
     const cutoffTime = Date.now() - timeRangeHours * 60 * 60 * 1000;
-    const relevantMetrics = this.metrics.filter((m) => m.timestamp >= cutoffTime);
+    const relevantMetrics = this.metrics.filter(
+      (m) => m.timestamp >= cutoffTime,
+    );
 
     if (relevantMetrics.length === 0) {
       return {
@@ -470,20 +519,27 @@ export class PerformanceMonitor {
     }
 
     // Calculate basic statistics
-    const responseTimes = relevantMetrics.map((m) => m.responseTime).sort((a, b) => a - b);
+    const responseTimes = relevantMetrics
+      .map((m) => m.responseTime)
+      .sort((a, b) => a - b);
     const totalRequests = relevantMetrics.length;
-    const averageResponseTime = responseTimes.reduce((a, b) => a + b, 0) / totalRequests;
+    const averageResponseTime =
+      responseTimes.reduce((a, b) => a + b, 0) / totalRequests;
     const medianResponseTime = this.calculatePercentile(responseTimes, 50);
     const p95ResponseTime = this.calculatePercentile(responseTimes, 95);
     const p99ResponseTime = this.calculatePercentile(responseTimes, 99);
 
-    const errorCount = relevantMetrics.filter((m) => m.statusCode >= 400).length;
+    const errorCount = relevantMetrics.filter(
+      (m) => m.statusCode >= 400,
+    ).length;
     const errorRate = (errorCount / totalRequests) * 100;
 
     const cacheHits = relevantMetrics.filter((m) => m.cacheHit).length;
     const cacheHitRate = (cacheHits / totalRequests) * 100;
 
-    const compressedRequests = relevantMetrics.filter((m) => m.compressed).length;
+    const compressedRequests = relevantMetrics.filter(
+      (m) => m.compressed,
+    ).length;
     const compressionRate = (compressedRequests / totalRequests) * 100;
 
     // Calculate endpoint statistics
@@ -501,14 +557,20 @@ export class PerformanceMonitor {
     const endpointAvgTimes = Array.from(endpointStats.entries())
       .map(([endpoint, stats]) => ({
         endpoint,
-        avgTime: Math.round(stats.times.reduce((a, b) => a + b, 0) / stats.times.length),
+        avgTime: Math.round(
+          stats.times.reduce((a, b) => a + b, 0) / stats.times.length,
+        ),
         count: stats.count,
       }))
       .filter((ep) => ep.count >= 5); // Only include endpoints with at least 5 requests
 
-    const slowestEndpoints = endpointAvgTimes.sort((a, b) => b.avgTime - a.avgTime).slice(0, 10);
+    const slowestEndpoints = endpointAvgTimes
+      .sort((a, b) => b.avgTime - a.avgTime)
+      .slice(0, 10);
 
-    const fastestEndpoints = endpointAvgTimes.sort((a, b) => a.avgTime - b.avgTime).slice(0, 10);
+    const fastestEndpoints = endpointAvgTimes
+      .sort((a, b) => a.avgTime - b.avgTime)
+      .slice(0, 10);
 
     // Build complete stats object
     const stats: PerformanceStats = {
@@ -582,7 +644,9 @@ export class PerformanceMonitor {
           const response = await handler(context, headers);
 
           statusCode = response.statusCode;
-          contentSize = response.body ? Buffer.byteLength(response.body, "utf8") : 0;
+          contentSize = response.body
+            ? Buffer.byteLength(response.body, "utf8")
+            : 0;
           cacheHit = response.headers?.["X-Cache-Status"] === "HIT";
           compressed = !!response.headers?.["Content-Encoding"];
 
@@ -618,7 +682,9 @@ export const performanceMonitor = new PerformanceMonitor();
 /**
  * Utility function to wrap any handler with performance monitoring
  */
-export function withPerformanceMonitoring(handler: PlatformHandler): PlatformHandler {
+export function withPerformanceMonitoring(
+  handler: PlatformHandler,
+): PlatformHandler {
   return performanceMonitor.createMiddleware()(handler);
 }
 

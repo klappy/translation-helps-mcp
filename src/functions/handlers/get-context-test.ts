@@ -4,10 +4,14 @@
  */
 
 import { logger } from "../../utils/logger.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 export const getContextHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -26,9 +30,11 @@ export const getContextHandler: PlatformHandler = async (
   }
 
   try {
-    const referenceParam = request.queryStringParameters.reference || "John 3:16";
+    const referenceParam =
+      request.queryStringParameters.reference || "John 3:16";
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
 
     if (!referenceParam) {
       return {
@@ -57,19 +63,29 @@ export const getContextHandler: PlatformHandler = async (
           type: "scripture",
           data: [
             { version: "ULT", text: "For God so loved the world..." },
-            { version: "UST", text: "God loved the people of the world so much..." },
+            {
+              version: "UST",
+              text: "God loved the people of the world so much...",
+            },
           ],
           count: 2,
           note: "All available scripture versions",
         },
         {
           type: "translation-notes",
-          data: [{ reference: "3:16", note: "This is the most famous verse..." }],
+          data: [
+            { reference: "3:16", note: "This is the most famous verse..." },
+          ],
           count: 1,
         },
         {
           type: "translation-questions",
-          data: [{ question: "How did God show his love?", answer: "By giving his Son" }],
+          data: [
+            {
+              question: "How did God show his love?",
+              answer: "By giving his Son",
+            },
+          ],
           count: 1,
         },
         {

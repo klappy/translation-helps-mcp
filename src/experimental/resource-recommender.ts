@@ -7,7 +7,10 @@
  * Implements Task 9 from the implementation plan
  */
 
-import { ResourceDescriptions, ResourceType } from "../constants/terminology.js";
+import {
+  ResourceDescriptions,
+  ResourceType,
+} from "../constants/terminology.js";
 
 export interface ScriptureReference {
   book: string;
@@ -141,24 +144,48 @@ const BOOK_GENRES = {
 // Difficult passages that often need extra help
 const DIFFICULT_PASSAGES = {
   // Theological complexity
-  "romans:9": { difficulty: 0.9, themes: ["predestination", "election", "sovereignty"] },
+  "romans:9": {
+    difficulty: 0.9,
+    themes: ["predestination", "election", "sovereignty"],
+  },
   "ephesians:1": { difficulty: 0.8, themes: ["predestination", "election"] },
-  "1corinthians:11": { difficulty: 0.8, themes: ["gender roles", "head covering", "culture"] },
-  "1timothy:2": { difficulty: 0.9, themes: ["gender roles", "women teaching", "culture"] },
+  "1corinthians:11": {
+    difficulty: 0.8,
+    themes: ["gender roles", "head covering", "culture"],
+  },
+  "1timothy:2": {
+    difficulty: 0.9,
+    themes: ["gender roles", "women teaching", "culture"],
+  },
 
   // Cultural complexity
-  "1corinthians:8": { difficulty: 0.8, themes: ["idols", "food sacrificed", "conscience"] },
+  "1corinthians:8": {
+    difficulty: 0.8,
+    themes: ["idols", "food sacrificed", "conscience"],
+  },
   "acts:15": { difficulty: 0.7, themes: ["gentiles", "circumcision", "law"] },
   "galatians:3": { difficulty: 0.8, themes: ["law vs grace", "justification"] },
 
   // Prophetic/apocalyptic
-  "daniel:7": { difficulty: 0.9, themes: ["prophecy", "kingdoms", "symbolism"] },
-  "revelation:13": { difficulty: 0.9, themes: ["beast", "prophecy", "symbolism"] },
+  "daniel:7": {
+    difficulty: 0.9,
+    themes: ["prophecy", "kingdoms", "symbolism"],
+  },
+  "revelation:13": {
+    difficulty: 0.9,
+    themes: ["beast", "prophecy", "symbolism"],
+  },
   "ezekiel:38": { difficulty: 0.9, themes: ["gog", "magog", "prophecy"] },
 
   // Poetic/metaphorical
-  "songofsolomon:1": { difficulty: 0.7, themes: ["metaphor", "love", "poetry"] },
-  "ecclesiastes:3": { difficulty: 0.6, themes: ["time", "philosophy", "wisdom"] },
+  "songofsolomon:1": {
+    difficulty: 0.7,
+    themes: ["metaphor", "love", "poetry"],
+  },
+  "ecclesiastes:3": {
+    difficulty: 0.6,
+    themes: ["time", "philosophy", "wisdom"],
+  },
 
   // Historical/genealogical
   "1chronicles:1": { difficulty: 0.4, themes: ["genealogy", "names"] },
@@ -214,7 +241,9 @@ const THEOLOGICAL_TERMS = [
 /**
  * Main recommendation function
  */
-export function recommendResources(context: RecommendationContext): RecommendationResponse {
+export function recommendResources(
+  context: RecommendationContext,
+): RecommendationResponse {
   const startTime = Date.now();
   const recommendations: ResourceRecommendation[] = [];
 
@@ -225,13 +254,19 @@ export function recommendResources(context: RecommendationContext): Recommendati
   recommendations.push(...getBaseRecommendations(context, passageAnalysis));
 
   // Add role-specific recommendations
-  recommendations.push(...getRoleSpecificRecommendations(context, passageAnalysis));
+  recommendations.push(
+    ...getRoleSpecificRecommendations(context, passageAnalysis),
+  );
 
   // Add difficulty-based recommendations
-  recommendations.push(...getDifficultyBasedRecommendations(context, passageAnalysis));
+  recommendations.push(
+    ...getDifficultyBasedRecommendations(context, passageAnalysis),
+  );
 
   // Add genre-specific recommendations
-  recommendations.push(...getGenreSpecificRecommendations(context, passageAnalysis));
+  recommendations.push(
+    ...getGenreSpecificRecommendations(context, passageAnalysis),
+  );
 
   // Sort by priority and confidence
   recommendations.sort((a, b) => {
@@ -248,7 +283,7 @@ export function recommendResources(context: RecommendationContext): Recommendati
 
   // Remove duplicates (keep highest priority/confidence)
   const uniqueRecommendations = recommendations.filter(
-    (rec, index, arr) => arr.findIndex((r) => r.type === rec.type) === index
+    (rec, index, arr) => arr.findIndex((r) => r.type === rec.type) === index,
   );
 
   return {
@@ -276,7 +311,8 @@ function analyzePassage(reference: ScriptureReference) {
 
   // Check for specific difficult passages
   const passageKey = `${bookKey}:${reference.chapter}`;
-  const knownDifficulty = DIFFICULT_PASSAGES[passageKey as keyof typeof DIFFICULT_PASSAGES];
+  const knownDifficulty =
+    DIFFICULT_PASSAGES[passageKey as keyof typeof DIFFICULT_PASSAGES];
 
   let difficulty = 0.3; // Base difficulty
   let themes: string[] = [];
@@ -322,7 +358,7 @@ function analyzePassage(reference: ScriptureReference) {
  */
 function getBaseRecommendations(
   context: RecommendationContext,
-  analysis: ReturnType<typeof analyzePassage>
+  analysis: ReturnType<typeof analyzePassage>,
 ): ResourceRecommendation[] {
   const recommendations: ResourceRecommendation[] = [];
 
@@ -330,7 +366,8 @@ function getBaseRecommendations(
   recommendations.push({
     type: ResourceType.ULT,
     priority: "high",
-    reason: "Essential for understanding the original language structure and meaning",
+    reason:
+      "Essential for understanding the original language structure and meaning",
     description: ResourceDescriptions[ResourceType.ULT],
     confidence: 0.95,
     context: {
@@ -341,7 +378,8 @@ function getBaseRecommendations(
   recommendations.push({
     type: ResourceType.UST,
     priority: "high",
-    reason: "Provides clear, natural expression of the meaning for translation guidance",
+    reason:
+      "Provides clear, natural expression of the meaning for translation guidance",
     description: ResourceDescriptions[ResourceType.UST],
     confidence: 0.95,
     context: {
@@ -357,7 +395,7 @@ function getBaseRecommendations(
  */
 function getRoleSpecificRecommendations(
   context: RecommendationContext,
-  analysis: ReturnType<typeof analyzePassage>
+  analysis: ReturnType<typeof analyzePassage>,
 ): ResourceRecommendation[] {
   const recommendations: ResourceRecommendation[] = [];
 
@@ -380,11 +418,14 @@ function getRoleSpecificRecommendations(
         recommendations.push({
           type: ResourceType.TW,
           priority: "high",
-          reason: "This passage contains key theological terms that need precise definition",
+          reason:
+            "This passage contains key theological terms that need precise definition",
           description: ResourceDescriptions[ResourceType.TW],
           confidence: 0.85,
           context: {
-            searchTerms: analysis.themes.filter((theme) => THEOLOGICAL_TERMS.includes(theme)),
+            searchTerms: analysis.themes.filter((theme) =>
+              THEOLOGICAL_TERMS.includes(theme),
+            ),
           },
         });
       }
@@ -395,18 +436,22 @@ function getRoleSpecificRecommendations(
       recommendations.push({
         type: ResourceType.TQ,
         priority: "high",
-        reason: "Translation Questions help verify accuracy and comprehension during checking",
+        reason:
+          "Translation Questions help verify accuracy and comprehension during checking",
         description: ResourceDescriptions[ResourceType.TQ],
         confidence: 0.9,
         context: {
-          specificSections: [`Questions for ${formatReference(context.reference)}`],
+          specificSections: [
+            `Questions for ${formatReference(context.reference)}`,
+          ],
         },
       });
 
       recommendations.push({
         type: ResourceType.TWL,
         priority: "medium",
-        reason: "Word links help verify that key terms are translated consistently",
+        reason:
+          "Word links help verify that key terms are translated consistently",
         description: ResourceDescriptions[ResourceType.TWL],
         confidence: 0.7,
       });
@@ -417,7 +462,8 @@ function getRoleSpecificRecommendations(
       recommendations.push({
         type: ResourceType.TA,
         priority: "medium",
-        reason: "Translation Academy provides methodology guidance for training and mentoring",
+        reason:
+          "Translation Academy provides methodology guidance for training and mentoring",
         description: ResourceDescriptions[ResourceType.TA],
         confidence: 0.8,
         context: {
@@ -431,7 +477,8 @@ function getRoleSpecificRecommendations(
       recommendations.push({
         type: ResourceType.TA,
         priority: "high",
-        reason: "Translation Academy essential for project management and team coordination",
+        reason:
+          "Translation Academy essential for project management and team coordination",
         description: ResourceDescriptions[ResourceType.TA],
         confidence: 0.85,
         context: {
@@ -449,7 +496,7 @@ function getRoleSpecificRecommendations(
  */
 function getDifficultyBasedRecommendations(
   context: RecommendationContext,
-  analysis: ReturnType<typeof analyzePassage>
+  analysis: ReturnType<typeof analyzePassage>,
 ): ResourceRecommendation[] {
   const recommendations: ResourceRecommendation[] = [];
 
@@ -470,7 +517,8 @@ function getDifficultyBasedRecommendations(
     recommendations.push({
       type: ResourceType.TW,
       priority: "high",
-      reason: "Complex passages often contain theological terms requiring precise definition",
+      reason:
+        "Complex passages often contain theological terms requiring precise definition",
       description: ResourceDescriptions[ResourceType.TW],
       confidence: 0.9,
       context: {
@@ -487,7 +535,7 @@ function getDifficultyBasedRecommendations(
  */
 function getGenreSpecificRecommendations(
   _context: RecommendationContext,
-  analysis: ReturnType<typeof analyzePassage>
+  analysis: ReturnType<typeof analyzePassage>,
 ): ResourceRecommendation[] {
   const recommendations: ResourceRecommendation[] = [];
 
@@ -518,7 +566,11 @@ function getGenreSpecificRecommendations(
         description: ResourceDescriptions[ResourceType.TN],
         confidence: 0.9,
         context: {
-          specificSections: ["Symbolic language", "Historical context", "Fulfillment"],
+          specificSections: [
+            "Symbolic language",
+            "Historical context",
+            "Fulfillment",
+          ],
           relatedPassages: [_context.reference], // Use the context reference
         },
       });
@@ -528,11 +580,18 @@ function getGenreSpecificRecommendations(
       recommendations.push({
         type: ResourceType.TW,
         priority: "high",
-        reason: "Legal texts contain technical terms and concepts requiring precise definition",
+        reason:
+          "Legal texts contain technical terms and concepts requiring precise definition",
         description: ResourceDescriptions[ResourceType.TW],
         confidence: 0.85,
         context: {
-          searchTerms: ["law", "commandment", "statute", "ordinance", "covenant"],
+          searchTerms: [
+            "law",
+            "commandment",
+            "statute",
+            "ordinance",
+            "covenant",
+          ],
           relatedPassages: [_context.reference], // Use the context reference
         },
       });

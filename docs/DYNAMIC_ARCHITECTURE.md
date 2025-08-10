@@ -3,6 +3,7 @@
 ## Problem Statement
 
 The current system has too many hardcoded field mappings and transformations at every layer:
+
 - Endpoints expect specific field names (e.g., `Note` vs `note`)
 - Formatters have complex transformation logic
 - Every layer needs to be kept in sync
@@ -30,6 +31,7 @@ API Response → Dynamic Pipeline → LLM Context
 ### Components
 
 #### 1. DynamicDataPipeline
+
 ```typescript
 // Process any data without schema
 const response = DynamicDataPipeline.process(data, source);
@@ -51,12 +53,14 @@ const response = DynamicDataPipeline.process(data, source);
 ```
 
 #### 2. Dynamic MCP Endpoint
+
 - Simple tool-to-endpoint mapping
 - No field transformations
 - Passes data through pipeline
 - Returns formatted for LLM
 
 #### 3. Dynamic Chat Endpoint
+
 - Pattern matching for tool selection
 - Minimal parameter extraction
 - No response transformation
@@ -73,6 +77,7 @@ const response = DynamicDataPipeline.process(data, source);
 ### Example: Translation Notes
 
 **Old Approach (Brittle)**:
+
 ```typescript
 // Multiple places checking field names
 const notes = data.verseNotes || data.notes || data.Notes;
@@ -82,9 +87,10 @@ const content = note.Note || note.note || note.text;
 ```
 
 **New Approach (Dynamic)**:
+
 ```typescript
 // Just extract all text
-const response = DynamicDataPipeline.process(data, 'notes');
+const response = DynamicDataPipeline.process(data, "notes");
 // Use whatever we find
 return response._extracted.text;
 ```
@@ -100,11 +106,13 @@ return response._extracted.text;
 ### Testing
 
 Access the test page at:
+
 ```
 /dynamic-test.html
 ```
 
 This shows:
+
 - Side-by-side comparison of old vs new
 - Structure analysis of API responses
 - Dynamic tool testing
@@ -121,6 +129,7 @@ This shows:
 ### Key Insight
 
 Instead of trying to control and transform data at every layer, we:
+
 - Accept data as it comes
 - Extract what we can
 - Let the LLM figure out the rest

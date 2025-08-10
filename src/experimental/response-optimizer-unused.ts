@@ -102,7 +102,7 @@ export class ResponseOptimizer {
       pagination?: PaginationOptions;
       resourceType?: keyof SizeTargets;
       preserveStructure?: boolean;
-    } = {}
+    } = {},
   ): OptimizedResponse<T> {
     const optimizations: string[] = [];
     const startTime = Date.now();
@@ -112,7 +112,10 @@ export class ResponseOptimizer {
 
     // Apply field filtering first (most impactful)
     if (this.options.enableFieldFiltering && options.fieldFilter) {
-      optimizedData = this.applyFieldFiltering(optimizedData, options.fieldFilter);
+      optimizedData = this.applyFieldFiltering(
+        optimizedData,
+        options.fieldFilter,
+      );
       optimizations.push("field-filtering");
     }
 
@@ -164,7 +167,9 @@ export class ResponseOptimizer {
       }
 
       if (options.fieldFilter) {
-        response._meta.fieldsFiltered = this.getFilteredFields(options.fieldFilter);
+        response._meta.fieldsFiltered = this.getFilteredFields(
+          options.fieldFilter,
+        );
       }
     }
 
@@ -258,7 +263,7 @@ export class ResponseOptimizer {
 
     // Keys present in >75% of objects are candidates for compression
     const commonKeys = Array.from(allKeys).filter(
-      (key) => (keyCounts.get(key) || 0) / objects.length >= 0.75
+      (key) => (keyCounts.get(key) || 0) / objects.length >= 0.75,
     );
 
     if (commonKeys.length < 3) {
@@ -291,14 +296,18 @@ export class ResponseOptimizer {
         // Check inclusion rules
         if (filter.include && filter.include.length > 0) {
           includeField = filter.include.some((pattern) =>
-            filter.nested ? this.matchesNestedPath(key, pattern) : key === pattern
+            filter.nested
+              ? this.matchesNestedPath(key, pattern)
+              : key === pattern,
           );
         }
 
         // Check exclusion rules
         if (filter.exclude && filter.exclude.length > 0) {
           const shouldExclude = filter.exclude.some((pattern) =>
-            filter.nested ? this.matchesNestedPath(key, pattern) : key === pattern
+            filter.nested
+              ? this.matchesNestedPath(key, pattern)
+              : key === pattern,
           );
           if (shouldExclude) {
             includeField = false;
@@ -329,7 +338,7 @@ export class ResponseOptimizer {
    */
   private applyPagination<T>(
     data: T,
-    options: PaginationOptions
+    options: PaginationOptions,
   ): { data: T; meta: NonNullable<OptimizedResponse["_meta"]>["pagination"] } {
     if (!Array.isArray(data)) {
       return {
@@ -418,7 +427,7 @@ export class ResponseOptimizer {
    */
   getOptimizationStats(
     originalData: unknown,
-    optimizedData: unknown
+    optimizedData: unknown,
   ): {
     originalSize: number;
     optimizedSize: number;
@@ -446,12 +455,16 @@ export class OptimizationUtils {
   /**
    * Create field filter for scripture responses
    */
-  static scriptureFields(includeAlignment: boolean = false): FieldFilterOptions {
+  static scriptureFields(
+    includeAlignment: boolean = false,
+  ): FieldFilterOptions {
     const baseFields = ["text", "reference", "book", "chapter", "verse"];
     const alignmentFields = ["alignment", "words", "wordLinks"];
 
     return {
-      include: includeAlignment ? [...baseFields, ...alignmentFields] : baseFields,
+      include: includeAlignment
+        ? [...baseFields, ...alignmentFields]
+        : baseFields,
       nested: true,
     };
   }
@@ -459,12 +472,16 @@ export class OptimizationUtils {
   /**
    * Create field filter for translation notes
    */
-  static translationNotesFields(includeMetadata: boolean = false): FieldFilterOptions {
+  static translationNotesFields(
+    includeMetadata: boolean = false,
+  ): FieldFilterOptions {
     const baseFields = ["reference", "note", "quote", "occurrence"];
     const metadataFields = ["originalWords", "glLink", "tags"];
 
     return {
-      include: includeMetadata ? [...baseFields, ...metadataFields] : baseFields,
+      include: includeMetadata
+        ? [...baseFields, ...metadataFields]
+        : baseFields,
       nested: true,
     };
   }
@@ -505,7 +522,9 @@ export class OptimizationUtils {
   /**
    * Parse field filtering from query parameters
    */
-  static parseFieldsFromQuery(query: URLSearchParams): FieldFilterOptions | undefined {
+  static parseFieldsFromQuery(
+    query: URLSearchParams,
+  ): FieldFilterOptions | undefined {
     const fields = query.get("fields");
     const exclude = query.get("exclude");
 
@@ -523,7 +542,9 @@ export class OptimizationUtils {
   /**
    * Parse pagination from query parameters
    */
-  static parsePaginationFromQuery(query: URLSearchParams): PaginationOptions | undefined {
+  static parsePaginationFromQuery(
+    query: URLSearchParams,
+  ): PaginationOptions | undefined {
     const page = query.get("page");
     const limit = query.get("limit");
     const offset = query.get("offset");
@@ -544,12 +565,12 @@ export class OptimizationUtils {
  * Express middleware for automatic response optimization
  */
 export function createOptimizationMiddleware(
-  optimizer: ResponseOptimizer = new ResponseOptimizer()
+  optimizer: ResponseOptimizer = new ResponseOptimizer(),
 ) {
   return function optimizationMiddleware(
     data: unknown,
     query: URLSearchParams,
-    resourceType?: keyof SizeTargets
+    resourceType?: keyof SizeTargets,
   ): OptimizedResponse {
     const fieldFilter = OptimizationUtils.parseFieldsFromQuery(query);
     const pagination = OptimizationUtils.parsePaginationFromQuery(query);
@@ -566,4 +587,5 @@ export function createOptimizationMiddleware(
 export const defaultOptimizer = new ResponseOptimizer();
 
 // Export middleware instance
-export const optimizationMiddleware = createOptimizationMiddleware(defaultOptimizer);
+export const optimizationMiddleware =
+  createOptimizationMiddleware(defaultOptimizer);

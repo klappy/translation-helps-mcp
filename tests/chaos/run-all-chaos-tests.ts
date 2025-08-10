@@ -116,21 +116,33 @@ class ChaosTestRunner {
     // CRITICAL: Prevent accidental production chaos testing
     const url = CONFIG.baseUrl.toLowerCase();
     this.isProduction =
-      url.includes("production") || url.includes("api.translation.tools") || url.includes("prod");
+      url.includes("production") ||
+      url.includes("api.translation.tools") ||
+      url.includes("prod");
 
     if (this.isProduction && CONFIG.environment !== "production-approved") {
-      console.error("🚨 BLOCKED: Production chaos testing requires explicit approval!");
-      console.error("   Set CHAOS_ENV=production-approved to override (DANGEROUS!)");
+      console.error(
+        "🚨 BLOCKED: Production chaos testing requires explicit approval!",
+      );
+      console.error(
+        "   Set CHAOS_ENV=production-approved to override (DANGEROUS!)",
+      );
       process.exit(1);
     }
 
     if (this.isProduction) {
-      console.warn("⚠️  WARNING: Running chaos tests against production environment!");
-      console.warn("   This may impact real users. Proceed with extreme caution.");
+      console.warn(
+        "⚠️  WARNING: Running chaos tests against production environment!",
+      );
+      console.warn(
+        "   This may impact real users. Proceed with extreme caution.",
+      );
 
       // Require explicit confirmation for production
       if (!process.env.PRODUCTION_CHAOS_CONFIRMED) {
-        console.error("🛑 Production chaos testing requires PRODUCTION_CHAOS_CONFIRMED=true");
+        console.error(
+          "🛑 Production chaos testing requires PRODUCTION_CHAOS_CONFIRMED=true",
+        );
         process.exit(1);
       }
     }
@@ -148,7 +160,9 @@ class ChaosTestRunner {
     console.log(`Environment: ${CONFIG.environment}`);
     console.log(`Target: ${CONFIG.baseUrl}`);
     console.log(`Mode: ${CONFIG.runMode}`);
-    console.log(`Safety Checks: ${CONFIG.safetyChecks ? "ENABLED" : "DISABLED"}`);
+    console.log(
+      `Safety Checks: ${CONFIG.safetyChecks ? "ENABLED" : "DISABLED"}`,
+    );
     console.log(`Max Duration: ${CONFIG.maxDuration / 60} minutes`);
     console.log("=====================================\n");
 
@@ -178,7 +192,9 @@ class ChaosTestRunner {
       console.log(`   Expected Duration: ${test.duration}`);
 
       // Check prerequisites
-      const prerequisitesMet = await this.checkPrerequisites(test.prerequisites);
+      const prerequisitesMet = await this.checkPrerequisites(
+        test.prerequisites,
+      );
       if (!prerequisitesMet) {
         console.warn(`⚠️  Skipping ${test.name} - prerequisites not met`);
         continue;
@@ -190,16 +206,24 @@ class ChaosTestRunner {
 
         if (result.success) {
           console.log(`✅ ${test.name} completed successfully`);
-          console.log(`   Tests: ${result.testsPassed}/${result.testsRun} passed`);
-          console.log(`   Duration: ${Math.round(result.duration / 1000 / 60)} minutes`);
+          console.log(
+            `   Tests: ${result.testsPassed}/${result.testsRun} passed`,
+          );
+          console.log(
+            `   Duration: ${Math.round(result.duration / 1000 / 60)} minutes`,
+          );
         } else {
           console.log(`❌ ${test.name} failed`);
-          console.log(`   Tests: ${result.testsPassed}/${result.testsRun} passed`);
+          console.log(
+            `   Tests: ${result.testsPassed}/${result.testsRun} passed`,
+          );
           console.log(`   Errors: ${result.errors.length}`);
 
           // Critical failure handling
           if (test.riskLevel === "high" && result.testsPassed === 0) {
-            console.error(`🚨 CRITICAL: High-risk test suite completely failed!`);
+            console.error(
+              `🚨 CRITICAL: High-risk test suite completely failed!`,
+            );
 
             if (CONFIG.safetyChecks) {
               console.log("🛑 Stopping chaos testing due to critical failure");
@@ -261,13 +285,17 @@ class ChaosTestRunner {
   }
 
   private getTestsToRun(): string[] {
-    const enabledTests = Object.keys(CHAOS_TESTS).filter((key) => CHAOS_TESTS[key].enabled);
+    const enabledTests = Object.keys(CHAOS_TESTS).filter(
+      (key) => CHAOS_TESTS[key].enabled,
+    );
 
     switch (CONFIG.runMode) {
       case "safe":
         // Only low and medium risk tests
         return enabledTests.filter(
-          (key) => CHAOS_TESTS[key].riskLevel === "low" || CHAOS_TESTS[key].riskLevel === "medium"
+          (key) =>
+            CHAOS_TESTS[key].riskLevel === "low" ||
+            CHAOS_TESTS[key].riskLevel === "medium",
         );
       case "aggressive":
         // All tests including high risk
@@ -303,7 +331,9 @@ class ChaosTestRunner {
     // Check baseline performance
     const startTime = Date.now();
     try {
-      const response = await fetch(`${CONFIG.baseUrl}/api/fetch-scripture?reference=John3:16`);
+      const response = await fetch(
+        `${CONFIG.baseUrl}/api/fetch-scripture?reference=John3:16`,
+      );
       const responseTime = Date.now() - startTime;
 
       if (responseTime > 5000) {
@@ -324,7 +354,10 @@ class ChaosTestRunner {
     return true;
   }
 
-  private async runChaosTestSuite(testKey: string, test: ChaosTestSuite): Promise<ChaosResult> {
+  private async runChaosTestSuite(
+    testKey: string,
+    test: ChaosTestSuite,
+  ): Promise<ChaosResult> {
     const startTime = Date.now();
     const testFile = path.join(process.cwd(), test.file);
 
@@ -383,7 +416,11 @@ class ChaosTestRunner {
     });
   }
 
-  private parseTestOutput(output: string): { total: number; passed: number; failed: number } {
+  private parseTestOutput(output: string): {
+    total: number;
+    passed: number;
+    failed: number;
+  } {
     // Parse vitest output for test counts
     // This is a simplified parser - would be more sophisticated in production
     const passMatches = output.match(/(\d+) passed/);
@@ -436,12 +473,18 @@ class ChaosTestRunner {
     };
 
     // Save JSON report
-    const reportFile = path.join(CONFIG.resultsDir, "chaos-engineering-report.json");
+    const reportFile = path.join(
+      CONFIG.resultsDir,
+      "chaos-engineering-report.json",
+    );
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
 
     // Generate markdown report
     const markdownReport = this.generateMarkdownReport(report);
-    const markdownFile = path.join(CONFIG.resultsDir, "chaos-engineering-report.md");
+    const markdownFile = path.join(
+      CONFIG.resultsDir,
+      "chaos-engineering-report.md",
+    );
     fs.writeFileSync(markdownFile, markdownReport);
 
     console.log(`\n📊 Chaos engineering reports generated:`);
@@ -462,13 +505,18 @@ class ChaosTestRunner {
     if (results.length === 0) return 0;
 
     const avgAvailability =
-      results.reduce((sum, r) => sum + r.metrics.systemAvailability, 0) / results.length;
+      results.reduce((sum, r) => sum + r.metrics.systemAvailability, 0) /
+      results.length;
     const avgDataIntegrity =
-      results.reduce((sum, r) => sum + r.metrics.dataIntegrity, 0) / results.length;
-    const avgErrorRate = results.reduce((sum, r) => sum + r.metrics.errorRate, 0) / results.length;
+      results.reduce((sum, r) => sum + r.metrics.dataIntegrity, 0) /
+      results.length;
+    const avgErrorRate =
+      results.reduce((sum, r) => sum + r.metrics.errorRate, 0) / results.length;
 
     // Weighted resilience score
-    return avgAvailability * 0.4 + avgDataIntegrity * 0.4 + (1 - avgErrorRate) * 20;
+    return (
+      avgAvailability * 0.4 + avgDataIntegrity * 0.4 + (1 - avgErrorRate) * 20
+    );
   }
 
   private generateRecommendations(results: ChaosResult[]): string[] {
@@ -476,24 +524,28 @@ class ChaosTestRunner {
 
     const successRate = this.calculateOverallSuccessRate(results);
     if (successRate < 80) {
-      recommendations.push("🔧 System resilience below 80% - review failure handling mechanisms");
+      recommendations.push(
+        "🔧 System resilience below 80% - review failure handling mechanisms",
+      );
     }
 
     const resilienceScore = this.calculateResilienceScore(results);
     if (resilienceScore < 85) {
-      recommendations.push("⚡ Consider implementing circuit breakers for better fault tolerance");
+      recommendations.push(
+        "⚡ Consider implementing circuit breakers for better fault tolerance",
+      );
     }
 
     const failedSuites = results.filter((r) => !r.success);
     if (failedSuites.length > 0) {
       recommendations.push(
-        `🚨 ${failedSuites.length} chaos test suite(s) failed - investigate error handling`
+        `🚨 ${failedSuites.length} chaos test suite(s) failed - investigate error handling`,
       );
     }
 
     if (recommendations.length === 0) {
       recommendations.push(
-        "✅ System demonstrates excellent resilience across all chaos scenarios"
+        "✅ System demonstrates excellent resilience across all chaos scenarios",
       );
     }
 
@@ -531,7 +583,7 @@ ${Array.from(this.results.entries())
 - **Duration:** ${Math.round(result.duration / 1000 / 60)} minutes
 - **System Availability:** ${result.metrics.systemAvailability.toFixed(1)}%
 - **Data Integrity:** ${result.metrics.dataIntegrity.toFixed(1)}%
-`
+`,
   )
   .join("")}
 
@@ -555,7 +607,9 @@ ${
   }
 
   private async sendNotifications(): Promise<void> {
-    const summary = this.calculateOverallSuccessRate(Array.from(this.results.values()));
+    const summary = this.calculateOverallSuccessRate(
+      Array.from(this.results.values()),
+    );
 
     if (CONFIG.notifications.slack) {
       try {
@@ -594,7 +648,9 @@ async function main() {
 
   try {
     const results = await runner.runAllChaosTests();
-    const summary = runner.calculateOverallSuccessRate(Array.from(results.values()));
+    const summary = runner.calculateOverallSuccessRate(
+      Array.from(results.values()),
+    );
 
     // Exit with appropriate code
     process.exit(summary >= 80 ? 0 : 1);

@@ -12,13 +12,20 @@ import { estimateTokens } from "../utils/tokenCounter.js";
 // Input schema
 export const GetTranslationWordArgs = z.object({
   reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
-  language: z.string().optional().default("en").describe('Language code (default: "en")'),
+  language: z
+    .string()
+    .optional()
+    .default("en")
+    .describe('Language code (default: "en")'),
   organization: z
     .string()
     .optional()
     .default("unfoldingWord")
     .describe('Organization (default: "unfoldingWord")'),
-  category: z.string().optional().describe("Filter by category (kt, names, other)"),
+  category: z
+    .string()
+    .optional()
+    .describe("Filter by category (kt, names, other)"),
 });
 
 export type GetTranslationWordArgs = z.infer<typeof GetTranslationWordArgs>;

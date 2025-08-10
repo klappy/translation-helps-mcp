@@ -5,7 +5,11 @@
 
 import { Errors } from "../../utils/errorEnvelope.js";
 import { logger } from "../../utils/logger.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 interface TranslationWordArticle {
   id: string;
@@ -17,7 +21,7 @@ interface TranslationWordArticle {
 }
 
 export const getTranslationWordHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -37,9 +41,11 @@ export const getTranslationWordHandler: PlatformHandler = async (
 
   try {
     // Use 'word' parameter as per user preference, fallback to 'term'
-    const word = request.queryStringParameters.word || request.queryStringParameters.term;
+    const word =
+      request.queryStringParameters.word || request.queryStringParameters.term;
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
 
     if (!word) {
       return {
@@ -177,7 +183,12 @@ export const getTranslationWordHandler: PlatformHandler = async (
     }
 
     // Parse the markdown content
-    const article = parseTranslationWordArticle(fullContent, word, foundCategory!, subtitle);
+    const article = parseTranslationWordArticle(
+      fullContent,
+      word,
+      foundCategory!,
+      subtitle,
+    );
 
     const duration = Date.now() - startTime;
 
@@ -226,7 +237,7 @@ function parseTranslationWordArticle(
   content: string,
   word: string,
   category: string,
-  subtitle?: string
+  subtitle?: string,
 ): TranslationWordArticle {
   // Extract title from first heading (skip YAML frontmatter if present)
   let title = word;

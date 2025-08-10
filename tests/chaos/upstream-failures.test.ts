@@ -14,12 +14,16 @@ import { buildUrl } from "../helpers/http";
 // Mock API functions for testing
 const mockApi = {
   fetchScripture: async (reference: string) => {
-    const response = await fetch(await buildUrl(`/api/fetch-scripture`, { reference }));
+    const response = await fetch(
+      await buildUrl(`/api/fetch-scripture`, { reference }),
+    );
     return response.json();
   },
 
   fetchTranslationNotes: async (reference: string) => {
-    const response = await fetch(await buildUrl(`/api/fetch-translation-notes`, { reference }));
+    const response = await fetch(
+      await buildUrl(`/api/fetch-translation-notes`, { reference }),
+    );
     return response.json();
   },
 
@@ -107,7 +111,8 @@ describe("🌐 Upstream Failures - DCS API Chaos Tests", () => {
         target: "dcs-api",
       });
 
-      const results: Array<{ success: boolean; response?: any; error?: any }> = [];
+      const results: Array<{ success: boolean; response?: any; error?: any }> =
+        [];
       const totalRequests = 10;
 
       // Make multiple requests during partial outage
@@ -122,13 +127,14 @@ describe("🌐 Upstream Failures - DCS API Chaos Tests", () => {
         await new Promise((resolve) => setTimeout(resolve, 200)); // Small delay
       }
 
-      const successRate = results.filter((r) => r.success).length / totalRequests;
+      const successRate =
+        results.filter((r) => r.success).length / totalRequests;
 
       // Should maintain some level of service (cache + successful requests)
       expect(successRate).toBeGreaterThan(0.3); // At least 30% success
 
       console.log(
-        `✅ Maintained ${(successRate * 100).toFixed(1)}% availability during partial outage`
+        `✅ Maintained ${(successRate * 100).toFixed(1)}% availability during partial outage`,
       );
     }, 12000);
   });
@@ -157,7 +163,9 @@ describe("🌐 Upstream Failures - DCS API Chaos Tests", () => {
       expect(notesResponse.source).toBe("cache");
       expect(notesResponse.notes).toBeDefined();
 
-      console.log("✅ Successfully served cached content during complete outage");
+      console.log(
+        "✅ Successfully served cached content during complete outage",
+      );
     }, 10000);
 
     test("degrades gracefully for uncached content during outage", async () => {

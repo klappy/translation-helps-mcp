@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		// Parse the reference and get translation word links
 		const parsedReference = parseReference(reference);
 		console.log('Requesting TWL for:', { reference, parsedReference });
-		
+
 		const result = await aggregator.aggregateResources(parsedReference, {
 			language,
 			organization,

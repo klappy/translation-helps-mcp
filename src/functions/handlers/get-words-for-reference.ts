@@ -4,11 +4,15 @@
  */
 
 import { Errors } from "../../utils/errorEnvelope.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 import { fetchWordLinks } from "../word-links-service";
 
 export const getWordsForReferenceHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
 
@@ -29,7 +33,8 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
   try {
     const referenceParam = request.queryStringParameters.reference;
     const language = request.queryStringParameters.language || "en";
-    const organization = request.queryStringParameters.organization || "unfoldingWord";
+    const organization =
+      request.queryStringParameters.organization || "unfoldingWord";
 
     if (!referenceParam) {
       return {
@@ -46,8 +51,11 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
     });
 
     // Derive simplified words array from TWL links for convenience
-    const rows = Array.isArray((result as unknown as { links?: unknown[] }).links)
-      ? (result as unknown as { links: Array<Record<string, string>> }).links || []
+    const rows = Array.isArray(
+      (result as unknown as { links?: unknown[] }).links,
+    )
+      ? (result as unknown as { links: Array<Record<string, string>> }).links ||
+        []
       : [];
 
     const aggregate: Record<
@@ -68,7 +76,8 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
         // Fallback: take the last two segments after /tw/dict/
         const after = str.split("/tw/dict/")[1] || "";
         const segs = after.split("/").filter(Boolean);
-        if (segs.length >= 2) rel = `bible/${segs[segs.length - 2]}/${segs[segs.length - 1]}`;
+        if (segs.length >= 2)
+          rel = `bible/${segs[segs.length - 2]}/${segs[segs.length - 1]}`;
       }
       if (!rel) continue;
       const parts = rel.split("/");
@@ -76,7 +85,8 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
       const term = parts[2];
       const path = `${rel}.md`;
       const key = rel.toLowerCase();
-      const occ = Number((row as any).Occurrence || (row as any)["Occurrence"] || 1) || 1;
+      const occ =
+        Number((row as any).Occurrence || (row as any)["Occurrence"] || 1) || 1;
       if (!aggregate[key]) {
         aggregate[key] = { term, path, occurrences: occ, category };
       } else {

@@ -211,11 +211,13 @@ export class CacheManager {
   }
 
   async getTransformedResponse(key: string): Promise<any> {
-    return this.get(key, "transformedResponse");
+    // Response-level caching is disabled by policy
+    return null;
   }
 
   async setTransformedResponse(key: string, value: any): Promise<void> {
-    return this.set(key, value, "transformedResponse");
+    // No-op: response-level caching is disabled
+    return Promise.resolve();
   }
 
   async getTransformedResponseWithCacheInfo(key: string): Promise<{
@@ -226,7 +228,10 @@ export class CacheManager {
     ttlSeconds?: number;
     version?: string;
   }> {
-    return this.getWithCacheInfo(key, "transformedResponse");
+    return {
+      value: null,
+      cached: false,
+    };
   }
 }
 

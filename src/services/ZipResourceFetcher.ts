@@ -25,7 +25,8 @@ export class ZipResourceFetcher {
   private tracer: EdgeXRayTracer;
 
   constructor(tracer?: EdgeXRayTracer) {
-    this.tracer = tracer || new EdgeXRayTracer(`zip-${Date.now()}`, "ZipResourceFetcher");
+    this.tracer =
+      tracer || new EdgeXRayTracer(`zip-${Date.now()}`, "ZipResourceFetcher");
   }
 
   /**
@@ -34,7 +35,7 @@ export class ZipResourceFetcher {
    */
   async getResourceFile(
     resource: ZipResource,
-    filePath: string
+    filePath: string,
   ): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
       // 1. Check if we have the ZIP cached
@@ -43,7 +44,11 @@ export class ZipResourceFetcher {
 
       if (cachedZip) {
         logger.info(`Using cached ZIP for ${resource.repository}`);
-        return this.extractFileFromZip(cachedZip, filePath, resource.repository);
+        return this.extractFileFromZip(
+          cachedZip,
+          filePath,
+          resource.repository,
+        );
       }
 
       // 2. Download the ZIP
@@ -84,7 +89,7 @@ export class ZipResourceFetcher {
   private async extractFileFromZip(
     zipData: ArrayBuffer,
     filePath: string,
-    repository: string
+    repository: string,
   ): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
       // Import dynamically to ensure edge compatibility
@@ -150,7 +155,7 @@ export class ZipResourceFetcher {
    */
   async getScripture(
     reference: ParsedReference,
-    resource: ZipResource
+    resource: ZipResource,
   ): Promise<{ text: string; translation: string } | null> {
     // Deprecated: hardcoded file maps. Use ZipResourceFetcher2 with ingredients instead.
     const bookFile = "";
@@ -179,7 +184,7 @@ export class ZipResourceFetcher {
    */
   async getTSVData(
     reference: ParsedReference,
-    resource: ZipResource
+    resource: ZipResource,
   ): Promise<Record<string, unknown>[]> {
     // Map book to TSV file
     const tsvFile = this.getTSVFileName(reference.book, resource.resourceType);
@@ -294,7 +299,10 @@ export class ZipResourceFetcher {
     return match ? match[1].toLowerCase() : book.substring(0, 3).toLowerCase();
   }
 
-  private extractVerseFromUSFM(usfm: string, reference: ParsedReference): string {
+  private extractVerseFromUSFM(
+    usfm: string,
+    reference: ParsedReference,
+  ): string {
     // Import existing extraction logic
     if (!reference.chapter || !reference.verse) return "";
 
@@ -308,7 +316,9 @@ export class ZipResourceFetcher {
 
       // Find next chapter to limit scope
       const nextChapterMatch = usfm.substring(chapterStart).match(/\\c\s+\d+/);
-      const chapterEnd = nextChapterMatch ? chapterStart + nextChapterMatch.index! : usfm.length;
+      const chapterEnd = nextChapterMatch
+        ? chapterStart + nextChapterMatch.index!
+        : usfm.length;
 
       const chapterContent = usfm.substring(chapterStart, chapterEnd);
 
@@ -320,8 +330,12 @@ export class ZipResourceFetcher {
       const verseStart = verseMatch.index! + verseMatch[0].length;
 
       // Find next verse or end
-      const nextVerseMatch = chapterContent.substring(verseStart).match(/\\v\s+\d+/);
-      const verseEnd = nextVerseMatch ? verseStart + nextVerseMatch.index! : chapterContent.length;
+      const nextVerseMatch = chapterContent
+        .substring(verseStart)
+        .match(/\\v\s+\d+/);
+      const verseEnd = nextVerseMatch
+        ? verseStart + nextVerseMatch.index!
+        : chapterContent.length;
 
       let verseText = chapterContent.substring(verseStart, verseEnd);
 
@@ -340,7 +354,10 @@ export class ZipResourceFetcher {
     }
   }
 
-  private parseTSVForReference(tsv: string, reference: ParsedReference): Record<string, unknown>[] {
+  private parseTSVForReference(
+    tsv: string,
+    reference: ParsedReference,
+  ): Record<string, unknown>[] {
     try {
       const lines = tsv.split("\n");
       if (lines.length < 2) return [];

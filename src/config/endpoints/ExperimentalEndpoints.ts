@@ -96,7 +96,8 @@ export const ExperimentalEndpoints: EndpointConfig[] = [
     path: "/api/cultural-context",
     category: "experimental",
     enabled: false,
-    description: "Coming Soon: Understand cultural nuances and idioms for better contextualization",
+    description:
+      "Coming Soon: Understand cultural nuances and idioms for better contextualization",
     params: {},
     dataSource: { type: "computed" },
     responseShape: {
@@ -121,7 +122,8 @@ export const ExperimentalEndpoints: EndpointConfig[] = [
     path: "/api/interlinear",
     category: "experimental",
     enabled: false,
-    description: "Coming Soon: Word-by-word alignment with original Hebrew and Greek texts",
+    description:
+      "Coming Soon: Word-by-word alignment with original Hebrew and Greek texts",
     params: {},
     dataSource: { type: "computed" },
     responseShape: {

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.0] - 2025-08-10
+
+### Changed
+
+- Scripture endpoint formatting (md and text) aligned and clarified:
+  - Removed periods after verse numbers globally (single, ranges, full chapters)
+  - Removed blank lines between verses; each verse on its own line
+  - Kept chapter headers for chapter ranges
+  - Added an extra blank line after the top header
+  - Stronger separators with extra whitespace between resources
+  - Text format mirrors markdown minus markdown syntax
+- Citations now include release tag/version (e.g., ULT v86)
+- Tightened ingredient matching so abbreviations like "Jn" never route to "1Jn"
+
+### Fixed
+
+- Health endpoint `?nuke=true&clearCache=true&clearKv=true` now fully clears:
+  - KV store namespaces (`zip:`, `zipfile:`, `catalog:`)
+  - In-process CacheManager memory
+  - Unified cache memory
+- Removed all response-level caching; only DCS API calls, external file fetches, and ZIP file contents are cached, per policy
+
 ## [5.1.1] - 2025-08-09
 
 ### 🧭 Observability & Timing (Patch)

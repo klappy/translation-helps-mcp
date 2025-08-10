@@ -15,9 +15,15 @@ import type { RequestHandler } from "./$types";
 const TOOL_PATTERNS = [
   { pattern: /scripture|verse|passage|text/i, tool: "fetch_scripture" },
   { pattern: /notes|translation notes/i, tool: "fetch_translation_notes" },
-  { pattern: /questions|translation questions/i, tool: "fetch_translation_questions" },
+  {
+    pattern: /questions|translation questions/i,
+    tool: "fetch_translation_questions",
+  },
   { pattern: /word|definition|term/i, tool: "get_translation_word" },
-  { pattern: /academy|article|learn|teaching/i, tool: "fetch_translation_academy" },
+  {
+    pattern: /academy|article|learn|teaching/i,
+    tool: "fetch_translation_academy",
+  },
 ];
 
 // Reference extraction - kept simple
@@ -90,17 +96,20 @@ export const POST: RequestHandler = async ({ request }) => {
     params.organization = "unfoldingWord";
 
     // Call the dynamic MCP endpoint
-    const mcpResponse = await fetch(new URL("/api/mcp-dynamic", request.url).toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        method: "tools/call",
-        params: {
-          name: selectedTool,
-          arguments: params,
-        },
-      }),
-    });
+    const mcpResponse = await fetch(
+      new URL("/api/mcp-dynamic", request.url).toString(),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          method: "tools/call",
+          params: {
+            name: selectedTool,
+            arguments: params,
+          },
+        }),
+      },
+    );
 
     const mcpData = await mcpResponse.json();
 

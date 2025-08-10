@@ -186,9 +186,12 @@ describe("New Endpoints Test Suite", () => {
         expect(link).toHaveProperty("metadata");
 
         // Check relationship types
-        expect(["depends-on", "references", "supplements", "translates"]).toContain(
-          link.relationship
-        );
+        expect([
+          "depends-on",
+          "references",
+          "supplements",
+          "translates",
+        ]).toContain(link.relationship);
 
         // Check confidence range
         expect(link.confidence).toBeGreaterThanOrEqual(0);
@@ -418,8 +421,12 @@ describe("New Endpoints Test Suite", () => {
       };
 
       // This would require the actual scripture handler, so we'll just test the structure
-      expect(scriptureRequest.queryStringParameters.reference).toBe("John 3:16");
-      expect(scriptureRequest.queryStringParameters.includeAlignment).toBe("true");
+      expect(scriptureRequest.queryStringParameters.reference).toBe(
+        "John 3:16",
+      );
+      expect(scriptureRequest.queryStringParameters.includeAlignment).toBe(
+        "true",
+      );
     });
 
     it("should maintain consistent terminology", async () => {

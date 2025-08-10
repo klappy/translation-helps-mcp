@@ -52,7 +52,9 @@ async function checkServer() {
   log("\n🔍 Checking if server is running...", colors.blue);
 
   try {
-    const response = await fetch("http://localhost:8888/.netlify/functions/health");
+    const response = await fetch(
+      "http://localhost:8888/.netlify/functions/health",
+    );
     if (response.ok) {
       log("✅ Server is running", colors.green);
       return true;
@@ -82,7 +84,8 @@ async function runTests() {
     {
       name: "API/MCP Parity Tests",
       file: "tests/endpoint-parity.test.ts",
-      description: "Tests that API and MCP endpoints return identical responses",
+      description:
+        "Tests that API and MCP endpoints return identical responses",
     },
     {
       name: "Regression Tests",
@@ -105,9 +108,13 @@ async function runTests() {
     log(`${suite.description}\n`);
 
     try {
-      const result = await runCommand("npx", ["vitest", "run", suite.file, "--reporter=verbose"], {
-        env: { ...process.env, TEST_BASE_URL: "http://localhost:8888" },
-      });
+      const result = await runCommand(
+        "npx",
+        ["vitest", "run", suite.file, "--reporter=verbose"],
+        {
+          env: { ...process.env, TEST_BASE_URL: "http://localhost:8888" },
+        },
+      );
 
       const lines = result.stdout.split("\n");
       let passed = 0;
@@ -136,7 +143,10 @@ async function runTests() {
       if (failed === 0) {
         log(`✅ ${suite.name}: ${passed} tests passed`, colors.green);
       } else {
-        log(`❌ ${suite.name}: ${failed} tests failed, ${passed} tests passed`, colors.red);
+        log(
+          `❌ ${suite.name}: ${failed} tests failed, ${passed} tests passed`,
+          colors.red,
+        );
       }
     } catch (error) {
       log(`❌ ${suite.name}: Error running tests`, colors.red);
@@ -163,7 +173,7 @@ async function runTests() {
     const color = result.success ? colors.green : colors.red;
     log(
       `${status} ${result.name}: ${result.passed} passed, ${result.failed} failed, ${result.skipped} skipped`,
-      color
+      color,
     );
   });
 
@@ -171,7 +181,10 @@ async function runTests() {
   if (totalFailed === 0) {
     log(`🎉 All tests passed! (${totalPassed} total)`, colors.green);
   } else {
-    log(`💥 ${totalFailed} tests failed, ${totalPassed} tests passed`, colors.red);
+    log(
+      `💥 ${totalFailed} tests failed, ${totalPassed} tests passed`,
+      colors.red,
+    );
   }
 
   // Print failed test details
@@ -190,7 +203,10 @@ async function runTests() {
         const errorLines = suite.output
           .split("\n")
           .filter(
-            (line) => line.includes("FAIL") || line.includes("Error") || line.includes("expect")
+            (line) =>
+              line.includes("FAIL") ||
+              line.includes("Error") ||
+              line.includes("expect"),
           );
         errorLines.forEach((line) => log(line, colors.red));
       }
@@ -220,7 +236,9 @@ async function runTests() {
   log("• Run specific tests: npx vitest run tests/endpoint-parity.test.ts");
   log("• Run in watch mode: npx vitest tests/");
   log("• Generate coverage: npx vitest run --coverage");
-  log("• Check server health: curl http://localhost:8888/.netlify/functions/health");
+  log(
+    "• Check server health: curl http://localhost:8888/.netlify/functions/health",
+  );
 
   process.exit(totalFailed > 0 ? 1 : 0);
 }

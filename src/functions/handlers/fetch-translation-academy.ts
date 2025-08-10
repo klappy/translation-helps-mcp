@@ -4,12 +4,18 @@
  * Provides educational content to support translation work
  */
 
-import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../../constants/terminology.js";
+import {
+  DEFAULT_STRATEGIC_LANGUAGE,
+  Organization,
+} from "../../constants/terminology.js";
 import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { DCSCallTrace, XRayTrace } from "../../types/dcs.js";
 import { logger } from "../../utils/logger.js";
-import type { PlatformHandler, PlatformRequest, PlatformResponse } from "../platform-adapter";
-import { unifiedCache } from "../unified-cache.js";
+import type {
+  PlatformHandler,
+  PlatformRequest,
+  PlatformResponse,
+} from "../platform-adapter";
 
 interface TAModule {
   id: string;
@@ -55,21 +61,26 @@ interface TAResponse {
  * Main handler for Translation Academy requests
  */
 export const fetchTranslationAcademyHandler: PlatformHandler = async (
-  request: PlatformRequest
+  request: PlatformRequest,
 ): Promise<PlatformResponse> => {
   const startTime = Date.now();
   const url = new URL(request.url);
 
   // Extract parameters
-  const language = url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
-  const organization = url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
+  const language =
+    url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
+  const organization =
+    url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
   const category = url.searchParams.get("category") || undefined;
   const difficulty = url.searchParams.get("difficulty") as
     | "beginner"
     | "intermediate"
     | "advanced"
     | undefined;
-  const moduleId = url.searchParams.get("moduleId") || url.searchParams.get("topic") || undefined;
+  const moduleId =
+    url.searchParams.get("moduleId") ||
+    url.searchParams.get("topic") ||
+    undefined;
   const bypassCache = url.searchParams.get("bypassCache") === "true";
 
   try {
@@ -87,7 +98,7 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (
     // Try to get from cache first
     if (!bypassCache) {
       const cacheStartTime = performance.now();
-      const cachedResult = await unifiedCache.get(cacheKey);
+      const cachedResult = null;
       const cacheEndTime = performance.now();
 
       if (cachedResult?.value) {
@@ -121,10 +132,17 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (
     // If not cached, fetch fresh data
     if (!result) {
       logger.info(
-        `🔄 TA cache MISS, fetching fresh data for: ${language} [CACHE KEY: ${cacheKey}]`
+        `🔄 TA cache MISS, fetching fresh data for: ${language} [CACHE KEY: ${cacheKey}]`,
       );
 
-      result = await fetchTAData(dcsClient, language, organization, category, difficulty, moduleId);
+      result = await fetchTAData(
+        dcsClient,
+        language,
+        organization,
+        category,
+        difficulty,
+        moduleId,
+      );
 
       if (!result) {
         const errorResponse: TAResponse = {
@@ -145,7 +163,7 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (
 
       // Cache the result (without X-Ray data)
       if (!bypassCache) {
-        await unifiedCache.set(cacheKey, result, "transformedResponse");
+        // Do not cache assembled responses
         logger.info(`💾 Cached TA response: ${cacheKey}`);
       }
     }
@@ -209,7 +227,7 @@ async function fetchTAData(
   organization: string,
   category?: string,
   difficulty?: string,
-  moduleId?: string
+  moduleId?: string,
 ): Promise<{
   language: string;
   organization: string;
@@ -227,7 +245,11 @@ async function fetchTAData(
 } | null> {
   try {
     // Try to get Translation Academy resource metadata
-    const taResponse = await dcsClient.getSpecificResourceMetadata(language, organization, "ta");
+    const taResponse = await dcsClient.getSpecificResourceMetadata(
+      language,
+      organization,
+      "ta",
+    );
 
     let modules: TAModule[] = [];
 
@@ -237,7 +259,7 @@ async function fetchTAData(
         language,
         organization,
         "ta",
-        "content"
+        "content",
       );
 
       if (contentResponse.success && contentResponse.data) {
@@ -246,14 +268,16 @@ async function fetchTAData(
           contentResponse.data.content || contentResponse.data.toString(),
           category,
           difficulty,
-          moduleId
+          moduleId,
         );
       }
     }
 
     // If no real content found, fall back to sample content
     if (modules.length === 0) {
-      logger.warn(`No TA content found for ${language}/${organization}, using sample content`);
+      logger.warn(
+        `No TA content found for ${language}/${organization}, using sample content`,
+      );
       modules = parseTAContent("", category, difficulty, moduleId);
     }
 
@@ -265,10 +289,14 @@ async function fetchTAData(
     const categories = [...new Set(modules.map((m) => m.category))];
     const difficultyDistribution = {
       beginner: modules.filter((m) => m.difficulty === "beginner").length,
-      intermediate: modules.filter((m) => m.difficulty === "intermediate").length,
+      intermediate: modules.filter((m) => m.difficulty === "intermediate")
+        .length,
       advanced: modules.filter((m) => m.difficulty === "advanced").length,
     };
-    const totalEstimatedTime = modules.reduce((sum, m) => sum + m.estimatedTime, 0);
+    const totalEstimatedTime = modules.reduce(
+      (sum, m) => sum + m.estimatedTime,
+      0,
+    );
 
     return {
       language,
@@ -294,10 +322,14 @@ async function fetchTAData(
     const categories = [...new Set(modules.map((m) => m.category))];
     const difficultyDistribution = {
       beginner: modules.filter((m) => m.difficulty === "beginner").length,
-      intermediate: modules.filter((m) => m.difficulty === "intermediate").length,
+      intermediate: modules.filter((m) => m.difficulty === "intermediate")
+        .length,
       advanced: modules.filter((m) => m.difficulty === "advanced").length,
     };
-    const totalEstimatedTime = modules.reduce((sum, m) => sum + m.estimatedTime, 0);
+    const totalEstimatedTime = modules.reduce(
+      (sum, m) => sum + m.estimatedTime,
+      0,
+    );
 
     return {
       language,
@@ -321,7 +353,7 @@ function parseTAContent(
   content: string,
   category?: string,
   difficulty?: string,
-  moduleId?: string
+  moduleId?: string,
 ): TAModule[] {
   // This is a placeholder implementation
   // In practice, TA content would be structured (JSON, YAML, or Markdown with frontmatter)
@@ -330,11 +362,13 @@ function parseTAContent(
     {
       id: "intro-to-translation",
       title: "Introduction to Translation",
-      description: "Learn the basics of biblical translation principles and methods.",
+      description:
+        "Learn the basics of biblical translation principles and methods.",
       category: "fundamentals",
       difficulty: "beginner",
       estimatedTime: 30,
-      content: "This module introduces the fundamental principles of biblical translation...",
+      content:
+        "This module introduces the fundamental principles of biblical translation...",
       metadata: {
         lastUpdated: "2024-01-15",
         version: "1.0",
@@ -345,7 +379,8 @@ function parseTAContent(
     {
       id: "metonymy",
       title: "Understanding Metonymy",
-      description: "Learn how metonymy works in biblical texts and translation strategies.",
+      description:
+        "Learn how metonymy works in biblical texts and translation strategies.",
       category: "figures-of-speech",
       difficulty: "intermediate",
       estimatedTime: 45,
@@ -361,11 +396,13 @@ function parseTAContent(
     {
       id: "word-alignment",
       title: "Understanding Word Alignment",
-      description: "Learn how word alignment helps ensure accurate translation.",
+      description:
+        "Learn how word alignment helps ensure accurate translation.",
       category: "advanced-techniques",
       difficulty: "intermediate",
       estimatedTime: 45,
-      content: "Word alignment is a crucial tool for maintaining translation accuracy...",
+      content:
+        "Word alignment is a crucial tool for maintaining translation accuracy...",
       metadata: {
         lastUpdated: "2024-01-20",
         version: "1.1",
@@ -376,7 +413,8 @@ function parseTAContent(
     {
       id: "metaphor",
       title: "Translating Metaphors",
-      description: "Understanding and translating metaphorical language in scripture.",
+      description:
+        "Understanding and translating metaphorical language in scripture.",
       category: "figures-of-speech",
       difficulty: "intermediate",
       estimatedTime: 50,
@@ -392,11 +430,13 @@ function parseTAContent(
     {
       id: "cultural-context",
       title: "Cultural Context in Translation",
-      description: "Understanding how cultural context affects translation decisions.",
+      description:
+        "Understanding how cultural context affects translation decisions.",
       category: "context",
       difficulty: "advanced",
       estimatedTime: 60,
-      content: "Cultural context plays a vital role in translation decisions...",
+      content:
+        "Cultural context plays a vital role in translation decisions...",
       metadata: {
         lastUpdated: "2024-01-25",
         version: "1.0",
@@ -411,13 +451,13 @@ function parseTAContent(
 
   if (category) {
     filteredModules = filteredModules.filter((m) =>
-      m.category.toLowerCase().includes(category.toLowerCase())
+      m.category.toLowerCase().includes(category.toLowerCase()),
     );
   }
 
   if (difficulty) {
     filteredModules = filteredModules.filter(
-      (m) => m.difficulty.toLowerCase() === difficulty.toLowerCase()
+      (m) => m.difficulty.toLowerCase() === difficulty.toLowerCase(),
     );
   }
 
@@ -427,7 +467,9 @@ function parseTAContent(
       (m) =>
         m.id.toLowerCase().includes(moduleId.toLowerCase()) ||
         m.title.toLowerCase().includes(moduleId.toLowerCase()) ||
-        m.metadata.tags.some((tag) => tag.toLowerCase().includes(moduleId.toLowerCase()))
+        m.metadata.tags.some((tag) =>
+          tag.toLowerCase().includes(moduleId.toLowerCase()),
+        ),
     );
   }
 

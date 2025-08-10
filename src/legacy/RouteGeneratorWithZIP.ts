@@ -16,7 +16,11 @@ export interface ZipDataSourceConfig extends DataSourceConfig {
   type: "dcs-api" | "computed" | "hybrid" | "zip-cached" | "zip-direct";
 
   zipConfig?: {
-    fetchMethod: "getScripture" | "getTSVData" | "getUSFMContent" | "getMarkdownContent";
+    fetchMethod:
+      | "getScripture"
+      | "getTSVData"
+      | "getUSFMContent"
+      | "getMarkdownContent";
     resourceType: "ult" | "ust" | "tn" | "tq" | "tw" | "ta" | "twl";
     useIngredients?: boolean;
     zipCacheTtl?: number;
@@ -36,7 +40,7 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
   protected async fetchData(
     config: EndpointConfig & { dataSource: ZipDataSourceConfig },
     params: ParsedParams,
-    traceId: string
+    traceId: string,
   ): Promise<unknown> {
     switch (config.dataSource.type) {
       case "dcs-api":
@@ -68,7 +72,7 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
   private async fetchFromZIP(
     dataSource: ZipDataSourceConfig,
     params: ParsedParams,
-    traceId: string
+    traceId: string,
   ): Promise<unknown> {
     // Initialize ZIP fetcher if needed
     if (!this.zipFetcher) {
@@ -82,7 +86,9 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
     }
 
     // Parse reference if provided
-    const parsedRef = params.reference ? parseReference(params.reference as string) : null;
+    const parsedRef = params.reference
+      ? parseReference(params.reference as string)
+      : null;
 
     // Call appropriate ZIP fetcher method
     switch (zipConfig.fetchMethod) {
@@ -95,7 +101,7 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
           parsedRef,
           (params.language as string) || "en",
           (params.organization as string) || "unfoldingWord",
-          (params.resource as string) || zipConfig.resourceType
+          (params.resource as string) || zipConfig.resourceType,
         );
 
         return {
@@ -116,7 +122,7 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
           (params.organization as string) || "unfoldingWord",
           zipConfig.resourceType,
           parsedRef.book,
-          parsedRef.chapter
+          parsedRef.chapter,
         );
 
         // Filter by verse if specified
@@ -124,7 +130,8 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
           const filteredData = data.filter((item) => {
             const itemVerse = parseInt(item.verse as string);
             return (
-              itemVerse >= parsedRef.verse && itemVerse <= (parsedRef.endVerse || parsedRef.verse)
+              itemVerse >= parsedRef.verse &&
+              itemVerse <= (parsedRef.endVerse || parsedRef.verse)
             );
           });
           return filteredData;
@@ -143,7 +150,7 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
           (params.language as string) || "en",
           (params.organization as string) || "unfoldingWord",
           zipConfig.resourceType,
-          term
+          term,
         );
 
         return {
@@ -164,7 +171,7 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
           (params.organization as string) || "unfoldingWord",
           zipConfig.resourceType,
           parsedRef.book,
-          parsedRef.chapter
+          parsedRef.chapter,
         );
 
         return {
@@ -176,7 +183,9 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
       }
 
       default:
-        throw new Error(`Unsupported ZIP fetch method: ${zipConfig.fetchMethod}`);
+        throw new Error(
+          `Unsupported ZIP fetch method: ${zipConfig.fetchMethod}`,
+        );
     }
   }
 
@@ -186,7 +195,7 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
   private async computeDataWithZIP(
     config: EndpointConfig,
     params: ParsedParams,
-    dcsData?: unknown
+    dcsData?: unknown,
   ): Promise<unknown> {
     // Initialize ZIP fetcher if needed for computed endpoints
     if (!this.zipFetcher) {
@@ -203,7 +212,9 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
       }
 
       const translations =
-        params.resource === "all" ? ["ult", "ust"] : (params.resource as string).split(",");
+        params.resource === "all"
+          ? ["ult", "ust"]
+          : (params.resource as string).split(",");
 
       const results = await Promise.all(
         translations.map(async (translation) => {
@@ -211,10 +222,10 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
             parsedRef,
             (params.language as string) || "en",
             (params.organization as string) || "unfoldingWord",
-            translation
+            translation,
           );
           return { translation, resources };
-        })
+        }),
       );
 
       return {
@@ -226,7 +237,9 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
     }
 
     // For other computed endpoints, fall back to error
-    throw new Error(`Computed logic not implemented for endpoint: ${config.name}`);
+    throw new Error(
+      `Computed logic not implemented for endpoint: ${config.name}`,
+    );
   }
 }
 
@@ -234,7 +247,9 @@ export class RouteGeneratorWithZIP extends RouteGenerator {
 function parseReference(reference: string): any {
   // This would import from the actual reference parser
   // Simplified for example
-  const match = reference.match(/^([1-3]?\s?[A-Za-z]+)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+  const match = reference.match(
+    /^([1-3]?\s?[A-Za-z]+)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/,
+  );
   if (!match) {
     return { isValid: false };
   }

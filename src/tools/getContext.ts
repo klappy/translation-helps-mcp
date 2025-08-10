@@ -12,13 +12,21 @@ import { estimateTokens } from "../utils/tokenCounter.js";
 // Input schema
 export const GetContextArgs = z.object({
   reference: z.string().describe("Bible reference (e.g., 'John 3:16')"),
-  language: z.string().optional().default("en").describe("Language code (default: 'en')"),
+  language: z
+    .string()
+    .optional()
+    .default("en")
+    .describe("Language code (default: 'en')"),
   organization: z
     .string()
     .optional()
     .default("unfoldingWord")
     .describe("Organization (default: 'unfoldingWord')"),
-  includeRawData: z.boolean().optional().default(false).describe("Include raw USFM data"),
+  includeRawData: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Include raw USFM data"),
   maxTokens: z.number().optional().describe("Maximum tokens for context"),
   deepAnalysis: z
     .boolean()
@@ -49,7 +57,9 @@ export async function handleGetContext(args: GetContextArgs) {
     });
 
     // Calculate token estimate
-    contextResult.metadata.tokenEstimate = estimateTokens(JSON.stringify(contextResult));
+    contextResult.metadata.tokenEstimate = estimateTokens(
+      JSON.stringify(contextResult),
+    );
 
     logger.info("Context extracted successfully", {
       reference: args.reference,
@@ -85,7 +95,7 @@ export async function handleGetContext(args: GetContextArgs) {
               timestamp: new Date().toISOString(),
             },
             null,
-            2
+            2,
           ),
         },
       ],

@@ -19,13 +19,17 @@ interface TranslationWordEntry {
 }
 
 export async function handleBrowseTranslationWords(
-  params: BrowseTranslationWordsParams
+  params: BrowseTranslationWordsParams,
 ): Promise<{ content: TranslationWordEntry[] }> {
   const client = new DCSApiClient();
   const organization = params.organization || "unfoldingWord";
   const language = params.language || "en";
 
-  logger.info("Browsing translation words", { language, organization, category: params.category });
+  logger.info("Browsing translation words", {
+    language,
+    organization,
+    category: params.category,
+  });
 
   try {
     // Translation words are typically in repositories like "en_tw" (English Translation Words)
@@ -61,7 +65,7 @@ export async function handleBrowseTranslationWords(
       const categoryResponse = await client.getRepositoryContents(
         organization,
         repoName,
-        item.path
+        item.path,
       );
 
       if (categoryResponse.success && categoryResponse.data) {

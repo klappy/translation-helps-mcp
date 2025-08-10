@@ -7,21 +7,24 @@
 ## Why Mapping Exists (The Problem)
 
 1. **Historical Interface Design**: The TypeScript interfaces were created with different field names than the TSV columns:
+
    ```typescript
    // Interface expects:
    interface TranslationNote {
-     note: string;        // But TSV has: Note
-     quote?: string;      // But TSV has: Quote  
+     note: string; // But TSV has: Note
+     quote?: string; // But TSV has: Quote
      supportReference?: string; // But TSV has: SupportReference
      // etc.
    }
    ```
 
 2. **Manual Column Mapping**: Instead of using TSV headers, the code manually maps columns by position:
+
    ```javascript
    // WRONG - Manual mapping by position:
-   const [ref, id, supportReference, quote, occurrence, note, occurrenceNote] = columns;
-   
+   const [ref, id, supportReference, quote, occurrence, note, occurrenceNote] =
+     columns;
+
    // This assumes column order and renames fields!
    ```
 
@@ -30,17 +33,18 @@
 ## The Solution: Auto-Discovery
 
 ### 1. Use TSV Headers Directly
+
 ```javascript
 // RIGHT - Auto-discovery from headers:
 const parseTSV = (data) => {
-  const lines = data.split('\n');
-  const headers = lines[0].split('\t'); // Use actual column names!
-  
-  return lines.slice(1).map(line => {
-    const values = line.split('\t');
+  const lines = data.split("\n");
+  const headers = lines[0].split("\t"); // Use actual column names!
+
+  return lines.slice(1).map((line) => {
+    const values = line.split("\t");
     const obj = {};
     headers.forEach((header, i) => {
-      obj[header] = values[i] || '';
+      obj[header] = values[i] || "";
     });
     return obj;
   });
@@ -48,11 +52,13 @@ const parseTSV = (data) => {
 ```
 
 ### 2. No Field Renaming
+
 - TSV column `Reference` → JSON field `Reference` (not `reference`)
 - TSV column `SupportReference` → JSON field `SupportReference` (not `supportReference`)
 - TSV column `Tags` → JSON field `Tags` (not mapped to something else)
 
 ### 3. No Extra Fields
+
 - Only include fields that exist in the TSV
 - No `markdown` field (doesn't exist in source)
 - No `occurrences` field (if not in TSV)
@@ -66,48 +72,61 @@ const parseTSV = (data) => {
 ## Regression Prevention Tests
 
 ### 1. TSV Structure Validation
+
 ```javascript
-test('TSV columns must match JSON fields exactly', () => {
-  const tsvHeaders = ['Reference', 'ID', 'Tags', 'SupportReference', 'Quote', 'Occurrence', 'Note'];
+test("TSV columns must match JSON fields exactly", () => {
+  const tsvHeaders = [
+    "Reference",
+    "ID",
+    "Tags",
+    "SupportReference",
+    "Quote",
+    "Occurrence",
+    "Note",
+  ];
   const jsonResponse = fetchTranslationNotes(/*...*/);
-  
+
   // Every TSV column should exist in JSON
-  tsvHeaders.forEach(header => {
+  tsvHeaders.forEach((header) => {
     expect(jsonResponse[0]).toHaveProperty(header);
   });
-  
+
   // No extra fields in JSON
   expect(Object.keys(jsonResponse[0])).toEqual(tsvHeaders);
 });
 ```
 
 ### 2. Real Data Validation
+
 ```javascript
-test('API output matches actual DCS TSV data', async () => {
+test("API output matches actual DCS TSV data", async () => {
   // Fetch real TSV from DCS
-  const tsvData = await fetch('https://git.door43.org/.../tn_TIT.tsv');
+  const tsvData = await fetch("https://git.door43.org/.../tn_TIT.tsv");
   const parsed = parseTSV(tsvData);
-  
+
   // Fetch from API
-  const apiResponse = await fetchTranslationNotes({/*...*/});
-  
+  const apiResponse = await fetchTranslationNotes({
+    /*...*/
+  });
+
   // Should be identical structure
   expect(Object.keys(apiResponse[0])).toEqual(Object.keys(parsed[0]));
 });
 ```
 
 ### 3. No Mapping Test
+
 ```javascript
-test('No manual field mapping should occur', () => {
+test("No manual field mapping should occur", () => {
   const tsv = `Reference\tID\tTags\tSupportReference\tQuote\tOccurrence\tNote
 1:1\tabc\trc://link\tGreek text\tEnglish quote\t1\tThe note`;
 
   const result = parseTSV(tsv);
-  
+
   // Exact field preservation
-  expect(result[0].Tags).toBe('rc://link'); // NOT renamed
-  expect(result[0].SupportReference).toBe('Greek text'); // NOT moved
-  expect(result[0]).not.toHaveProperty('markdown'); // NOT added
+  expect(result[0].Tags).toBe("rc://link"); // NOT renamed
+  expect(result[0].SupportReference).toBe("Greek text"); // NOT moved
+  expect(result[0]).not.toHaveProperty("markdown"); // NOT added
 });
 ```
 

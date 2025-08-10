@@ -118,8 +118,12 @@ describe("Compression Middleware", () => {
       const metrics = middleware.getMetrics();
 
       expect(metrics.algorithmUsage).toHaveProperty(CompressionAlgorithm.GZIP);
-      expect(metrics.algorithmUsage).toHaveProperty(CompressionAlgorithm.BROTLI);
-      expect(metrics.algorithmUsage).toHaveProperty(CompressionAlgorithm.DEFLATE);
+      expect(metrics.algorithmUsage).toHaveProperty(
+        CompressionAlgorithm.BROTLI,
+      );
+      expect(metrics.algorithmUsage).toHaveProperty(
+        CompressionAlgorithm.DEFLATE,
+      );
       expect(metrics.algorithmUsage).toHaveProperty(CompressionAlgorithm.NONE);
     });
   });
@@ -128,7 +132,9 @@ describe("Compression Middleware", () => {
     test("provides performance insights", () => {
       const stats = middleware.getStats();
 
-      expect(stats.performance.averageCompressionTime).toBeGreaterThanOrEqual(0);
+      expect(stats.performance.averageCompressionTime).toBeGreaterThanOrEqual(
+        0,
+      );
       expect(stats.performance.totalBytesSaved).toBeGreaterThanOrEqual(0);
       expect(stats.performance.requestsProcessed).toBeGreaterThanOrEqual(0);
     });

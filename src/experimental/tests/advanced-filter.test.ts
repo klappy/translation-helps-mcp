@@ -137,7 +137,9 @@ describe("Advanced Resource Filtering", () => {
 
       expect(result.resources.length).toBeGreaterThan(0);
       result.resources.forEach((item) => {
-        expect([ResourceType.ULT, ResourceType.UST]).toContain(item.detection.type);
+        expect([ResourceType.ULT, ResourceType.UST]).toContain(
+          item.detection.type,
+        );
       });
     });
 
@@ -164,7 +166,7 @@ describe("Advanced Resource Filtering", () => {
       result.resources.forEach((item) => {
         expect(
           item.resource.description?.toLowerCase().includes("alignment") ||
-            item.resource.name?.toLowerCase().includes("alignment")
+            item.resource.name?.toLowerCase().includes("alignment"),
         ).toBe(true);
       });
     });
@@ -198,7 +200,7 @@ describe("Advanced Resource Filtering", () => {
       // Check that results are sorted by relevance (descending)
       for (let i = 0; i < result.resources.length - 1; i++) {
         expect(result.resources[i].relevanceScore).toBeGreaterThanOrEqual(
-          result.resources[i + 1].relevanceScore
+          result.resources[i + 1].relevanceScore,
         );
       }
     });

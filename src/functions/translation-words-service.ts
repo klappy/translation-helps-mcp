@@ -66,25 +66,7 @@ export async function fetchTranslationWords(
     category,
   });
 
-  // Check cache first
-  const responseKey = `words:${reference}:${language}:${organization}:${category || "all"}`;
-  const cachedResponse = await cache.getTransformedResponseWithCacheInfo(responseKey);
-
-  if (cachedResponse.value) {
-    logger.info(`FAST cache hit for processed words`, { key: responseKey });
-    return {
-      translationWords: cachedResponse.value.translationWords,
-      citation: cachedResponse.value.citation,
-      metadata: {
-        responseTime: Date.now() - startTime,
-        cached: true,
-        timestamp: new Date().toISOString(),
-        wordsFound: cachedResponse.value.translationWords?.length || 0,
-      },
-    };
-  }
-
-  logger.info(`Processing fresh words request`, { key: responseKey });
+  logger.info(`Processing fresh words request`);
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
   logger.debug(`Using unified resource discovery for translation words...`);
@@ -94,7 +76,10 @@ export async function fetchTranslationWords(
     throw new Error(`No translation words found for ${language}/${organization}`);
   }
 
-  logger.info(`Using resource`, { name: resourceInfo.name, title: resourceInfo.title });
+  logger.info(`Using resource`, {
+    name: resourceInfo.name,
+    title: resourceInfo.title,
+  });
 
   // Translation words are organized differently - we need to fetch the word links first
   // Then fetch individual word definitions
@@ -127,7 +112,9 @@ export async function fetchTranslationWords(
     logger.info(`Cache miss for TW links file, downloading...`);
     const linksResponse = await fetch(linksUrl);
     if (!linksResponse.ok) {
-      logger.warn(`Failed to fetch TW links file`, { status: linksResponse.status });
+      logger.warn(`Failed to fetch TW links file`, {
+        status: linksResponse.status,
+      });
       throw new Error(`Failed to fetch translation word links: ${linksResponse.status}`);
     }
 
@@ -143,7 +130,10 @@ export async function fetchTranslationWords(
 
   // Parse the word links for the specific verse/chapter
   const wordIds = parseWordLinksFromTSV(linksData, parsedRef);
-  logger.info(`Found word links for reference`, { count: wordIds.length, reference });
+  logger.info(`Found word links for reference`, {
+    count: wordIds.length,
+    reference,
+  });
 
   // For now, return empty array if no words found
   const words: TranslationWord[] = [];
@@ -165,11 +155,7 @@ export async function fetchTranslationWords(
     },
   };
 
-  // Cache the transformed response
-  await cache.setTransformedResponse(responseKey, {
-    translationWords: result.translationWords,
-    citation: result.citation,
-  });
+  // Do not cache transformed responses
 
   logger.info(`Processed translation words`, { count: words.length });
 

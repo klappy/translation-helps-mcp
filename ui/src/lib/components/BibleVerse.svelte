@@ -41,7 +41,7 @@
 	}
 </script>
 
-<div 
+<div
 	class="bible-verse {theme}"
 	class:highlight={theme === 'highlight'}
 	class:minimal={theme === 'minimal'}
@@ -51,12 +51,12 @@
 		{#if theme !== 'minimal'}
 			<div class="verse-header">
 				<div class="verse-icon">
-					<BookOpen class="w-5 h-5" />
+					<BookOpen class="h-5 w-5" />
 				</div>
 				<h3 class="verse-reference">{verse.reference}</h3>
 			</div>
 		{/if}
-		
+
 		<div class="verse-text">
 			{#if theme === 'minimal'}
 				<span class="minimal-reference">{verse.reference}</span>
@@ -71,21 +71,17 @@
 					on:click={toggleLike}
 					title="Like this verse"
 				>
-					<Heart class="w-4 h-4" />
+					<Heart class="h-4 w-4" />
 				</button>
-				<button
-					class="action-btn"
-					on:click={shareVerse}
-					title="Share this verse"
-				>
-					<Share2 class="w-4 h-4" />
+				<button class="action-btn" on:click={shareVerse} title="Share this verse">
+					<Share2 class="h-4 w-4" />
 				</button>
 				<button
 					class="action-btn {isCopied ? 'copied' : ''}"
 					on:click={copyVerse}
 					title="Copy verse text"
 				>
-					<Copy class="w-4 h-4" />
+					<Copy class="h-4 w-4" />
 				</button>
 			</div>
 		{/if}
@@ -93,7 +89,7 @@
 
 	{#if theme === 'highlight'}
 		<div class="verse-decoration">
-			<Quote class="w-8 h-8 opacity-20" />
+			<Quote class="h-8 w-8 opacity-20" />
 		</div>
 	{/if}
 </div>
@@ -250,7 +246,8 @@
 	}
 
 	@keyframes heartBeat {
-		0%, 100% {
+		0%,
+		100% {
 			transform: scale(1);
 		}
 		50% {
@@ -276,4 +273,4 @@
 	.bible-verse.highlight:hover::before {
 		opacity: 1;
 	}
-</style> 
+</style>

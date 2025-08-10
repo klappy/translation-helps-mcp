@@ -17,8 +17,12 @@ describe("Smart Resource Recommendation Engine", () => {
   // Helper to create test contexts
   const createContext = (
     reference: ScriptureReference,
-    userRole: "translator" | "checker" | "consultant" | "facilitator" = "translator",
-    overrides: Partial<RecommendationContext> = {}
+    userRole:
+      | "translator"
+      | "checker"
+      | "consultant"
+      | "facilitator" = "translator",
+    overrides: Partial<RecommendationContext> = {},
   ): RecommendationContext => ({
     reference,
     userRole,
@@ -38,7 +42,7 @@ describe("Smart Resource Recommendation Engine", () => {
         expect.arrayContaining([
           expect.objectContaining({ type: ResourceType.ULT, priority: "high" }),
           expect.objectContaining({ type: ResourceType.UST, priority: "high" }),
-        ])
+        ]),
       );
     });
 
@@ -65,14 +69,17 @@ describe("Smart Resource Recommendation Engine", () => {
 
   describe("User Role-Based Recommendations", () => {
     test("recommends TN and TW for translators", () => {
-      const context = createContext({ book: "Romans", chapter: 9 }, "translator");
+      const context = createContext(
+        { book: "Romans", chapter: 9 },
+        "translator",
+      );
       const result = recommendResources(context);
 
       expect(result.recommendations).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ type: ResourceType.TN }),
           expect.objectContaining({ type: ResourceType.TW }),
-        ])
+        ]),
       );
     });
 
@@ -84,25 +91,33 @@ describe("Smart Resource Recommendation Engine", () => {
         expect.arrayContaining([
           expect.objectContaining({ type: ResourceType.TQ, priority: "high" }),
           expect.objectContaining({ type: ResourceType.TWL }),
-        ])
+        ]),
       );
     });
 
     test("recommends TA for consultants and facilitators", () => {
-      const consultantContext = createContext({ book: "1 Timothy", chapter: 2 }, "consultant");
+      const consultantContext = createContext(
+        { book: "1 Timothy", chapter: 2 },
+        "consultant",
+      );
       const consultantResult = recommendResources(consultantContext);
 
-      const facilitatorContext = createContext({ book: "1 Timothy", chapter: 2 }, "facilitator");
+      const facilitatorContext = createContext(
+        { book: "1 Timothy", chapter: 2 },
+        "facilitator",
+      );
       const facilitatorResult = recommendResources(facilitatorContext);
 
       expect(consultantResult.recommendations).toEqual(
-        expect.arrayContaining([expect.objectContaining({ type: ResourceType.TA })])
+        expect.arrayContaining([
+          expect.objectContaining({ type: ResourceType.TA }),
+        ]),
       );
 
       expect(facilitatorResult.recommendations).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ type: ResourceType.TA, priority: "high" }),
-        ])
+        ]),
       );
     });
   });
@@ -112,7 +127,9 @@ describe("Smart Resource Recommendation Engine", () => {
       const context = createContext({ book: "Isaiah", chapter: 53 });
       const result = recommendResources(context);
 
-      const tnRecommendation = result.recommendations.find((r) => r.type === ResourceType.TN);
+      const tnRecommendation = result.recommendations.find(
+        (r) => r.type === ResourceType.TN,
+      );
       expect(tnRecommendation).toBeDefined();
       expect(tnRecommendation!.priority).toBe("high");
       // Isaiah 53 is a difficult passage, so it gets difficulty-based reasoning first
@@ -123,7 +140,9 @@ describe("Smart Resource Recommendation Engine", () => {
       const context = createContext({ book: "Leviticus", chapter: 16 });
       const result = recommendResources(context);
 
-      const twRecommendation = result.recommendations.find((r) => r.type === ResourceType.TW);
+      const twRecommendation = result.recommendations.find(
+        (r) => r.type === ResourceType.TW,
+      );
       expect(twRecommendation).toBeDefined();
       expect(twRecommendation!.priority).toBe("high");
       expect(twRecommendation!.reason).toContain("technical terms");
@@ -133,10 +152,14 @@ describe("Smart Resource Recommendation Engine", () => {
       const context = createContext({ book: "Psalms", chapter: 23 });
       const result = recommendResources(context);
 
-      const tnRecommendation = result.recommendations.find((r) => r.type === ResourceType.TN);
+      const tnRecommendation = result.recommendations.find(
+        (r) => r.type === ResourceType.TN,
+      );
       expect(tnRecommendation).toBeDefined();
       // For a translator role, it gets the basic translator reasoning first
-      expect(tnRecommendation!.reason).toContain("cultural and linguistic context");
+      expect(tnRecommendation!.reason).toContain(
+        "cultural and linguistic context",
+      );
     });
   });
 
@@ -147,8 +170,12 @@ describe("Smart Resource Recommendation Engine", () => {
       const result = recommendResources(context);
 
       // Should have high priority TN and TW due to complexity
-      const tnRec = result.recommendations.find((r) => r.type === ResourceType.TN);
-      const twRec = result.recommendations.find((r) => r.type === ResourceType.TW);
+      const tnRec = result.recommendations.find(
+        (r) => r.type === ResourceType.TN,
+      );
+      const twRec = result.recommendations.find(
+        (r) => r.type === ResourceType.TW,
+      );
 
       expect(tnRec).toBeDefined();
       expect(twRec).toBeDefined();
@@ -162,7 +189,9 @@ describe("Smart Resource Recommendation Engine", () => {
 
       // Should still get good recommendations but maybe not all high priority
       expect(result.recommendations.length).toBeGreaterThan(1);
-      expect(result.recommendations.some((r) => r.priority === "high")).toBe(true);
+      expect(result.recommendations.some((r) => r.priority === "high")).toBe(
+        true,
+      );
     });
   });
 
@@ -189,7 +218,7 @@ describe("Smart Resource Recommendation Engine", () => {
       const complexResult = recommendResources(complexContext);
 
       expect(complexResult.metadata.passage.difficulty).toBeGreaterThan(
-        simpleResult.metadata.passage.difficulty
+        simpleResult.metadata.passage.difficulty,
       );
     });
 
@@ -198,7 +227,7 @@ describe("Smart Resource Recommendation Engine", () => {
       const result = recommendResources(context);
 
       expect(result.metadata.passage.themes).toEqual(
-        expect.arrayContaining(["predestination", "election", "sovereignty"])
+        expect.arrayContaining(["predestination", "election", "sovereignty"]),
       );
     });
   });
@@ -233,7 +262,10 @@ describe("Smart Resource Recommendation Engine", () => {
 
   describe("Recommendation Quality", () => {
     test("prioritizes recommendations correctly", () => {
-      const context = createContext({ book: "Romans", chapter: 9 }, "translator");
+      const context = createContext(
+        { book: "Romans", chapter: 9 },
+        "translator",
+      );
       const result = recommendResources(context);
 
       // Should be sorted by priority (high first) then confidence
@@ -254,7 +286,10 @@ describe("Smart Resource Recommendation Engine", () => {
     });
 
     test("removes duplicate resource type recommendations", () => {
-      const context = createContext({ book: "Isaiah", chapter: 53 }, "translator");
+      const context = createContext(
+        { book: "Isaiah", chapter: 53 },
+        "translator",
+      );
       const result = recommendResources(context);
 
       const resourceTypes = result.recommendations.map((r) => r.type);
@@ -264,10 +299,15 @@ describe("Smart Resource Recommendation Engine", () => {
     });
 
     test("provides helpful context information", () => {
-      const context = createContext({ book: "Romans", chapter: 9, verse: 20 }, "translator");
+      const context = createContext(
+        { book: "Romans", chapter: 9, verse: 20 },
+        "translator",
+      );
       const result = recommendResources(context);
 
-      const tnRec = result.recommendations.find((r) => r.type === ResourceType.TN);
+      const tnRec = result.recommendations.find(
+        (r) => r.type === ResourceType.TN,
+      );
       if (tnRec && tnRec.context) {
         expect(tnRec.context.specificSections).toBeDefined();
         expect(tnRec.context.specificSections!.length).toBeGreaterThan(0);
@@ -297,11 +337,15 @@ describe("Smart Resource Recommendation Engine", () => {
     });
 
     test("handles complex user context", () => {
-      const context = createContext({ book: "Romans", chapter: 8 }, "translator", {
-        previousQueries: ["faith", "works", "grace"],
-        languageCapabilities: ["en", "es", "sw"],
-        sourceLanguages: ["en", "es"],
-      });
+      const context = createContext(
+        { book: "Romans", chapter: 8 },
+        "translator",
+        {
+          previousQueries: ["faith", "works", "grace"],
+          languageCapabilities: ["en", "es", "sw"],
+          sourceLanguages: ["en", "es"],
+        },
+      );
 
       const result = recommendResources(context);
       expect(result.recommendations.length).toBeGreaterThan(0);
@@ -333,11 +377,13 @@ describe("Resource Recommendation Integration", () => {
         expect.objectContaining({ type: ResourceType.UST, priority: "high" }),
         expect.objectContaining({ type: ResourceType.TN, priority: "high" }),
         expect.objectContaining({ type: ResourceType.TW, priority: "high" }),
-      ])
+      ]),
     );
 
     // Should include helpful reasoning
-    const tnRec = result.recommendations.find((r) => r.type === ResourceType.TN);
+    const tnRec = result.recommendations.find(
+      (r) => r.type === ResourceType.TN,
+    );
     expect(tnRec!.reason).toContain("complex");
 
     // Should have good metadata

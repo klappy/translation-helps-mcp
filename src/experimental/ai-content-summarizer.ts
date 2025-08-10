@@ -159,7 +159,8 @@ const SUMMARY_TEMPLATES = {
   },
   theological: {
     maxTokens: 300,
-    prompt: "Provide a theological summary highlighting doctrinal significance:",
+    prompt:
+      "Provide a theological summary highlighting doctrinal significance:",
   },
 };
 
@@ -171,7 +172,8 @@ const CONTENT_PROMPTS = {
     "This is a translation note explaining difficult passages. Focus on the translation guidance and cultural context.",
   "translation-words":
     "This is a biblical term definition. Focus on the meaning, usage, and translation implications.",
-  scripture: "This is a biblical passage. Focus on the key message and theological significance.",
+  scripture:
+    "This is a biblical passage. Focus on the key message and theological significance.",
   "translation-questions":
     "These are comprehension questions. Focus on the learning objectives and key concepts.",
   mixed:
@@ -248,7 +250,9 @@ export class AIContentSummarizer {
   /**
    * Batch summarization
    */
-  async summarizeBatch(request: BatchSummaryRequest): Promise<BatchSummaryResponse> {
+  async summarizeBatch(
+    request: BatchSummaryRequest,
+  ): Promise<BatchSummaryResponse> {
     const startTime = Date.now();
     const results: BatchSummaryResponse["results"] = [];
     const maxConcurrency = request.maxConcurrency || 5;
@@ -306,7 +310,7 @@ export class AIContentSummarizer {
     notes: string,
     reference: string,
     language: string = "en",
-    summaryType: SummaryType = "translation-focused"
+    summaryType: SummaryType = "translation-focused",
   ): Promise<SummaryResponse> {
     const contextualContent = `Reference: ${reference}\n\nTranslation Notes:\n${notes}`;
 
@@ -326,7 +330,7 @@ export class AIContentSummarizer {
     wordArticle: string,
     term: string,
     language: string = "en",
-    summaryType: SummaryType = "key-points"
+    summaryType: SummaryType = "key-points",
   ): Promise<SummaryResponse> {
     const contextualContent = `Term: ${term}\n\nDefinition and Usage:\n${wordArticle}`;
 
@@ -347,7 +351,7 @@ export class AIContentSummarizer {
     reference: string,
     translation: string,
     language: string = "en",
-    summaryType: SummaryType = "theological"
+    summaryType: SummaryType = "theological",
   ): Promise<SummaryResponse> {
     const contextualContent = `Reference: ${reference} (${translation})\n\nText:\n${passage}`;
 
@@ -366,7 +370,7 @@ export class AIContentSummarizer {
   async generateMultipleSummaries(
     content: string,
     contentType: ContentType,
-    language: string = "en"
+    language: string = "en",
   ): Promise<SummaryResponse> {
     const mainSummary = await this.summarize({
       content,
@@ -389,7 +393,7 @@ export class AIContentSummarizer {
           type,
           text: altSummary.summary,
         };
-      })
+      }),
     );
 
     return {
@@ -435,7 +439,10 @@ export class AIContentSummarizer {
   /**
    * Call AI model (mock implementation for demo)
    */
-  private async callAIModel(prompt: string, request: SummaryRequest): Promise<string> {
+  private async callAIModel(
+    prompt: string,
+    request: SummaryRequest,
+  ): Promise<string> {
     // Mock implementation for demo purposes
     if (this.config.provider === "mock") {
       return this.generateMockSummary(request);
@@ -445,7 +452,9 @@ export class AIContentSummarizer {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // In a real implementation, this would call the actual AI API
-    throw new Error("Real AI integration not implemented - using mock responses");
+    throw new Error(
+      "Real AI integration not implemented - using mock responses",
+    );
   }
 
   /**
@@ -454,7 +463,8 @@ export class AIContentSummarizer {
   private generateMockSummary(request: SummaryRequest): string {
     const mockSummaries = {
       "translation-notes": {
-        brief: "Cultural context explains ancient customs relevant to translation.",
+        brief:
+          "Cultural context explains ancient customs relevant to translation.",
         detailed:
           "This translation note provides essential cultural background that helps translators understand the original context and choose appropriate equivalent expressions in the target language. The explanation covers historical customs, social practices, and linguistic nuances that modern readers may not immediately understand.",
         "key-points":
@@ -465,7 +475,8 @@ export class AIContentSummarizer {
           "The theological significance emphasizes God's interaction with human culture while maintaining doctrinal accuracy in translation.",
       },
       "translation-words": {
-        brief: "Biblical term with specific theological meaning and usage patterns.",
+        brief:
+          "Biblical term with specific theological meaning and usage patterns.",
         detailed:
           "This biblical term carries significant theological weight and appears consistently throughout Scripture with specific connotations. Understanding its original language context and semantic range is crucial for accurate translation and interpretation.",
         "key-points":
@@ -487,7 +498,8 @@ export class AIContentSummarizer {
           "The passage reveals essential truths about God's nature and His relationship with humanity, forming a cornerstone of Christian doctrine.",
       },
       "translation-questions": {
-        brief: "Comprehension questions to verify understanding of biblical passages.",
+        brief:
+          "Comprehension questions to verify understanding of biblical passages.",
         detailed:
           "These translation questions help readers and translators verify their understanding of biblical passages. They focus on key theological concepts, cultural contexts, and practical applications that are essential for accurate translation and interpretation.",
         "key-points":
@@ -510,7 +522,8 @@ export class AIContentSummarizer {
       },
     };
 
-    const typeMap = mockSummaries[request.contentType] || mockSummaries["translation-notes"];
+    const typeMap =
+      mockSummaries[request.contentType] || mockSummaries["translation-notes"];
     return typeMap[request.summaryType] || typeMap["brief"];
   }
 
@@ -520,7 +533,7 @@ export class AIContentSummarizer {
   private formatSummaryResponse(
     aiResponse: string,
     request: SummaryRequest,
-    startTime: number
+    startTime: number,
   ): SummaryResponse {
     const processingTime = Date.now() - startTime;
     const originalLength = request.content.length;
@@ -578,7 +591,10 @@ export class AIContentSummarizer {
   /**
    * Calculate confidence score
    */
-  private calculateConfidence(request: SummaryRequest, response: string): number {
+  private calculateConfidence(
+    request: SummaryRequest,
+    response: string,
+  ): number {
     let confidence = 0.8; // Base confidence
 
     // Adjust based on content length
@@ -636,7 +652,9 @@ export class AIContentSummarizer {
     return {
       requestCount: this.requestCount,
       averageProcessingTime:
-        this.requestCount > 0 ? this.totalProcessingTime / this.requestCount : 0,
+        this.requestCount > 0
+          ? this.totalProcessingTime / this.requestCount
+          : 0,
       cacheSize: this.summaryCache.size,
       cacheHitRate: 0, // Would need to track cache hits vs misses
     };
@@ -665,7 +683,9 @@ export let globalSummarizer: AIContentSummarizer | null = null;
 /**
  * Initialize global summarizer
  */
-export function initializeSummarizer(config?: Partial<AIModelConfig>): AIContentSummarizer {
+export function initializeSummarizer(
+  config?: Partial<AIModelConfig>,
+): AIContentSummarizer {
   globalSummarizer = new AIContentSummarizer(config);
   return globalSummarizer;
 }
@@ -676,7 +696,7 @@ export function initializeSummarizer(config?: Partial<AIModelConfig>): AIContent
 export async function quickSummary(
   content: string,
   type: ContentType = "mixed",
-  summaryType: SummaryType = "brief"
+  summaryType: SummaryType = "brief",
 ): Promise<string> {
   if (!globalSummarizer) {
     globalSummarizer = new AIContentSummarizer();

@@ -14,17 +14,23 @@ import { buildUrl } from "../helpers/http";
 // Mock API functions for testing
 const mockApi = {
   fetchScripture: async (reference: string) => {
-    const response = await fetch(await buildUrl(`/api/fetch-scripture`, { reference }));
+    const response = await fetch(
+      await buildUrl(`/api/fetch-scripture`, { reference }),
+    );
     return response.json();
   },
 
   fetchTranslationNotes: async (reference: string) => {
-    const response = await fetch(await buildUrl(`/api/fetch-translation-notes`, { reference }));
+    const response = await fetch(
+      await buildUrl(`/api/fetch-translation-notes`, { reference }),
+    );
     return response.json();
   },
 
   getTranslationWord: async (word: string) => {
-    const response = await fetch(await buildUrl(`/api/get-translation-word`, { word }));
+    const response = await fetch(
+      await buildUrl(`/api/get-translation-word`, { word }),
+    );
     return response.json();
   },
 
@@ -106,7 +112,7 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
 
       const performanceDegradation = outageTime / baselineTime;
       console.log(
-        `✅ Performance degradation: ${performanceDegradation.toFixed(2)}x (${outageTime}ms vs ${baselineTime}ms)`
+        `✅ Performance degradation: ${performanceDegradation.toFixed(2)}x (${outageTime}ms vs ${baselineTime}ms)`,
       );
 
       // Should not degrade more than 10x
@@ -158,7 +164,11 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
         target: "cache-layer",
       });
 
-      const results: Array<{ success: boolean; source?: string; responseTime?: number }> = [];
+      const results: Array<{
+        success: boolean;
+        source?: string;
+        responseTime?: number;
+      }> = [];
       const totalRequests = 10;
 
       // Make multiple requests during intermittent failure
@@ -179,9 +189,12 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
-      const successRate = results.filter((r) => r.success).length / totalRequests;
+      const successRate =
+        results.filter((r) => r.success).length / totalRequests;
       const cacheHits = results.filter((r) => r.source === "cache").length;
-      const upstreamHits = results.filter((r) => r.source === "upstream").length;
+      const upstreamHits = results.filter(
+        (r) => r.source === "upstream",
+      ).length;
 
       // Should maintain high availability
       expect(successRate).toBeGreaterThan(0.8); // 80% success rate
@@ -190,8 +203,12 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
       expect(cacheHits).toBeGreaterThan(0);
       expect(upstreamHits).toBeGreaterThan(0);
 
-      console.log(`✅ Maintained ${(successRate * 100).toFixed(1)}% availability`);
-      console.log(`✅ Cache hits: ${cacheHits}, Upstream hits: ${upstreamHits}`);
+      console.log(
+        `✅ Maintained ${(successRate * 100).toFixed(1)}% availability`,
+      );
+      console.log(
+        `✅ Cache hits: ${cacheHits}, Upstream hits: ${upstreamHits}`,
+      );
     }, 12000);
 
     test("degrades cache selectively by content type", async () => {
@@ -206,12 +223,22 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
 
       const contentTypes = [
         { name: "Scripture", call: () => mockApi.fetchScripture("Psalm 23:1") },
-        { name: "Translation Notes", call: () => mockApi.fetchTranslationNotes("Psalm 23:1") },
-        { name: "Translation Words", call: () => mockApi.getTranslationWord("shepherd") },
+        {
+          name: "Translation Notes",
+          call: () => mockApi.fetchTranslationNotes("Psalm 23:1"),
+        },
+        {
+          name: "Translation Words",
+          call: () => mockApi.getTranslationWord("shepherd"),
+        },
         { name: "Browse Words", call: () => mockApi.browseWords() },
       ];
 
-      const results: Array<{ type: string; success: boolean; source?: string }> = [];
+      const results: Array<{
+        type: string;
+        success: boolean;
+        source?: string;
+      }> = [];
 
       for (const contentType of contentTypes) {
         try {
@@ -235,7 +262,9 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
         console.log(`✅ ${result.type}: ${result.source}`);
       });
 
-      console.log("✅ All content types remained accessible during cache issues");
+      console.log(
+        "✅ All content types remained accessible during cache issues",
+      );
     }, 10000);
   });
 
@@ -281,7 +310,11 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
         target: "cache-layer",
       });
 
-      const results: Array<{ attempt: number; source: string; responseTime: number }> = [];
+      const results: Array<{
+        attempt: number;
+        source: string;
+        responseTime: number;
+      }> = [];
 
       // Make several requests to trigger and test circuit breaker
       for (let i = 0; i < 8; i++) {
@@ -307,8 +340,11 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
 
         // Response times should be consistent (not attempting cache)
         const avgResponseTime =
-          laterRequests.reduce((sum, r) => sum + r.responseTime, 0) / laterRequests.length;
-        console.log(`✅ Consistent response time: ${avgResponseTime.toFixed(0)}ms`);
+          laterRequests.reduce((sum, r) => sum + r.responseTime, 0) /
+          laterRequests.length;
+        console.log(
+          `✅ Consistent response time: ${avgResponseTime.toFixed(0)}ms`,
+        );
       } else {
         console.log("⚠️ Circuit breaker pattern may need tuning");
       }
@@ -371,7 +407,8 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
       await new Promise((resolve) => setTimeout(resolve, 4000));
 
       // Data should still be consistent after cache recovery
-      const recoveredResponse = await mockApi.fetchScripture("Philippians 4:13");
+      const recoveredResponse =
+        await mockApi.fetchScripture("Philippians 4:13");
       expect(recoveredResponse.scripture.ult.text).toBe(baselineText);
 
       console.log("✅ Data consistency maintained after cache recovery");
@@ -411,7 +448,9 @@ describe("💾 Cache Layer Failures - Chaos Tests", () => {
         expect(result.scripture.ult.text).toBe(firstText);
       });
 
-      console.log(`✅ Handled ${results.length} concurrent requests consistently`);
+      console.log(
+        `✅ Handled ${results.length} concurrent requests consistently`,
+      );
       console.log(`✅ Sources: ${sources.join(", ")}`);
     }, 10000);
   });

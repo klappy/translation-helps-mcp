@@ -10,7 +10,7 @@ const reasoningSessions = new Map<string, any>();
 
 export const POST: RequestHandler = async ({ request, url, platform, fetch }) => {
 	const { message, history = [], sessionId } = await request.json();
-	
+
 	if (!message) {
 		return json({ error: 'No message provided' });
 	}
@@ -22,12 +22,12 @@ export const POST: RequestHandler = async ({ request, url, platform, fetch }) =>
 		startTime: Date.now(),
 		status: 'thinking'
 	};
-	
+
 	reasoningSessions.set(session.id, session);
-	
+
 	// Start processing asynchronously
 	processRequest(session, message, history, platform, url, fetch);
-	
+
 	// Return session ID immediately
 	return json({
 		sessionId: session.id,
@@ -38,22 +38,22 @@ export const POST: RequestHandler = async ({ request, url, platform, fetch }) =>
 // Get session status
 export const GET: RequestHandler = async ({ url }) => {
 	const sessionId = url.searchParams.get('sessionId');
-	
+
 	if (!sessionId) {
 		return json({ error: 'No sessionId provided' });
 	}
-	
+
 	const session = reasoningSessions.get(sessionId);
-	
+
 	if (!session) {
 		return json({ error: 'Session not found' });
 	}
-	
+
 	// Clean up completed sessions after 5 minutes
 	if (session.status === 'complete' && Date.now() - session.startTime > 300000) {
 		reasoningSessions.delete(sessionId);
 	}
-	
+
 	return json({
 		sessionId: session.id,
 		status: session.status,
@@ -63,7 +63,14 @@ export const GET: RequestHandler = async ({ url }) => {
 	});
 };
 
-async function processRequest(session: any, message: string, history: any[], platform: any, url: URL, fetch: typeof globalThis.fetch) {
+async function processRequest(
+	session: any,
+	message: string,
+	history: any[],
+	platform: any,
+	url: URL,
+	fetch: typeof globalThis.fetch
+) {
 	try {
 		// Add initial thinking step
 		session.steps.push({
@@ -75,7 +82,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 		// Get OpenAI API key
 		const env = platform?.env || {};
 		const apiKey = env.OPENAI_API_KEY;
-		
+
 		if (!apiKey) {
 			session.status = 'error';
 			session.error = 'OpenAI API key not configured';
@@ -90,7 +97,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 		});
 
 		const tools = await discoverMCPTools(url, fetch);
-		
+
 		session.steps.push({
 			type: 'thinking',
 			content: `Found ${tools.length} tools available`,
@@ -100,7 +107,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 		// Build messages
 		const messages = [
 			{ role: 'system', content: SYSTEM_PROMPT },
-			...history.map(msg => ({ role: msg.role, content: msg.content })),
+			...history.map((msg) => ({ role: msg.role, content: msg.content })),
 			{ role: 'user', content: message }
 		];
 
@@ -118,13 +125,13 @@ async function processRequest(session: any, message: string, history: any[], pla
 			const openAIResponse = await fetch(OPENAI_API_URL, {
 				method: 'POST',
 				headers: {
-					'Authorization': `Bearer ${apiKey}`,
+					Authorization: `Bearer ${apiKey}`,
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					model: 'gpt-4o-mini',
 					messages,
-					tools: tools.map(tool => ({
+					tools: tools.map((tool) => ({
 						type: 'function',
 						function: {
 							name: tool.name,
@@ -151,7 +158,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 
 			// Process tool calls if any
 			if (assistantMessage.tool_calls) {
-				const toolNames = assistantMessage.tool_calls.map(tc => tc.function.name);
+				const toolNames = assistantMessage.tool_calls.map((tc) => tc.function.name);
 				session.steps.push({
 					type: 'tools_selected',
 					content: `I'll fetch: ${toolNames.join(', ')}`,
@@ -163,7 +170,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 				const toolResults = [];
 				for (const toolCall of assistantMessage.tool_calls) {
 					const { name, arguments: args } = toolCall.function;
-					
+
 					session.steps.push({
 						type: 'tool_executing',
 						content: `Fetching ${name}...`,
@@ -197,7 +204,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 
 						const result = await response.json();
 						const content = result.content?.[0]?.text || JSON.stringify(result);
-						
+
 						toolResults.push({
 							tool_call_id: toolCall.id,
 							content
@@ -209,7 +216,6 @@ async function processRequest(session: any, message: string, history: any[], pla
 							tool: name,
 							timestamp: Date.now() - session.startTime
 						});
-
 					} catch (error) {
 						session.steps.push({
 							type: 'tool_error',
@@ -217,7 +223,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 							tool: name,
 							timestamp: Date.now() - session.startTime
 						});
-						
+
 						// Continue with other tools even if one fails
 						toolResults.push({
 							tool_call_id: toolCall.id,
@@ -239,7 +245,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 				const finalResponse = await fetch(OPENAI_API_URL, {
 					method: 'POST',
 					headers: {
-						'Authorization': `Bearer ${apiKey}`,
+						Authorization: `Bearer ${apiKey}`,
 						'Content-Type': 'application/json'
 					},
 					body: JSON.stringify({
@@ -247,7 +253,7 @@ async function processRequest(session: any, message: string, history: any[], pla
 						messages: [
 							...messages,
 							assistantMessage,
-							...toolResults.map(result => ({
+							...toolResults.map((result) => ({
 								role: 'tool',
 								tool_call_id: result.tool_call_id,
 								content: JSON.stringify(result.content)
@@ -268,13 +274,12 @@ async function processRequest(session: any, message: string, history: any[], pla
 
 				session.response = makeRCLinksClickable(finalContent);
 				session.xrayData = {
-					tools: assistantMessage.tool_calls.map(tc => ({
+					tools: assistantMessage.tool_calls.map((tc) => ({
 						name: tc.function.name,
 						params: tc.function.arguments
 					})),
 					totalTime: Date.now() - session.startTime
 				};
-
 			} else {
 				// No tools needed
 				session.response = makeRCLinksClickable(assistantMessage.content);
@@ -286,7 +291,6 @@ async function processRequest(session: any, message: string, history: any[], pla
 				content: 'Response ready',
 				timestamp: Date.now() - session.startTime
 			});
-
 		} catch (error) {
 			if (error.name === 'AbortError') {
 				session.status = 'error';
@@ -301,7 +305,6 @@ async function processRequest(session: any, message: string, history: any[], pla
 				timestamp: Date.now() - session.startTime
 			});
 		}
-
 	} catch (error) {
 		session.status = 'error';
 		session.error = error instanceof Error ? error.message : 'Unknown error';
@@ -360,22 +363,22 @@ async function discoverMCPTools(baseUrl: URL, fetch: typeof globalThis.fetch): P
 
 function makeRCLinksClickable(text: string): string {
 	if (!text) return '';
-	
+
 	// [[rc://]] format
 	text = text.replace(/\[\[rc:\/\/\*?\/([^\]]+)\]\]/g, (match, path) => {
 		const name = path.split('/').pop().replace(/[-_]/g, ' ');
 		return `📚 [${name}](rc://${path})`;
 	});
-	
+
 	// Plain rc:// format
 	text = text.replace(/(?<!\[)(?<!\()rc:\/\/\*?\/([^\s\)\]]+)/g, (match, path) => {
 		const name = path.split('/').pop().replace(/[-_]/g, ' ');
 		return `📚 [${name}](rc://${path})`;
 	});
-	
+
 	// Add emoji to existing markdown RC links
 	text = text.replace(/(?<!📚\s)\[([^\]]+)\]\(rc:\/\/([^\)]+)\)/g, '📚 [$1](rc://$2)');
-	
+
 	return text;
 }
 
@@ -404,7 +407,7 @@ function getDefaultTools() {
 				},
 				required: ['reference']
 			}
-		},
+		}
 		// Add other tools as needed...
 	];
 }

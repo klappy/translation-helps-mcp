@@ -1,10 +1,13 @@
 # MCP Response Adapter Documentation
 
 ## Overview
+
 The MCPResponseAdapter provides a robust solution for handling various response formats from MCP (Model Context Protocol) tools, preventing brittle failures in the chat system due to data shape changes.
 
 ## Problem Statement
+
 The chat system was failing when MCP tools returned data in unexpected formats. For example:
+
 - Translation notes returning empty numbered lists
 - Different tools using different response structures
 - Missing or undefined fields causing crashes
@@ -12,6 +15,7 @@ The chat system was failing when MCP tools returned data in unexpected formats. 
 ## Solution Architecture
 
 ### Core Principles
+
 1. **Multiple Fallback Strategies**: Try various extraction methods before failing
 2. **Format Agnostic**: Handle arrays, objects, strings, and numbered items
 3. **Graceful Degradation**: Always return meaningful content or error messages
@@ -20,10 +24,13 @@ The chat system was failing when MCP tools returned data in unexpected formats. 
 ### Key Components
 
 #### 1. Response Extraction
+
 ```typescript
 static extractText(response: MCPResponse, defaultText: string = ''): string
 ```
+
 Extracts text content using multiple strategies:
+
 - Standard MCP content array format
 - Direct text fields
 - Content as string
@@ -31,19 +38,21 @@ Extracts text content using multiple strategies:
 - Common field names (message, data, result, etc.)
 
 #### 2. Format-Specific Methods
+
 - `formatTranslationNotes()`: Handles translation notes with automatic numbering
 - `formatTranslationQuestions()`: Formats questions appropriately
 - `formatScripture()`: Adds verse numbers when missing
 - `formatTranslationWord()`: Extracts definitions and examples
 
 #### 3. Error Handling
+
 - `extractError()`: Safely extracts error messages from various formats
 - `isSuccessResponse()`: Determines if a response contains valid content
 
 ## Usage Example
 
 ```typescript
-import { MCPResponseAdapter } from '$lib/adapters/MCPResponseAdapter';
+import { MCPResponseAdapter } from "$lib/adapters/MCPResponseAdapter";
 
 // In the chat endpoint
 const result = await toolResponse.json();
@@ -53,6 +62,7 @@ const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
 ## Response Format Examples
 
 ### Standard MCP Format
+
 ```json
 {
   "content": [
@@ -65,6 +75,7 @@ const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
 ```
 
 ### Numbered Object Format
+
 ```json
 {
   "content": {
@@ -76,6 +87,7 @@ const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
 ```
 
 ### Direct Text Format
+
 ```json
 {
   "text": "Direct text content"
@@ -83,6 +95,7 @@ const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
 ```
 
 ### Structured Data Array
+
 ```json
 {
   "data": [
@@ -102,12 +115,14 @@ const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
 ## Testing
 
 The adapter includes extensive unit tests covering:
+
 - Various response formats
 - Error conditions
 - Edge cases
 - Format-specific requirements
 
 Run tests with:
+
 ```bash
 cd ui && npx vitest run src/lib/adapters/MCPResponseAdapter.test.ts
 ```
@@ -129,11 +144,13 @@ cd ui && npx vitest run src/lib/adapters/MCPResponseAdapter.test.ts
 ## Migration Guide
 
 ### Before (Brittle)
+
 ```typescript
-const notesText = result.content?.[0]?.text || 'No translation notes found';
+const notesText = result.content?.[0]?.text || "No translation notes found";
 ```
 
 ### After (Robust)
+
 ```typescript
 const notesText = MCPResponseAdapter.formatTranslationNotes(result, reference);
 ```

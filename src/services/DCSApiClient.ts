@@ -60,11 +60,12 @@ export class DCSApiClient {
    */
   private async makeRequest<T>(
     endpoint: string,
-    options: DCSRequestOptions = {}
+    options: DCSRequestOptions = {},
   ): Promise<DCSResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     const timeout = options.timeout || this.timeout;
-    const maxRetries = options.retries !== undefined ? options.retries : this.maxRetries;
+    const maxRetries =
+      options.retries !== undefined ? options.retries : this.maxRetries;
 
     const headers = {
       "User-Agent": this.userAgent,
@@ -122,7 +123,9 @@ export class DCSApiClient {
             cacheStatus: cacheStatus,
             cacheSource: cacheSource,
             attempts: attempt + 1,
-            responseSize: contentLength ? parseInt(contentLength, 10) : undefined,
+            responseSize: contentLength
+              ? parseInt(contentLength, 10)
+              : undefined,
             requestData: options.headers,
           };
 
@@ -146,7 +149,7 @@ export class DCSApiClient {
 
         // For server errors (5xx), retry
         lastError = new Error(
-          `HTTP ${response.status}: ${responseData.error?.message || "Unknown error"}`
+          `HTTP ${response.status}: ${responseData.error?.message || "Unknown error"}`,
         );
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -231,7 +234,9 @@ export class DCSApiClient {
             success: false,
             error: {
               code: `HTTP_${response.status}`,
-              message: data.message || `HTTP ${response.status}: ${response.statusText}`,
+              message:
+                data.message ||
+                `HTTP ${response.status}: ${response.statusText}`,
               details: data as Record<string, any>,
             },
             statusCode: response.status,
@@ -267,7 +272,8 @@ export class DCSApiClient {
         success: false,
         error: {
           code: "PARSE_ERROR",
-          message: error instanceof Error ? error.message : "Failed to parse response",
+          message:
+            error instanceof Error ? error.message : "Failed to parse response",
           details: { error },
         },
         statusCode: response.status,
@@ -311,7 +317,9 @@ export class DCSApiClient {
   /**
    * Get all organizations/owners from DCS
    */
-  public async getOwners(params: OwnerSearchParams = {}): Promise<DCSResponse<Owner[]>> {
+  public async getOwners(
+    params: OwnerSearchParams = {},
+  ): Promise<DCSResponse<Owner[]>> {
     const queryParams = new URLSearchParams();
 
     if (params.q) queryParams.append("q", params.q);
@@ -377,7 +385,9 @@ export class DCSApiClient {
   /**
    * Search for resources in the DCS catalog
    */
-  public async getResources(params: CatalogSearchParams = {}): Promise<DCSResponse<Resource[]>> {
+  public async getResources(
+    params: CatalogSearchParams = {},
+  ): Promise<DCSResponse<Resource[]>> {
     const queryParams = new URLSearchParams();
 
     // Set defaults
@@ -419,7 +429,7 @@ export class DCSApiClient {
   public async getResourceMetadata(
     language: string,
     organization: string,
-    subject?: string
+    subject?: string,
   ): Promise<DCSResponse<Resource[]>> {
     const queryParams = new URLSearchParams();
 
@@ -467,7 +477,7 @@ export class DCSApiClient {
   public async getSpecificResourceMetadata(
     language: string,
     organization: string,
-    resourceType: string
+    resourceType: string,
   ): Promise<DCSResponse<Resource | null>> {
     const response = await this.getResourceMetadata(language, organization);
 
@@ -484,7 +494,7 @@ export class DCSApiClient {
     const resource = response.data.find(
       (r: any) =>
         r.name?.endsWith(`_${resourceType}`) ||
-        r.subject?.toLowerCase().includes(resourceType.toLowerCase())
+        r.subject?.toLowerCase().includes(resourceType.toLowerCase()),
     );
 
     return {
@@ -560,7 +570,7 @@ export class DCSApiClient {
     owner: string,
     repo: string,
     path: string,
-    ref?: string
+    ref?: string,
   ): Promise<DCSResponse<FileContent>> {
     const refParam = ref ? `?ref=${encodeURIComponent(ref)}` : "";
     const endpoint = `/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}${refParam}`;
@@ -574,7 +584,7 @@ export class DCSApiClient {
     owner: string,
     repo: string,
     path: string,
-    ref?: string
+    ref?: string,
   ): Promise<DCSResponse<string>> {
     return {
       success: false,
@@ -586,7 +596,10 @@ export class DCSApiClient {
   /**
    * Get repository information
    */
-  public async getRepository(owner: string, repo: string): Promise<DCSResponse<Resource>> {
+  public async getRepository(
+    owner: string,
+    repo: string,
+  ): Promise<DCSResponse<Resource>> {
     const endpoint = `/repos/${owner}/${repo}`;
     return this.makeRequest<Resource>(endpoint);
   }
@@ -598,7 +611,7 @@ export class DCSApiClient {
     owner: string,
     repo: string,
     path: string = "",
-    ref?: string
+    ref?: string,
   ): Promise<DCSResponse<FileContent[]>> {
     const refParam = ref ? `?ref=${encodeURIComponent(ref)}` : "";
     const endpoint = `/repos/${owner}/${repo}/contents/${path ? encodeURIComponent(path) : ""}${refParam}`;
@@ -611,7 +624,7 @@ export class DCSApiClient {
   public async getOwnerRepositories(
     owner: string,
     type: "all" | "public" | "private" = "all",
-    sort: "created" | "updated" | "pushed" | "full_name" = "updated"
+    sort: "created" | "updated" | "pushed" | "full_name" = "updated",
   ): Promise<DCSResponse<Resource[]>> {
     const queryParams = new URLSearchParams();
     queryParams.append("type", type);
@@ -774,7 +787,9 @@ export class DCSApiClient {
     cacheSource?: string;
   } {
     // Check various cache headers
-    const cfCacheStatus = response.headers.get("cf-cache-status")?.toLowerCase();
+    const cfCacheStatus = response.headers
+      .get("cf-cache-status")
+      ?.toLowerCase();
     const xCache = response.headers.get("x-cache")?.toLowerCase();
     const cacheControl = response.headers.get("cache-control")?.toLowerCase();
     const age = response.headers.get("age");
@@ -796,8 +811,10 @@ export class DCSApiClient {
 
     // X-Cache header (common in CDNs)
     if (xCache) {
-      if (xCache.includes("hit")) return { cacheStatus: "HIT", cacheSource: "CDN" };
-      if (xCache.includes("miss")) return { cacheStatus: "MISS", cacheSource: "CDN" };
+      if (xCache.includes("hit"))
+        return { cacheStatus: "HIT", cacheSource: "CDN" };
+      if (xCache.includes("miss"))
+        return { cacheStatus: "MISS", cacheSource: "CDN" };
     }
 
     // Age header indicates cached response
@@ -807,7 +824,10 @@ export class DCSApiClient {
 
     // Cache-Control header analysis
     if (cacheControl) {
-      if (cacheControl.includes("no-cache") || cacheControl.includes("no-store")) {
+      if (
+        cacheControl.includes("no-cache") ||
+        cacheControl.includes("no-store")
+      ) {
         return { cacheStatus: "MISS", cacheSource: "Cache Disabled" };
       }
     }

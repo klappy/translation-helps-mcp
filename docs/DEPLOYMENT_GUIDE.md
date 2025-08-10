@@ -104,7 +104,8 @@ npx netlify deploy --prod --dir=dist
    const nodeEnv = process.env.NODE_ENV;
 
    // ✅ DO - Check existence first
-   const nodeEnv = typeof process !== "undefined" ? process.env.NODE_ENV : "production";
+   const nodeEnv =
+     typeof process !== "undefined" ? process.env.NODE_ENV : "production";
    ```
 
 ### Performance Optimizations

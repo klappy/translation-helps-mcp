@@ -16,13 +16,17 @@ const colors = {
   reset: "\x1b[0m",
 };
 
-async function testEndpoint(name: string, endpoint: string, params: Record<string, string>) {
+async function testEndpoint(
+  name: string,
+  endpoint: string,
+  params: Record<string, string>,
+) {
   console.log(
-    `\n${colors.blue}═══════════════════════════════════════════════════════${colors.reset}`
+    `\n${colors.blue}═══════════════════════════════════════════════════════${colors.reset}`,
   );
   console.log(`${colors.blue}Testing: ${name}${colors.reset}`);
   console.log(
-    `${colors.blue}═══════════════════════════════════════════════════════${colors.reset}`
+    `${colors.blue}═══════════════════════════════════════════════════════${colors.reset}`,
   );
 
   const url = new URL(`${BASE_URL}/api/${endpoint}`);
@@ -38,7 +42,7 @@ async function testEndpoint(name: string, endpoint: string, params: Record<strin
     const data = await response.json();
 
     console.log(
-      `\nStatus: ${response.ok ? colors.green : colors.red}${response.status}${colors.reset}`
+      `\nStatus: ${response.ok ? colors.green : colors.red}${response.status}${colors.reset}`,
     );
     console.log(`\nResponse:`, JSON.stringify(data, null, 2));
 
@@ -48,7 +52,7 @@ async function testEndpoint(name: string, endpoint: string, params: Record<strin
     if (endpoint.includes("scripture")) {
       const hasText = data.data?.text || data.text;
       console.log(
-        `- Has scripture text: ${hasText ? colors.green + "✓" : colors.red + "✗"} ${colors.reset}`
+        `- Has scripture text: ${hasText ? colors.green + "✓" : colors.red + "✗"} ${colors.reset}`,
       );
       if (hasText) {
         console.log(`- Text length: ${hasText.length} characters`);
@@ -59,7 +63,7 @@ async function testEndpoint(name: string, endpoint: string, params: Record<strin
     if (endpoint.includes("notes")) {
       const notes = data.data?.notes || data.notes || data.data || [];
       console.log(
-        `- Has notes: ${notes.length > 0 ? colors.green + "✓" : colors.red + "✗"} ${colors.reset}`
+        `- Has notes: ${notes.length > 0 ? colors.green + "✓" : colors.red + "✗"} ${colors.reset}`,
       );
       console.log(`- Number of notes: ${notes.length}`);
       if (notes[0]) {
@@ -71,7 +75,7 @@ async function testEndpoint(name: string, endpoint: string, params: Record<strin
       const words = data.data?.words || data.words || data.data || [];
       const definition = data.data?.definition || data.definition;
       console.log(
-        `- Has words/definition: ${words.length > 0 || definition ? colors.green + "✓" : colors.red + "✗"} ${colors.reset}`
+        `- Has words/definition: ${words.length > 0 || definition ? colors.green + "✓" : colors.red + "✗"} ${colors.reset}`,
       );
       if (Array.isArray(words)) {
         console.log(`- Number of words: ${words.length}`);
@@ -108,27 +112,43 @@ async function runDiagnostics() {
   });
 
   // Test with organization parameter
-  await testEndpoint("Translation Notes (with org)", "fetch-translation-notes", {
-    reference: "John 3:16",
-    language: "en",
-    organization: "unfoldingWord",
-  });
+  await testEndpoint(
+    "Translation Notes (with org)",
+    "fetch-translation-notes",
+    {
+      reference: "John 3:16",
+      language: "en",
+      organization: "unfoldingWord",
+    },
+  );
 
-  await testEndpoint("Translation Notes (without org)", "fetch-translation-notes", {
-    reference: "John 3:16",
-    language: "en",
-  });
+  await testEndpoint(
+    "Translation Notes (without org)",
+    "fetch-translation-notes",
+    {
+      reference: "John 3:16",
+      language: "en",
+    },
+  );
 
   // Test translation words with different params
-  await testEndpoint("Get Translation Word (word param)", "get-translation-word", {
-    word: "love",
-    language: "en",
-  });
+  await testEndpoint(
+    "Get Translation Word (word param)",
+    "get-translation-word",
+    {
+      word: "love",
+      language: "en",
+    },
+  );
 
-  await testEndpoint("Get Translation Word (term param)", "get-translation-word", {
-    term: "love",
-    language: "en",
-  });
+  await testEndpoint(
+    "Get Translation Word (term param)",
+    "get-translation-word",
+    {
+      term: "love",
+      language: "en",
+    },
+  );
 
   await testEndpoint("Browse Translation Words", "browse-translation-words", {
     language: "en",
@@ -136,7 +156,10 @@ async function runDiagnostics() {
   });
 
   // Test context aggregation
-  await testEndpoint("Get Context", "get-context", { reference: "John 3:16", language: "en" });
+  await testEndpoint("Get Context", "get-context", {
+    reference: "John 3:16",
+    language: "en",
+  });
 
   // Test error handling
   await testEndpoint("Invalid Reference", "fetch-scripture", {
@@ -147,15 +170,15 @@ async function runDiagnostics() {
   await testEndpoint(
     "Missing Parameters",
     "fetch-scripture",
-    { language: "en" } // Missing reference
+    { language: "en" }, // Missing reference
   );
 
   console.log(
-    `\n${colors.yellow}═══════════════════════════════════════════════════════${colors.reset}`
+    `\n${colors.yellow}═══════════════════════════════════════════════════════${colors.reset}`,
   );
   console.log(`${colors.yellow}DIAGNOSTIC COMPLETE${colors.reset}`);
   console.log(
-    `${colors.yellow}═══════════════════════════════════════════════════════${colors.reset}\n`
+    `${colors.yellow}═══════════════════════════════════════════════════════${colors.reset}\n`,
   );
 }
 

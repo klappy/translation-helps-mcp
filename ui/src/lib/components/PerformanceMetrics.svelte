@@ -1,15 +1,15 @@
 <script>
 	import { Activity, BarChart3, Clock, Database, Eye, Link, Zap } from 'lucide-svelte';
-	
+
 	export let data = {};
-	
+
 	// Format response time
 	function formatTime(ms) {
 		if (!ms && ms !== 0) return 'N/A';
 		if (ms < 1000) return `${ms}ms`;
 		return `${(ms / 1000).toFixed(2)}s`;
 	}
-	
+
 	// Get performance color
 	function getPerformanceColor(ms) {
 		if (!ms && ms !== 0) return 'text-gray-400';
@@ -17,7 +17,7 @@
 		if (ms < 500) return 'text-yellow-400';
 		return 'text-red-400';
 	}
-	
+
 	// Get cache color
 	function getCacheColor(status) {
 		if (status === 'hit') return 'text-green-400';
@@ -25,13 +25,13 @@
 		if (status === 'bypass') return 'text-purple-400';
 		return 'text-gray-400';
 	}
-	
+
 	// Get cache status display
 	function getCacheStatus(status, cached) {
 		if (status) return status.toUpperCase();
 		return cached ? 'HIT' : 'MISS';
 	}
-	
+
 	// Format percentage
 	function formatPercentage(rate) {
 		if (!rate && rate !== 0) return 'N/A';
@@ -44,7 +44,7 @@
 		<h3 class="text-lg font-semibold text-white">Performance Metrics</h3>
 		<Activity class="h-5 w-5 text-blue-400" />
 	</div>
-	
+
 	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 		<!-- Response Time -->
 		<div class="rounded-lg bg-gray-900/50 p-4">
@@ -67,7 +67,7 @@
 				{/if}
 			</div>
 		</div>
-		
+
 		<!-- Cache Status -->
 		<div class="rounded-lg bg-gray-900/50 p-4">
 			<div class="mb-2 flex items-center justify-between">
@@ -97,12 +97,10 @@
 					<span class="text-sm text-gray-400">Trace ID</span>
 					<Eye class="h-4 w-4 text-gray-500" />
 				</div>
-				<div class="text-xs font-mono text-blue-400 break-all">
+				<div class="font-mono text-xs break-all text-blue-400">
 					{data.traceId}
 				</div>
-				<div class="mt-1 text-xs text-gray-500">
-					X-ray debugging
-				</div>
+				<div class="mt-1 text-xs text-gray-500">X-ray debugging</div>
 			</div>
 		{/if}
 
@@ -156,12 +154,10 @@
 				<div class="text-lg font-bold {getPerformanceColor(data.totalDuration)}">
 					{formatTime(data.totalDuration)}
 				</div>
-				<div class="mt-1 text-xs text-gray-500">
-					Full trace duration
-				</div>
+				<div class="mt-1 text-xs text-gray-500">Full trace duration</div>
 			</div>
 		{/if}
-		
+
 		<!-- Timestamp -->
 		<div class="rounded-lg bg-gray-900/50 p-4">
 			<div class="mb-2 flex items-center justify-between">
@@ -189,36 +185,36 @@
 							<span class="text-gray-400">{formatTime(call.duration)}</span>
 						</div>
 						{#if call.url}
-							<div class="mt-1 font-mono text-gray-500 break-all">{call.url}</div>
+							<div class="mt-1 font-mono break-all text-gray-500">{call.url}</div>
 						{/if}
 					</div>
 				{/each}
 			</div>
 		</div>
 	{/if}
-	
+
 	<!-- Debug Information -->
 	{#if data.debug}
 		<div class="mt-6 rounded-lg bg-gray-900/50 p-4">
 			<div class="mb-3 flex items-center justify-between">
 				<h4 class="text-sm font-medium text-gray-400">Debug Information</h4>
-				<button 
+				<button
 					class="text-xs text-blue-400 hover:text-blue-300"
-					on:click={() => data.showFullDebug = !data.showFullDebug}
+					on:click={() => (data.showFullDebug = !data.showFullDebug)}
 				>
 					{data.showFullDebug ? 'Hide' : 'Show'} Full Metadata
 				</button>
 			</div>
-			
+
 			{#if data.debug.cacheKey}
 				<div class="mb-2">
 					<span class="text-xs text-gray-400">Cache Key:</span>
-					<div class="font-mono text-xs text-gray-300 break-all">{data.debug.cacheKey}</div>
+					<div class="font-mono text-xs break-all text-gray-300">{data.debug.cacheKey}</div>
 				</div>
 			{/if}
-			
+
 			{#if data.showFullDebug && data.debug.fullMetadata}
-				<pre class="overflow-x-auto text-xs text-gray-300 bg-gray-800/50 p-3 rounded">
+				<pre class="overflow-x-auto rounded bg-gray-800/50 p-3 text-xs text-gray-300">
 {JSON.stringify(data.debug.fullMetadata, null, 2)}
 				</pre>
 			{/if}

@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8888";
 const TIMEOUT = 30000;
 
-async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
+async function makeRequest(
+  endpoint: string,
+  params: Record<string, string | undefined> = {},
+) {
   const url = new URL(`${BASE_URL}/api/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined) {
@@ -40,7 +43,7 @@ describe("Regression Tests", () => {
         // Make sure it's not a string that contains JSON
         expect(typeof response.scripture).not.toBe("string");
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -62,7 +65,7 @@ describe("Regression Tests", () => {
         expect(response.scripture.text).toContain("Paul"); // Titus 1:1 should contain "Paul"
         expect(response.scripture.translation).toBeDefined(); // v4.0.0: has translation info
       },
-      TIMEOUT
+      TIMEOUT,
     );
 
     it(
@@ -78,7 +81,7 @@ describe("Regression Tests", () => {
         // Notes might be empty for some verses, but structure should exist
         expect(Array.isArray(response.translationNotes)).toBe(true);
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -97,7 +100,7 @@ describe("Regression Tests", () => {
         expect(response.translationNotes).toBeDefined(); // v4.0.0: Focus on actual data returned
         expect(response.translationNotes.length).toBeGreaterThan(0);
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -115,8 +118,12 @@ describe("Regression Tests", () => {
           // v4.0.0: scripture is object, not array
           if (response.scripture.citation) {
             // Should not contain fake names like "New Testament Bible"
-            expect(response.scripture.citation.translation).not.toBe("New Testament Bible");
-            expect(response.scripture.citation.translation).not.toBe("Old Testament Bible");
+            expect(response.scripture.citation.translation).not.toBe(
+              "New Testament Bible",
+            );
+            expect(response.scripture.citation.translation).not.toBe(
+              "Old Testament Bible",
+            );
 
             // Should contain actual translation identifier - v4.0.0: translation is in scripture.translation
             expect(response.scripture.translation).toBeDefined();
@@ -124,7 +131,7 @@ describe("Regression Tests", () => {
           }
         }
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -147,7 +154,7 @@ describe("Regression Tests", () => {
         expect(response.scripture.text).toBeDefined();
         expect(response.scripture.text.length).toBeGreaterThan(0);
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -180,7 +187,7 @@ describe("Regression Tests", () => {
           }
         }
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -201,21 +208,30 @@ describe("Regression Tests", () => {
         });
 
         // Should have same structure
-        expect(Object.keys(apiResponse).sort()).toEqual(Object.keys(mcpResponse).sort());
+        expect(Object.keys(apiResponse).sort()).toEqual(
+          Object.keys(mcpResponse).sort(),
+        );
 
         // Should have same scripture structure
         if (apiResponse.scripture && mcpResponse.scripture) {
-          expect(apiResponse.scripture.length).toBe(mcpResponse.scripture.length);
+          expect(apiResponse.scripture.length).toBe(
+            mcpResponse.scripture.length,
+          );
 
-          if (apiResponse.scripture.length > 0 && mcpResponse.scripture.length > 0) {
+          if (
+            apiResponse.scripture.length > 0 &&
+            mcpResponse.scripture.length > 0
+          ) {
             const apiVerse = apiResponse.scripture[0];
             const mcpVerse = mcpResponse.scripture[0];
 
-            expect(Object.keys(apiVerse).sort()).toEqual(Object.keys(mcpVerse).sort());
+            expect(Object.keys(apiVerse).sort()).toEqual(
+              Object.keys(mcpVerse).sort(),
+            );
           }
         }
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 
@@ -239,31 +255,43 @@ describe("Regression Tests", () => {
             organization: "unfoldingWord",
           };
 
-          if (endpoint.includes("translation-words") && endpoint !== "browse-translation-words") {
+          if (
+            endpoint.includes("translation-words") &&
+            endpoint !== "browse-translation-words"
+          ) {
             apiParams = { ...apiParams, word: "love" };
           } else if (endpoint !== "resources") {
             apiParams = { ...apiParams, reference: "John 3:16" };
           }
 
           try {
-            const apiResponse = await makeRequest(`fetch-${endpoint}`, apiParams);
-            const mcpResponse = await makeRequest(`fetch-${endpoint}`, apiParams);
+            const apiResponse = await makeRequest(
+              `fetch-${endpoint}`,
+              apiParams,
+            );
+            const mcpResponse = await makeRequest(
+              `fetch-${endpoint}`,
+              apiParams,
+            );
 
             // Remove timestamps for comparison
             const normalizeTimestamps = (obj: any) => {
               const normalized = JSON.parse(JSON.stringify(obj));
-              if (normalized.metadata?.timestamp) delete normalized.metadata.timestamp;
+              if (normalized.metadata?.timestamp)
+                delete normalized.metadata.timestamp;
               if (normalized.timestamp) delete normalized.timestamp;
               return normalized;
             };
 
-            expect(normalizeTimestamps(mcpResponse)).toEqual(normalizeTimestamps(apiResponse));
+            expect(normalizeTimestamps(mcpResponse)).toEqual(
+              normalizeTimestamps(apiResponse),
+            );
           } catch (error) {
             console.warn(`Skipping ${endpoint} test due to error:`, error);
           }
         }
       },
-      TIMEOUT
+      TIMEOUT,
     );
   });
 });

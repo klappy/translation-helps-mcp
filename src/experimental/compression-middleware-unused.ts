@@ -111,7 +111,9 @@ let compressionMetrics: CompressionMetrics = {
 /**
  * Detect client compression support from Accept-Encoding header
  */
-function detectClientSupport(acceptEncoding: string | null): CompressionAlgorithm {
+function detectClientSupport(
+  acceptEncoding: string | null,
+): CompressionAlgorithm {
   if (!acceptEncoding) {
     return CompressionAlgorithm.NONE;
   }
@@ -143,7 +145,7 @@ function shouldCompress(
   content: string | Buffer,
   contentType: string | null,
   config: CompressionConfig,
-  url?: string
+  url?: string,
 ): boolean {
   // Check if compression is enabled
   if (!config.enabled) {
@@ -152,7 +154,9 @@ function shouldCompress(
 
   // Check content size threshold
   const contentSize =
-    typeof content === "string" ? Buffer.byteLength(content, "utf8") : content.length;
+    typeof content === "string"
+      ? Buffer.byteLength(content, "utf8")
+      : content.length;
 
   if (contentSize < config.threshold) {
     return false;
@@ -176,7 +180,8 @@ function shouldCompress(
   // Default to compressing if we can't determine content type
   // but content is text-like
   try {
-    const textContent = typeof content === "string" ? content : content.toString("utf8");
+    const textContent =
+      typeof content === "string" ? content : content.toString("utf8");
     // Heuristic: if content looks like JSON, XML, or other structured text
     return /^[\s*[{\[<]|^[\s*\w+\s*[:=]/.test(textContent);
   } catch {
@@ -190,13 +195,14 @@ function shouldCompress(
 function compressContent(
   content: string | Buffer,
   algorithm: CompressionAlgorithm,
-  level: number
+  level: number,
 ): Promise<{ compressed: Buffer; ratio: number; time: number }> {
   return new Promise((resolve) => {
     const startTime = Date.now();
 
     // Convert to buffer if needed
-    const buffer = typeof content === "string" ? Buffer.from(content, "utf8") : content;
+    const buffer =
+      typeof content === "string" ? Buffer.from(content, "utf8") : content;
 
     const originalSize = buffer.length;
 
@@ -249,7 +255,7 @@ function updateMetrics(
   compressedSize: number,
   compressionTime: number,
   algorithm: CompressionAlgorithm,
-  wasCompressed: boolean
+  wasCompressed: boolean,
 ): void {
   compressionMetrics.totalRequests++;
 
@@ -260,11 +266,13 @@ function updateMetrics(
     const currentRatio = compressedSize / originalSize;
     const weight = 1 / compressionMetrics.compressedRequests;
     compressionMetrics.compressionRatio =
-      compressionMetrics.compressionRatio * (1 - weight) + currentRatio * weight;
+      compressionMetrics.compressionRatio * (1 - weight) +
+      currentRatio * weight;
 
     // Update average compression time
     compressionMetrics.averageCompressionTime =
-      compressionMetrics.averageCompressionTime * (1 - weight) + compressionTime * weight;
+      compressionMetrics.averageCompressionTime * (1 - weight) +
+      compressionTime * weight;
 
     // Update bytes saved
     compressionMetrics.totalBytesSaved += originalSize - compressedSize;
@@ -345,24 +353,36 @@ export class CompressionMiddleware {
       }
 
       const originalSize = Buffer.byteLength(response.body, "utf8");
-      const contentType = response.headers?.["Content-Type"] || response.headers?.["content-type"];
-      const acceptEncoding = headers["Accept-Encoding"] || headers["accept-encoding"];
+      const contentType =
+        response.headers?.["Content-Type"] ||
+        response.headers?.["content-type"];
+      const acceptEncoding =
+        headers["Accept-Encoding"] || headers["accept-encoding"];
 
       // Determine if we should compress
       const shouldCompressResponse = shouldCompress(
         response.body,
         contentType as string,
         this.config,
-        context.path
+        context.path,
       );
 
       // Detect client support
       const supportedAlgorithm = detectClientSupport(acceptEncoding as string);
 
-      if (!shouldCompressResponse || supportedAlgorithm === CompressionAlgorithm.NONE) {
+      if (
+        !shouldCompressResponse ||
+        supportedAlgorithm === CompressionAlgorithm.NONE
+      ) {
         // Update metrics for uncompressed response
         if (this.config.measurePerformance) {
-          updateMetrics(originalSize, originalSize, 0, CompressionAlgorithm.NONE, false);
+          updateMetrics(
+            originalSize,
+            originalSize,
+            0,
+            CompressionAlgorithm.NONE,
+            false,
+          );
         }
         return response;
       }
@@ -372,7 +392,7 @@ export class CompressionMiddleware {
         const compressionResult = await compressContent(
           response.body,
           supportedAlgorithm,
-          this.config.level
+          this.config.level,
         );
 
         // Update metrics
@@ -382,7 +402,7 @@ export class CompressionMiddleware {
             compressionResult.compressed.length,
             compressionResult.time,
             supportedAlgorithm,
-            true
+            true,
           );
         }
 
@@ -402,11 +422,19 @@ export class CompressionMiddleware {
           },
         };
       } catch (error) {
-        logger.error("[Compression] Error compressing response", { error: String(error) });
+        logger.error("[Compression] Error compressing response", {
+          error: String(error),
+        });
 
         // Fall back to uncompressed response
         if (this.config.measurePerformance) {
-          updateMetrics(originalSize, originalSize, 0, CompressionAlgorithm.NONE, false);
+          updateMetrics(
+            originalSize,
+            originalSize,
+            0,
+            CompressionAlgorithm.NONE,
+            false,
+          );
         }
 
         return response;
@@ -430,22 +458,29 @@ export class CompressionMiddleware {
     algorithms: Record<CompressionAlgorithm, number>;
   } {
     const metrics = this.getMetrics();
-    const totalAlgorithmUsage = Object.values(metrics.algorithmUsage).reduce((a, b) => a + b, 0);
+    const totalAlgorithmUsage = Object.values(metrics.algorithmUsage).reduce(
+      (a, b) => a + b,
+      0,
+    );
 
     // Find most used algorithm
     const preferredAlgorithm = Object.entries(metrics.algorithmUsage)
       .filter(([alg]) => alg !== CompressionAlgorithm.NONE)
       .reduce(
         (prev, curr) => (curr[1] > prev[1] ? curr : prev),
-        ["gzip", 0]
+        ["gzip", 0],
       )[0] as CompressionAlgorithm;
 
     return {
       enabled: this.config.enabled,
       compressionRate:
-        metrics.totalRequests > 0 ? (metrics.compressedRequests / metrics.totalRequests) * 100 : 0,
+        metrics.totalRequests > 0
+          ? (metrics.compressedRequests / metrics.totalRequests) * 100
+          : 0,
       averageBytesSaved:
-        metrics.compressedRequests > 0 ? metrics.totalBytesSaved / metrics.compressedRequests : 0,
+        metrics.compressedRequests > 0
+          ? metrics.totalBytesSaved / metrics.compressedRequests
+          : 0,
       preferredAlgorithm: preferredAlgorithm || CompressionAlgorithm.GZIP,
       performance: {
         averageCompressionTime: metrics.averageCompressionTime,
@@ -467,9 +502,11 @@ export const compressionMiddleware = new CompressionMiddleware();
  */
 export function withCompression(
   handler: PlatformHandler,
-  config?: Partial<CompressionConfig>
+  config?: Partial<CompressionConfig>,
 ): PlatformHandler {
-  const middleware = config ? new CompressionMiddleware(config) : compressionMiddleware;
+  const middleware = config
+    ? new CompressionMiddleware(config)
+    : compressionMiddleware;
 
   return middleware.wrap(handler);
 }

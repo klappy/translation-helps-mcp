@@ -53,7 +53,9 @@ class TranslationAPI {
 
   async request(endpoint, params = {}) {
     const url = new URL(endpoint, this.baseUrl);
-    Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]));
+    Object.keys(params).forEach((key) =>
+      url.searchParams.append(key, params[key]),
+    );
 
     const headers = {};
     if (this.apiKey) {
@@ -88,7 +90,10 @@ class TranslationAPI {
   }
 
   async getTranslationQuestions(reference, language = "en") {
-    return this.request("/fetch-translation-questions", { reference, language });
+    return this.request("/fetch-translation-questions", {
+      reference,
+      language,
+    });
   }
 
   async getWordDefinition(word, language = "en") {
@@ -112,7 +117,11 @@ export default new TranslationAPI();
 import React, { useState, useEffect } from "react";
 import translationAPI from "./api-client";
 
-const ScriptureViewer = ({ reference, showNotes = true, showQuestions = false }) => {
+const ScriptureViewer = ({
+  reference,
+  showNotes = true,
+  showQuestions = false,
+}) => {
   const [scripture, setScripture] = useState(null);
   const [notes, setNotes] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -142,7 +151,8 @@ const ScriptureViewer = ({ reference, showNotes = true, showQuestions = false })
 
       setScripture(results[0]);
       if (showNotes) setNotes(results[1]?.notes || []);
-      if (showQuestions) setQuestions(results[showNotes ? 2 : 1]?.questions || []);
+      if (showQuestions)
+        setQuestions(results[showNotes ? 2 : 1]?.questions || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -160,35 +170,45 @@ const ScriptureViewer = ({ reference, showNotes = true, showQuestions = false })
     }
   };
 
-  if (loading) return <div className='loading'>Loading scripture...</div>;
-  if (error) return <div className='error'>Error: {error}</div>;
+  if (loading) return <div className="loading">Loading scripture...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
   if (!scripture) return <div>No scripture found</div>;
 
   return (
-    <div className='scripture-viewer'>
+    <div className="scripture-viewer">
       <h2>{reference}</h2>
 
-      <div className='scripture-texts'>
+      <div className="scripture-texts">
         {scripture.scripture?.ult && (
-          <div className='translation ult'>
+          <div className="translation ult">
             <h3>ULT (Literal)</h3>
-            <p>{formatTextWithWordLinks(scripture.scripture.ult.text, handleWordClick)}</p>
+            <p>
+              {formatTextWithWordLinks(
+                scripture.scripture.ult.text,
+                handleWordClick,
+              )}
+            </p>
           </div>
         )}
 
         {scripture.scripture?.ust && (
-          <div className='translation ust'>
+          <div className="translation ust">
             <h3>UST (Simplified)</h3>
-            <p>{formatTextWithWordLinks(scripture.scripture.ust.text, handleWordClick)}</p>
+            <p>
+              {formatTextWithWordLinks(
+                scripture.scripture.ust.text,
+                handleWordClick,
+              )}
+            </p>
           </div>
         )}
       </div>
 
       {showNotes && notes.length > 0 && (
-        <div className='translation-notes'>
+        <div className="translation-notes">
           <h3>Translation Notes</h3>
           {notes.map((note, index) => (
-            <div key={index} className='note'>
+            <div key={index} className="note">
               <strong>{note.reference}:</strong> {note.text}
             </div>
           ))}
@@ -196,10 +216,10 @@ const ScriptureViewer = ({ reference, showNotes = true, showQuestions = false })
       )}
 
       {showQuestions && questions.length > 0 && (
-        <div className='translation-questions'>
+        <div className="translation-questions">
           <h3>Translation Questions</h3>
           {questions.map((question, index) => (
-            <div key={index} className='question'>
+            <div key={index} className="question">
               <p>
                 <strong>Q:</strong> {question.question}
               </p>
@@ -225,7 +245,7 @@ function formatTextWithWordLinks(text, onWordClick) {
       return (
         <span
           key={index}
-          className='clickable-word'
+          className="clickable-word"
           onClick={() => onWordClick(cleanWord)}
           style={{ cursor: "pointer", color: "#007cba" }}
         >
@@ -352,7 +372,8 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .scripture-texts {
@@ -516,7 +537,9 @@ document.addEventListener("click", (e) => {
 // ProgressTracker.js
 class TranslationProgressTracker {
   constructor() {
-    this.progress = JSON.parse(localStorage.getItem("translation-progress") || "{}");
+    this.progress = JSON.parse(
+      localStorage.getItem("translation-progress") || "{}",
+    );
   }
 
   markVerseComplete(reference) {
@@ -541,9 +564,17 @@ class TranslationProgressTracker {
   }
 
   getBookProgress(book) {
-    const verses = Object.keys(this.progress).filter((ref) => ref.startsWith(book));
-    const completed = verses.filter((ref) => this.progress[ref].completed).length;
-    return { total: verses.length, completed, percentage: (completed / verses.length) * 100 };
+    const verses = Object.keys(this.progress).filter((ref) =>
+      ref.startsWith(book),
+    );
+    const completed = verses.filter(
+      (ref) => this.progress[ref].completed,
+    ).length;
+    return {
+      total: verses.length,
+      completed,
+      percentage: (completed / verses.length) * 100,
+    };
   }
 
   save() {
@@ -566,18 +597,22 @@ function App() {
   const [currentReference, setCurrentReference] = useState("John 3:16");
 
   return (
-    <div className='app'>
+    <div className="app">
       <header>
         <h1>My Bible Study App</h1>
         <input
           value={currentReference}
           onChange={(e) => setCurrentReference(e.target.value)}
-          placeholder='Enter scripture reference'
+          placeholder="Enter scripture reference"
         />
       </header>
 
       <main>
-        <ScriptureViewer reference={currentReference} showNotes={true} showQuestions={true} />
+        <ScriptureViewer
+          reference={currentReference}
+          showNotes={true}
+          showQuestions={true}
+        />
       </main>
     </div>
   );
@@ -591,7 +626,10 @@ function App() {
   <div id="app">
     <header>
       <h1>My Bible Study App</h1>
-      <input v-model="currentReference" placeholder="Enter scripture reference" />
+      <input
+        v-model="currentReference"
+        placeholder="Enter scripture reference"
+      />
     </header>
 
     <main>

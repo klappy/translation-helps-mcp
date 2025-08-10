@@ -154,7 +154,10 @@ function selectEndpoint() {
       if (endpoint.name.includes("Scripture")) {
         endpointCopy.params = {
           ...endpoint.params,
-          reference: longTermReferences[Math.floor(Math.random() * longTermReferences.length)],
+          reference:
+            longTermReferences[
+              Math.floor(Math.random() * longTermReferences.length)
+            ],
         };
       }
 
@@ -192,7 +195,9 @@ export default function () {
       "User-Agent": "K6-Soak-Test/1.0",
       Accept: "application/json",
       "X-Test-Type": "soak-test",
-      "X-Test-Hour": Math.floor((Date.now() - testStartTime) / (1000 * 60 * 60)),
+      "X-Test-Hour": Math.floor(
+        (Date.now() - testStartTime) / (1000 * 60 * 60),
+      ),
     },
     timeout: "30s",
   };
@@ -218,7 +223,9 @@ export default function () {
   }
 
   // Track hourly performance
-  const currentHour = Math.floor((Date.now() - testStartTime) / (1000 * 60 * 60));
+  const currentHour = Math.floor(
+    (Date.now() - testStartTime) / (1000 * 60 * 60),
+  );
   if (currentHour !== hourCounter) {
     hourlyPerformance.add(requestDuration);
     hourCounter = currentHour;
@@ -237,21 +244,23 @@ export default function () {
   errorRate.add(!isStable);
 
   // Hourly logging (every hour)
-  const elapsedHours = Math.floor((Date.now() - testStartTime) / (1000 * 60 * 60));
+  const elapsedHours = Math.floor(
+    (Date.now() - testStartTime) / (1000 * 60 * 60),
+  );
   if (Math.random() < 0.0001 && elapsedHours > 0) {
     // Very sparse logging
     const memoryLeak = baselineResponseTime
       ? (requestDuration / baselineResponseTime).toFixed(2)
       : "N/A";
     console.log(
-      `[SOAK-${elapsedHours}H] ${endpoint.name} ${response.status} ${Math.round(requestDuration)}ms [ML:${memoryLeak}x]`
+      `[SOAK-${elapsedHours}H] ${endpoint.name} ${response.status} ${Math.round(requestDuration)}ms [ML:${memoryLeak}x]`,
     );
   }
 
   // Alert on performance degradation
   if (baselineResponseTime && requestDuration > baselineResponseTime * 3) {
     console.warn(
-      `[DEGRADATION] ${endpoint.name} ${Math.round(requestDuration)}ms (baseline: ${Math.round(baselineResponseTime)}ms)`
+      `[DEGRADATION] ${endpoint.name} ${Math.round(requestDuration)}ms (baseline: ${Math.round(baselineResponseTime)}ms)`,
     );
   }
 
@@ -274,8 +283,12 @@ export function handleSummary(data) {
 function textSummary(data, testDurationHours) {
   const avgRPS = Math.round(data.metrics.http_reqs.values.rate);
   const stabilityRate = (data.metrics.stability.values.rate * 100).toFixed(3);
-  const successRate = (100 - data.metrics.http_req_failed.values.rate * 100).toFixed(3);
-  const memoryLeakAvg = data.metrics.memory_leak_indicator.values.avg.toFixed(2);
+  const successRate = (
+    100 -
+    data.metrics.http_req_failed.values.rate * 100
+  ).toFixed(3);
+  const memoryLeakAvg =
+    data.metrics.memory_leak_indicator.values.avg.toFixed(2);
 
   return `
 🏃‍♂️ SOAK TEST RESULTS - 24 HOUR ENDURANCE
@@ -352,7 +365,8 @@ Duration: ${Math.floor(testDurationHours)}h ${Math.floor((testDurationHours % 1)
 
 function htmlSummary(data, testDurationHours) {
   const stabilityRate = (data.metrics.stability.values.rate * 100).toFixed(2);
-  const memoryLeakAvg = data.metrics.memory_leak_indicator.values.avg.toFixed(2);
+  const memoryLeakAvg =
+    data.metrics.memory_leak_indicator.values.avg.toFixed(2);
 
   return `
 <!DOCTYPE html>
@@ -391,7 +405,11 @@ function htmlSummary(data, testDurationHours) {
         <h2>🧠 Memory Analysis</h2>
         <div class="stat">Memory Factor: ${memoryLeakAvg}x</div>
         <div class="stat">Status: ${
-          memoryLeakAvg < 1.5 ? "✅ Stable" : memoryLeakAvg < 2.0 ? "⚠️ Growing" : "❌ Leaking"
+          memoryLeakAvg < 1.5
+            ? "✅ Stable"
+            : memoryLeakAvg < 2.0
+              ? "⚠️ Growing"
+              : "❌ Leaking"
         }</div>
         <div class="stat">P95 Response: ${Math.round(data.metrics.http_req_duration.values["p(95)"])}ms</div>
     </div>

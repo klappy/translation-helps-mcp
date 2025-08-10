@@ -100,7 +100,12 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: ["sourceNotesCount", "verseNotesCount", "cached", "responseTime"],
+          required: [
+            "sourceNotesCount",
+            "verseNotesCount",
+            "cached",
+            "responseTime",
+          ],
           optional: ["contextNotesCount", "timestamp"],
         },
         performance: {
@@ -113,7 +118,13 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       dataType: "translation-notes",
       structure: {
         required: ["id", "reference", "note"],
-        optional: ["quote", "occurrence", "occurrences", "markdown", "supportReference"],
+        optional: [
+          "quote",
+          "occurrence",
+          "occurrences",
+          "markdown",
+          "supportReference",
+        ],
       },
       performance: {
         maxResponseTime: 5,
@@ -281,7 +292,13 @@ export const LANGUAGES_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: ["responseTime", "cached", "timestamp", "languagesFound", "organization"],
+          required: [
+            "responseTime",
+            "cached",
+            "timestamp",
+            "languagesFound",
+            "organization",
+          ],
           optional: ["alternateNamesIncluded"],
         },
         performance: {
@@ -386,7 +403,12 @@ export const CONTEXT_SHAPE: ResponseShape = {
         dataType: "context",
         structure: {
           required: [],
-          optional: ["scripture", "translationNotes", "translationWords", "translationQuestions"],
+          optional: [
+            "scripture",
+            "translationNotes",
+            "translationWords",
+            "translationQuestions",
+          ],
           nested: {
             scripture: SCRIPTURE_SHAPE,
             translationNotes: TRANSLATION_NOTES_SHAPE,
@@ -402,7 +424,13 @@ export const CONTEXT_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: ["responseTime", "cached", "timestamp", "resourcesRequested", "resourcesFound"],
+          required: [
+            "responseTime",
+            "cached",
+            "timestamp",
+            "resourcesRequested",
+            "resourcesFound",
+          ],
           optional: ["aggregationTime", "cacheHitRate"],
         },
         performance: {
@@ -462,7 +490,9 @@ export const RESPONSE_SHAPES = {
 } as const;
 
 // Utility function to get response shape by data type
-export function getResponseShape(dataType: keyof typeof RESPONSE_SHAPES): ResponseShape {
+export function getResponseShape(
+  dataType: keyof typeof RESPONSE_SHAPES,
+): ResponseShape {
   const shape = RESPONSE_SHAPES[dataType];
   if (!shape) {
     throw new Error(`Unknown response shape: ${dataType}`);
@@ -474,7 +504,7 @@ export function getResponseShape(dataType: keyof typeof RESPONSE_SHAPES): Respon
 export function validateResponseShape(
   response: unknown,
   shape: ResponseShape,
-  path = "root"
+  path = "root",
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -495,7 +525,11 @@ export function validateResponseShape(
   if (shape.structure.nested) {
     for (const [field, nestedShape] of Object.entries(shape.structure.nested)) {
       if (field in obj && obj[field] !== null && obj[field] !== undefined) {
-        const nestedResult = validateResponseShape(obj[field], nestedShape, `${path}.${field}`);
+        const nestedResult = validateResponseShape(
+          obj[field],
+          nestedShape,
+          `${path}.${field}`,
+        );
         errors.push(...nestedResult.errors);
       }
     }
