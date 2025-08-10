@@ -6,7 +6,8 @@
  */
 
 import { getKVCache, initializeKVCache } from "../functions/kv-cache.js";
-import { normalizeReference, parseReference } from "../parsers/referenceParser.js";
+import { parseReference } from "../functions/reference-parser.js";
+import { normalizeReference as normalizeReferenceNew } from "../parsers/referenceParser.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2.js";
 import { logger } from "../utils/logger.js";
@@ -65,7 +66,34 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
     const zipFetcher = getZipFetcher();
 
     // Parse reference if needed
-    const reference = params.reference ? parseReference(String(params.reference)) : null;
+    const rawRef = String(params.reference || "");
+    // Pre-normalize common abbreviations to avoid ambiguity (e.g., Jn -> John, Mt -> Matthew)
+    // Avoid negative lookbehind with variable length by handling numbered forms first
+    const normalizedRefStr = rawRef
+      .replace(/\b1\s*Jn\b/gi, "1 John")
+      .replace(/\b2\s*Jn\b/gi, "2 John")
+      .replace(/\b3\s*Jn\b/gi, "3 John")
+      .replace(/\bJn\b/gi, "John")
+      .replace(/\bMt\b/gi, "Matthew");
+    const reference = params.reference ? parseReference(normalizedRefStr) : null;
+    if (!reference) {
+      const err = new Error(
+        `Invalid reference: ${String(params.reference || "")} — expected formats like 'John 3:16', 'Genesis 1', or 'Titus 1-2'`
+      );
+      // Mark as 400 for API layer to propagate
+      // @ts-expect-error attach status
+      (err as any).status = 400;
+      throw err;
+    }
+    // If chapter/verse clearly impossible, also throw 400
+    const chap = Number((params.reference as string)?.match(/\s(\d+)/)?.[1] || 0);
+    const verse = Number((params.reference as string)?.match(/:(\d+)/)?.[1] || 0);
+    if (chap <= 0 || (/:/.test(String(params.reference)) && verse <= 0)) {
+      const err = new Error(`Invalid reference: chapter or verse out of range`);
+      // @ts-expect-error attach status
+      (err as any).status = 400;
+      throw err;
+    }
 
     // Route to appropriate method
     switch (zipConfig.fetchMethod) {
@@ -95,7 +123,9 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
           try {
             scriptures = await zipFetcher.getScripture(reference, language, organization);
           } catch (err) {
-            logger.warn("Failed to fetch ALL resources", { error: String(err) });
+            logger.warn("Failed to fetch ALL resources", {
+              error: String(err),
+            });
             scriptures = [];
           }
 
@@ -147,14 +177,24 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
           sample: normalized.slice(0, 2),
         });
 
-        // Transform to match expected endpoint response format
-        const primary = normalized[0];
+        // If we have multiple, prefer ULT when available for deterministic primary
+        const primary =
+          normalized.find((s) => s.resource.toUpperCase().includes("ULT")) || normalized[0];
         const includeVerseNumbers = params.includeVerseNumbers !== "false";
         const format = (params.format as string) || "text";
 
         // Build the reference string properly using the shared normalizer
         logger.debug("Building reference string", { reference });
-        const referenceStr = normalizeReference(reference);
+        // Use UI-side normalizer for display string to ensure standard book names
+        const referenceStr = normalizeReferenceNew({
+          book: reference.bookName || reference.book,
+          chapter: reference.chapter,
+          verse: reference.verse,
+          endChapter: reference.endChapter,
+          endVerse: reference.endVerse,
+          originalText: reference.originalText || "",
+          isValid: true,
+        } as unknown as import("../parsers/referenceParser.js").ParsedReference);
 
         // Inspect tracer to determine cache warm status
         let cacheWarm = false;
@@ -178,17 +218,54 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
 
         // If nothing was found but a chapter was requested, annotate reason for formatter
         const notFoundReason = !primary && reference.chapter ? "chapter_not_found" : undefined;
+        if (!primary) {
+          const status = 400;
+          const response = {
+            error: `Invalid reference: passage could not be found for ${String(
+              params.reference
+            )} in available resources`,
+            citation: "",
+            language: String(params.language || "en"),
+            organization: String(params.organization || "unfoldingWord"),
+            metadata: {
+              cached: false,
+              includeVerseNumbers,
+              format,
+              resourcesFound: normalized.length,
+              filesFound: normalized.length,
+              cacheType: "zip",
+              cacheKey: JSON.stringify({
+                endpoint: "fetch-scripture",
+                params: {
+                  reference: normalizedRefStr,
+                  language: params.language,
+                  organization: params.organization,
+                  resource: params.resource,
+                },
+              }),
+              cacheWarm,
+              ...(notFoundReason ? { notFoundReason } : {}),
+            },
+            _metadata: {
+              success: false,
+              status,
+              responseTime: 0,
+              timestamp: new Date().toISOString(),
+            },
+          } as any;
+          // Signal to RouteGenerator to set HTTP status
+          response.__httpStatus = status;
+          return response;
+        }
 
         return {
-          scripture: primary
-            ? {
-                text: primary.text,
-                reference: referenceStr,
-                resource: primary.resource,
-                language: String(params.language || "en"),
-                citation: `${referenceStr} (${primary.resource})`,
-              }
-            : null,
+          scripture: {
+            text: primary.text,
+            reference: referenceStr,
+            resource: primary.resource,
+            language: String(params.language || "en"),
+            citation: `${referenceStr} (${primary.resource})`,
+          },
           resources: normalized.length > 1 ? normalized : undefined,
           citation: primary ? `${referenceStr} (${primary.resource})` : "",
           language: String(params.language || "en"),
@@ -203,7 +280,7 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
             cacheKey: JSON.stringify({
               endpoint: "fetch-scripture",
               params: {
-                reference: params.reference,
+                reference: normalizedRefStr,
                 language: params.language,
                 organization: params.organization,
                 resource: params.resource,
@@ -267,7 +344,26 @@ export const withErrorHandling = (fetcher: DataFetcher): DataFetcher => {
     try {
       return await fetcher(config, params, context);
     } catch (error) {
-      logger.error(`[${context.traceId}] Fetch error`, { error: String(error) });
+      logger.error(`[${context.traceId}] Fetch error`, {
+        error: String(error),
+      });
+      // Convert typed errors with status to proper HTTP responses
+      const status = (error as any)?.status as number | undefined;
+      if (status && status >= 400 && status < 600) {
+        const response = {
+          error: String((error as any)?.message || "Bad Request"),
+          _metadata: {
+            success: false,
+            status,
+            responseTime: 0,
+            timestamp: new Date().toISOString(),
+          },
+        };
+        // Signal to RouteGenerator to send this as the response
+        // @ts-expect-error
+        response.__httpStatus = status;
+        return response as unknown as any;
+      }
       throw error;
     }
   };
@@ -308,7 +404,10 @@ export const withRetry = (fetcher: DataFetcher, maxRetries = 3): DataFetcher => 
         return await fetcher(config, params, context);
       } catch (error) {
         lastError = error;
-        logger.warn(`[${context.traceId}] Attempt failed`, { attempt, error: String(error) });
+        logger.warn(`[${context.traceId}] Attempt failed`, {
+          attempt,
+          error: String(error),
+        });
 
         if (attempt < maxRetries) {
           // Exponential backoff
