@@ -33,7 +33,9 @@ export class EdgeXRayTracer {
 
   constructor(traceId: string, endpoint: string) {
     this.startTime =
-      typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
     this.trace = {
       traceId,
       mainEndpoint: endpoint,
@@ -69,7 +71,9 @@ export class EdgeXRayTracer {
 
   getTrace(): EdgeXRayTrace {
     const now =
-      typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
     this.trace.totalDuration = Math.max(1, Math.round(now - this.startTime));
     return { ...this.trace };
   }
@@ -79,10 +83,12 @@ export class EdgeXRayTracer {
 export async function trackedFetch(
   tracer: EdgeXRayTracer,
   url: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Response> {
   const startTime =
-    typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    typeof performance !== "undefined" && performance.now
+      ? performance.now()
+      : Date.now();
 
   // Add browser-like headers to avoid bot detection
   const browserHeaders = {
@@ -109,7 +115,9 @@ export async function trackedFetch(
   try {
     const response = await fetch(url, mergedOptions);
     const now =
-      typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
     const duration = Math.max(1, Math.round(now - startTime));
 
     tracer.addApiCall({
@@ -125,7 +133,9 @@ export async function trackedFetch(
     return response;
   } catch (error) {
     const now =
-      typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
     const duration = Math.max(1, Math.round(now - startTime));
 
     tracer.addApiCall({

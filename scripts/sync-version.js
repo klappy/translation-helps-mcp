@@ -46,7 +46,10 @@ try {
   if (fs.existsSync(uiPackagePath)) {
     const uiPackage = JSON.parse(fs.readFileSync(uiPackagePath, "utf8"));
     uiPackage.version = version;
-    fs.writeFileSync(uiPackagePath, JSON.stringify(uiPackage, null, "\t") + "\n");
+    fs.writeFileSync(
+      uiPackagePath,
+      JSON.stringify(uiPackage, null, "\t") + "\n",
+    );
     console.log(`✅ UI package.json version synced to ${version}`);
   } else {
     console.log(`⚠️  UI package.json not found at ${uiPackagePath}, skipping`);
@@ -105,12 +108,15 @@ export function resetVersionCache(): void {
   console.log(`✅ Server src/version.ts synced to ${version}`);
 
   // Update health endpoint version
-  const healthEndpointPath = path.join(rootDir, "ui/src/routes/api/health/+server.ts");
+  const healthEndpointPath = path.join(
+    rootDir,
+    "ui/src/routes/api/health/+server.ts",
+  );
   if (fs.existsSync(healthEndpointPath)) {
     let healthContent = fs.readFileSync(healthEndpointPath, "utf8");
     healthContent = healthContent.replace(
       /const BUILD_VERSION = '[\d.]+'/,
-      `const BUILD_VERSION = '${version}'`
+      `const BUILD_VERSION = '${version}'`,
     );
     fs.writeFileSync(healthEndpointPath, healthContent);
     console.log(`✅ Health endpoint version synced to ${version}`);
