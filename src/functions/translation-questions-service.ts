@@ -43,7 +43,10 @@ export interface TranslationQuestionsResult {
 /**
  * Parse TSV data into TranslationQuestion objects
  */
-function parseTQFromTSV(tsvData: string, reference: ParsedReference): TranslationQuestion[] {
+function parseTQFromTSV(
+  tsvData: string,
+  reference: ParsedReference,
+): TranslationQuestion[] {
   const lines = tsvData.split("\n").filter((line) => line.trim());
   const questions: TranslationQuestion[] = [];
   let questionId = 1;
@@ -52,7 +55,7 @@ function parseTQFromTSV(tsvData: string, reference: ParsedReference): Translatio
   if (lines.length > 0) {
     logger.debug(`📋 First TSV line`, { line: lines[0] });
     logger.debug(
-      `📋 Parsing questions for ${reference.book} ${reference.chapter}:${reference.verse || "*"}`
+      `📋 Parsing questions for ${reference.book} ${reference.chapter}:${reference.verse || "*"}`,
     );
   }
 
@@ -98,10 +101,14 @@ interface ParsedReference {
  * Core translation questions fetching logic with unified resource discovery
  */
 export async function fetchTranslationQuestions(
-  options: TranslationQuestionsOptions
+  options: TranslationQuestionsOptions,
 ): Promise<TranslationQuestionsResult> {
   const startTime = Date.now();
-  const { reference, language = "en", organization = "unfoldingWord" } = options;
+  const {
+    reference,
+    language = "en",
+    organization = "unfoldingWord",
+  } = options;
 
   const parsedRef = parseReference(reference);
   if (!parsedRef) {
@@ -118,10 +125,17 @@ export async function fetchTranslationQuestions(
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
   logger.debug(`Using unified resource discovery for translation questions...`);
-  const resourceInfo = await getResourceForBook(reference, "questions", language, organization);
+  const resourceInfo = await getResourceForBook(
+    reference,
+    "questions",
+    language,
+    organization,
+  );
 
   if (!resourceInfo) {
-    throw new Error(`No translation questions found for ${language}/${organization}`);
+    throw new Error(
+      `No translation questions found for ${language}/${organization}`,
+    );
   }
 
   logger.info(`Using resource`, {
@@ -138,7 +152,8 @@ export async function fetchTranslationQuestions(
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
-    (ing: { identifier?: string }) => ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase()
+    (ing: { identifier?: string }) =>
+      ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase(),
   );
 
   if (!ingredient) {
@@ -146,7 +161,9 @@ export async function fetchTranslationQuestions(
       book: parsedRef.book,
       ingredients: resourceInfo.ingredients,
     });
-    throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
+    throw new Error(
+      `Book ${parsedRef.book} not found in resource ${resourceInfo.name}`,
+    );
   }
 
   // Build URL for the TSV file
@@ -161,7 +178,9 @@ export async function fetchTranslationQuestions(
     const fileResponse = await fetch(fileUrl);
     if (!fileResponse.ok) {
       logger.error(`Failed to fetch TQ file`, { status: fileResponse.status });
-      throw new Error(`Failed to fetch translation questions content: ${fileResponse.status}`);
+      throw new Error(
+        `Failed to fetch translation questions content: ${fileResponse.status}`,
+      );
     }
 
     tsvData = await fileResponse.text();
@@ -184,7 +203,9 @@ export async function fetchTranslationQuestions(
       resource: resourceInfo.name,
       organization,
       language,
-      url: resourceInfo.url || `https://git.door43.org/${organization}/${resourceInfo.name}`,
+      url:
+        resourceInfo.url ||
+        `https://git.door43.org/${organization}/${resourceInfo.name}`,
       version: "master",
     },
     metadata: {

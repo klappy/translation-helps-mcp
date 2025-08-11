@@ -65,7 +65,7 @@ export class CacheManager {
 
   async getWithCacheInfo(
     key: string,
-    cacheType?: CacheType
+    cacheType?: CacheType,
   ): Promise<{
     value: any;
     cached: boolean;
@@ -94,7 +94,12 @@ export class CacheManager {
     };
   }
 
-  async set(key: string, value: any, cacheType?: CacheType, customTtl?: number): Promise<void> {
+  async set(
+    key: string,
+    value: any,
+    cacheType?: CacheType,
+    customTtl?: number,
+  ): Promise<void> {
     const fullKey = this.getVersionedKey(key, cacheType);
     const baseTtl = CACHE_TTLS[cacheType || "fileContent"];
     const ttl = customTtl ? Math.min(customTtl, MAX_TTL) : baseTtl;
@@ -126,7 +131,7 @@ export class CacheManager {
   async getWithDeduplication<T>(
     key: string,
     fetcher: () => Promise<T>,
-    cacheType?: CacheType
+    cacheType?: CacheType,
   ): Promise<T> {
     const fullKey = this.getVersionedKey(key, cacheType);
 

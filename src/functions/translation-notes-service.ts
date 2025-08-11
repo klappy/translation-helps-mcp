@@ -53,7 +53,7 @@ export interface TranslationNotesResult {
  * Core translation notes fetching logic with unified resource discovery
  */
 export async function fetchTranslationNotes(
-  options: TranslationNotesOptions
+  options: TranslationNotesOptions,
 ): Promise<TranslationNotesResult> {
   const startTime = Date.now();
   const {
@@ -81,10 +81,17 @@ export async function fetchTranslationNotes(
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
   logger.debug(`Using unified resource discovery for translation notes...`);
-  const resourceInfo = await getResourceForBook(reference, "notes", language, organization);
+  const resourceInfo = await getResourceForBook(
+    reference,
+    "notes",
+    language,
+    organization,
+  );
 
   if (!resourceInfo) {
-    throw new Error(`No translation notes found for ${language}/${organization}`);
+    throw new Error(
+      `No translation notes found for ${language}/${organization}`,
+    );
   }
 
   logger.info(`Using resource`, {
@@ -101,7 +108,8 @@ export async function fetchTranslationNotes(
 
   // Find the correct file from ingredients
   const ingredient = resourceInfo.ingredients?.find(
-    (ing: { identifier?: string }) => ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase()
+    (ing: { identifier?: string }) =>
+      ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase(),
   );
 
   if (!ingredient) {
@@ -109,7 +117,9 @@ export async function fetchTranslationNotes(
       book: parsedRef.book,
       ingredients: resourceInfo.ingredients,
     });
-    throw new Error(`Book ${parsedRef.book} not found in resource ${resourceInfo.name}`);
+    throw new Error(
+      `Book ${parsedRef.book} not found in resource ${resourceInfo.name}`,
+    );
   }
 
   // Enforce ingredients path via ZIP fetcher in new flow; avoid raw hardcoded URLs
@@ -124,7 +134,9 @@ export async function fetchTranslationNotes(
     const fileResponse = await fetch(fileUrl);
     if (!fileResponse.ok) {
       logger.error(`Failed to fetch TN file`, { status: fileResponse.status });
-      throw new Error(`Failed to fetch translation notes content: ${fileResponse.status}`);
+      throw new Error(
+        `Failed to fetch translation notes content: ${fileResponse.status}`,
+      );
     }
 
     tsvData = await fileResponse.text();
@@ -138,7 +150,12 @@ export async function fetchTranslationNotes(
   }
 
   // Parse the TSV data - automatic parsing preserves exact structure
-  const notes = parseTNFromTSV(tsvData, parsedRef, includeIntro, includeContext);
+  const notes = parseTNFromTSV(
+    tsvData,
+    parsedRef,
+    includeIntro,
+    includeContext,
+  );
   logger.info(`Parsed translation notes`, { count: notes.length });
 
   // Split notes into verse notes and context notes based on reference patterns
@@ -161,7 +178,9 @@ export async function fetchTranslationNotes(
       title: resourceInfo.title,
       organization,
       language,
-      url: resourceInfo.url || `https://git.door43.org/${organization}/${resourceInfo.name}`,
+      url:
+        resourceInfo.url ||
+        `https://git.door43.org/${organization}/${resourceInfo.name}`,
       version: "master",
     },
     metadata: {
@@ -219,7 +238,7 @@ export async function getTranslationNotes(args: {
     }>;
   };
   const tsvUrl = catalogJson.data?.[0]?.contents?.formats?.find((f) =>
-    f.format?.includes("tsv")
+    f.format?.includes("tsv"),
   )?.url;
   if (!tsvUrl) {
     throw new Error("No TSV URL found in catalog response");
@@ -264,7 +283,8 @@ export async function getTranslationNotes(args: {
       reference: cols[idx.Reference] || "",
       id: cols[idx.ID] || "",
       tags: idx.Tags >= 0 ? cols[idx.Tags] || "" : "",
-      supportReference: idx.SupportReference >= 0 ? cols[idx.SupportReference] || "" : "",
+      supportReference:
+        idx.SupportReference >= 0 ? cols[idx.SupportReference] || "" : "",
       quote: idx.Quote >= 0 ? cols[idx.Quote] || "" : "",
       occurrence: idx.Occurrence >= 0 ? cols[idx.Occurrence] || "" : "",
       note: cols[idx.Note] || "",
@@ -280,7 +300,7 @@ function parseTNFromTSV(
   tsvData: string,
   reference: { book: string; chapter: number; verse?: number },
   includeIntro: boolean,
-  includeContext: boolean
+  includeContext: boolean,
 ): any[] {
   // Use the generic parseTSV to preserve exact structure
   const allRows = parseTSV(tsvData);
@@ -296,7 +316,9 @@ function parseTNFromTSV(
       } else if (ref.match(/^\d+:intro$/)) {
         const chapterMatch = ref.match(/^(\d+):intro$/);
         const chapterNum = parseInt(chapterMatch[1]);
-        return (includeIntro || includeContext) && chapterNum === reference.chapter;
+        return (
+          (includeIntro || includeContext) && chapterNum === reference.chapter
+        );
       } else {
         const refMatch = ref.match(/(\d+):(\d+)/);
         if (refMatch) {
@@ -304,7 +326,9 @@ function parseTNFromTSV(
           const verseNum = parseInt(refMatch[2]);
 
           if (reference.verse) {
-            return chapterNum === reference.chapter && verseNum === reference.verse;
+            return (
+              chapterNum === reference.chapter && verseNum === reference.verse
+            );
           } else {
             return chapterNum === reference.chapter;
           }

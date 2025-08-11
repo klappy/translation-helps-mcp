@@ -31,7 +31,7 @@ export class ResponseFormatter {
     data: any,
     format: string,
     params: ParsedParams,
-    metadata: FormatMetadata = {}
+    metadata: FormatMetadata = {},
   ): FormattedResponse {
     logger.info("Formatting response", { format, endpoint: metadata.endpoint });
 
@@ -84,13 +84,15 @@ export class ResponseFormatter {
   private addMetadataHeaders(
     headers: Record<string, string>,
     metadata: FormatMetadata,
-    _format: string
+    _format: string,
   ): void {
     // Always include key diagnostics in headers for consistency across formats
     // Use _format to satisfy linter and provide minimal diagnostic
     if (_format) headers["X-Format"] = String(_format);
-    const cacheStatus = (metadata as unknown as { cacheStatus?: unknown }).cacheStatus;
-    if (cacheStatus !== undefined) headers["X-Cache-Status"] = String(cacheStatus);
+    const cacheStatus = (metadata as unknown as { cacheStatus?: unknown })
+      .cacheStatus;
+    if (cacheStatus !== undefined)
+      headers["X-Cache-Status"] = String(cacheStatus);
     else if (metadata.cached !== undefined)
       headers["X-Cache-Status"] = String(metadata.cached ? "hit" : "miss");
 
@@ -122,7 +124,8 @@ export class ResponseFormatter {
       }
 
       // Add detailed trace info
-      const xray: any = (metadata as unknown as { xrayTrace?: unknown }).xrayTrace;
+      const xray: any = (metadata as unknown as { xrayTrace?: unknown })
+        .xrayTrace;
       if (xray?.totalDuration !== undefined)
         headers["X-Xray-Total-Duration"] = String(`${xray.totalDuration}ms`);
       if (xray?.cacheStats) {
@@ -164,7 +167,7 @@ export class ResponseFormatter {
   private formatTextResponse(
     data: any,
     headers: Record<string, string>,
-    params: ParsedParams
+    params: ParsedParams,
   ): FormattedResponse {
     // Build the markdown body first, then strip MD markers for a nearly identical text output
     const md = this.formatMarkdownResponse(data, { ...headers }, params).body;
@@ -179,7 +182,7 @@ export class ResponseFormatter {
   private formatMarkdownResponse(
     data: any,
     headers: Record<string, string>,
-    params: ParsedParams
+    params: ParsedParams,
   ): FormattedResponse {
     let body = "";
 
@@ -197,25 +200,35 @@ export class ResponseFormatter {
         const res = data.resources[i];
         const resource = res.resource || res.translation;
         // If translation already includes version suffix, prefer that
-        const inlineVersionMatch = String(res.translation || "").match(/\b(v\d+)\b/i);
+        const inlineVersionMatch = String(res.translation || "").match(
+          /\b(v\d+)\b/i,
+        );
         const version = inlineVersionMatch?.[1] || versionMap[resource] || "";
 
         // Check if we have multiple verses or long passages
-        const hasVerseNumbers = res.text.includes("\n") && res.text.match(/^\d+\.\s/m);
-        const isLongPassage = res.text.includes("## Chapter") || res.text.length > 500;
+        const hasVerseNumbers =
+          res.text.includes("\n") && res.text.match(/^\d+\.\s/m);
+        const isLongPassage =
+          res.text.includes("## Chapter") || res.text.length > 500;
 
         if (isLongPassage) {
           // For long passages, add resource section header and citation upfront
           body += `## ${resource} ${version}\n\n`;
           body += `*${displayReference} · ${params.organization || "unfoldingWord"}*\n\n`;
-          const displayText = String(res.text || "").replace(/^(\d+)\.\s/gm, "$1 ");
+          const displayText = String(res.text || "").replace(
+            /^(\d+)\.\s/gm,
+            "$1 ",
+          );
           body += `${displayText}\n\n`;
         } else if (hasVerseNumbers) {
           // For multi-verse, use regular text with verse numbers
           body += `${res.text}\n\n`;
         } else {
           // For single verse, use blockquote
-          const displayText2 = String(res.text || "").replace(/^(\d+)\.\s/gm, "$1 ");
+          const displayText2 = String(res.text || "").replace(
+            /^(\d+)\.\s/gm,
+            "$1 ",
+          );
           body += `> ${displayText2}\n\n`;
         }
 
@@ -229,7 +242,9 @@ export class ResponseFormatter {
       }
 
       // Add metadata headers
-      const resourceList = data.resources.map((r: any) => r.resource || r.translation).join(",");
+      const resourceList = data.resources
+        .map((r: any) => r.resource || r.translation)
+        .join(",");
       headers["X-Resources"] = resourceList;
       headers["X-Language"] = data.scripture.language || params.language || "";
       headers["X-Organization"] = params.organization || "unfoldingWord";
@@ -322,7 +337,7 @@ export class ResponseFormatter {
   private formatJsonResponse(
     data: any,
     headers: Record<string, string>,
-    metadata: FormatMetadata
+    metadata: FormatMetadata,
   ): FormattedResponse {
     // Normalize scripture payload to always include an array shape for consumers
     let scriptures: Array<{

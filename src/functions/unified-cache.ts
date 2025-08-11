@@ -29,7 +29,8 @@ export function shouldBypassCache(options: CacheBypassOptions): boolean {
 
   // Check headers for explicit cache bypass (NOT standard browser cache-control)
   // Note: Browser cache-control headers are for browser caching, not our server cache
-  const cacheControl = headers["cache-control"] || headers["Cache-Control"] || "";
+  const cacheControl =
+    headers["cache-control"] || headers["Cache-Control"] || "";
   if (
     cacheControl.includes("no-store") // Still respect no-store as it's more serious
     // Removed no-cache and max-age=0 as browsers send these for normal requests
@@ -104,7 +105,9 @@ export class UnifiedCacheManager {
 
   constructor() {
     this.appVersion = getVersion();
-    logger.info(`🚀 Unified cache initialized with app version: ${this.appVersion}`);
+    logger.info(
+      `🚀 Unified cache initialized with app version: ${this.appVersion}`,
+    );
   }
 
   private getVersionedKey(key: string, cacheType?: UnifiedCacheType): string {
@@ -115,7 +118,7 @@ export class UnifiedCacheManager {
   async get<T = any>(
     key: string,
     cacheType: UnifiedCacheType = "apiResponse",
-    bypassOptions?: CacheBypassOptions
+    bypassOptions?: CacheBypassOptions,
   ): Promise<CacheResult<T>> {
     const fullKey = this.getVersionedKey(key, cacheType);
 
@@ -141,7 +144,8 @@ export class UnifiedCacheManager {
       };
     }
 
-    const memStart = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const memStart =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
     const item = this.memoryCache.get(fullKey);
 
     if (!item) {
@@ -183,7 +187,10 @@ export class UnifiedCacheManager {
 
     const timingMs = Math.max(
       1,
-      Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - memStart)
+      Math.round(
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+          memStart,
+      ),
     );
     return {
       value: item.value,
@@ -202,7 +209,7 @@ export class UnifiedCacheManager {
     key: string,
     value: any,
     cacheType: UnifiedCacheType = "apiResponse",
-    customTtl?: number
+    customTtl?: number,
   ): Promise<void> {
     // Hard-disable response-level caching by policy
     if (cacheType === "apiResponse") {
@@ -260,7 +267,7 @@ export class UnifiedCacheManager {
     key: string,
     fetcher: () => Promise<T>,
     cacheType: UnifiedCacheType = "apiResponse",
-    bypassOptions?: CacheBypassOptions
+    bypassOptions?: CacheBypassOptions,
   ): Promise<{ data: T; fromCache: boolean; cacheInfo: CacheResult<T> }> {
     const fullKey = this.getVersionedKey(key, cacheType);
 
@@ -276,7 +283,7 @@ export class UnifiedCacheManager {
 
     // Check if there's already a pending request for this key
     logger.debug(
-      `🔍 Checking pending requests for: ${fullKey}, has pending: ${this.pendingRequests.has(fullKey)}`
+      `🔍 Checking pending requests for: ${fullKey}, has pending: ${this.pendingRequests.has(fullKey)}`,
     );
     if (this.pendingRequests.has(fullKey)) {
       logger.debug(`⏳ Waiting for pending request: ${key}`);
@@ -317,7 +324,10 @@ export class UnifiedCacheManager {
   getStats() {
     const hitRate =
       this.stats.hits + this.stats.misses > 0
-        ? ((this.stats.hits / (this.stats.hits + this.stats.misses)) * 100).toFixed(1)
+        ? (
+            (this.stats.hits / (this.stats.hits + this.stats.misses)) *
+            100
+          ).toFixed(1)
         : "0.0";
 
     return {
@@ -334,7 +344,7 @@ export class UnifiedCacheManager {
   // Helper method to generate cache headers for HTTP responses
   generateCacheHeaders(
     cacheResult: CacheResult,
-    defaultMaxAge: number = 300
+    defaultMaxAge: number = 300,
   ): Record<string, string> {
     const headers: Record<string, string> = {};
 
@@ -342,7 +352,8 @@ export class UnifiedCacheManager {
       headers["X-Cache"] = "HIT";
       headers["X-Cache-TTL"] = `${cacheResult.ttlSeconds}`;
       headers["X-Cache-Expires"] = cacheResult.expiresAt || "";
-      headers["Cache-Control"] = `public, max-age=${Math.max(0, cacheResult.ttlSeconds || 0)}`;
+      headers["Cache-Control"] =
+        `public, max-age=${Math.max(0, cacheResult.ttlSeconds || 0)}`;
     } else {
       headers["X-Cache"] = "MISS";
       headers["Cache-Control"] = `public, max-age=${defaultMaxAge}`;
@@ -367,7 +378,7 @@ export type { UnifiedCacheType as CacheType };
 export function withMeasuredCacheHeaders<T>(
   headers: Record<string, string>,
   timingMs: number,
-  source: "kv" | "memory" | "bypass" | "error" | "miss"
+  source: "kv" | "memory" | "bypass" | "error" | "miss",
 ): Record<string, string> {
   return {
     ...headers,

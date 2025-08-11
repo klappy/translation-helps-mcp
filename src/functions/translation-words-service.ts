@@ -49,10 +49,15 @@ export interface TranslationWordsResult {
  * Core translation words fetching logic with unified resource discovery
  */
 export async function fetchTranslationWords(
-  options: TranslationWordsOptions
+  options: TranslationWordsOptions,
 ): Promise<TranslationWordsResult> {
   const startTime = Date.now();
-  const { reference, language = "en", organization = "unfoldingWord", category } = options;
+  const {
+    reference,
+    language = "en",
+    organization = "unfoldingWord",
+    category,
+  } = options;
 
   const parsedRef = parseReference(reference);
   if (!parsedRef) {
@@ -70,10 +75,17 @@ export async function fetchTranslationWords(
 
   // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog search
   logger.debug(`Using unified resource discovery for translation words...`);
-  const resourceInfo = await getResourceForBook(reference, "words", language, organization);
+  const resourceInfo = await getResourceForBook(
+    reference,
+    "words",
+    language,
+    organization,
+  );
 
   if (!resourceInfo) {
-    throw new Error(`No translation words found for ${language}/${organization}`);
+    throw new Error(
+      `No translation words found for ${language}/${organization}`,
+    );
   }
 
   logger.info(`Using resource`, {
@@ -87,8 +99,9 @@ export async function fetchTranslationWords(
   // Try to find translation word links for this book
   const linksIngredient = resourceInfo.ingredients?.find(
     (ing: { identifier?: string }) =>
-      ing.identifier?.toLowerCase() === `${parsedRef.book.toLowerCase()}_links` ||
-      ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase()
+      ing.identifier?.toLowerCase() ===
+        `${parsedRef.book.toLowerCase()}_links` ||
+      ing.identifier?.toLowerCase() === parsedRef.book.toLowerCase(),
   );
 
   if (!linksIngredient) {
@@ -97,7 +110,7 @@ export async function fetchTranslationWords(
       resource: resourceInfo.name,
     });
     throw new Error(
-      `Translation word links for ${parsedRef.book} not found in resource ${resourceInfo.name}`
+      `Translation word links for ${parsedRef.book} not found in resource ${resourceInfo.name}`,
     );
   }
 
@@ -115,7 +128,9 @@ export async function fetchTranslationWords(
       logger.warn(`Failed to fetch TW links file`, {
         status: linksResponse.status,
       });
-      throw new Error(`Failed to fetch translation word links: ${linksResponse.status}`);
+      throw new Error(
+        `Failed to fetch translation word links: ${linksResponse.status}`,
+      );
     }
 
     linksData = await linksResponse.text();
@@ -144,7 +159,9 @@ export async function fetchTranslationWords(
       resource: resourceInfo.name,
       organization,
       language,
-      url: resourceInfo.url || `https://git.door43.org/${organization}/${resourceInfo.name}`,
+      url:
+        resourceInfo.url ||
+        `https://git.door43.org/${organization}/${resourceInfo.name}`,
       version: "master",
     },
     metadata: {
@@ -167,7 +184,7 @@ export async function fetchTranslationWords(
  */
 function parseWordLinksFromTSV(
   tsvData: string,
-  reference: { book: string; chapter: number; verse?: number }
+  reference: { book: string; chapter: number; verse?: number },
 ): string[] {
   const lines = tsvData.split("\n").filter((line) => line.trim());
   const wordIds: string[] = [];
@@ -188,7 +205,8 @@ function parseWordLinksFromTSV(
     // Check if this word link is in our range
     let include = false;
     if (reference.verse) {
-      include = chapterNum === reference.chapter && verseNum === reference.verse;
+      include =
+        chapterNum === reference.chapter && verseNum === reference.verse;
     } else {
       include = chapterNum === reference.chapter;
     }

@@ -4,7 +4,10 @@
  * Used by both Netlify functions and MCP tools for consistency
  */
 
-import { parseUSFMAlignment, type WordAlignment } from "../experimental/usfm-alignment-parser.js";
+import {
+  parseUSFMAlignment,
+  type WordAlignment,
+} from "../experimental/usfm-alignment-parser.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import { logger } from "../utils/logger.js";
 import { parseReference } from "./reference-parser.js";
@@ -89,7 +92,9 @@ export interface ScriptureResult {
 /**
  * Core scripture fetching logic - now properly handles all parameters
  */
-export async function fetchScripture(options: ScriptureOptions): Promise<ScriptureResult> {
+export async function fetchScripture(
+  options: ScriptureOptions,
+): Promise<ScriptureResult> {
   const startTime = Date.now();
   const {
     reference: referenceParam,
@@ -125,12 +130,18 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
 
     // 🚀 OPTIMIZATION: Use unified resource discovery instead of separate catalog searches
     logger.debug(`Using unified resource discovery for scripture...`);
-    const availability = await discoverAvailableResources(referenceParam, language, organization);
+    const availability = await discoverAvailableResources(
+      referenceParam,
+      language,
+      organization,
+    );
     const allResources = availability.scripture;
 
     if (allResources.length === 0) {
       logger.error(`No scripture resources found`, { language, organization });
-      throw new Error(`No scripture resources found for ${language}/${organization}`);
+      throw new Error(
+        `No scripture resources found for ${language}/${organization}`,
+      );
     }
 
     logger.info(`Found scripture resources from unified discovery`, {
@@ -141,7 +152,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     let filteredResources = allResources;
     if (specificTranslations && specificTranslations.length > 0) {
       filteredResources = allResources.filter((resource) =>
-        specificTranslations!.includes(resource.name)
+        specificTranslations!.includes(resource.name),
       );
       logger.info(`Filtered to specific translations`, {
         count: filteredResources.length,
@@ -158,7 +169,9 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
     }
 
     // Handle translations: if none specified, return all; if specified, return only those
-    const resourcesToProcess = specificTranslations ? filteredResources : allResources;
+    const resourcesToProcess = specificTranslations
+      ? filteredResources
+      : allResources;
 
     logger.debug(`Processing resources`, {
       count: resourcesToProcess.length,
@@ -175,7 +188,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
       // Find the correct file from ingredients
       const ingredient = resource.ingredients?.find(
         (ing: { identifier: string }) =>
-          ing.identifier?.toLowerCase() === reference?.book.toLowerCase()
+          ing.identifier?.toLowerCase() === reference?.book.toLowerCase(),
       );
 
       if (!ingredient || !reference) {
@@ -196,7 +209,7 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
           organization,
           resource.name,
           filePath,
-          "master"
+          "master",
         );
 
         if (!fileResponse.success || !fileResponse.data) {
@@ -227,15 +240,19 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
                 usfmData,
                 reference.chapter,
                 reference.verse,
-                reference.verseEnd
+                reference.verseEnd,
               );
             } else if (reference.verse) {
-              text = extractVerseTextWithNumbers(usfmData, reference.chapter, reference.verse);
+              text = extractVerseTextWithNumbers(
+                usfmData,
+                reference.chapter,
+                reference.verse,
+              );
             } else if (reference.verseEnd) {
               text = extractChapterRangeWithNumbers(
                 usfmData,
                 reference.chapter,
-                reference.verseEnd
+                reference.verseEnd,
               );
             } else {
               text = extractChapterTextWithNumbers(usfmData, reference.chapter);
@@ -246,12 +263,20 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
                 usfmData,
                 reference.chapter,
                 reference.verse,
-                reference.verseEnd
+                reference.verseEnd,
               );
             } else if (reference.verse) {
-              text = extractVerseText(usfmData, reference.chapter, reference.verse);
+              text = extractVerseText(
+                usfmData,
+                reference.chapter,
+                reference.verse,
+              );
             } else if (reference.verseEnd) {
-              text = extractChapterRange(usfmData, reference.chapter, reference.verseEnd);
+              text = extractChapterRange(
+                usfmData,
+                reference.chapter,
+                reference.verseEnd,
+              );
             } else {
               text = extractChapterText(usfmData, reference.chapter);
             }
@@ -287,7 +312,8 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
                 metadata: {
                   totalAlignments: parsedAlignment.metadata.totalAlignments,
                   averageConfidence: parsedAlignment.metadata.averageConfidence,
-                  hasCompleteAlignment: parsedAlignment.metadata.hasCompleteAlignment,
+                  hasCompleteAlignment:
+                    parsedAlignment.metadata.hasCompleteAlignment,
                 },
               };
 
@@ -349,7 +375,8 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
               format,
               translationsFound: scriptures.length,
               cacheKey: responseKey,
-              hasAlignmentData: includeAlignment && scriptures[0]?.alignment !== undefined,
+              hasAlignmentData:
+                includeAlignment && scriptures[0]?.alignment !== undefined,
             },
           }
         : {
@@ -363,7 +390,8 @@ export async function fetchScripture(options: ScriptureOptions): Promise<Scriptu
               translationsFound: scriptures.length,
               cacheKey: responseKey,
               hasAlignmentData:
-                includeAlignment && scriptures.some((s) => s.alignment !== undefined),
+                includeAlignment &&
+                scriptures.some((s) => s.alignment !== undefined),
             },
           };
 
@@ -384,7 +412,7 @@ function extractUSFMPassage(
     chapter?: number;
     verse?: number;
     verseEnd?: number;
-  }
+  },
 ): string {
   const chapterPattern = new RegExp(`\\\\c\\s+${reference.chapter}\\b`);
   const chapterSplit = usfm.split(chapterPattern);
@@ -414,7 +442,9 @@ function extractUSFMPassage(
 
     if (reference.verseEnd) {
       // Find end verse
-      const endVersePattern = new RegExp(`\\\\v\\s+${reference.verseEnd + 1}\\b`);
+      const endVersePattern = new RegExp(
+        `\\\\v\\s+${reference.verseEnd + 1}\\b`,
+      );
       const endMatch = verseContent.match(endVersePattern);
       if (endMatch) {
         verseContent = verseContent.substring(0, endMatch.index);

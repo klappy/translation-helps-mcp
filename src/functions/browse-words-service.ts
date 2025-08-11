@@ -36,7 +36,9 @@ export interface BrowseWordsResult {
 /**
  * Core browse words logic
  */
-export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWordsResult> {
+export async function browseWords(
+  options: BrowseWordsOptions,
+): Promise<BrowseWordsResult> {
   const startTime = Date.now();
   const {
     language = "en",
@@ -74,7 +76,9 @@ export async function browseWords(options: BrowseWordsOptions): Promise<BrowseWo
   };
 
   if (!catalogData.data || catalogData.data.length === 0) {
-    throw new Error(`No translation words found for ${language}/${organization}`);
+    throw new Error(
+      `No translation words found for ${language}/${organization}`,
+    );
   }
 
   const resource = catalogData.data[0];
