@@ -132,6 +132,7 @@ export class ZipResourceFetcher2 {
               ? cachedCatalog
               : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
           catalogData = JSON.parse(json);
+
           // Log synthetic cache hit for X-Ray
           this.tracer.addApiCall({
             url: `internal://kv/catalog/${language}/${organization}/Bible,Aligned Bible`,
@@ -163,6 +164,7 @@ export class ZipResourceFetcher2 {
         catalogData = (await catalogResponse.json()) as {
           data?: CatalogResource[];
         };
+
         // Only cache non-empty catalogs to avoid persisting bad/empty results
         if ((catalogData.data?.length || 0) > 0) {
           try {
