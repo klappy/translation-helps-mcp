@@ -40,3 +40,11 @@ if git diff --cached --name-only --diff-filter=A | grep -q "src/functions/handle
 fi
 
 echo "✅ Pre-commit checks passed!"
+
+# Fallback: ensure no dirty formatting remains (format whole repo and restage)
+# This guards against files outside lint-staged globs and nested workspaces
+echo "🧹 Ensuring repository formatting is clean..."
+if ! git diff --quiet; then
+  npm run format >/dev/null 2>&1 || true
+  git add -A
+fi
