@@ -17,7 +17,7 @@ import type { DataSourceConfig, EndpointConfig } from "./EndpointConfig.js";
 export type DataFetcher = (
   config: DataSourceConfig,
   params: Record<string, unknown>,
-  context: FetchContext
+  context: FetchContext,
 ) => Promise<unknown>;
 
 export interface FetchContext {
@@ -45,7 +45,9 @@ export const createDCSFetcher = (client: DCSApiClient): DataFetcher => {
 };
 
 // Pure function to create a ZIP fetcher
-export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): DataFetcher => {
+export const createZIPFetcher = (
+  getZipFetcher: () => ZipResourceFetcher2,
+): DataFetcher => {
   return async (config, params) => {
     const { zipConfig } = config;
     if (!zipConfig) {
@@ -54,7 +56,10 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
 
     // Optional in-request NUKE: allow true cold run via _flush=true
     try {
-      if (params._flush === true || String(params._flush).toLowerCase() === "true") {
+      if (
+        params._flush === true ||
+        String(params._flush).toLowerCase() === "true"
+      ) {
         const kv = getKVCache();
         await kv.clearAll();
       }
@@ -75,10 +80,12 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
       .replace(/\b3\s*Jn\b/gi, "3 John")
       .replace(/\bJn\b/gi, "John")
       .replace(/\bMt\b/gi, "Matthew");
-    const reference = params.reference ? parseReference(normalizedRefStr) : null;
+    const reference = params.reference
+      ? parseReference(normalizedRefStr)
+      : null;
     if (!reference) {
       const err = new Error(
-        `Invalid reference: ${String(params.reference || "")} — expected formats like 'John 3:16', 'Genesis 1', or 'Titus 1-2'`
+        `Invalid reference: ${String(params.reference || "")} — expected formats like 'John 3:16', 'Genesis 1', or 'Titus 1-2'`,
       );
       // Mark as 400 for API layer to propagate
       // @ts-expect-error - attach status property for HTTP propagation
@@ -86,8 +93,12 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
       throw err;
     }
     // If chapter/verse clearly impossible, also throw 400
-    const chap = Number((params.reference as string)?.match(/\s(\d+)/)?.[1] || 0);
-    const verse = Number((params.reference as string)?.match(/:(\d+)/)?.[1] || 0);
+    const chap = Number(
+      (params.reference as string)?.match(/\s(\d+)/)?.[1] || 0,
+    );
+    const verse = Number(
+      (params.reference as string)?.match(/:(\d+)/)?.[1] || 0,
+    );
     if (chap <= 0 || (/:/.test(String(params.reference)) && verse <= 0)) {
       const err = new Error(`Invalid reference: chapter or verse out of range`);
       // @ts-expect-error - attach status property for HTTP propagation
@@ -108,7 +119,9 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
 
         const language = String(params.language || "en");
         const organization = String(params.organization || "unfoldingWord");
-        const requestedResource = String(params.resource || zipConfig.resourceType);
+        const requestedResource = String(
+          params.resource || zipConfig.resourceType,
+        );
 
         logger.debug("getScripture params", {
           reference: reference,
@@ -127,7 +140,11 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
           // ZipResourceFetcher2.getScripture without version will iterate catalog
           // and return results for all matching Bible resources
           try {
-            scriptures = await zipFetcher.getScripture(reference, language, organization);
+            scriptures = await zipFetcher.getScripture(
+              reference,
+              language,
+              organization,
+            );
           } catch (err) {
             logger.warn("Failed to fetch ALL resources", {
               error: String(err),
@@ -145,7 +162,7 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
                   reference,
                   language,
                   organization,
-                  code
+                  code,
                 );
                 if (Array.isArray(partial) && partial.length > 0) {
                   scriptures.push(...partial);
@@ -161,7 +178,7 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
             reference,
             language,
             organization,
-            requestedResource
+            requestedResource,
           );
         }
 
@@ -185,7 +202,8 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
 
         // If we have multiple, prefer ULT when available for deterministic primary
         const primary =
-          normalized.find((s) => s.resource.toUpperCase().includes("ULT")) || normalized[0];
+          normalized.find((s) => s.resource.toUpperCase().includes("ULT")) ||
+          normalized[0];
         const includeVerseNumbers = params.includeVerseNumbers !== "false";
         const format = (params.format as string) || "text";
 
@@ -205,7 +223,9 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
         // Inspect tracer to determine cache warm status
         let cacheWarm = false;
         try {
-          const xray = (zipFetcher as unknown as { getTrace: () => unknown })?.getTrace?.() as
+          const xray = (
+            zipFetcher as unknown as { getTrace: () => unknown }
+          )?.getTrace?.() as
             | {
                 cacheStats?: { hits?: number };
                 apiCalls?: Array<{ cached?: boolean; url?: string }>;
@@ -214,7 +234,9 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
           const hits = xray?.cacheStats?.hits || 0;
           const hadKvZipHits = Array.isArray(xray?.apiCalls)
             ? xray.apiCalls.some(
-                (c) => Boolean(c?.cached) && String(c?.url || "").includes("internal://kv/zip/")
+                (c) =>
+                  Boolean(c?.cached) &&
+                  String(c?.url || "").includes("internal://kv/zip/"),
               )
             : false;
           cacheWarm = hits > 0 || hadKvZipHits;
@@ -223,12 +245,13 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
         }
 
         // If nothing was found but a chapter was requested, annotate reason for formatter
-        const notFoundReason = !primary && reference.chapter ? "chapter_not_found" : undefined;
+        const notFoundReason =
+          !primary && reference.chapter ? "chapter_not_found" : undefined;
         if (!primary) {
           const status = 400;
           const response = {
             error: `Invalid reference: passage could not be found for ${String(
-              params.reference
+              params.reference,
             )} in available resources`,
             citation: "",
             language: String(params.language || "en"),
@@ -309,7 +332,7 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
           reference,
           String(params.language || "en"),
           String(params.organization || "unfoldingWord"),
-          zipConfig.resourceType
+          zipConfig.resourceType,
         );
         const count = Array.isArray(rows) ? rows.length : 0;
         const baseMeta = {
@@ -331,15 +354,19 @@ export const createZIPFetcher = (getZipFetcher: () => ZipResourceFetcher2): Data
       case "getMarkdownContent": {
         const resourceType = zipConfig.resourceType as "tw" | "ta";
         // Prefer explicit path when provided (delegated responsibility from browse endpoints/TWL)
-        const identifier = (params.path || params.term || params.moduleId) as string | undefined;
+        const identifier = (params.path || params.term || params.moduleId) as
+          | string
+          | undefined;
         if (resourceType === "tw" && !identifier) {
-          throw new Error("Path or term required for translation words content");
+          throw new Error(
+            "Path or term required for translation words content",
+          );
         }
         return zipFetcher.getMarkdownContent(
           String(params.language || "en"),
           String(params.organization || "unfoldingWord"),
           resourceType,
-          identifier
+          identifier,
         );
       }
 
@@ -359,7 +386,9 @@ export const withErrorHandling = (fetcher: DataFetcher): DataFetcher => {
         error: String(error),
       });
       // Convert typed errors with status to proper HTTP responses
-      const status = (error as Error & { status?: number })?.status as number | undefined;
+      const status = (error as Error & { status?: number })?.status as
+        | number
+        | undefined;
       if (status && status >= 400 && status < 600) {
         const response = {
           error: String((error as Error)?.message || "Bad Request"),
@@ -406,7 +435,10 @@ export const withCaching = (fetcher: DataFetcher): DataFetcher => {
 };
 
 // Add retry logic
-export const withRetry = (fetcher: DataFetcher, maxRetries = 3): DataFetcher => {
+export const withRetry = (
+  fetcher: DataFetcher,
+  maxRetries = 3,
+): DataFetcher => {
   return async (config, params, context) => {
     let lastError;
 
@@ -422,7 +454,9 @@ export const withRetry = (fetcher: DataFetcher, maxRetries = 3): DataFetcher => 
 
         if (attempt < maxRetries) {
           // Exponential backoff
-          await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, attempt) * 1000),
+          );
         }
       }
     }
@@ -432,14 +466,20 @@ export const withRetry = (fetcher: DataFetcher, maxRetries = 3): DataFetcher => 
 };
 
 // Create a fallback fetcher that tries ZIP first, then API
-export const createFallbackFetcher = (primary: DataFetcher, fallback: DataFetcher): DataFetcher => {
+export const createFallbackFetcher = (
+  primary: DataFetcher,
+  fallback: DataFetcher,
+): DataFetcher => {
   return async (config, params, context) => {
     try {
       return await primary(config, params, context);
     } catch (primaryError) {
-      logger.warn(`[${context.traceId}] Primary fetch failed, trying fallback:`, {
-        primaryError: String(primaryError),
-      });
+      logger.warn(
+        `[${context.traceId}] Primary fetch failed, trying fallback:`,
+        {
+          primaryError: String(primaryError),
+        },
+      );
       return fallback(config, params, context);
     }
   };
@@ -496,7 +536,10 @@ export const initializeCache = (platform?: {
 };
 
 // Example usage in an endpoint
-export const createEndpointHandler = (config: EndpointConfig, fetcher: DataFetcher) => {
+export const createEndpointHandler = (
+  config: EndpointConfig,
+  fetcher: DataFetcher,
+) => {
   return async (request: Request, platform?: unknown) => {
     // Initialize cache
     initializeCache(platform);
@@ -541,7 +584,7 @@ export const createEndpointHandler = (config: EndpointConfig, fetcher: DataFetch
             Pragma: "no-cache",
             Expires: "0",
           },
-        }
+        },
       );
     } catch (error) {
       return new Response(
@@ -556,14 +599,17 @@ export const createEndpointHandler = (config: EndpointConfig, fetcher: DataFetch
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
   };
 };
 
 // Placeholder for transformations
-async function applyTransformation(data: unknown, transformation: string): Promise<unknown> {
+async function applyTransformation(
+  data: unknown,
+  transformation: string,
+): Promise<unknown> {
   // This would apply TSV parsing, markdown parsing, etc.
   void transformation; // satisfy eslint no-unused-vars for placeholder
   return data;

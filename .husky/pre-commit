@@ -41,10 +41,22 @@ fi
 
 echo "✅ Pre-commit checks passed!"
 
+# Sync version files before commit
+echo "🔄 Syncing version files..."
+npm run sync-version >/dev/null 2>&1 || true
+
 # Fallback: ensure no dirty formatting remains (format whole repo and restage)
 # This guards against files outside lint-staged globs and nested workspaces
 echo "🧹 Ensuring repository formatting is clean..."
 if ! git diff --quiet; then
   npm run format >/dev/null 2>&1 || true
   git add -A
+fi
+
+# Add version files if they changed
+if git diff --quiet src/version.ts ui/src/lib/version.ts ui/src/routes/api/health/+server.ts 2>/dev/null; then
+  echo "📌 Version files unchanged"
+else
+  echo "📌 Adding updated version files..."
+  git add src/version.ts ui/src/lib/version.ts ui/src/routes/api/health/+server.ts 2>/dev/null || true
 fi
