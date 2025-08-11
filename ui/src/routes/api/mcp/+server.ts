@@ -6,7 +6,6 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { getVersion } from '../../../../../src/version.js';
-import { SACRED_TEXT_SYSTEM_PROMPT } from '../../../../../src/config/SacredTextConstraints.js';
 
 // Import our existing tool handlers
 // TEMPORARILY COMMENTED OUT - These imports require dependencies not available in UI build
@@ -229,7 +228,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				console.log('[MCP ENDPOINT] Tool call:', toolName, 'Args:', JSON.stringify(args));
 
 				const { UnifiedMCPHandler } = await import('$lib/mcp/UnifiedMCPHandler');
-				const handler = new UnifiedMCPHandler(url.origin);
+				// Use relative base to avoid cross-origin/self-fetch issues in production
+				const handler = new UnifiedMCPHandler();
 
 				try {
 					console.log('[MCP ENDPOINT] Using UnifiedMCPHandler for:', toolName);

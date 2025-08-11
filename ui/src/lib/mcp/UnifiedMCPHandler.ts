@@ -3,16 +3,13 @@
  * Single source of truth for all MCP tool calls
  */
 
-import {
-	ToolRegistry,
-	ToolFormatters,
-	type MCPToolResponse
-} from '../../../../src/contracts/ToolContracts';
+import { ToolRegistry, type MCPToolResponse } from '../../../../src/contracts/ToolContracts';
 
 export class UnifiedMCPHandler {
 	private baseUrl: string;
 
 	constructor(baseUrl: string = '') {
+		// Default to empty (relative) base; caller may pass absolute when needed
 		this.baseUrl = baseUrl;
 	}
 
@@ -42,7 +39,9 @@ export class UnifiedMCPHandler {
 		});
 
 		// Call the endpoint
-		const response = await fetch(`${this.baseUrl}${tool.endpoint}?${params}`);
+		// Ensure we don't accidentally produce 'undefined' in the URL
+		const base = this.baseUrl || '';
+		const response = await fetch(`${base}${tool.endpoint}?${params}`);
 
 		if (!response.ok) {
 			throw new Error(`Tool endpoint failed: ${response.status}`);
