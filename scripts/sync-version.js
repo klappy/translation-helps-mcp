@@ -46,10 +46,7 @@ try {
   if (fs.existsSync(uiPackagePath)) {
     const uiPackage = JSON.parse(fs.readFileSync(uiPackagePath, "utf8"));
     uiPackage.version = version;
-    fs.writeFileSync(
-      uiPackagePath,
-      JSON.stringify(uiPackage, null, "\t") + "\n",
-    );
+    fs.writeFileSync(uiPackagePath, JSON.stringify(uiPackage, null, "\t") + "\n");
     console.log(`✅ UI package.json version synced to ${version}`);
   } else {
     console.log(`⚠️  UI package.json not found at ${uiPackagePath}, skipping`);
