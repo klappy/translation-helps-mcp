@@ -112,13 +112,15 @@ export class ZipResourceFetcher2 {
         params.set("owner", organization);
       params.set("type", "text");
       params.set("stage", "prod");
+      // Use proper subject filtering for Bible resources
+      params.set("subject", "Bible,Aligned Bible");
       // CRITICAL: request RC metadata so ingredients are included
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
-      // KV+memory cached catalog per (lang, org, stage=prod)
-      const catalogCacheKey = `catalog:${language}:${organization}:prod:rc`;
+      // KV+memory cached catalog per (lang, org, stage=prod, subject)
+      const catalogCacheKey = `catalog:${language}:${organization}:prod:rc:Bible,Aligned Bible`;
       let catalogData: { data?: CatalogResource[] } | null = null;
       const kvCatalogStart =
         typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -132,7 +134,7 @@ export class ZipResourceFetcher2 {
           catalogData = JSON.parse(json);
           // Log synthetic cache hit for X-Ray
           this.tracer.addApiCall({
-            url: `internal://kv/catalog/${language}/${organization}`,
+            url: `internal://kv/catalog/${language}/${organization}/Bible,Aligned Bible`,
             duration: Math.max(
               1,
               Math.round(
@@ -179,99 +181,20 @@ export class ZipResourceFetcher2 {
           });
         }
       }
-      // Local subject filter (Bible categories) and de-duplicate by owner/name
+      // De-duplicate by owner/name (API subject filtering already applied)
       const seen = new Set<string>();
-      const resourcesInitial = (catalogData.data || [])
-        .filter((r) => {
-          const subj = (r.subject || "").toString().toLowerCase();
-          // Accept if subject missing or contains the word "bible"
-          return !subj || subj.includes("bible");
-        })
-        .filter((r) => {
-          const key = `${r.owner}/${r.name}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-      let resources = resourcesInitial;
+      const resources = (catalogData.data || []).filter((r) => {
+        const key = `${r.owner}/${r.name}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
       // If cache yielded zero resources, do NOT force a fresh fetch here.
       // We'll proceed and only fetch externally if truly necessary later.
 
-      // Fallback: if nothing found under requested owner, retry with Door43-Catalog, then without owner
-      if (resources.length === 0) {
-        try {
-          const altParams = new URLSearchParams();
-          altParams.set("lang", language);
-          altParams.set("owner", "Door43-Catalog");
-          altParams.set("type", "text");
-          altParams.set("stage", "prod");
-          altParams.set("metadataType", "rc");
-          altParams.set("includeMetadata", "true");
-          const altUrl = `${baseCatalog}?${altParams.toString()}`;
-          logger.info(`Fallback catalog fetch (Door43-Catalog): ${altUrl}`);
-          const altResp = await trackedFetch(this.tracer, altUrl);
-          if (altResp.ok) {
-            const altData = (await altResp.json()) as {
-              data?: CatalogResource[];
-            };
-            const altSeen = new Set<string>();
-            const alt = (altData.data || [])
-              .filter((r) => {
-                const subj = (r.subject || "").toString().toLowerCase();
-                return !subj || subj.includes("bible");
-              })
-              .filter((r) => {
-                const key = `${r.owner}/${r.name}`;
-                if (altSeen.has(key)) return false;
-                altSeen.add(key);
-                return true;
-              });
-            if (alt.length > 0) {
-              resources = alt;
-            }
-          }
-        } catch {
-          // ignore fallback errors
-        }
-      }
-
-      if (resources.length === 0) {
-        try {
-          const broadParams = new URLSearchParams();
-          broadParams.set("lang", language);
-          broadParams.set("type", "text");
-          broadParams.set("stage", "prod");
-          broadParams.set("metadataType", "rc");
-          broadParams.set("includeMetadata", "true");
-          const broadUrl = `${baseCatalog}?${broadParams.toString()}`;
-          logger.info(`Fallback catalog fetch (no owner): ${broadUrl}`);
-          const broadResp = await trackedFetch(this.tracer, broadUrl);
-          if (broadResp.ok) {
-            const broadData = (await broadResp.json()) as {
-              data?: CatalogResource[];
-            };
-            const broadSeen = new Set<string>();
-            const broad = (broadData.data || [])
-              .filter((r) => {
-                const subj = (r.subject || "").toString().toLowerCase();
-                return !subj || subj.includes("bible");
-              })
-              .filter((r) => {
-                const key = `${r.owner}/${r.name}`;
-                if (broadSeen.has(key)) return false;
-                broadSeen.add(key);
-                return true;
-              });
-            if (broad.length > 0) {
-              resources = broad;
-            }
-          }
-        } catch {
-          // ignore fallback errors
-        }
-      }
+      // If no resources found for the requested organization, return empty results
+      // Do NOT fallback to other organizations - user requested specific org
 
       logger.info(`Found ${resources.length} Bible resources`);
       logger.debug(`Catalog resources`, {
@@ -517,7 +440,12 @@ export class ZipResourceFetcher2 {
           const withVersion = t.refTag
             ? `${normalizedTrans} ${t.refTag}`
             : normalizedTrans;
-          results.push({ text: verseText, translation: withVersion });
+          results.push({
+            text: verseText,
+            translation: withVersion,
+            // @ts-expect-error - Adding organization tracking for accurate source attribution
+            actualOrganization: t.owner,
+          });
         }
       }
 
@@ -572,7 +500,12 @@ export class ZipResourceFetcher2 {
           const withVersion = t.refTag
             ? `${normalizedTrans} ${t.refTag}`
             : normalizedTrans;
-          results.push({ text: verseText, translation: withVersion });
+          results.push({
+            text: verseText,
+            translation: withVersion,
+            // @ts-expect-error - Adding organization tracking for accurate source attribution
+            actualOrganization: t.owner,
+          });
         }
       }
 
@@ -593,7 +526,15 @@ export class ZipResourceFetcher2 {
     resourceType: "tn" | "tq" | "twl",
   ): Promise<unknown[]> {
     try {
-      // 1. Get catalog (generic RC metadata) to find the resource (DRY: same as scripture path)
+      // Map resource types to proper subject filters
+      const subjectMap = {
+        tn: "TSV Translation Notes",
+        tq: "TSV Translation Questions",
+        twl: "TSV Translation Words Links",
+      };
+      const subject = subjectMap[resourceType];
+
+      // 1. Get catalog with subject-specific filtering for optimal caching
       const baseCatalog = `https://git.door43.org/api/v1/catalog/search`;
       const params = new URLSearchParams();
       params.set("lang", language);
@@ -601,11 +542,12 @@ export class ZipResourceFetcher2 {
         params.set("owner", organization);
       params.set("type", "text");
       params.set("stage", "prod");
+      params.set("subject", subject);
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
-      const catalogCacheKey = `catalog:${language}:${organization}:prod:rc`;
+      const catalogCacheKey = `catalog:${language}:${organization}:prod:rc:${subject}`;
       let resources: CatalogResource[] = [];
       const kvStart =
         typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -619,7 +561,7 @@ export class ZipResourceFetcher2 {
           const parsed = JSON.parse(json) as { data?: CatalogResource[] };
           resources = parsed.data || [];
           this.tracer.addApiCall({
-            url: `internal://kv/catalog/${language}/${organization}`,
+            url: `internal://kv/catalog/${language}/${organization}/${subject}`,
             duration: Math.max(
               1,
               Math.round(
@@ -651,10 +593,8 @@ export class ZipResourceFetcher2 {
         }
       }
 
-      // 2. Find the right resource
-      const resource = resources.find((r) =>
-        r.name.includes(`_${resourceType}`),
-      );
+      // 2. Find the right resource (API filtering already applied)
+      const resource = resources[0]; // Should only have resources matching our subject
       if (!resource) return [];
 
       // 3. Find the ingredient for this book
@@ -717,10 +657,25 @@ export class ZipResourceFetcher2 {
     identifier?: string,
   ): Promise<unknown> {
     try {
-      const targetSuffix = resourceType === "tw" ? "_tw" : "_ta";
+      // Map resource types to proper subject filters
+      const subjectMap = {
+        tw: "Translation Words",
+        ta: "Translation Academy",
+      };
+      const subject = subjectMap[resourceType];
 
-      // 1) Catalog lookup with RC metadata
-      const catalogUrl = `https://git.door43.org/api/v1/catalog/search?lang=${language}&owner=${organization}&stage=prod&type=text&metadataType=rc`;
+      // 1) Catalog lookup with subject-specific filtering
+      const baseCatalog = `https://git.door43.org/api/v1/catalog/search`;
+      const params = new URLSearchParams();
+      params.set("lang", language);
+      params.set("owner", organization);
+      params.set("stage", "prod");
+      params.set("type", "text");
+      params.set("subject", subject);
+      params.set("metadataType", "rc");
+      params.set("includeMetadata", "true");
+      const catalogUrl = `${baseCatalog}?${params.toString()}`;
+
       const catalogResponse = await trackedFetch(this.tracer, catalogUrl);
       if (!catalogResponse.ok)
         return resourceType === "tw"
@@ -729,9 +684,7 @@ export class ZipResourceFetcher2 {
       const catalogData = (await catalogResponse.json()) as {
         data?: CatalogResource[];
       };
-      const resource = (catalogData.data || []).find((r) =>
-        r.name.endsWith(targetSuffix),
-      );
+      const resource = (catalogData.data || [])[0]; // API filtering already applied
       if (!resource)
         return resourceType === "tw"
           ? { articles: [] }
@@ -1164,7 +1117,6 @@ export class ZipResourceFetcher2 {
     repository: string,
     zipCacheKey?: string,
   ): Promise<string | null> {
-    const inFlightKey = `${zipCacheKey || "zip:unknown"}:${filePath}`;
     const task = (async () => {
       try {
         // KV+memory cache for extracted file content

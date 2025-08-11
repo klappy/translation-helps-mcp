@@ -87,129 +87,140 @@ export const getContextHandler: PlatformHandler = async (
       verseEnd,
     });
 
-    // Build catalog search URL - get ALL resources for this language/org
-    const catalogUrl = new URL("https://git.door43.org/api/v1/catalog/search");
-    catalogUrl.searchParams.append("lang", language);
-    catalogUrl.searchParams.append("owner", organization);
-    catalogUrl.searchParams.append("stage", "prod");
-    catalogUrl.searchParams.append("limit", "100");
-    catalogUrl.searchParams.append("metadataType", "rc"); // CRITICAL: Get ingredients!
-
-    // Fetch ALL resources in one go!
-    const catalogStartTime = performance.now();
-    const catalogResponse = await fetch(catalogUrl.toString());
-    const catalogDuration = performance.now() - catalogStartTime;
-
-    if (!catalogResponse.ok) {
-      throw new Error(`Catalog fetch failed: ${catalogResponse.status}`);
-    }
-
-    const catalogData = await catalogResponse.json();
-    const resources = catalogData.data || [];
-
-    // Add manual trace entry for catalog call
-    dcsClient.addCustomTrace({
-      id: `${traceId}_catalog`,
-      endpoint: "/api/v1/catalog/search",
-      url: catalogUrl.toString(),
-      method: "GET",
-      startTime: catalogStartTime,
-      endTime: catalogStartTime + catalogDuration,
-      duration: catalogDuration,
-      statusCode: catalogResponse.status,
-      success: true,
-      cacheStatus: "miss",
-      attempts: 1,
-    });
+    // Build subject-specific catalog URLs for optimized caching
+    const resourceTypes = [
+      { subject: "Bible,Aligned%20Bible", name: "bible" },
+      { subject: "TSV%20Translation%20Notes", name: "notes" },
+      { subject: "TSV%20Translation%20Questions", name: "questions" },
+      { subject: "TSV%20Translation%20Words%20Links", name: "links" },
+    ];
 
     const contextArray = [];
     const resourcePromises = [];
 
-    // Process each resource type
-    for (const resource of resources) {
-      const { subject, name, ingredients } = resource;
-
-      if (!ingredients || !Array.isArray(ingredients)) continue;
-
-      // Find the ingredient for our book
-      const bookIngredient = ingredients.find(
-        (ing) =>
-          ing.identifier === bookCode.toLowerCase() ||
-          ing.identifier === bookCode ||
-          ing.identifier === book.toUpperCase() ||
-          ing.identifier === book.toLowerCase(),
+    // Fetch each resource type with subject-specific caching
+    for (const resourceType of resourceTypes) {
+      const catalogUrl = new URL(
+        "https://git.door43.org/api/v1/catalog/search",
       );
+      catalogUrl.searchParams.append("lang", language);
+      catalogUrl.searchParams.append("owner", organization);
+      catalogUrl.searchParams.append("stage", "prod");
+      catalogUrl.searchParams.append("subject", resourceType.subject);
+      catalogUrl.searchParams.append("metadataType", "rc");
+      catalogUrl.searchParams.append("includeMetadata", "true");
 
-      if (!bookIngredient || !bookIngredient.path) {
-        logger.info(`No ingredient found for ${bookCode} in ${name}`, {
-          identifiers: ingredients.map((i) => i.identifier),
+      const catalogStartTime = performance.now();
+
+      try {
+        const catalogResponse = await fetch(catalogUrl.toString());
+        const catalogDuration = performance.now() - catalogStartTime;
+
+        // Add manual trace entry for each catalog call
+        dcsClient.addCustomTrace({
+          id: `${traceId}_catalog_${resourceType.name}`,
+          endpoint: "/api/v1/catalog/search",
+          url: catalogUrl.toString(),
+          method: "GET",
+          startTime: catalogStartTime,
+          endTime: catalogStartTime + catalogDuration,
+          duration: catalogDuration,
+          statusCode: catalogResponse.status,
+          success: catalogResponse.ok,
+          cacheStatus: "miss",
+          attempts: 1,
         });
-        continue;
-      }
 
-      // Scripture resources (Bible, Aligned Bible)
-      if (subject?.includes("Bible")) {
-        resourcePromises.push(
-          fetchRawContent(
-            organization,
-            name,
-            bookIngredient.path,
-            dcsClient,
-            traceId,
-          ).then((content) => {
-            if (content) {
-              const verses = extractVerses(
-                content,
-                chapter,
-                verseStart,
-                verseEnd,
-              );
-              if (verses) {
-                return {
-                  type: "scripture",
-                  version: resource.title || name,
-                  data: verses,
-                };
-              }
+        if (catalogResponse.ok) {
+          const catalogData = await catalogResponse.json();
+          const resources = catalogData.data || [];
+
+          // Process each resource
+          for (const resource of resources) {
+            const { name, ingredients } = resource;
+
+            if (!ingredients || !Array.isArray(ingredients)) continue;
+
+            // Find the ingredient for our book
+            const bookIngredient = ingredients.find(
+              (ing) =>
+                ing.identifier === bookCode.toLowerCase() ||
+                ing.identifier === bookCode ||
+                ing.identifier === book.toUpperCase() ||
+                ing.identifier === book.toLowerCase(),
+            );
+
+            if (!bookIngredient || !bookIngredient.path) {
+              logger.info(`No ingredient found for ${bookCode} in ${name}`, {
+                identifiers: ingredients.map((i) => i.identifier),
+              });
+              continue;
             }
-          }),
-        );
-      }
-      // Translation Notes
-      else if (subject?.includes("Translation Notes")) {
-        resourcePromises.push(
-          fetchRawContent(
-            organization,
-            name,
-            bookIngredient.path,
-            dcsClient,
-            traceId,
-          ).then((content) => parseTSV(content, "notes", reference)),
-        );
-      }
-      // Translation Questions
-      else if (subject?.includes("Translation Questions")) {
-        resourcePromises.push(
-          fetchRawContent(
-            organization,
-            name,
-            bookIngredient.path,
-            dcsClient,
-            traceId,
-          ).then((content) => parseTSV(content, "questions", reference)),
-        );
-      }
-      // Translation Word Links
-      else if (subject?.includes("Translation Word")) {
-        resourcePromises.push(
-          fetchRawContent(
-            organization,
-            name,
-            bookIngredient.path,
-            dcsClient,
-            traceId,
-          ).then((content) => parseTSV(content, "links", reference)),
-        );
+
+            // Route based on resource type
+            if (resourceType.name === "bible") {
+              resourcePromises.push(
+                fetchRawContent(
+                  organization,
+                  name,
+                  bookIngredient.path,
+                  dcsClient,
+                  traceId,
+                ).then((content) => {
+                  if (content) {
+                    const verses = extractVerses(
+                      content,
+                      chapter,
+                      verseStart,
+                      verseEnd,
+                    );
+                    if (verses) {
+                      return {
+                        type: "scripture",
+                        version: resource.title || name,
+                        data: verses,
+                      };
+                    }
+                  }
+                }),
+              );
+            } else if (resourceType.name === "notes") {
+              resourcePromises.push(
+                fetchRawContent(
+                  organization,
+                  name,
+                  bookIngredient.path,
+                  dcsClient,
+                  traceId,
+                ).then((content) => parseTSV(content, "notes", reference)),
+              );
+            } else if (resourceType.name === "questions") {
+              resourcePromises.push(
+                fetchRawContent(
+                  organization,
+                  name,
+                  bookIngredient.path,
+                  dcsClient,
+                  traceId,
+                ).then((content) => parseTSV(content, "questions", reference)),
+              );
+            } else if (resourceType.name === "links") {
+              resourcePromises.push(
+                fetchRawContent(
+                  organization,
+                  name,
+                  bookIngredient.path,
+                  dcsClient,
+                  traceId,
+                ).then((content) => parseTSV(content, "links", reference)),
+              );
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn(`Failed to fetch ${resourceType.name} resources`, {
+          error: String(error),
+        });
       }
     }
 
@@ -291,9 +302,9 @@ export const getContextHandler: PlatformHandler = async (
     const xrayTrace = dcsClient.getTrace() as XRayTrace | null;
     dcsClient.disableTracing();
 
-    // Generate cache key for consistency
+    // Generate cache key for consistency (subject-specific caching now handled per resource type)
     const cacheKey = `context:${language}:${organization}:${reference}`;
-    const cached = false; // For now, we're not caching catalog responses
+    const cached = false; // Individual catalog responses are cached per subject type
 
     return {
       statusCode: 200,
@@ -327,7 +338,7 @@ export const getContextHandler: PlatformHandler = async (
         },
       }),
     };
-  } catch (error) {
+  } catch {
     // Ensure tracing is disabled even on error
     dcsClient.disableTracing();
 

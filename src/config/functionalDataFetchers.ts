@@ -183,9 +183,14 @@ export const createZIPFetcher = (
         }
 
         // Normalize shape: translation -> resource for consistency across endpoints
+        // Also track actual organization for accurate attribution
         let normalized = scriptures.map((s) => ({
           text: s.text,
           resource: s.translation,
+          // @ts-expect-error - actualOrganization added for proper attribution
+          actualOrganization:
+            s.actualOrganization ||
+            String(params.organization || "unfoldingWord"),
         }));
 
         // Dedupe by resource (UST can appear twice via different flavors)
@@ -298,7 +303,10 @@ export const createZIPFetcher = (
           resources: normalized.length > 1 ? normalized : undefined,
           citation: primary ? `${referenceStr} (${primary.resource})` : "",
           language: String(params.language || "en"),
-          organization: String(params.organization || "unfoldingWord"),
+          // @ts-expect-error - Use actual organization from primary resource for accurate attribution
+          organization:
+            primary.actualOrganization ||
+            String(params.organization || "unfoldingWord"),
           metadata: {
             cached: false,
             includeVerseNumbers,
