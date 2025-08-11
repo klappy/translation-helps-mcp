@@ -33,9 +33,7 @@ export class EdgeXRayTracer {
 
   constructor(traceId: string, endpoint: string) {
     this.startTime =
-      typeof performance !== "undefined" && performance.now
-        ? performance.now()
-        : Date.now();
+      typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     this.trace = {
       traceId,
       mainEndpoint: endpoint,
@@ -71,9 +69,7 @@ export class EdgeXRayTracer {
 
   getTrace(): EdgeXRayTrace {
     const now =
-      typeof performance !== "undefined" && performance.now
-        ? performance.now()
-        : Date.now();
+      typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     this.trace.totalDuration = Math.max(1, Math.round(now - this.startTime));
     return { ...this.trace };
   }
@@ -83,19 +79,37 @@ export class EdgeXRayTracer {
 export async function trackedFetch(
   tracer: EdgeXRayTracer,
   url: string,
-  options?: RequestInit,
+  options?: RequestInit
 ): Promise<Response> {
   const startTime =
-    typeof performance !== "undefined" && performance.now
-      ? performance.now()
-      : Date.now();
+    typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+
+  // Add browser-like headers to avoid bot detection
+  const browserHeaders = {
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    Accept: "*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "cross-site",
+  };
+
+  const mergedOptions = {
+    ...options,
+    headers: {
+      ...browserHeaders,
+      ...options?.headers,
+    },
+  };
 
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(url, mergedOptions);
     const now =
-      typeof performance !== "undefined" && performance.now
-        ? performance.now()
-        : Date.now();
+      typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const duration = Math.max(1, Math.round(now - startTime));
 
     tracer.addApiCall({
@@ -111,9 +125,7 @@ export async function trackedFetch(
     return response;
   } catch (error) {
     const now =
-      typeof performance !== "undefined" && performance.now
-        ? performance.now()
-        : Date.now();
+      typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     const duration = Math.max(1, Math.round(now - startTime));
 
     tracer.addApiCall({

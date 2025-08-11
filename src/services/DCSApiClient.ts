@@ -46,7 +46,7 @@ export class DCSApiClient {
     this.timeout = config.timeout || 30000; // 30 seconds
     this.maxRetries = config.maxRetries || 3;
     this.retryDelay = config.retryDelay || 1000; // 1 second base delay
-    this.userAgent = config.userAgent || "Translation-Helps-MCP/1.0";
+    this.userAgent = config.userAgent || "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
 
     logger.debug("DCS API Client initialized", {
       baseUrl: this.baseUrl,
@@ -69,8 +69,12 @@ export class DCSApiClient {
 
     const headers = {
       "User-Agent": this.userAgent,
-      Accept: "application/json",
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
       "Content-Type": "application/json",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
       ...options.headers,
     };
 
