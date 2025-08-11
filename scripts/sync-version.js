@@ -94,7 +94,7 @@ export default VERSION;
  * SINGLE SOURCE OF TRUTH for server version. Do not edit manually.
  */
 
-export const VERSION = '${version}';
+export const VERSION = "${version}";
 
 export function getVersion(): string {
   return VERSION;
