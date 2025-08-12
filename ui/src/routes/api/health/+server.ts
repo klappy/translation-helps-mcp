@@ -36,10 +36,14 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		// Always clear in-process caches (CacheManager + UnifiedCache)
 		try {
 			await appCache.clear();
-		} catch {}
+		} catch {
+			// Ignore cache clear errors - best effort
+		}
 		try {
 			await unifiedCache.clear();
-		} catch {}
+		} catch {
+			// Ignore cache clear errors - best effort
+		}
 		if (nuke) {
 			// Full wipe of KV + memory
 			kvCleared = await kv.clearAll();
