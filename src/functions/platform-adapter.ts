@@ -1,10 +1,6 @@
 // Platform-agnostic adapter for function handling
 import { logger } from "../utils/logger.js";
-import {
-  CacheBypassOptions,
-  shouldBypassCache,
-  unifiedCache,
-} from "./unified-cache";
+import { CacheBypassOptions, shouldBypassCache, unifiedCache } from "./unified-cache";
 import { withMeasuredCacheHeaders } from "./unified-cache.js";
 
 export interface PlatformRequest {
@@ -21,21 +17,16 @@ export interface PlatformResponse {
   body: string;
 }
 
-export type PlatformHandler = (
-  request: PlatformRequest,
-) => Promise<PlatformResponse>;
+export type PlatformHandler = (request: PlatformRequest) => Promise<PlatformResponse>;
 
 // Cache interface for platform wrappers (deprecated - use unified cache)
 export interface CacheAdapter {
-  get(key: string): Promise<any>;
-  set(key: string, value: any, ttl?: number): Promise<void>;
+  get(key: string): Promise<unknown>;
+  set(key: string, value: unknown, ttl?: number): Promise<void>;
 }
 
 // Generate cache key from request
-function generateRequestCacheKey(
-  path: string,
-  queryParams: Record<string, string>,
-): string {
+function generateRequestCacheKey(path: string, queryParams: Record<string, string>): string {
   const sortedParams = Object.keys(queryParams)
     .filter((key) => !["nocache", "bypass", "fresh", "_cache"].includes(key)) // Exclude cache control params
     .sort()
@@ -46,12 +37,9 @@ function generateRequestCacheKey(
 }
 
 // Netlify adapter with unified caching
-export function createNetlifyHandler(
-  handler: PlatformHandler,
-  _cacheAdapter?: CacheAdapter,
-) {
+export function createNetlifyHandler(handler: PlatformHandler, _cacheAdapter?: CacheAdapter) {
   // Note: cacheAdapter parameter is ignored in favor of unified cache
-  return async (event: any, context: any) => {
+  return async (event: any, _context: any) => {
     const request: PlatformRequest = {
       method: event.httpMethod,
       url: `${event.headers?.origin || "https://localhost"}${event.path}`,
@@ -74,10 +62,7 @@ export function createNetlifyHandler(
       };
     }
 
-    const cacheKey = generateRequestCacheKey(
-      event.path,
-      event.queryStringParameters || {},
-    );
+    const _cacheKey = generateRequestCacheKey(event.path, event.queryStringParameters || {});
     const bypassOptions: CacheBypassOptions = {
       queryParams: event.queryStringParameters || {},
       headers: event.headers || {},
@@ -103,7 +88,7 @@ export function createNetlifyHandler(
             ...withMeasuredCacheHeaders(
               unifiedCache.generateCacheHeaders(cacheResult),
               cacheReadMs,
-              cacheResult.cacheType === "memory" ? "memory" : "kv",
+              cacheResult.cacheType === "memory" ? "memory" : "kv"
             ),
           },
           body: JSON.stringify(cacheResult.value),
@@ -119,12 +104,9 @@ export function createNetlifyHandler(
     const response = await handler(request);
 
     // Cache successful responses (unless bypassed)
-    if (
-      response.statusCode === 200 &&
-      (!bypassOptions || !shouldBypassCache(bypassOptions))
-    ) {
+    if (response.statusCode === 200 && (!bypassOptions || !shouldBypassCache(bypassOptions))) {
       try {
-        const responseData = JSON.parse(response.body);
+        const _responseData = JSON.parse(response.body);
         // Do not cache assembled responses
         logger.info(`Cached response`, { path: event.path });
       } catch (error) {
@@ -150,12 +132,24 @@ export function createNetlifyHandler(
 }
 
 // SvelteKit adapter with unified caching
-export function createSvelteKitHandler(
-  handler: PlatformHandler,
-  _cacheAdapter?: CacheAdapter,
-) {
+export function createSvelteKitHandler(handler: PlatformHandler, _cacheAdapter?: CacheAdapter) {
   // Note: cacheAdapter parameter is ignored in favor of unified cache
-  return async ({ request }: { request: Request }) => {
+  return async ({
+    request,
+    platform,
+  }: {
+    request: Request;
+    platform?: { env?: { TRANSLATION_HELPS_CACHE?: unknown } };
+  }) => {
+    // Initialize KV cache if available
+    if (platform?.env?.TRANSLATION_HELPS_CACHE) {
+      const { initializeKVCache } = await import("./kv-cache.js");
+      initializeKVCache(platform.env.TRANSLATION_HELPS_CACHE);
+      logger.info("✅ KV cache initialized via platform adapter");
+    } else {
+      logger.warn("⚠️ No KV namespace binding found - using memory-only cache");
+    }
+
     const url = new URL(request.url);
     const queryStringParameters: Record<string, string> = {};
     url.searchParams.forEach((value, key) => {
@@ -183,11 +177,8 @@ export function createSvelteKitHandler(
       });
     }
 
-    const cacheKey = generateRequestCacheKey(
-      url.pathname,
-      queryStringParameters,
-    );
-    const bypassOptions: CacheBypassOptions = {
+    const _cacheKey = generateRequestCacheKey(url.pathname, queryStringParameters);
+    const _bypassOptions: CacheBypassOptions = {
       queryParams: queryStringParameters,
       headers: Object.fromEntries(request.headers.entries()),
     };

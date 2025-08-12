@@ -266,11 +266,11 @@ export class RouteGenerator {
 
         // CRITICAL: Per CRITICAL_NEVER_CACHE_RESPONSES.md, we NEVER cache responses
         // The dataCacheStatus below tracks whether underlying data sources (catalog/ZIP) were cached
-        const cacheKey = this.generateCacheKey(config.name, params);
+        const _cacheKey = this.generateCacheKey(config.name, params);
         // CRITICAL: This tracks data source caching, NOT response caching
-        let dataCacheStatus: string = "miss";
+        const dataCacheStatus: string = "miss";
 
-        const bypassOptions = {
+        const _bypassOptions = {
           queryParams: request.queryStringParameters,
           headers: request.headers,
         } as const;

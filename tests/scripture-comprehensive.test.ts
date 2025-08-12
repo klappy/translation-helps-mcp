@@ -33,7 +33,7 @@ async function fetchScriptureWithFallback(reference: string, language = "en") {
     for (const org of orgsToTry) {
       try {
         return await fetchScripture(reference, language, org);
-      } catch (fallbackError) {
+      } catch (_fallbackError) {
         // Continue to next organization
         continue;
       }
@@ -265,7 +265,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
 
           // Prefer ULT; if not present in either, fall back to first available but match same resource key
           let ab = pickFirst(abbreviatedResponse, "ULT");
-          let st = pickFirst(standardResponse, "ULT");
+          const st = pickFirst(standardResponse, "ULT");
           if (
             ab &&
             st &&
