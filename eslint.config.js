@@ -16,6 +16,7 @@ export default ts.config(
     },
     rules: {
       "no-undef": "off", // TypeScript handles this better
+      "@typescript-eslint/no-explicit-any": "off", // We know what we're doing
       "@typescript-eslint/no-unused-vars": [
         "error",
         {

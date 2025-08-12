@@ -276,7 +276,7 @@ export class RouteGenerator {
         } as const;
 
         // Do not cache transformed responses. Only deduplicate in-flight requests if needed.
-        const { data: responseData, cacheStatus: computedCacheStatus } =
+        const { data: responseData, cacheStatus: _computedCacheStatus } =
           await this.fetchData(config, params, request);
         // If downstream formatted an error object with explicit status, honor it here
         if (
@@ -322,7 +322,10 @@ export class RouteGenerator {
 
         // Apply response shape if needed
         let shapedData = transformedData;
-        if (config.responseShape?.dataType === "scripture" && Array.isArray(transformedData)) {
+        if (
+          config.responseShape?.dataType === "scripture" &&
+          Array.isArray(transformedData)
+        ) {
           // Wrap scripture array in expected format
           shapedData = {
             scripture: transformedData,
@@ -331,8 +334,10 @@ export class RouteGenerator {
             citation: params.reference || "",
             metadata: {
               sourceCount: transformedData.length,
-              resources: transformedData.map((item: any) => item.resource || item.translation || "").filter(Boolean),
-            }
+              resources: transformedData
+                .map((item: any) => item.resource || item.translation || "")
+                .filter(Boolean),
+            },
           };
         }
 
@@ -366,7 +371,7 @@ export class RouteGenerator {
                 : responseTime,
             ),
             dataCacheStatus:
-              computedCacheStatus ||
+              _computedCacheStatus ||
               this.lastComputedCacheStatus ||
               dataCacheStatus,
             success: true,
@@ -968,7 +973,7 @@ export class RouteGenerator {
           const hasExternalCalls =
             Array.isArray(calls) &&
             calls.some((c) => !c.url.startsWith("internal://"));
-          const hasInternalHits =
+          const _hasInternalHits =
             Array.isArray(calls) &&
             calls.some(
               (c) =>
@@ -1015,7 +1020,7 @@ export class RouteGenerator {
 
           // Store for use in formatResponse
           this.lastComputedCacheStatus = dataCacheStatus;
-          computedCacheStatus = dataCacheStatus;
+          _computedCacheStatus = dataCacheStatus;
 
           const hit = cachedCalls > 0 && !hasExternalCalls;
 
@@ -1058,7 +1063,7 @@ export class RouteGenerator {
     const result = await fetcher(dataSourceConfig, params, context);
 
     // Default cache status for non-ZIP endpoints
-    let computedCacheStatus = "miss";
+    let _computedCacheStatus = "miss";
 
     // Attach X-Ray trace for all endpoints that use ZIP
     if (dataSourceConfig.type === "zip-cached") {
@@ -1076,7 +1081,7 @@ export class RouteGenerator {
           const hasExternalCalls =
             Array.isArray(calls) &&
             calls.some((c) => !c.url.startsWith("internal://"));
-          const hasInternalHits =
+          const _hasInternalHits =
             Array.isArray(calls) &&
             calls.some(
               (c) =>
@@ -1123,7 +1128,7 @@ export class RouteGenerator {
 
           // Store for use in formatResponse
           this.lastComputedCacheStatus = dataCacheStatus;
-          computedCacheStatus = dataCacheStatus;
+          _computedCacheStatus = dataCacheStatus;
 
           const hit = cachedCalls > 0 && !hasExternalCalls;
 

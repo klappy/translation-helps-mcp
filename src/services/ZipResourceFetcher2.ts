@@ -262,8 +262,16 @@ export class ZipResourceFetcher2 {
         logger.warn(`Got 0 resources from cache, retrying with force refresh`);
         // Temporarily set the force refresh header and retry
         const originalHeaders = this.requestHeaders;
-        this.requestHeaders = { ...this.requestHeaders, "X-Force-Refresh": "true" };
-        const result = await this.getScripture(reference, language, organization, version);
+        this.requestHeaders = {
+          ...this.requestHeaders,
+          "X-Force-Refresh": "true",
+        };
+        const result = await this.getScripture(
+          reference,
+          language,
+          organization,
+          version,
+        );
         this.requestHeaders = originalHeaders; // Restore original headers
         return result;
       }
