@@ -9,12 +9,12 @@
 import { cache } from "../functions/cache.js";
 import { EdgeXRayTracer, trackedFetch } from "../functions/edge-xray.js";
 import { getKVCache } from "../functions/kv-cache.js";
-import type { ParsedReference } from "../parsers/referenceParser.js";
-import { logger } from "../utils/logger.js";
 import {
   createCacheValidator,
   validateCacheableData,
 } from "../middleware/cacheValidator.js";
+import type { ParsedReference } from "../parsers/referenceParser.js";
+import { logger } from "../utils/logger.js";
 
 interface CatalogResource {
   name: string;
@@ -718,7 +718,9 @@ export class ZipResourceFetcher2 {
           } else {
             logger.warn(
               `Invalid catalog response for ${catalogCacheKey}, not caching`,
-              { reason: validationResult.reason },
+              {
+                reason: validationResult.reason,
+              },
             );
           }
         } catch {

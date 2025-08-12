@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  validateCacheableData,
   createCacheValidator,
+  validateCacheableData,
   withCacheValidation,
 } from "../../src/middleware/cacheValidator";
 import { logger } from "../../src/utils/logger";
@@ -235,7 +235,9 @@ describe("Cache Validator", () => {
       expect(fallback).toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledWith(
         "Cache operation failed, falling back to source",
-        { error },
+        {
+          error,
+        },
       );
     });
   });
