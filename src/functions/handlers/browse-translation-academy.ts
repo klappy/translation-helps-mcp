@@ -10,6 +10,7 @@ import {
   Organization,
 } from "../../constants/terminology.js";
 import { logger } from "../../utils/logger.js";
+import { sanitizeResponseBody } from "../../utils/responseSanitizer.js";
 import { EdgeXRayTracer, trackedFetch } from "../edge-xray.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 
@@ -28,23 +29,76 @@ interface CategoryTOC {
 
 const CACHE_TTL = 43200; // 12 hours for TOC data
 
-// Helper to get X-ray metadata
-function getXRayMetadata(
+// Helper to build clean response with X-ray in headers only
+function buildResponse(
+  data: any,
+  tracer: EdgeXRayTracer | null,
+  additionalMetadata: any = {},
+  statusCode = 200,
+  contentType = "application/json"
+) {
+  const xrayData = getXRayData(tracer, additionalMetadata);
+  
+  // Build response with business metadata only
+  const responseBody = {
+    success: true,
+    data,
+    metadata: xrayData.businessMetadata,
+  };
+
+  // Sanitize response to ensure no diagnostic data
+  const sanitizedResponse = sanitizeResponseBody(responseBody);
+
+  // Build headers with X-ray trace (diagnostic data goes in headers only)
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "Access-Control-Allow-Origin": "*",
+    "Cache-Control": `public, max-age=${CACHE_TTL}`,
+  };
+
+  // Add X-ray trace to headers (NOT response body)
+  if (xrayData.xrayTrace) {
+    try {
+      const trace = xrayData.xrayTrace;
+      const summary = `${trace.apiCalls?.length || 0} calls in ${trace.totalDuration || 0}ms`;
+      headers["X-Xray-Summary"] = summary;
+      headers["X-Xray-Trace"] = btoa(JSON.stringify(trace));
+    } catch {
+      // Ignore X-ray header errors
+    }
+  }
+
+  return {
+    statusCode,
+    headers,
+    body: JSON.stringify(sanitizedResponse),
+  };
+}
+
+// Helper to get X-ray metadata (for headers) and business metadata (for response)
+function getXRayData(
   tracer: EdgeXRayTracer | null,
   additionalMetadata: any = {},
 ) {
   if (!tracer) {
-    return additionalMetadata;
+    return {
+      businessMetadata: additionalMetadata,
+      xrayTrace: null,
+    };
   }
 
   const xrayTrace = tracer.getTrace();
 
   return {
-    ...additionalMetadata,
+    // Business metadata goes in response body
+    businessMetadata: {
+      ...additionalMetadata,
+      responseTime: xrayTrace.totalDuration,
+      cached: xrayTrace.cacheStats.hits > 0,
+      cacheStatus: `${xrayTrace.cacheStats.hits}/${xrayTrace.cacheStats.total} hits`,
+    },
+    // Diagnostic data goes in headers only
     xrayTrace,
-    responseTime: xrayTrace.totalDuration,
-    cached: xrayTrace.cacheStats.hits > 0,
-    cacheStatus: `${xrayTrace.cacheStats.hits}/${xrayTrace.cacheStats.total} hits`,
   };
 }
 
@@ -110,7 +164,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (
           body: JSON.stringify({
             success: true,
             data: markdown,
-            metadata: getXRayMetadata(tracer, {
+            metadata: getXRayData(tracer, {
               format: "markdown",
               category,
               moduleCount: totalModules,
@@ -137,7 +191,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (
             modules: modules,
             totalModules: countModules(transformedTOC),
           },
-          metadata: getXRayMetadata(tracer, {
+          metadata: getXRayData(tracer, {
             timestamp: new Date().toISOString(),
             language,
             organization,
@@ -224,7 +278,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (
         body: JSON.stringify({
           success: true,
           data: markdown,
-          metadata: getXRayMetadata(tracer, {
+          metadata: getXRayData(tracer, {
             format: "markdown",
             totalCategories: validCategories.length,
             totalModules,
@@ -251,7 +305,7 @@ export const browseTranslationAcademyHandler: PlatformHandler = async (
           language,
           organization,
         },
-        metadata: getXRayMetadata(tracer, {
+        metadata: getXRayData(tracer, {
           timestamp: new Date().toISOString(),
         }),
       }),

@@ -8,6 +8,7 @@ import type { XRayTrace } from "../../types/dcs.js";
 import { Errors } from "../../utils/errorEnvelope.js";
 import { logger } from "../../utils/logger.js";
 import { proxyFetch } from "../../utils/httpClient.js";
+import { sanitizeResponseBody } from "../../utils/responseSanitizer.js";
 import type {
   PlatformHandler,
   PlatformRequest,
@@ -316,6 +317,11 @@ export const getContextHandler: PlatformHandler = async (
         "X-Cache": cached ? "HIT" : "MISS",
         "X-Cache-Key": cacheKey,
         "X-Response-Time": `${duration}ms`,
+        // X-ray trace in headers only (never response body)
+        ...(xrayTrace && {
+          "X-Xray-Summary": `${xrayTrace.apiCalls?.length || 0} calls in ${xrayTrace.totalDuration || 0}ms`,
+          "X-Xray-Trace": btoa(JSON.stringify(xrayTrace))
+        }),
       },
       body: JSON.stringify({
         context: contextArray,
@@ -335,7 +341,7 @@ export const getContextHandler: PlatformHandler = async (
             0,
           ),
           catalogResourcesFound: resources.length,
-          ...(xrayTrace && { xrayTrace }),
+          // xrayTrace removed - diagnostic data belongs in headers only
         },
       }),
     };

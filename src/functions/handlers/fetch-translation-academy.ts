@@ -11,6 +11,7 @@ import {
 import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { DCSCallTrace, XRayTrace } from "../../types/dcs.js";
 import { logger } from "../../utils/logger.js";
+import { sanitizeResponseBody } from "../../utils/responseSanitizer.js";
 import type {
   PlatformHandler,
   PlatformRequest,
@@ -183,19 +184,36 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (
           ...result.metadata,
           responseTime,
           cacheStatus,
-          ...(xrayTrace && { xrayTrace }), // Fresh X-Ray data for every request
+          // xrayTrace removed - diagnostic data belongs in headers only
         },
       },
       timestamp: new Date().toISOString(),
     };
 
+    // Sanitize response to ensure no diagnostic data in body
+    const sanitizedResponse = sanitizeResponseBody(response);
+
+    // Build headers with X-ray trace (diagnostic data goes in headers only)
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Cache-Control": "max-age=3600",
+    };
+
+    // Add X-ray trace to headers (NOT response body)
+    if (xrayTrace) {
+      try {
+        const summary = `${xrayTrace.apiCalls?.length || 0} calls in ${xrayTrace.totalDuration || 0}ms`;
+        headers["X-Xray-Summary"] = summary;
+        headers["X-Xray-Trace"] = btoa(JSON.stringify(xrayTrace));
+      } catch {
+        // Ignore X-ray header errors
+      }
+    }
+
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "max-age=3600",
-      },
-      body: JSON.stringify(response),
+      headers,
+      body: JSON.stringify(sanitizedResponse),
     };
   } catch (error) {
     logger.error("TA error", { error: String(error) });
