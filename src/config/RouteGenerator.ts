@@ -318,7 +318,23 @@ export class RouteGenerator {
           config.dataSource.transformation,
           params,
         );
-        const cacheStatus = "bypass";
+        // const cacheStatus = "bypass"; // Not used after refactor
+
+        // Apply response shape if needed
+        let shapedData = transformedData;
+        if (config.responseShape?.dataType === "scripture" && Array.isArray(transformedData)) {
+          // Wrap scripture array in expected format
+          shapedData = {
+            scripture: transformedData,
+            language: params.language || "en",
+            organization: params.organization || "unfoldingWord",
+            citation: params.reference || "",
+            metadata: {
+              sourceCount: transformedData.length,
+              resources: transformedData.map((item: any) => item.resource || item.translation || "").filter(Boolean),
+            }
+          };
+        }
 
         // Build response
         const endNow =
@@ -338,7 +354,7 @@ export class RouteGenerator {
         });
 
         const { body, headers } = this.formatResponse(
-          transformedData,
+          shapedData,
           format,
           {
             responseTime: Math.max(

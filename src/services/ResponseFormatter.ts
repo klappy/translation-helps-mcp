@@ -416,29 +416,13 @@ export class ResponseFormatter {
       };
     }
 
-    // Otherwise, normalize scripture payload to always include an array shape for consumers
-    let scriptures: Array<{
-      text: string;
-      translation?: string;
-      resource?: string;
-      [k: string]: any;
-    }> = [];
-    try {
-      if (Array.isArray(data?.scriptures)) {
-        scriptures = data.scriptures as typeof scriptures;
-      } else if (Array.isArray(data?.resources)) {
-        scriptures = data.resources as typeof scriptures;
-      } else if (data?.scripture && typeof data.scripture === "object") {
-        scriptures = [data.scripture as (typeof scriptures)[number]];
-      }
-    } catch {
-      // leave scriptures empty on failure
-    }
+    // Removed scripture normalization logic since we no longer add scriptures field
+    // The RouteGenerator now handles proper response shaping
 
-    // Build the complete response with metadata and normalized scriptures array
+    // Build the complete response with metadata
     const jsonData = {
       ...data,
-      ...(scriptures.length > 0 ? { scriptures } : {}),
+      // Don't add scriptures field - it creates duplicates
       _metadata: {
         responseTime: metadata.responseTime || 0,
         cacheStatus:

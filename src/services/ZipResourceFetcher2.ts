@@ -257,8 +257,16 @@ export class ZipResourceFetcher2 {
         return true;
       });
 
-      // If cache yielded zero resources, do NOT force a fresh fetch here.
-      // We'll proceed and only fetch externally if truly necessary later.
+      // If cache yielded zero resources AND we haven't forced refresh, retry with force refresh
+      if (resources.length === 0 && !forceRefresh) {
+        logger.warn(`Got 0 resources from cache, retrying with force refresh`);
+        // Temporarily set the force refresh header and retry
+        const originalHeaders = this.requestHeaders;
+        this.requestHeaders = { ...this.requestHeaders, "X-Force-Refresh": "true" };
+        const result = await this.getScripture(reference, language, organization, version);
+        this.requestHeaders = originalHeaders; // Restore original headers
+        return result;
+      }
 
       // If no resources found for the requested organization, return empty results
       // Do NOT fallback to other organizations - user requested specific org
