@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+ui/node_modules/
+
+# Build outputs
+dist/
+build/
+.svelte-kit/
+ui/.svelte-kit/
+ui/build/
+
+# Test artifacts
+coverage/
+
+# Archived tests (not maintained)
+tests/archive/
+
+# Generated files
+*.generated.js
+*.generated.ts
+
+# Config files
+*.config.js
+*.config.ts
