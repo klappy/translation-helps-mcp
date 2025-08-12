@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.5.0](https://github.com/klappy/translation-helps-mcp/compare/v5.4.0...v5.5.0) (2025-08-12)
+
+### Features
+
+- add endpoint generator and API explorer ([9535270](https://github.com/klappy/translation-helps-mcp/commit/9535270e9803cb83aa2ce0f12bb5edc928f428dc))
+
+### Bug Fixes
+
+- update smoke tests for v5.4.0 and new response structures ([d551781](https://github.com/klappy/translation-helps-mcp/commit/d55178158d17194ea15b375efb1e26df08bf907a))
+
+### Tests
+
+- massive test suite cleanup following 80/20 rule ([43fb322](https://github.com/klappy/translation-helps-mcp/commit/43fb322bebbacd812442ead4aaa0a2c983c37ea3))
+
+### Documentation
+
+- add API Explorer guide and update documentation ([45a50d1](https://github.com/klappy/translation-helps-mcp/commit/45a50d15204da9e18242b9ff44affb50e154bb4d))
+- add session summary for v5.4.0 release ([c825e4f](https://github.com/klappy/translation-helps-mcp/commit/c825e4f06691d138bf6fae839b0c1e2c152a1f1b))
+- major documentation cleanup and v5.4.0 release ([1b860db](https://github.com/klappy/translation-helps-mcp/commit/1b860db8a99580901892b8c8aecdc46f7682c12b))
+
 ## [5.4.0](https://github.com/klappy/translation-helps-mcp/compare/v5.3.0...v5.4.0) (2025-08-12)
 
 ### 🎉 100% API Consistency Achieved!
