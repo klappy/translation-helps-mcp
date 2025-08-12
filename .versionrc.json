@@ -1,0 +1,23 @@
+{
+  "types": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "chore", "hidden": false, "section": "Chores" },
+    { "type": "docs", "hidden": false, "section": "Documentation" },
+    { "type": "style", "hidden": false, "section": "Styles" },
+    { "type": "refactor", "hidden": false, "section": "Refactoring" },
+    { "type": "perf", "hidden": false, "section": "Performance" },
+    { "type": "test", "hidden": false, "section": "Tests" }
+  ],
+  "scripts": {
+    "postbump": "npm run sync-version",
+    "posttag": "echo '🎉 Version bumped! Don't forget to push tags: git push --follow-tags'"
+  },
+  "skip": {
+    "commit": false,
+    "tag": false
+  },
+  "commitUrlFormat": "https://github.com/klappy/translation-helps-mcp/commit/{{hash}}",
+  "compareUrlFormat": "https://github.com/klappy/translation-helps-mcp/compare/{{previousTag}}...{{currentTag}}",
+  "releaseCommitMessageFormat": "chore(release): {{currentTag}}"
+}

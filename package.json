@@ -1,6 +1,6 @@
 {
   "name": "translation-helps-mcp",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "description": "MCP Server for aggregating Bible translation resources from Door43",
   "type": "module",
   "scripts": {
@@ -22,6 +22,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "terminology:check": "npm run lint && echo '✅ Terminology check passed'",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:patch": "standard-version --release-as patch",
+    "release:major": "standard-version --release-as major",
     "typecheck": "tsc --noEmit",
     "deploy": "cd ui && npx wrangler pages deploy .svelte-kit/cloudflare --project-name=translation-helps-mcp",
     "deploy:ci": "npm run test:ci && npm run build && cd ui && npx wrangler pages deploy .svelte-kit/cloudflare --project-name=translation-helps-mcp",
@@ -73,6 +77,7 @@
     "prettier": "^3.1.1",
     "prettier-plugin-svelte": "^3.4.0",
     "prettier-plugin-tailwindcss": "^0.6.14",
+    "standard-version": "^9.5.0",
     "tsx": "^4.20.3",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.38.0",
