@@ -122,7 +122,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
       {
         status: 400,
         headers: { "X-Error": "Missing reference" },
-      }
+      },
     );
   }
 
@@ -151,7 +151,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
           "Cache-Control": "public, max-age=3600",
           "X-Content-Type": "scripture",
         },
-      }
+      },
     );
   } catch (error) {
     return json(
@@ -161,7 +161,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 };
