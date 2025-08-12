@@ -92,7 +92,11 @@ Look how similar these are now:
 ```typescript
 export const GET = createSimpleEndpoint({
   name: "translation-questions-v2",
-  params: [COMMON_PARAMS.reference, COMMON_PARAMS.language, COMMON_PARAMS.organization],
+  params: [
+    COMMON_PARAMS.reference,
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+  ],
   fetch: fetchTranslationQuestions,
   onError: createStandardErrorHandler({
     "No translation questions found": { status: 404, message: "..." },
@@ -105,7 +109,11 @@ export const GET = createSimpleEndpoint({
 ```typescript
 export const GET = createSimpleEndpoint({
   name: "translation-notes-v2",
-  params: [COMMON_PARAMS.reference, COMMON_PARAMS.language, COMMON_PARAMS.organization],
+  params: [
+    COMMON_PARAMS.reference,
+    COMMON_PARAMS.language,
+    COMMON_PARAMS.organization,
+  ],
   fetch: fetchTranslationNotes,
   onError: createStandardErrorHandler({
     "No translation notes found": { status: 404, message: "..." },
@@ -144,7 +152,13 @@ params: [
 3. Return standard responses:
 
 ```typescript
-return createTranslationHelpsResponse(items, reference, language, organization, "tn");
+return createTranslationHelpsResponse(
+  items,
+  reference,
+  language,
+  organization,
+  "tn",
+);
 ```
 
 4. Handle errors consistently:
