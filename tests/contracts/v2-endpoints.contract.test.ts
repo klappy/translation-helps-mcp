@@ -70,7 +70,7 @@ describe("Scripture Endpoints Contract", () => {
       });
 
       expect(result.status).toBe(404);
-      expect(result.data).toHaveProperty("message");
+      expect(result.data).toHaveProperty("error");
     });
   });
 
@@ -135,9 +135,9 @@ describe("Translation Helps Endpoints Contract", () => {
 });
 
 describe("Discovery Endpoints Contract", () => {
-  describe("languages", () => {
+  describe("simple-languages", () => {
     it("returns list of available languages", async () => {
-      const result = await fetchEndpoint("/languages");
+      const result = await fetchEndpoint("/simple-languages");
 
       expect(result.status).toBe(200);
       expect(result.data).toMatchSnapshot("languages-list");
@@ -213,7 +213,7 @@ describe("Error Handling Contract", () => {
     const result = await fetchEndpoint("/fetch-scripture", {});
 
     expect(result.status).toBe(400);
-    expect(result.data).toHaveProperty("message");
+    expect(result.data).toHaveProperty("error");
     expect(result.data).toMatchSnapshot("error-missing-reference");
   });
 
@@ -223,7 +223,7 @@ describe("Error Handling Contract", () => {
     });
 
     expect(result.status).toBe(400);
-    expect(result.data).toHaveProperty("message");
+    expect(result.data).toHaveProperty("error");
     expect(result.data).toMatchSnapshot("error-invalid-reference");
   });
 });
@@ -233,7 +233,7 @@ describe("Response Consistency Contract", () => {
     const endpoints = [
       { path: "/fetch-scripture", params: { reference: "John 3:16" } },
       { path: "/translation-notes", params: { reference: "John 3:16" } },
-      { path: "/languages", params: {} },
+      { path: "/simple-languages", params: {} },
       { path: "/get-available-books", params: { language: "en" } },
     ];
 

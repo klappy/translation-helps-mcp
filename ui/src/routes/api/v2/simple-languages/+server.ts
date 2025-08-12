@@ -3,6 +3,8 @@
  *
  * A simplified languages endpoint to demonstrate the pattern.
  * This shows how to handle basic data fetching without RouteGenerator.
+ *
+ * Returns items array for consistency with other list endpoints.
  */
 
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
@@ -101,7 +103,7 @@ async function fetchLanguages(params: Record<string, any>, _request: Request) {
 
 	// Format response based on options
 	return {
-		languages: languages.map((lang) => ({
+		items: languages.map((lang) => ({
 			code: lang.code,
 			name: lang.name,
 			direction: lang.direction,

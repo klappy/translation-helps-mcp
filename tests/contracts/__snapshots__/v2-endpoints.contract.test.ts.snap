@@ -1,0 +1,547 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Complex Endpoints Contract > get-context > aggregates all resources for a reference > get-context-john-3-16 1`] = `
+{
+  "crossReferences": [
+    "Romans 5:8",
+    "1 John 4:9-10",
+    "John 10:28",
+    "Romans 6:23",
+  ],
+  "language": "en",
+  "metadata": {
+    "aggregationTime": 111,
+    "coverage": {
+      "hasAcademy": true,
+      "hasCrossReferences": true,
+      "hasNotes": true,
+      "hasQuestions": true,
+      "hasScripture": true,
+      "hasWords": true,
+    },
+    "language": "en",
+    "organization": "unfoldingWord",
+    "reference": "John 3:16",
+    "resourcesFound": {
+      "academy": 2,
+      "crossReferences": 4,
+      "notes": 2,
+      "questions": 2,
+      "scripture": true,
+      "words": 3,
+    },
+    "source": "aggregated-context",
+    "timestamp": "2025-08-12T23:03:24.398Z",
+    "totalResources": 14,
+  },
+  "organization": "unfoldingWord",
+  "reference": "John 3:16",
+  "scripture": {
+    "reference": "John 3:16",
+    "text": "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.",
+    "version": "ULT",
+  },
+  "translationAcademy": [
+    {
+      "id": "ta_metaphor",
+      "relevance": "Understanding "perish" as spiritual death",
+      "title": "Metaphor",
+    },
+    {
+      "id": "ta_abstract_nouns",
+      "relevance": "Translating concepts like "love" and "life"",
+      "title": "Abstract Nouns",
+    },
+  ],
+  "translationNotes": [
+    {
+      "content": "This is one of the most famous verses in the Bible, summarizing the gospel message.",
+      "id": "tn_john_3_16_001",
+      "noteType": "general",
+      "quote": "For God so loved",
+    },
+    {
+      "content": "The Greek word for "world" here refers to all humanity, not the physical earth.",
+      "id": "tn_john_3_16_002",
+      "noteType": "key-term",
+      "quote": "the world",
+    },
+  ],
+  "translationQuestions": [
+    {
+      "answer": "God gave his only Son.",
+      "id": "tq_john_3_16_001",
+      "question": "What did God give because of his love for the world?",
+    },
+    {
+      "answer": "They will not perish but have eternal life.",
+      "id": "tq_john_3_16_002",
+      "question": "What happens to those who believe in God's Son?",
+    },
+  ],
+  "translationWords": [
+    {
+      "definition": "To have a strong affection for someone; to care deeply.",
+      "occurrence": "loved",
+      "strongs": [
+        "G25",
+      ],
+      "term": "love",
+    },
+    {
+      "definition": "Life that never ends; spiritual life that continues after physical death.",
+      "occurrence": "eternal life",
+      "strongs": [
+        "G166",
+        "G2222",
+      ],
+      "term": "eternal-life",
+    },
+    {
+      "definition": "To trust; to have faith in someone or something.",
+      "occurrence": "believes",
+      "strongs": [
+        "G4100",
+      ],
+      "term": "believe",
+    },
+  ],
+}
+`;
+
+exports[`Complex Endpoints Contract > resource-recommendations > provides intelligent recommendations > recommendations-john-3-16-translator 1`] = `
+{
+  "items": [
+    {
+      "confidence": 100,
+      "priority": 0,
+      "rank": 1,
+      "reason": "This verse contains multiple theological key terms",
+      "resourceType": "tw",
+      "title": "Key Terms: Love, World, Eternal Life",
+    },
+    {
+      "confidence": 90,
+      "priority": 1,
+      "rank": 2,
+      "reason": "Critical for understanding cultural and historical context in Gospel narratives",
+      "resourceType": "tn",
+      "title": "Translation Notes",
+    },
+    {
+      "confidence": 80,
+      "priority": 2,
+      "rank": 3,
+      "reason": "Key terms like "Son of God", "Kingdom of Heaven" need careful translation",
+      "resourceType": "tw",
+      "title": "Translation Words",
+    },
+    {
+      "confidence": 70,
+      "priority": 3,
+      "rank": 4,
+      "reason": "Helps ensure key Gospel themes are clearly communicated",
+      "resourceType": "tq",
+      "title": "Translation Questions",
+    },
+    {
+      "confidence": 60,
+      "priority": 4,
+      "rank": 5,
+      "reason": "Articles on parables, metaphors, and narrative techniques",
+      "resourceType": "ta",
+      "title": "Translation Academy",
+    },
+  ],
+  "metadata": {
+    "categories": {
+      "advanced": 0,
+      "essential": 3,
+      "helpful": 2,
+      "specific": 1,
+    },
+    "confidenceRange": {
+      "average": 80,
+      "max": 100,
+      "min": 60,
+    },
+    "genre": "gospel",
+    "language": "en",
+    "organization": "unfoldingWord",
+    "reference": "John 3:16",
+    "source": "recommendation-engine",
+    "totalCount": 5,
+    "totalRecommendations": 5,
+    "userRole": "translator",
+  },
+}
+`;
+
+exports[`Discovery Endpoints Contract > get-available-books > returns list of Bible books > available-books-en 1`] = `
+{
+  "items": [],
+  "metadata": {
+    "circuitBreakerState": "CLOSED",
+    "language": "en",
+    "organization": "unfoldingWord",
+    "resource": "ult",
+    "source": "DCS API",
+    "totalCount": 0,
+  },
+}
+`;
+
+exports[`Discovery Endpoints Contract > simple-languages > returns list of available languages > languages-list 1`] = `
+{
+  "items": [
+    {
+      "code": "en",
+      "direction": "ltr",
+      "name": "English",
+      "resources": {
+        "ta": true,
+        "tn": true,
+        "tq": true,
+        "tw": true,
+        "ult": true,
+        "ust": true,
+      },
+    },
+    {
+      "code": "es",
+      "direction": "ltr",
+      "name": "Español",
+      "resources": {
+        "ta": false,
+        "tn": true,
+        "tq": false,
+        "tw": true,
+        "ult": true,
+        "ust": true,
+      },
+    },
+    {
+      "code": "fr",
+      "direction": "ltr",
+      "name": "Français",
+      "resources": {
+        "ta": false,
+        "tn": false,
+        "tq": false,
+        "tw": false,
+        "ult": true,
+        "ust": true,
+      },
+    },
+    {
+      "code": "ar",
+      "direction": "rtl",
+      "name": "العربية",
+      "resources": {
+        "ta": false,
+        "tn": false,
+        "tq": false,
+        "tw": false,
+        "ult": true,
+        "ust": false,
+      },
+    },
+  ],
+  "metadata": {
+    "hasMore": false,
+    "totalCount": 4,
+  },
+}
+`;
+
+exports[`Error Handling Contract > returns consistent error format for invalid parameters > error-invalid-reference 1`] = `
+{
+  "details": [
+    "Parameter reference is invalid",
+  ],
+  "error": "Invalid parameters",
+  "status": 400,
+}
+`;
+
+exports[`Error Handling Contract > returns consistent error format for missing parameters > error-missing-reference 1`] = `
+{
+  "details": [
+    "Missing required parameter: reference",
+  ],
+  "error": "Invalid parameters",
+  "status": 400,
+}
+`;
+
+exports[`Scripture Endpoints Contract > fetch-scripture > returns multiple translations for a reference > fetch-scripture-john-3-16 1`] = `
+{
+  "citation": {
+    "format": "json",
+    "foundResources": [
+      "ult",
+      "ust",
+      "t4t",
+      "ueb",
+    ],
+    "language": "en",
+    "organization": "unfoldingWord",
+    "reference": "John 3:16",
+    "requestedResources": [
+      "ult",
+      "ust",
+      "t4t",
+      "ueb",
+    ],
+  },
+  "language": "en",
+  "metadata": {
+    "format": "json",
+    "foundResources": [
+      "ult",
+      "ust",
+      "t4t",
+      "ueb",
+    ],
+    "language": "en",
+    "organization": "unfoldingWord",
+    "reference": "John 3:16",
+    "requestedResources": [
+      "ult",
+      "ust",
+      "t4t",
+      "ueb",
+    ],
+    "resources": [
+      "ult",
+      "ust",
+      "t4t",
+      "ueb",
+    ],
+    "totalCount": 4,
+  },
+  "organization": "unfoldingWord",
+  "scripture": [
+    {
+      "citation": "John 3:16 (ULT)",
+      "copyright": "Public Domain",
+      "direction": "ltr",
+      "language": "en",
+      "organization": "unfoldingWord",
+      "reference": "John 3:16",
+      "resource": "ult",
+      "resourceInfo": {
+        "description": "A form-centric translation that closely follows the Hebrew and Greek texts",
+        "language": "en",
+        "name": "unfoldingWord Literal Text",
+        "textDirection": "ltr",
+      },
+      "text": "For God loved the world in this way: he gave his one and only Son, so that everyone who believes in him will not perish but will have eternal life.",
+      "version": "ULT",
+    },
+    {
+      "citation": "John 3:16 (UST)",
+      "copyright": "Public Domain",
+      "direction": "ltr",
+      "language": "en",
+      "organization": "unfoldingWord",
+      "reference": "John 3:16",
+      "resource": "ust",
+      "resourceInfo": {
+        "description": "A meaning-centric translation that expresses the meanings of the Hebrew and Greek texts",
+        "language": "en",
+        "name": "unfoldingWord Simplified Text",
+        "textDirection": "ltr",
+      },
+      "text": "God loved all the people in the world in this way: He gave his only Son to die for them. The result is that everyone who trusts in him will not perish. Instead, they will live forever.",
+      "version": "UST",
+    },
+    {
+      "citation": "John 3:16 (T4T)",
+      "copyright": "Public Domain",
+      "direction": "ltr",
+      "language": "en",
+      "organization": "unfoldingWord",
+      "reference": "John 3:16",
+      "resource": "t4t",
+      "resourceInfo": {
+        "description": "A meaning-based translation designed to help translators understand the text",
+        "language": "en",
+        "name": "Translation for Translators",
+        "textDirection": "ltr",
+      },
+      "text": "God loved us people in the world so much that he gave his only Son as a sacrifice for us, in order that everyone who believes in him would not be separated from God forever. Instead, they would have eternal life.",
+      "version": "T4T",
+    },
+    {
+      "citation": "John 3:16 (UEB)",
+      "copyright": "Public Domain",
+      "direction": "ltr",
+      "language": "en",
+      "organization": "unfoldingWord",
+      "reference": "John 3:16",
+      "resource": "ueb",
+      "resourceInfo": {
+        "description": "An open-licensed English translation designed for clarity",
+        "language": "en",
+        "name": "Unlocked English Bible",
+        "textDirection": "ltr",
+      },
+      "text": "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.",
+      "version": "UEB",
+    },
+  ],
+}
+`;
+
+exports[`Scripture Endpoints Contract > fetch-ult-scripture > returns only ULT translation > fetch-ult-psalm-23-1 1`] = `
+{
+  "citation": {
+    "checkingLevel": "3",
+    "language": "en",
+    "organization": "unfoldingWord",
+    "reference": "Psalm 23:1",
+    "resource": "ult",
+    "translator": "unfoldingWord",
+  },
+  "language": "en",
+  "metadata": {
+    "checkingLevel": "3",
+    "language": "en",
+    "organization": "unfoldingWord",
+    "reference": "Psalm 23:1",
+    "resource": "ult",
+    "resources": [
+      "ult",
+    ],
+    "totalCount": 1,
+    "translator": "unfoldingWord",
+  },
+  "organization": "unfoldingWord",
+  "scripture": [
+    {
+      "citation": "Psalm 23:1 (ULT)",
+      "copyright": "Public Domain",
+      "direction": "ltr",
+      "language": "en",
+      "organization": "unfoldingWord",
+      "reference": "Psalm 23:1",
+      "resource": "ult",
+      "resourceInfo": {
+        "abbreviation": "ULT",
+        "checking_level": "3",
+        "copyright": "Public Domain",
+        "description": "A form-centric translation that closely follows the Hebrew and Greek texts",
+        "language": "en",
+        "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+        "name": "unfoldingWord Literal Text",
+        "publisher": "unfoldingWord",
+        "textDirection": "ltr",
+        "version": "37",
+      },
+      "text": "A psalm of David. Yahweh is my shepherd; I will lack nothing.",
+      "version": "ULT",
+    },
+  ],
+}
+`;
+
+exports[`Scripture Endpoints Contract > fetch-ust-scripture > returns only UST translation > fetch-ust-romans-8-28 1`] = `
+{
+  "citation": {
+    "checkingLevel": "3",
+    "language": "en",
+    "organization": "unfoldingWord",
+    "readingLevel": "7th grade",
+    "reference": "Romans 8:28",
+    "resource": "ust",
+    "translator": "unfoldingWord",
+  },
+  "language": "en",
+  "metadata": {
+    "checkingLevel": "3",
+    "language": "en",
+    "organization": "unfoldingWord",
+    "readingLevel": "7th grade",
+    "reference": "Romans 8:28",
+    "resource": "ust",
+    "resources": [
+      "ust",
+    ],
+    "totalCount": 1,
+    "translator": "unfoldingWord",
+  },
+  "organization": "unfoldingWord",
+  "scripture": [
+    {
+      "citation": "Romans 8:28 (UST)",
+      "copyright": "Public Domain",
+      "direction": "ltr",
+      "language": "en",
+      "organization": "unfoldingWord",
+      "reference": "Romans 8:28",
+      "resource": "ust",
+      "resourceInfo": {
+        "abbreviation": "UST",
+        "checking_level": "3",
+        "copyright": "Public Domain",
+        "description": "A meaning-centric translation that expresses the meanings of the Hebrew and Greek texts",
+        "language": "en",
+        "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+        "name": "unfoldingWord Simplified Text",
+        "publisher": "unfoldingWord",
+        "reading_level": "7th grade",
+        "textDirection": "ltr",
+        "version": "38",
+      },
+      "text": "And we know that for those who love God, he works to use all things for their good. This is true for those whom he has chosen to be his people.",
+      "version": "UST",
+    },
+  ],
+}
+`;
+
+exports[`Translation Helps Endpoints Contract > translation-notes > returns notes for a reference > translation-notes-john-3-16 1`] = `
+{
+  "items": [
+    {
+      "id": "tn003",
+      "noteType": "general",
+      "reference": "John 3:16",
+      "supportReference": "rc://*/ta/man/translate/figs-explicit",
+      "text": "God's love for the world is the motivation for his giving his Son.",
+    },
+    {
+      "id": "tn004",
+      "noteType": "key-term",
+      "reference": "John 3:16",
+      "term": "world",
+      "text": "The word "world" here refers to all people.",
+    },
+  ],
+  "language": "en",
+  "metadata": {
+    "language": "en",
+    "organization": "unfoldingWord",
+    "source": "TN",
+    "totalCount": 2,
+  },
+  "organization": "unfoldingWord",
+  "reference": "John 3:16",
+}
+`;
+
+exports[`Translation Helps Endpoints Contract > translation-words > returns word definitions for a reference > translation-words-genesis-1-1 1`] = `
+{
+  "items": [],
+  "language": "en",
+  "metadata": {
+    "language": "en",
+    "organization": "unfoldingWord",
+    "source": "TW",
+    "totalCount": 0,
+  },
+  "organization": "unfoldingWord",
+  "reference": "Genesis 1:1",
+}
+`;
