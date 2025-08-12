@@ -4,6 +4,7 @@ export const config = {
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { VERSION } from '$lib/version';
 
 /**
  * MCP + LLM Reference Implementation
@@ -13,6 +14,9 @@ import type { RequestHandler } from './$types';
  */
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+// User-Agent for external API calls
+const USER_AGENT = `Translation-Helps-MCP/${VERSION} (Bible translation resource aggregator for LLM tools; +https://github.com/klappy/translation-helps-mcp; contact=klappy@github.com)`;
 
 // System prompt that teaches the LLM about available MCP tools
 const SYSTEM_PROMPT = `You are a helpful Bible study assistant with access to MCP (Model Context Protocol) tools.
@@ -167,7 +171,8 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 			method: 'POST',
 			headers: {
 				Authorization: `Bearer ${apiKey}`,
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
+				'User-Agent': USER_AGENT
 			},
 			body: JSON.stringify({
 				model: 'gpt-4o-mini',
@@ -232,7 +237,8 @@ Once added, the chat will use GPT-4o-mini to provide natural, conversational Bib
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${apiKey}`,
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'User-Agent': USER_AGENT
 				},
 				body: JSON.stringify({
 					model: 'gpt-4o-mini',

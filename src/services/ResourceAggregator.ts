@@ -6,6 +6,7 @@
 import { parseTSV } from "../config/RouteGenerator.js";
 import type { ParsedReference } from "../parsers/referenceParser.js";
 import { logger } from "../utils/logger.js";
+import { proxyFetch } from "../utils/httpClient.js";
 import {
   extractChapterText,
   extractVerseRange,
@@ -390,7 +391,7 @@ export class ResourceAggregator {
 
         // STEP 5: Fetch the TSV file content
         const fileUrl = `https://git.door43.org/api/v1/repos/${options.organization}/${resourceName}/raw/master/${targetFile.path}`;
-        const fileResponse = await fetch(fileUrl);
+        const fileResponse = await proxyFetch(fileUrl);
 
         if (!fileResponse.ok) {
           logger.warn(
@@ -569,7 +570,7 @@ export class ResourceAggregator {
 
         // STEP 5: Fetch the TSV file content
         const fileUrl = `https://git.door43.org/api/v1/repos/${options.organization}/${resourceName}/raw/master/${targetFile.path}`;
-        const fileResponse = await fetch(fileUrl);
+        const fileResponse = await proxyFetch(fileUrl);
 
         if (!fileResponse.ok) {
           logger.warn(
@@ -677,7 +678,7 @@ export class ResourceAggregator {
 
         // STEP 5: Fetch the TSV file content
         const fileUrl = `https://git.door43.org/api/v1/repos/${options.organization}/${resourceName}/raw/master/${targetFile.path}`;
-        const fileResponse = await fetch(fileUrl);
+        const fileResponse = await proxyFetch(fileUrl);
 
         if (!fileResponse.ok) {
           logger.warn(

@@ -5,6 +5,7 @@
  */
 
 import { logger } from "../utils/logger.js";
+import { proxyFetch } from "../utils/httpClient.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
@@ -123,7 +124,7 @@ export async function fetchTranslationWords(
 
   if (!linksData) {
     logger.info(`Cache miss for TW links file, downloading...`);
-    const linksResponse = await fetch(linksUrl);
+    const linksResponse = await proxyFetch(linksUrl);
     if (!linksResponse.ok) {
       logger.warn(`Failed to fetch TW links file`, {
         status: linksResponse.status,

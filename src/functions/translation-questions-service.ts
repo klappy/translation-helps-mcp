@@ -5,6 +5,7 @@
  */
 
 import { logger } from "../utils/logger.js";
+import { proxyFetch } from "../utils/httpClient.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
@@ -64,7 +65,7 @@ function parseTQFromTSV(
     if (columns.length < 7) continue; // Skip malformed lines
 
     // TSV format: reference, id, tags, quote, occurrence, question, response
-    const [ref, id, tags, quote, occurrence, question, response] = columns;
+    const [ref, id, tags, , , question, response] = columns;
 
     // Parse the reference (e.g., "1:1" -> chapter 1, verse 1)
     const refMatch = ref.match(/^(\d+):(\d+)$/);
@@ -147,7 +148,9 @@ export async function fetchTranslationQuestions(
     lower: parsedRef.book.toLowerCase(),
   });
   logger.debug(`Ingredients available`, {
-    ingredients: resourceInfo.ingredients?.map((i: any) => i.identifier),
+    ingredients: resourceInfo.ingredients?.map(
+      (i: { identifier?: string }) => i.identifier,
+    ),
   });
 
   // Find the correct file from ingredients
@@ -175,7 +178,7 @@ export async function fetchTranslationQuestions(
 
   if (!tsvData) {
     logger.info(`Cache miss for TQ file, downloading...`);
-    const fileResponse = await fetch(fileUrl);
+    const fileResponse = await proxyFetch(fileUrl);
     if (!fileResponse.ok) {
       logger.error(`Failed to fetch TQ file`, { status: fileResponse.status });
       throw new Error(

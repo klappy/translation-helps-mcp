@@ -3,23 +3,25 @@
  * This client translates MCP protocol to HTTP requests
  */
 
+import { fetchWithUserAgent } from '../utils/httpClient';
+
 export interface MCPTool {
 	name: string;
 	description: string;
-	inputSchema: any;
+	inputSchema: Record<string, unknown>;
 }
 
-export interface MCPResponse<T = any> {
+export interface MCPResponse {
 	content?: Array<{
 		type: string;
 		text?: string;
-		data?: any;
+		data?: unknown;
 	}>;
 	error?: {
 		code: string;
 		message: string;
 	};
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export class HTTPMCPClient {
@@ -32,7 +34,7 @@ export class HTTPMCPClient {
 	}
 
 	async initialize(): Promise<void> {
-		const response = await fetch(this.baseUrl, {
+		const response = await fetchWithUserAgent(this.baseUrl, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ method: 'initialize' })
@@ -51,7 +53,7 @@ export class HTTPMCPClient {
 	}
 
 	private async loadTools(): Promise<void> {
-		const response = await fetch(this.baseUrl, {
+		const response = await fetchWithUserAgent(this.baseUrl, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ method: 'tools/list' })
@@ -65,12 +67,12 @@ export class HTTPMCPClient {
 		this.tools = data.tools || [];
 	}
 
-	async callTool(name: string, args: any): Promise<MCPResponse> {
+	async callTool(name: string, args: unknown): Promise<MCPResponse> {
 		if (!this.initialized) {
 			await this.initialize();
 		}
 
-		const response = await fetch(this.baseUrl, {
+		const response = await fetchWithUserAgent(this.baseUrl, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
@@ -92,7 +94,7 @@ export class HTTPMCPClient {
 
 	async ping(): Promise<boolean> {
 		try {
-			const response = await fetch(this.baseUrl, {
+			const response = await fetchWithUserAgent(this.baseUrl, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ method: 'ping' })

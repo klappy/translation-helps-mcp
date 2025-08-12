@@ -17,6 +17,7 @@ import {
   Resource,
   XRayTrace,
 } from "../types/dcs.js";
+import { USER_AGENT } from "../utils/httpClient.js";
 import { logger } from "../utils/logger.js";
 
 export interface DCSClientConfig {
@@ -46,9 +47,7 @@ export class DCSApiClient {
     this.timeout = config.timeout || 30000; // 30 seconds
     this.maxRetries = config.maxRetries || 3;
     this.retryDelay = config.retryDelay || 1000; // 1 second base delay
-    this.userAgent =
-      config.userAgent ||
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
+    this.userAgent = config.userAgent || USER_AGENT;
 
     logger.debug("DCS API Client initialized", {
       baseUrl: this.baseUrl,
@@ -226,7 +225,7 @@ export class DCSApiClient {
       const contentType = response.headers.get("content-type");
 
       if (contentType && contentType.includes("application/json")) {
-        const data = (await response.json()) as any;
+        const data = (await response.json()) as T;
 
         if (response.ok) {
           return {
@@ -243,7 +242,7 @@ export class DCSApiClient {
               message:
                 data.message ||
                 `HTTP ${response.status}: ${response.statusText}`,
-              details: data as Record<string, any>,
+              details: data as Record<string, unknown>,
             },
             statusCode: response.status,
             headers: this.getResponseHeaders(response),
@@ -342,7 +341,7 @@ export class DCSApiClient {
   public async getLanguages(): Promise<DCSResponse<Language[]>> {
     // Use the dedicated languages endpoint - much faster!
     const endpoint = "/catalog/list/languages?stage=prod";
-    const response = await this.makeRequest<any>(endpoint);
+    const response = await this.makeRequest<unknown>(endpoint);
 
     if (!response.success || !response.data) {
       return {
@@ -359,23 +358,25 @@ export class DCSApiClient {
     // Handle the response structure from /catalog/list/languages
     const languageData = response.data?.data || response.data || [];
 
-    languageData.forEach((lang: any) => {
-      if (lang.lc) {
-        // lc = language code
-        languages.push({
-          id: lang.lc,
-          code: lang.lc,
-          name: lang.ln || lang.ang || lang.lc, // ln = local name, ang = anglicized name
-          romanizedName: lang.ang, // ang = anglicized/romanized name
-          direction: lang.ld || "ltr", // ld = language direction
-          region: lang.lr, // lr = language region
-          homeCountry: lang.hc, // hc = home country
-          countryCodes: lang.cc, // cc = country codes array
-          alternativeNames: lang.alt, // alt = alternative names array
-          isStrategicLanguage: lang.gw, // gw = strategic language boolean
-        });
-      }
-    });
+    languageData.forEach(
+      (lang: { lc?: string; ln?: string; ang?: string; ld?: string }) => {
+        if (lang.lc) {
+          // lc = language code
+          languages.push({
+            id: lang.lc,
+            code: lang.lc,
+            name: lang.ln || lang.ang || lang.lc, // ln = local name, ang = anglicized name
+            romanizedName: lang.ang, // ang = anglicized/romanized name
+            direction: lang.ld || "ltr", // ld = language direction
+            region: lang.lr, // lr = language region
+            homeCountry: lang.hc, // hc = home country
+            countryCodes: lang.cc, // cc = country codes array
+            alternativeNames: lang.alt, // alt = alternative names array
+            isStrategicLanguage: lang.gw, // gw = strategic language boolean
+          });
+        }
+      },
+    );
 
     // Sort languages by name for consistent ordering
     languages.sort((a, b) => a.name.localeCompare(b.name));
@@ -413,7 +414,7 @@ export class DCSApiClient {
     if (params.page) queryParams.append("page", params.page.toString());
 
     const endpoint = `/catalog/search?${queryParams.toString()}`;
-    const response = await this.makeRequest<any>(endpoint);
+    const response = await this.makeRequest<unknown>(endpoint);
 
     // CRITICAL FIX: Handle catalog API response structure
     if (response.success && response.data) {
@@ -457,7 +458,7 @@ export class DCSApiClient {
       endpoint,
     });
 
-    const response = await this.makeRequest<any>(endpoint);
+    const response = await this.makeRequest<unknown>(endpoint);
 
     // CRITICAL FIX: Handle catalog API response structure
     if (response.success && response.data) {
@@ -498,7 +499,7 @@ export class DCSApiClient {
 
     // Find the specific resource type in the catalog results
     const resource = response.data.find(
-      (r: any) =>
+      (r: { name?: string; subject?: string }) =>
         r.name?.endsWith(`_${resourceType}`) ||
         r.subject?.toLowerCase().includes(resourceType.toLowerCase()),
     );
@@ -519,7 +520,7 @@ export class DCSApiClient {
 
     logger.debug("Fetching organizations from catalog");
 
-    const response = await this.makeRequest<any>(endpoint);
+    const response = await this.makeRequest<unknown>(endpoint);
 
     if (!response.success || !response.data) {
       return {
@@ -534,32 +535,40 @@ export class DCSApiClient {
     const organizations: Owner[] = [];
     const orgData = response.data?.data || response.data || [];
 
-    orgData.forEach((org: any) => {
-      if (org.login) {
-        organizations.push({
-          id: org.id || 0,
-          login: org.login,
-          full_name: org.full_name || org.login,
-          email: org.email || "",
-          avatar_url: org.avatar_url || "",
-          language: org.language || "en",
-          is_admin: org.is_admin || false,
-          last_login: org.last_login || "",
-          created: org.created || new Date().toISOString(),
-          restricted: org.restricted || false,
-          active: org.active !== false,
-          prohibit_login: org.prohibit_login || false,
-          location: org.location || "",
-          website: org.website || "",
-          description: org.description || "",
-          visibility: org.visibility || "public",
-          followers_count: org.followers_count || 0,
-          following_count: org.following_count || 0,
-          starred_repos_count: org.starred_repos_count || 0,
-          username: org.username || org.login,
-        });
-      }
-    });
+    orgData.forEach(
+      (org: {
+        login?: string;
+        id?: number;
+        full_name?: string;
+        avatar_url?: string;
+        description?: string;
+      }) => {
+        if (org.login) {
+          organizations.push({
+            id: org.id || 0,
+            login: org.login,
+            full_name: org.full_name || org.login,
+            email: org.email || "",
+            avatar_url: org.avatar_url || "",
+            language: org.language || "en",
+            is_admin: org.is_admin || false,
+            last_login: org.last_login || "",
+            created: org.created || new Date().toISOString(),
+            restricted: org.restricted || false,
+            active: org.active !== false,
+            prohibit_login: org.prohibit_login || false,
+            location: org.location || "",
+            website: org.website || "",
+            description: org.description || "",
+            visibility: org.visibility || "public",
+            followers_count: org.followers_count || 0,
+            following_count: org.following_count || 0,
+            starred_repos_count: org.starred_repos_count || 0,
+            username: org.username || org.login,
+          });
+        }
+      },
+    );
 
     return {
       success: true,
@@ -587,10 +596,10 @@ export class DCSApiClient {
    * Get raw file content from a repository
    */
   public async getRawFileContent(
-    owner: string,
-    repo: string,
-    path: string,
-    ref?: string,
+    _owner: string,
+    _repo: string,
+    _path: string,
+    _ref?: string,
   ): Promise<DCSResponse<string>> {
     return {
       success: false,

@@ -7,6 +7,7 @@ import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { XRayTrace } from "../../types/dcs.js";
 import { Errors } from "../../utils/errorEnvelope.js";
 import { logger } from "../../utils/logger.js";
+import { proxyFetch } from "../../utils/httpClient.js";
 import type {
   PlatformHandler,
   PlatformRequest,
@@ -113,7 +114,7 @@ export const getContextHandler: PlatformHandler = async (
       const catalogStartTime = performance.now();
 
       try {
-        const catalogResponse = await fetch(catalogUrl.toString());
+        const catalogResponse = await proxyFetch(catalogUrl.toString());
         const catalogDuration = performance.now() - catalogStartTime;
 
         // Add manual trace entry for each catalog call

@@ -5,6 +5,7 @@
  */
 
 import { logger } from "../utils/logger.js";
+import { proxyFetch } from "../utils/httpClient.js";
 
 export interface BrowseWordsOptions {
   language?: string;
@@ -62,7 +63,7 @@ export async function browseWords(
   const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Translation%20Words&lang=${language}&owner=${organization}`;
   logger.debug(`Searching catalog`, { catalogUrl });
 
-  const catalogResponse = await fetch(catalogUrl);
+  const catalogResponse = await proxyFetch(catalogUrl);
   if (!catalogResponse.ok) {
     logger.error(`Catalog search failed`, { status: catalogResponse.status });
     throw new Error(`Failed to search catalog: ${catalogResponse.status}`);

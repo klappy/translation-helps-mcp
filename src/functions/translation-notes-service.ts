@@ -6,6 +6,7 @@
 
 import { parseTSV } from "../config/RouteGenerator";
 import { logger } from "../utils/logger.js";
+import { proxyFetch } from "../utils/httpClient.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
@@ -103,7 +104,9 @@ export async function fetchTranslationNotes(
     lower: parsedRef.book.toLowerCase(),
   });
   logger.debug(`Ingredients available`, {
-    ingredients: resourceInfo.ingredients?.map((i: any) => i.identifier),
+    ingredients: resourceInfo.ingredients?.map(
+      (i: { identifier?: string }) => i.identifier,
+    ),
   });
 
   // Find the correct file from ingredients
@@ -131,7 +134,7 @@ export async function fetchTranslationNotes(
 
   if (!tsvData) {
     logger.info(`Cache miss for TN file, downloading...`);
-    const fileResponse = await fetch(fileUrl);
+    const fileResponse = await proxyFetch(fileUrl);
     if (!fileResponse.ok) {
       logger.error(`Failed to fetch TN file`, { status: fileResponse.status });
       throw new Error(
@@ -227,7 +230,7 @@ export async function getTranslationNotes(args: {
 
   // Triggerable by tests via fetch mock
   const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=Translation%20Notes&lang=${language}&owner=${organization}`;
-  const catalogRes = await fetch(catalogUrl);
+  const catalogRes = await proxyFetch(catalogUrl);
   if (!catalogRes.ok) {
     throw new Error(`Failed to search catalog: ${catalogRes.status}`);
   }
@@ -301,7 +304,7 @@ function parseTNFromTSV(
   reference: { book: string; chapter: number; verse?: number },
   includeIntro: boolean,
   includeContext: boolean,
-): any[] {
+): Array<Record<string, string>> {
   // Use the generic parseTSV to preserve exact structure
   const allRows = parseTSV(tsvData);
 

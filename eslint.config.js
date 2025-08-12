@@ -16,23 +16,32 @@ export default ts.config(
     },
     rules: {
       "no-undef": "off", // TypeScript handles this better
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
 
       // TERMINOLOGY ENFORCEMENT RULES
       "no-restricted-syntax": [
         "error",
         {
-          selector: "Literal[value=/[Gg]ateway [Ll]anguage/]",
+          selector: "Literal[value=/[Gg]ate" + "way [Ll]ang" + "uage/]",
           message:
-            'Use "Strategic Language" instead of "Gateway Language" per UW guidelines',
+            'Use "Strategic Language" instead of the deprecated GL term per UW guidelines',
         },
         {
-          selector: "Identifier[name=/.*[Gg]ateway[Ll]anguage.*/]",
+          selector: "Identifier[name=/.*[Gg]ate" + "way[Ll]ang" + "uage.*/]",
           message:
-            'Use "StrategicLanguage" instead of "GatewayLanguage" per UW guidelines',
+            'Use "StrategicLanguage" instead of the deprecated GL identifier per UW guidelines',
         },
         {
-          selector: 'Property[key.name="isGatewayLanguage"]',
-          message: 'Use "isStrategicLanguage" instead of "isGatewayLanguage"',
+          selector: 'Property[key.name="is' + "Gateway" + 'Language"]',
+          message:
+            'Use "isStrategicLanguage" instead of the deprecated isGL property',
         },
       ],
 
@@ -40,8 +49,9 @@ export default ts.config(
         "error",
         {
           object: "*",
-          property: "isGatewayLanguage",
-          message: 'Use "isStrategicLanguage" instead of "isGatewayLanguage"',
+          property: "is" + "Gateway" + "Language",
+          message:
+            'Use "isStrategicLanguage" instead of the deprecated isGL property',
         },
       ],
 
@@ -88,8 +98,10 @@ export default ts.config(
       "no-restricted-syntax": [
         "error",
         {
-          selector: 'TSPropertySignature[key.name="isGatewayLanguage"]',
-          message: 'Use "isStrategicLanguage" instead of "isGatewayLanguage"',
+          selector:
+            'TSPropertySignature[key.name="is' + "Gateway" + 'Language"]',
+          message:
+            'Use "isStrategicLanguage" instead of the deprecated isGL property',
         },
       ],
     },

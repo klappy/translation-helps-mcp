@@ -6,6 +6,7 @@
 
 import { ResourceType } from "../constants/terminology";
 import { logger } from "../utils/logger.js";
+import { proxyFetch } from "../utils/httpClient.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 
@@ -322,7 +323,7 @@ export async function discoverAvailableResources(
         const catalogUrl = `https://git.door43.org/api/v1/catalog/search?subject=${encodeURIComponent(subject)}&lang=${language}&owner=${organization}&metadataType=rc&includeMetadata=true`;
         logger.debug(`Catalog search`, { subject, language, organization });
 
-        const response = await fetch(catalogUrl);
+        const response = await proxyFetch(catalogUrl);
         if (!response.ok) {
           logger.warn(`Catalog search failed`, {
             subject,
