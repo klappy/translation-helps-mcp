@@ -12,7 +12,7 @@ We test the 20% of scenarios that cover 80% of real-world usage. No complex edge
 tests/
 ├── contracts/          # API contract tests (locked behavior)
 ├── unit/              # Simple unit tests
-│   ├── validators/    # Input validation tests  
+│   ├── validators/    # Input validation tests
 │   ├── services/      # Service logic tests
 │   └── utils/         # Utility function tests
 ├── integration/       # User workflow tests
@@ -31,7 +31,7 @@ npm test
 
 # Run specific test categories
 npm run test:contracts      # Contract tests
-npm run test:unit          # Unit tests  
+npm run test:unit          # Unit tests
 npm run test:integration   # Integration tests
 npm run test:smoke         # Quick health checks
 
@@ -42,6 +42,7 @@ npm run test:contracts:update
 ## Writing New Tests
 
 ### DO ✅
+
 - Test real user scenarios
 - Keep tests under 50 lines
 - Use descriptive test names
@@ -49,6 +50,7 @@ npm run test:contracts:update
 - Mock external services
 
 ### DON'T ❌
+
 - Test implementation details
 - Create complex test fixtures
 - Test every edge case
@@ -58,18 +60,18 @@ npm run test:contracts:update
 ## Example Test
 
 ```typescript
-import { describe, it, expect } from 'vitest';
-import { makeRequest } from '../test-utils';
+import { describe, it, expect } from "vitest";
+import { makeRequest } from "../test-utils";
 
-describe('Scripture Endpoint', () => {
-  it('returns scripture for valid reference', async () => {
-    const response = await makeRequest('/api/v2/fetch-scripture', {
-      reference: 'John 3:16'
+describe("Scripture Endpoint", () => {
+  it("returns scripture for valid reference", async () => {
+    const response = await makeRequest("/api/v2/fetch-scripture", {
+      reference: "John 3:16",
     });
-    
+
     expect(response.status).toBe(200);
     expect(response.data.scripture).toBeDefined();
-    expect(response.data.scripture[0].text).toContain('God so loved');
+    expect(response.data.scripture[0].text).toContain("God so loved");
   });
 });
 ```
@@ -77,6 +79,7 @@ describe('Scripture Endpoint', () => {
 ## Test Data
 
 Use the common test data from `test-utils.ts`:
+
 - Valid/invalid references
 - Valid/invalid languages
 - Valid/invalid organizations
@@ -88,6 +91,7 @@ All tests should run in < 30 seconds total. If a test takes longer than 1 second
 ## Maintenance
 
 When updating code:
+
 1. Run tests to ensure nothing breaks
 2. Update tests if behavior changes
 3. Add tests for new features

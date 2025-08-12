@@ -302,4 +302,23 @@ curl "https://api.translation.helps/api/v2/simple-languages"
 
 ## Migration from v1
 
-See `NEXT_PHASE_ROADMAP.md` for migration guide from v1 endpoints.
+## Developer Tools
+
+### API Explorer
+
+Interactive web interface for testing endpoints: `/api-explorer`
+See `API_EXPLORER_GUIDE.md` for details.
+
+### Endpoint Generator
+
+Create new endpoints following established patterns:
+
+```bash
+npm run create-endpoint
+```
+
+## Additional Resources
+
+- `NEXT_PHASE_ROADMAP.md` - Migration guide from v1 endpoints
+- `ARCHITECTURE.md` - System architecture overview
+- `API_EXPLORER_GUIDE.md` - Visual API testing guide

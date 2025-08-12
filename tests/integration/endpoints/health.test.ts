@@ -1,29 +1,29 @@
 /**
  * Health Endpoint Tests
- * 
+ *
  * Simple, focused tests following the 80/20 rule.
  * Test what matters, skip the edge cases.
  */
 
-import { describe, it, expect } from 'vitest';
-import { makeRequest } from '../../test-utils';
+import { describe, it, expect } from "vitest";
+import { makeRequest } from "../../test-utils";
 
-describe('Health Endpoints', () => {
-  describe('GET /api/v2/health', () => {
-    it('returns healthy status', async () => {
-      const response = await makeRequest('/api/v2/health');
-      
+describe("Health Endpoints", () => {
+  describe("GET /api/v2/health", () => {
+    it("returns healthy status", async () => {
+      const response = await makeRequest("/api/v2/health");
+
       expect(response.status).toBe(200);
-      expect(response.data.status).toBe('healthy');
+      expect(response.data.status).toBe("healthy");
       expect(response.data.version).toBeDefined();
       expect(response.data.timestamp).toBeDefined();
     });
   });
-  
-  describe('GET /api/v2/health-dcs', () => {
-    it('checks DCS connectivity', async () => {
-      const response = await makeRequest('/api/v2/health-dcs');
-      
+
+  describe("GET /api/v2/health-dcs", () => {
+    it("checks DCS connectivity", async () => {
+      const response = await makeRequest("/api/v2/health-dcs");
+
       expect(response.status).toBe(200);
       expect(response.data.status).toMatch(/healthy|degraded/);
       expect(response.data.dcsStatus).toBeDefined();

@@ -11,18 +11,21 @@
 ## Tests to Keep (Follow New Patterns)
 
 ### Core Tests ✅
+
 - `contracts/` - Contract tests for v2 endpoints
 - `smoke.test.ts` - Basic health checks
 - `middleware/` - Validator tests
 - `test-utils.ts` - Shared utilities
 
 ### Keep with Updates
+
 - `DCSApiClient.test.ts` - Core client tests (simplify)
 - `regression.test.ts` - Prevent known issues
 
 ## Tests to Archive (Old Patterns)
 
 ### Complex/Over-engineered
+
 - `chaos/` - Entire directory (too complex for 80/20)
 - `performance-monitor.test.ts` - Over-monitoring
 - `performance-benchmarks.test.ts` - Too detailed
@@ -30,6 +33,7 @@
 - `smart-cache.test.ts` - Old caching patterns
 
 ### Old Endpoint Tests
+
 - `endpoint-parity.test.ts` - Testing old vs new
 - `endpoint-diagnostic.ts` - Old debugging
 - `endpoint-status-check.js` - Old monitoring
@@ -38,11 +42,13 @@
 - `new-endpoints.test.ts` - Misleading name
 
 ### TSV Specific (Too Complex)
+
 - All `tsv-*.test.ts` files
 - All `TSV_*.md` documentation
 - `twl-integration.test.ts` - Related to TSV
 
 ### Old Patterns
+
 - `scripture-comprehensive.test.ts` - Old scripture tests
 - `scripture-parameters.test.ts` - Old parameter tests
 - `language-coverage.test.ts` - Old coverage tests
@@ -55,6 +61,7 @@
 - `user-agent.test.ts` - Too specific
 
 ### Load Tests (Keep Separate)
+
 - `load/` - Keep but note it's for special testing only
 
 ## New Test Structure
