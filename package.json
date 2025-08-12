@@ -54,7 +54,8 @@
     "chaos:safe": "cd tests/chaos && CHAOS_MODE=safe node run-all-chaos-tests.ts",
     "chaos:all": "cd tests/chaos && CHAOS_MODE=aggressive node run-all-chaos-tests.ts",
     "sync-version": "node scripts/sync-version.js",
-    "prepare": "node -e \"if (!process.env.CI && !process.env.CLOUDFLARE_PAGES) { require('child_process').execSync('husky', {stdio: 'inherit'}); }\""
+    "prepare": "node -e \"if (!process.env.CI && !process.env.CLOUDFLARE_PAGES) { require('child_process').execSync('husky', {stdio: 'inherit'}); }\"",
+    "create-endpoint": "node scripts/create-endpoint.js"
   },
   "dependencies": {
     "@upstash/redis": "^1.28.0",
@@ -69,6 +70,7 @@
     "@types/node": "^20.10.8",
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "@typescript-eslint/parser": "^6.17.0",
+    "chalk": "^5.5.0",
     "concurrently": "^9.2.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^10.1.8",

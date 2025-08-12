@@ -76,6 +76,12 @@
 				Try MCP Tools
 			</a>
 			<a
+				href="/api-explorer"
+				class="rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-white transition-all hover:from-purple-600 hover:to-pink-600 hover:shadow-lg"
+			>
+				API Explorer
+			</a>
+			<a
 				href="/chat"
 				class="rounded-lg border border-blue-500/50 px-6 py-3 text-blue-300 backdrop-blur-xl transition-all hover:border-blue-400 hover:bg-blue-500/10 hover:text-blue-200"
 			>
