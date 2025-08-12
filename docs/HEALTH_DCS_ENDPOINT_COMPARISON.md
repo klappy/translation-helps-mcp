@@ -13,14 +13,16 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
     for (const check of checks) {
       try {
         const response = await fetch(
-          `${url.origin}${check.endpoint}?reference=${encodeURIComponent(check.reference)}`
+          `${url.origin}${check.endpoint}?reference=${encodeURIComponent(check.reference)}`,
         );
         const data = await response.json();
 
         // Extract content based on endpoint
         let content = "";
         if (check.endpoint.includes("scripture")) {
-          const ult = data.scriptures?.find((s: any) => s.translation?.includes("Literal Text"));
+          const ult = data.scriptures?.find((s: any) =>
+            s.translation?.includes("Literal Text"),
+          );
           content = ult?.text || data.text || "";
         } else if (check.endpoint.includes("notes")) {
           content = JSON.stringify(data.verseNotes || data.notes || []);
@@ -30,7 +32,9 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
         }
 
         check.actualContent = content.substring(0, 100);
-        check.passed = content.toLowerCase().includes(check.expectedContent.toLowerCase());
+        check.passed = content
+          .toLowerCase()
+          .includes(check.expectedContent.toLowerCase());
       } catch (error) {
         check.error = error instanceof Error ? error.message : "Unknown error";
         check.passed = false;
@@ -64,9 +68,10 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
     return json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 };
@@ -78,7 +83,10 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 /**
  * Perform health validation checks
  */
-async function performHealthChecks(params: Record<string, any>, request: Request) {
+async function performHealthChecks(
+  params: Record<string, any>,
+  request: Request,
+) {
   const checks: ValidationCheck[] = [
     // ... check definitions ...
   ];
@@ -90,7 +98,7 @@ async function performHealthChecks(params: Record<string, any>, request: Request
   for (const check of checks) {
     try {
       const response = await fetch(
-        `${origin}${check.endpoint}?reference=${encodeURIComponent(check.reference)}`
+        `${origin}${check.endpoint}?reference=${encodeURIComponent(check.reference)}`,
       );
       const data = await response.json();
 
@@ -101,7 +109,9 @@ async function performHealthChecks(params: Record<string, any>, request: Request
         const scriptures = data.scripture || data.scriptures || [];
         const ult = Array.isArray(scriptures)
           ? scriptures.find(
-              (s: any) => s.translation?.includes("Literal Text") || s.resource?.includes("ult")
+              (s: any) =>
+                s.translation?.includes("Literal Text") ||
+                s.resource?.includes("ult"),
             )
           : null;
         content = ult?.text || data.text || "";
@@ -113,7 +123,9 @@ async function performHealthChecks(params: Record<string, any>, request: Request
       }
 
       check.actualContent = content.substring(0, 100);
-      check.passed = content.toLowerCase().includes(check.expectedContent.toLowerCase());
+      check.passed = content
+        .toLowerCase()
+        .includes(check.expectedContent.toLowerCase());
     } catch (error) {
       check.error = error instanceof Error ? error.message : "Unknown error";
       check.passed = false;
