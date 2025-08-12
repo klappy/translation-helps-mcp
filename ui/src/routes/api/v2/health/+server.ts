@@ -22,7 +22,7 @@ const BUILD_TIMESTAMP = new Date().toISOString();
 /**
  * Health check logic extracted as a pure function
  */
-async function performHealthCheck(params: Record<string, any>, platform?: any) {
+async function performHealthCheck(params: Record<string, any>, _request: Request, platform?: any) {
 	// Initialize KV if available
 	try {
 		const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
@@ -80,7 +80,7 @@ async function performHealthCheck(params: Record<string, any>, platform?: any) {
 }
 
 // We need a custom handler to pass platform context
-export const GET: RequestHandler = async ({ url, platform }) => {
+export const GET: RequestHandler = async ({ url, platform, request }) => {
 	const endpoint = createSimpleEndpoint({
 		name: 'health-v2',
 
@@ -90,13 +90,13 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			{ name: 'nuke', type: 'boolean', default: false }
 		],
 
-		fetch: async (params) => {
-			return performHealthCheck(params, platform);
+		fetch: async (params, request) => {
+			return performHealthCheck(params, request, platform);
 		}
 	});
 
 	// Call the generated endpoint
-	return endpoint({ url, platform });
+	return endpoint({ url, platform, request });
 };
 
 // CORS handler

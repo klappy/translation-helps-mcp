@@ -5,7 +5,7 @@
  * This shows how to handle basic data fetching without RouteGenerator.
  */
 
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 
 export const config = {
 	runtime: 'edge'
@@ -90,7 +90,7 @@ const LANGUAGE_DATA = [
 /**
  * Fetch languages with optional filtering
  */
-async function fetchLanguages(params: Record<string, any>) {
+async function fetchLanguages(params: Record<string, any>, _request: Request) {
 	const { resource, includeMetadata = true, includeStats = false } = params;
 
 	// Filter by resource if specified

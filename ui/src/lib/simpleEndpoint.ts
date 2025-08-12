@@ -29,7 +29,7 @@ export interface SimpleEndpointConfig {
 	params?: ParamSchema[];
 
 	// Data fetcher - just a function!
-	fetch: (params: Record<string, any>) => Promise<any>;
+	fetch: (params: Record<string, any>, request: Request) => Promise<any>;
 
 	// Optional transform
 	transform?: (data: any) => any;
@@ -108,7 +108,7 @@ function parseParams(
  * ```
  */
 export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandler {
-	return async ({ url }) => {
+	return async ({ url, request }) => {
 		const startTime = Date.now();
 
 		try {
@@ -134,7 +134,7 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 
 			// 2. Fetch data
 			logger.info(`${config.name}: Fetching data`, { params });
-			let data = await config.fetch(params);
+			let data = await config.fetch(params, request);
 
 			// 3. Transform if needed
 			if (config.transform) {
