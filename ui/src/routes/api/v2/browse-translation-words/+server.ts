@@ -5,9 +5,9 @@
  * Perfect for building word indexes or browsing dictionaries.
  */
 
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
+import { COMMON_PARAMS } from '$lib/commonValidators.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createListResponse } from '$lib/standardResponses.js';
 
 // Mock word categories
