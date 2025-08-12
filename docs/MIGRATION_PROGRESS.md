@@ -4,9 +4,11 @@
 
 Migrating all endpoints from the complex RouteGenerator pattern to our simple, consistent endpoint pattern.
 
+**Progress: 14 of 23 endpoints migrated (61% complete)**
+
 ## Migration Status
 
-### ✅ Completed (11 endpoints)
+### ✅ Completed (14 endpoints)
 
 1. **health** - Basic health check
 2. **languages** - Get available languages
@@ -19,6 +21,9 @@ Migrating all endpoints from the complex RouteGenerator pattern to our simple, c
 9. **fetch-translation-words** - Translation word definitions
 10. **fetch-translation-academy** - Translation academy articles
 11. **fetch-translation-word-links** - Word linking data
+12. **browse-translation-words** - Browse all words with filtering
+13. **get-translation-word** - Get single word details
+14. **get-words-for-reference** - Words in a specific verse
 
 ### 🚧 In Progress
 
@@ -30,9 +35,6 @@ None currently
 - fetch-ult-scripture
 - fetch-ust-scripture
 - browse-translation-academy
-- browse-translation-words
-- get-translation-word
-- get-words-for-reference
 - extract-references
 - language-coverage
 - get-context
