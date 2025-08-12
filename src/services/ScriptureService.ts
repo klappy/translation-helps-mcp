@@ -5,10 +5,10 @@
  * into a clean, understandable interface.
  */
 
-import { ZipResourceFetcher2 } from "./ZipResourceFetcher2.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
-import { logger } from "../utils/logger.js";
 import type { ParsedReference } from "../functions/reference-parser.js";
+import { logger } from "../utils/logger.js";
+import { ZipResourceFetcher2 } from "./ZipResourceFetcher2.js";
 
 export interface ScriptureParams {
   reference: string;

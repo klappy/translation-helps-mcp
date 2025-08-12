@@ -335,17 +335,20 @@
 				responseData = await response.json();
 			}
 
-			// Attach X-Ray and timing from headers if the body doesn't include it
+			// Extract diagnostic data from headers WITHOUT polluting the response body
+			let headerDiagnostics = {
+				xrayTrace: null as any,
+				responseTime: undefined as number | undefined,
+				cacheStatus: undefined as string | undefined,
+				traceId: undefined as string | undefined
+			};
+
 			try {
+				// X-ray trace
 				const xrayHeader = response.headers.get('X-Xray-Trace');
 				if (xrayHeader) {
 					const cleaned = xrayHeader.replace(/\s+/g, '');
-					// Decode base64-encoded JSON trace
-					const decoded = JSON.parse(atob(cleaned));
-					if (!responseData.metadata) responseData.metadata = {};
-					if (!responseData.metadata.xrayTrace) {
-						responseData.metadata.xrayTrace = decoded;
-					}
+					headerDiagnostics.xrayTrace = JSON.parse(atob(cleaned));
 				}
 
 				// Response time
@@ -353,47 +356,45 @@
 				if (rt) {
 					const rtNum = parseInt(rt.replace(/[^0-9]/g, ''), 10);
 					if (!isNaN(rtNum)) {
-						if (!responseData._metadata) responseData._metadata = {};
-						if (responseData._metadata.responseTime === undefined) {
-							responseData._metadata.responseTime = rtNum;
-						}
-						if (!responseData.metadata) responseData.metadata = {};
-						if (responseData.metadata.responseTime === undefined) {
-							responseData.metadata.responseTime = rtNum;
-						}
+						headerDiagnostics.responseTime = rtNum;
 					}
 				}
 
-				// Cache info
+				// Cache status
 				const cacheStatus = response.headers.get('X-Cache-Status');
 				if (cacheStatus) {
-					if (!responseData._metadata) responseData._metadata = {};
-					if (!responseData.metadata) responseData.metadata = {};
-					responseData._metadata.cacheStatus =
-						responseData._metadata.cacheStatus || cacheStatus.toLowerCase();
-					responseData.metadata.cacheStatus =
-						responseData.metadata.cacheStatus || cacheStatus.toLowerCase();
+					headerDiagnostics.cacheStatus = cacheStatus.toLowerCase();
 				}
 
 				// Trace ID
 				const traceId = response.headers.get('X-Trace-Id');
 				if (traceId) {
-					if (!responseData._metadata) responseData._metadata = {};
-					if (!responseData.metadata) responseData.metadata = {};
-					responseData._metadata.traceId = responseData._metadata.traceId || traceId;
-					responseData.metadata.traceId = responseData.metadata.traceId || traceId;
+					headerDiagnostics.traceId = traceId;
 				}
 			} catch (e) {
-				console.warn('Failed to attach X-Ray headers to response data', e);
+				console.warn('Failed to extract diagnostic headers', e);
 			}
 
 			console.log(`✅ Response received:`, responseData);
 
-			// Set the result for display
+			// Set the result for display (clean, without injected headers)
 			apiResult = responseData;
 
+			// Create a separate object for performance tracking that includes diagnostic data from headers
+			const responseWithDiagnostics = {
+				...responseData,
+				metadata: {
+					...(responseData.metadata || {}),
+					// Add header diagnostics ONLY for performance tracking UI
+					xrayTrace: headerDiagnostics.xrayTrace,
+					responseTime: responseData.metadata?.responseTime || headerDiagnostics.responseTime,
+					cacheStatus: responseData.metadata?.cacheStatus || headerDiagnostics.cacheStatus,
+					traceId: responseData.metadata?.traceId || headerDiagnostics.traceId
+				}
+			};
+
 			// Process response and extract performance data
-			handleApiResponse(endpoint, responseData);
+			handleApiResponse(endpoint, responseWithDiagnostics);
 		} catch (error: any) {
 			console.error(`❌ API test failed for ${endpoint.name}:`, error);
 			loadingError = `Failed to test ${endpoint.name}: ${error.message || error}`;
