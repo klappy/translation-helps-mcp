@@ -321,11 +321,12 @@
 					<Zap class="h-4 w-4 flex-shrink-0 text-yellow-400" />
 					<span class="text-sm text-gray-300">Status:</span>
 					<span
-						class="font-mono text-sm font-semibold {result._metadata.success
+						class="font-mono text-sm font-semibold {result._metadata.status === 200 ||
+						result._metadata.success !== false
 							? 'text-emerald-400'
 							: 'text-red-400'}"
 					>
-						{result._metadata.status}
+						{result._metadata.status || '200'}
 					</span>
 				</div>
 			</div>
@@ -366,37 +367,57 @@
 					<div class="grid grid-cols-1 gap-3 text-xs">
 						<div class="flex items-center gap-2">
 							<span
-								class={result._metadata.dataSourcesCached.catalog && result._metadata.dataSourcesCached.catalog !== false
+								class={result._metadata.dataSourcesCached.catalog &&
+								result._metadata.dataSourcesCached.catalog !== false
 									? 'text-emerald-400'
 									: 'text-gray-500'}
 							>
-								{result._metadata.dataSourcesCached.catalog && result._metadata.dataSourcesCached.catalog !== false ? '📁' : '⭕'}
+								{result._metadata.dataSourcesCached.catalog &&
+								result._metadata.dataSourcesCached.catalog !== false
+									? '📁'
+									: '⭕'}
 							</span>
-							<span class="text-gray-300">Catalog: {result._metadata.dataSourcesCached.catalog || 'No calls'}</span>
+							<span class="text-gray-300"
+								>Catalog: {result._metadata.dataSourcesCached.catalog || 'No calls'}</span
+							>
 						</div>
 						<div class="flex items-center gap-2">
 							<span
-								class={result._metadata.dataSourcesCached.zip && result._metadata.dataSourcesCached.zip !== false
+								class={result._metadata.dataSourcesCached.zip &&
+								result._metadata.dataSourcesCached.zip !== false
 									? 'text-emerald-400'
 									: 'text-gray-500'}
 							>
-								{result._metadata.dataSourcesCached.zip && result._metadata.dataSourcesCached.zip !== false ? '📦' : '⭕'}
+								{result._metadata.dataSourcesCached.zip &&
+								result._metadata.dataSourcesCached.zip !== false
+									? '📦'
+									: '⭕'}
 							</span>
-							<span class="text-gray-300">ZIP Files: {result._metadata.dataSourcesCached.zip || 'No calls'}</span>
+							<span class="text-gray-300"
+								>ZIP Files: {result._metadata.dataSourcesCached.zip || 'No calls'}</span
+							>
 						</div>
 						<div class="flex items-center gap-2">
 							<span
-								class={result._metadata.dataSourcesCached.files && result._metadata.dataSourcesCached.files !== false
+								class={result._metadata.dataSourcesCached.files &&
+								result._metadata.dataSourcesCached.files !== false
 									? 'text-emerald-400'
 									: 'text-gray-500'}
 							>
-								{result._metadata.dataSourcesCached.files && result._metadata.dataSourcesCached.files !== false ? '📄' : '⭕'}
+								{result._metadata.dataSourcesCached.files &&
+								result._metadata.dataSourcesCached.files !== false
+									? '📄'
+									: '⭕'}
 							</span>
-							<span class="text-gray-300">Extracted Files: {result._metadata.dataSourcesCached.files || 'No calls'}</span>
+							<span class="text-gray-300"
+								>Extracted Files: {result._metadata.dataSourcesCached.files || 'No calls'}</span
+							>
 						</div>
-						<div class="flex items-center gap-2 pt-2 border-t border-white/10">
+						<div class="flex items-center gap-2 border-t border-white/10 pt-2">
 							<span class="text-blue-400">📊</span>
-							<span class="text-gray-300 font-semibold">Summary: {result._metadata.dataSourcesCached.summary || 'No API calls'}</span>
+							<span class="font-semibold text-gray-300"
+								>Summary: {result._metadata.dataSourcesCached.summary || 'No API calls'}</span
+							>
 						</div>
 						<div class="flex items-center gap-2">
 							<span class="text-red-400">❌</span>

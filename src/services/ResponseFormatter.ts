@@ -31,7 +31,7 @@ export class ResponseFormatter {
     data: any,
     format: string,
     params: ParsedParams,
-    metadata: FormatMetadata = {}
+    metadata: FormatMetadata = {},
   ): FormattedResponse {
     logger.info("Formatting response", { format, endpoint: metadata.endpoint });
 
@@ -84,17 +84,19 @@ export class ResponseFormatter {
   private addMetadataHeaders(
     headers: Record<string, string>,
     metadata: FormatMetadata,
-    _format: string
+    _format: string,
   ): void {
     // Always include key diagnostics in headers for consistency across formats
     // Use _format to satisfy linter and provide minimal diagnostic
     if (_format) headers["X-Format"] = String(_format);
-    const cacheStatus = (metadata as unknown as { cacheStatus?: unknown }).cacheStatus;
+    const cacheStatus = (metadata as unknown as { cacheStatus?: unknown })
+      .cacheStatus;
     console.log("[ResponseFormatter] Cache status metadata:", {
       cacheStatus,
       cached: metadata.cached,
     });
-    if (cacheStatus !== undefined) headers["X-Cache-Status"] = String(cacheStatus);
+    if (cacheStatus !== undefined)
+      headers["X-Cache-Status"] = String(cacheStatus);
     else if (metadata.cached !== undefined)
       headers["X-Cache-Status"] = String(metadata.cached ? "hit" : "miss");
 
@@ -130,7 +132,8 @@ export class ResponseFormatter {
       }
 
       // Add detailed trace info
-      const xray: any = (metadata as unknown as { xrayTrace?: unknown }).xrayTrace;
+      const xray: any = (metadata as unknown as { xrayTrace?: unknown })
+        .xrayTrace;
       if (xray?.totalDuration !== undefined)
         headers["X-Xray-Total-Duration"] = String(`${xray.totalDuration}ms`);
       if (xray?.cacheStats) {
@@ -172,7 +175,7 @@ export class ResponseFormatter {
   private formatTextResponse(
     data: any,
     headers: Record<string, string>,
-    params: ParsedParams
+    params: ParsedParams,
   ): FormattedResponse {
     // Build the markdown body first, then strip MD markers for a nearly identical text output
     const md = this.formatMarkdownResponse(data, { ...headers }, params).body;
@@ -187,12 +190,17 @@ export class ResponseFormatter {
   private formatMarkdownResponse(
     data: any,
     headers: Record<string, string>,
-    params: ParsedParams
+    params: ParsedParams,
   ): FormattedResponse {
     let body = "";
 
     // Handle clean array of scripture objects
-    if (Array.isArray(data) && data.length > 0 && data[0].text && data[0].resource) {
+    if (
+      Array.isArray(data) &&
+      data.length > 0 &&
+      data[0].text &&
+      data[0].resource
+    ) {
       const displayReference = params.reference || data[0].reference;
       body = `# ${displayReference}\n\n\n`;
 
@@ -202,18 +210,26 @@ export class ResponseFormatter {
         const resource = scripture.resource;
 
         // Check if we have multiple verses or long passages
-        const hasVerseNumbers = scripture.text.includes("\n") && scripture.text.match(/^\d+\.\s/m);
-        const isLongPassage = scripture.text.includes("## Chapter") || scripture.text.length > 500;
+        const hasVerseNumbers =
+          scripture.text.includes("\n") && scripture.text.match(/^\d+\.\s/m);
+        const isLongPassage =
+          scripture.text.includes("## Chapter") || scripture.text.length > 500;
 
         if (isLongPassage) {
           body += `## ${resource}\n\n`;
           body += `*${displayReference} · ${scripture.organization}*\n\n`;
-          const displayText = String(scripture.text || "").replace(/^(\d+)\.\s/gm, "$1 ");
+          const displayText = String(scripture.text || "").replace(
+            /^(\d+)\.\s/gm,
+            "$1 ",
+          );
           body += `${displayText}\n\n`;
         } else if (hasVerseNumbers) {
           body += `${scripture.text}\n\n`;
         } else {
-          const displayText2 = String(scripture.text || "").replace(/^(\d+)\.\s/gm, "$1 ");
+          const displayText2 = String(scripture.text || "").replace(
+            /^(\d+)\.\s/gm,
+            "$1 ",
+          );
           body += `> ${displayText2}\n\n`;
         }
 
@@ -228,7 +244,8 @@ export class ResponseFormatter {
       const resourceList = data.map((s: any) => s.resource).join(",");
       headers["X-Resources"] = resourceList;
       headers["X-Language"] = data[0].language || params.language || "";
-      headers["X-Organization"] = data[0].organization || params.organization || "unfoldingWord";
+      headers["X-Organization"] =
+        data[0].organization || params.organization || "unfoldingWord";
     }
     // Handle scripture endpoint with multiple resources (legacy format)
     else if (data.scripture && data.resources) {
@@ -244,25 +261,35 @@ export class ResponseFormatter {
         const res = data.resources[i];
         const resource = res.resource || res.translation;
         // If translation already includes version suffix, prefer that
-        const inlineVersionMatch = String(res.translation || "").match(/\b(v\d+)\b/i);
+        const inlineVersionMatch = String(res.translation || "").match(
+          /\b(v\d+)\b/i,
+        );
         const version = inlineVersionMatch?.[1] || versionMap[resource] || "";
 
         // Check if we have multiple verses or long passages
-        const hasVerseNumbers = res.text.includes("\n") && res.text.match(/^\d+\.\s/m);
-        const isLongPassage = res.text.includes("## Chapter") || res.text.length > 500;
+        const hasVerseNumbers =
+          res.text.includes("\n") && res.text.match(/^\d+\.\s/m);
+        const isLongPassage =
+          res.text.includes("## Chapter") || res.text.length > 500;
 
         if (isLongPassage) {
           // For long passages, add resource section header and citation upfront
           body += `## ${resource} ${version}\n\n`;
           body += `*${displayReference} · ${params.organization || "unfoldingWord"}*\n\n`;
-          const displayText = String(res.text || "").replace(/^(\d+)\.\s/gm, "$1 ");
+          const displayText = String(res.text || "").replace(
+            /^(\d+)\.\s/gm,
+            "$1 ",
+          );
           body += `${displayText}\n\n`;
         } else if (hasVerseNumbers) {
           // For multi-verse, use regular text with verse numbers
           body += `${res.text}\n\n`;
         } else {
           // For single verse, use blockquote
-          const displayText2 = String(res.text || "").replace(/^(\d+)\.\s/gm, "$1 ");
+          const displayText2 = String(res.text || "").replace(
+            /^(\d+)\.\s/gm,
+            "$1 ",
+          );
           body += `> ${displayText2}\n\n`;
         }
 
@@ -276,7 +303,9 @@ export class ResponseFormatter {
       }
 
       // Add metadata headers
-      const resourceList = data.resources.map((r: any) => r.resource || r.translation).join(",");
+      const resourceList = data.resources
+        .map((r: any) => r.resource || r.translation)
+        .join(",");
       headers["X-Resources"] = resourceList;
       headers["X-Language"] = data.scripture.language || params.language || "";
       headers["X-Organization"] = params.organization || "unfoldingWord";
@@ -369,10 +398,15 @@ export class ResponseFormatter {
   private formatJsonResponse(
     data: any,
     headers: Record<string, string>,
-    metadata: FormatMetadata
+    metadata: FormatMetadata,
   ): FormattedResponse {
     // If the data is already a clean array of scriptures, return it directly
-    if (Array.isArray(data) && data.length > 0 && data[0].text && data[0].resource) {
+    if (
+      Array.isArray(data) &&
+      data.length > 0 &&
+      data[0].text &&
+      data[0].resource
+    ) {
       return {
         body: JSON.stringify(data),
         headers: {
@@ -407,7 +441,8 @@ export class ResponseFormatter {
       ...(scriptures.length > 0 ? { scriptures } : {}),
       _metadata: {
         responseTime: metadata.responseTime || 0,
-        cacheStatus: metadata.cached ? "hit" : "miss",
+        cacheStatus:
+          metadata.dataCacheStatus || (metadata.cached ? "hit" : "miss"),
         success: true,
         status: 200,
         timestamp: new Date().toISOString(),

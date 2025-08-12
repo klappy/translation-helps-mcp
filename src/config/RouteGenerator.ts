@@ -13,7 +13,10 @@ import type {
 } from "../functions/platform-adapter.js";
 import { parseReference } from "../functions/reference-parser.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
-import { ResponseFormatter, type FormatMetadata } from "../services/ResponseFormatter.js";
+import {
+  ResponseFormatter,
+  type FormatMetadata,
+} from "../services/ResponseFormatter.js";
 import { logger } from "../utils/logger.js";
 import type {
   DataSourceConfig,
@@ -196,7 +199,7 @@ export class RouteGenerationError extends Error {
   constructor(
     message: string,
     public endpointName: string,
-    public field?: string
+    public field?: string,
   ) {
     super(message);
     this.name = "RouteGenerationError";
@@ -226,16 +229,21 @@ export class RouteGenerator {
 
     // Generate the handler function
     const handler: PlatformHandler = async (
-      request: PlatformRequest
+      request: PlatformRequest,
     ): Promise<PlatformResponse> => {
       const startTime =
-        typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
       const traceId = `${config.name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       try {
         // Enable DCS tracing for API endpoints
         if (config.dataSource.type === "dcs-api") {
-          this.dcsClient.enableTracing(traceId, `/api/${config.path.replace(/^\//, "")}`);
+          this.dcsClient.enableTracing(
+            traceId,
+            `/api/${config.path.replace(/^\//, "")}`,
+          );
         }
 
         // Handle CORS preflight
@@ -252,7 +260,7 @@ export class RouteGenerator {
             400,
             "Parameter validation failed",
             { errors: validationErrors },
-            startTime
+            startTime,
           );
         }
 
@@ -260,7 +268,7 @@ export class RouteGenerator {
         // The dataCacheStatus below tracks whether underlying data sources (catalog/ZIP) were cached
         const cacheKey = this.generateCacheKey(config.name, params);
         // CRITICAL: This tracks data source caching, NOT response caching
-        const dataCacheStatus: string = "miss";
+        let dataCacheStatus: string = "miss";
 
         const bypassOptions = {
           queryParams: request.queryStringParameters,
@@ -268,7 +276,8 @@ export class RouteGenerator {
         } as const;
 
         // Do not cache transformed responses. Only deduplicate in-flight requests if needed.
-        const responseData = await this.fetchData(config, params, request);
+        const { data: responseData, cacheStatus: computedCacheStatus } =
+          await this.fetchData(config, params, request);
         // If downstream formatted an error object with explicit status, honor it here
         if (
           responseData &&
@@ -281,7 +290,9 @@ export class RouteGenerator {
           // @ts-expect-error delete runtime field
           delete (responseData as any).__httpStatus;
           const endNow =
-            typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            typeof performance !== "undefined" && performance.now
+              ? performance.now()
+              : Date.now();
           const responseTime = Math.max(1, Math.round(endNow - startTime));
           // Return the error payload directly with proper status and headers
           const errorPayload = {
@@ -305,13 +316,15 @@ export class RouteGenerator {
         const transformedData = await this.applyTransformations(
           responseData,
           config.dataSource.transformation,
-          params
+          params,
         );
         const cacheStatus = "bypass";
 
         // Build response
         const endNow =
-          typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+          typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now();
         const responseTime = Math.max(1, Math.round(endNow - startTime));
 
         // Determine format
@@ -330,19 +343,23 @@ export class RouteGenerator {
           {
             responseTime: Math.max(
               responseTime,
-              typeof (request as unknown as { __cacheDecodeMs?: number }).__cacheDecodeMs ===
-                "number"
-                ? (request as unknown as { __cacheDecodeMs?: number }).__cacheDecodeMs!
-                : responseTime
+              typeof (request as unknown as { __cacheDecodeMs?: number })
+                .__cacheDecodeMs === "number"
+                ? (request as unknown as { __cacheDecodeMs?: number })
+                    .__cacheDecodeMs!
+                : responseTime,
             ),
-            dataCacheStatus: this.lastComputedCacheStatus || dataCacheStatus,
+            dataCacheStatus:
+              computedCacheStatus ||
+              this.lastComputedCacheStatus ||
+              dataCacheStatus,
             success: true,
             status: 200,
             traceId,
             endpointName: config.name,
             xrayTrace: this.cachedZipFetcher?.getTrace?.(),
           },
-          params
+          params,
         );
 
         // Complete monitoring - fixed
@@ -369,7 +386,9 @@ export class RouteGenerator {
         };
       } catch (error) {
         const endNowErr =
-          typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+          typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now();
         const responseTime = Math.max(1, Math.round(endNowErr - startTime));
 
         // Complete monitoring with error - fixed
@@ -401,7 +420,7 @@ export class RouteGenerator {
             status,
             error instanceof Error ? error.message : String(error),
             { endpoint: config.name, traceId },
-            responseTime
+            responseTime,
           );
         }
         return this.generateErrorResponse(
@@ -412,7 +431,7 @@ export class RouteGenerator {
             endpoint: config.name,
             traceId,
           },
-          responseTime
+          responseTime,
         );
       }
     };
@@ -429,34 +448,48 @@ export class RouteGenerator {
    */
   private validateConfig(config: EndpointConfig): void {
     if (!config.name) {
-      throw new RouteGenerationError("Endpoint name is required", "unknown", "name");
+      throw new RouteGenerationError(
+        "Endpoint name is required",
+        "unknown",
+        "name",
+      );
     }
 
     if (!config.path) {
-      throw new RouteGenerationError("Endpoint path is required", config.name, "path");
+      throw new RouteGenerationError(
+        "Endpoint path is required",
+        config.name,
+        "path",
+      );
     }
 
     if (!config.dataSource) {
       throw new RouteGenerationError(
         "Data source configuration is required",
         config.name,
-        "dataSource"
+        "dataSource",
       );
     }
 
-    if (config.dataSource.type === "dcs-api" && !config.dataSource.dcsEndpoint) {
+    if (
+      config.dataSource.type === "dcs-api" &&
+      !config.dataSource.dcsEndpoint
+    ) {
       throw new RouteGenerationError(
         "DCS endpoint is required for dcs-api data sources",
         config.name,
-        "dataSource.dcsEndpoint"
+        "dataSource.dcsEndpoint",
       );
     }
     // zip-cached requires zipConfig
-    if (config.dataSource.type === "zip-cached" && !config.dataSource.zipConfig) {
+    if (
+      config.dataSource.type === "zip-cached" &&
+      !config.dataSource.zipConfig
+    ) {
       throw new RouteGenerationError(
         "zipConfig is required for zip-cached data sources",
         config.name,
-        "dataSource.zipConfig"
+        "dataSource.zipConfig",
       );
     }
   }
@@ -466,12 +499,13 @@ export class RouteGenerator {
    */
   private parseParameters(
     request: PlatformRequest,
-    paramConfigs: Record<string, ParamConfig>
+    paramConfigs: Record<string, ParamConfig>,
   ): ParsedParams {
     const params: ParsedParams = {};
 
     // Handle both GET query parameters and POST body parameters
-    let sourceParams: Record<string, string | undefined> = request.queryStringParameters;
+    let sourceParams: Record<string, string | undefined> =
+      request.queryStringParameters;
 
     if (request.method === "POST" && request.body) {
       try {
@@ -529,7 +563,7 @@ export class RouteGenerator {
    */
   private validateParameters(
     params: ParsedParams,
-    paramConfigs: Record<string, ParamConfig>
+    paramConfigs: Record<string, ParamConfig>,
   ): string[] {
     const errors: string[] = [];
 
@@ -546,7 +580,10 @@ export class RouteGenerator {
       }
 
       // Check required parameters
-      if (paramConfig.required && (value === undefined || value === null || value === "")) {
+      if (
+        paramConfig.required &&
+        (value === undefined || value === null || value === "")
+      ) {
         errors.push(`Missing required parameter: ${paramName}`);
         continue;
       }
@@ -563,22 +600,37 @@ export class RouteGenerator {
             errors.push(`Parameter ${paramName} must be a string`);
           } else {
             // Pattern validation
-            if (paramConfig.pattern && !new RegExp(paramConfig.pattern).test(value)) {
-              errors.push(`Parameter ${paramName} does not match required pattern`);
+            if (
+              paramConfig.pattern &&
+              !new RegExp(paramConfig.pattern).test(value)
+            ) {
+              errors.push(
+                `Parameter ${paramName} does not match required pattern`,
+              );
             }
 
             // Length validation
-            if (paramConfig.min !== undefined && value.length < paramConfig.min) {
-              errors.push(`Parameter ${paramName} must be at least ${paramConfig.min} characters`);
+            if (
+              paramConfig.min !== undefined &&
+              value.length < paramConfig.min
+            ) {
+              errors.push(
+                `Parameter ${paramName} must be at least ${paramConfig.min} characters`,
+              );
             }
-            if (paramConfig.max !== undefined && value.length > paramConfig.max) {
-              errors.push(`Parameter ${paramName} must be at most ${paramConfig.max} characters`);
+            if (
+              paramConfig.max !== undefined &&
+              value.length > paramConfig.max
+            ) {
+              errors.push(
+                `Parameter ${paramName} must be at most ${paramConfig.max} characters`,
+              );
             }
 
             // Options validation
             if (paramConfig.options && !paramConfig.options.includes(value)) {
               errors.push(
-                `Parameter ${paramName} must be one of: ${paramConfig.options.join(", ")}`
+                `Parameter ${paramName} must be one of: ${paramConfig.options.join(", ")}`,
               );
             }
           }
@@ -589,10 +641,14 @@ export class RouteGenerator {
             errors.push(`Parameter ${paramName} must be a valid number`);
           } else {
             if (paramConfig.min !== undefined && value < paramConfig.min) {
-              errors.push(`Parameter ${paramName} must be at least ${paramConfig.min}`);
+              errors.push(
+                `Parameter ${paramName} must be at least ${paramConfig.min}`,
+              );
             }
             if (paramConfig.max !== undefined && value > paramConfig.max) {
-              errors.push(`Parameter ${paramName} must be at most ${paramConfig.max}`);
+              errors.push(
+                `Parameter ${paramName} must be at most ${paramConfig.max}`,
+              );
             }
           }
           break;
@@ -632,11 +688,12 @@ export class RouteGenerator {
   private async fetchData(
     config: EndpointConfig,
     params: ParsedParams,
-    request?: PlatformRequest
-  ): Promise<unknown> {
+    request?: PlatformRequest,
+  ): Promise<{ data: unknown; cacheStatus: string }> {
     switch (config.dataSource.type) {
       case "dcs-api": {
-        return this.fetchFromDCS(config.dataSource, params);
+        const data = await this.fetchFromDCS(config.dataSource, params);
+        return { data, cacheStatus: "miss" };
       }
 
       case "computed": {
@@ -657,7 +714,9 @@ export class RouteGenerator {
       }
 
       default: {
-        throw new Error(`Unsupported data source type: ${config.dataSource.type}`);
+        throw new Error(
+          `Unsupported data source type: ${config.dataSource.type}`,
+        );
       }
     }
   }
@@ -665,7 +724,10 @@ export class RouteGenerator {
   /**
    * Fetch data from DCS API
    */
-  private async fetchFromDCS(dataSource: DataSourceConfig, params: ParsedParams): Promise<unknown> {
+  private async fetchFromDCS(
+    dataSource: DataSourceConfig,
+    params: ParsedParams,
+  ): Promise<unknown> {
     if (!dataSource.dcsEndpoint) {
       throw new Error("DCS endpoint is required for dcs-api data sources");
     }
@@ -679,7 +741,8 @@ export class RouteGenerator {
       const parsed = parseReference(params.reference);
       if (parsed.isValid && parsed.book && parsed.chapter) {
         // Convert book name to DCS code
-        const bookCode = BOOK_CODE_MAP[parsed.book] || parsed.book.toUpperCase();
+        const bookCode =
+          BOOK_CODE_MAP[parsed.book] || parsed.book.toUpperCase();
         expandedParams.book = bookCode;
         expandedParams.bookNumber = BOOK_NUMBER_MAP[bookCode] || "01";
         expandedParams.chapter = parsed.chapter.toString();
@@ -690,7 +753,9 @@ export class RouteGenerator {
     const resourceParam = expandedParams.resource as string;
     if (resourceParam === "all" || resourceParam?.includes(",")) {
       const resources =
-        resourceParam === "all" ? ["ult", "ust"] : resourceParam.split(",").map((r) => r.trim());
+        resourceParam === "all"
+          ? ["ult", "ust"]
+          : resourceParam.split(",").map((r) => r.trim());
 
       const results = [];
       for (const resource of resources) {
@@ -699,12 +764,16 @@ export class RouteGenerator {
 
         for (const [key, value] of Object.entries(resourceParams)) {
           if (value !== undefined) {
-            resourceEndpoint = resourceEndpoint.replace(`{${key}}`, String(value));
+            resourceEndpoint = resourceEndpoint.replace(
+              `{${key}}`,
+              String(value),
+            );
           }
         }
 
         try {
-          const resourceResponse = await this.dcsClient.fetchResource(resourceEndpoint);
+          const resourceResponse =
+            await this.dcsClient.fetchResource(resourceEndpoint);
           results.push({
             resource,
             ...resourceResponse,
@@ -755,18 +824,20 @@ export class RouteGenerator {
     config: EndpointConfig,
     params: ParsedParams,
     dcsData?: unknown,
-    request?: PlatformRequest
-  ): Promise<unknown> {
+    request?: PlatformRequest,
+  ): Promise<{ data: unknown; cacheStatus: string }> {
     // Handle hybrid endpoints that have DCS data
     if (dcsData && config.dataSource.type === "hybrid") {
       // For now, just return the DCS data
       // In the future, we can add custom transformations here
-      return dcsData;
+      return { data: dcsData, cacheStatus: "miss" };
     }
 
     // Import the functional data fetcher dynamically to avoid circular dependencies
     const { createDataFetcher } = await import("./functionalDataFetchers.js");
-    const { ZipResourceFetcher2 } = await import("../services/ZipResourceFetcher2.js");
+    const { ZipResourceFetcher2 } = await import(
+      "../services/ZipResourceFetcher2.js"
+    );
     const { EdgeXRayTracer } = await import("../functions/edge-xray.js");
     const { DCSApiClient } = await import("../services/DCSApiClient.js");
 
@@ -842,7 +913,7 @@ export class RouteGenerator {
           fetchMethod,
           resourceType,
           useIngredients: fetchMethod !== "getScripture",
-          zipCacheTtl: 7200,
+          zipCacheTtl: 2592000, // 30 days for immutable Git releases
         },
       };
 
@@ -879,25 +950,34 @@ export class RouteGenerator {
             ).apiCalls || [];
           // If no apiCalls or all are internal, it's a cache hit
           const hasExternalCalls =
-            Array.isArray(calls) && calls.some((c) => !c.url.startsWith("internal://"));
+            Array.isArray(calls) &&
+            calls.some((c) => !c.url.startsWith("internal://"));
           const hasInternalHits =
             Array.isArray(calls) &&
             calls.some(
               (c) =>
                 c.cached &&
-                (c.url.startsWith("internal://kv/") || c.url.startsWith("internal://memory/"))
+                (c.url.startsWith("internal://kv/") ||
+                  c.url.startsWith("internal://memory/")),
             );
           // Calculate rich cache status
           const totalCalls = calls.length;
           const cachedCalls = calls.filter((c) => c.cached).length;
-          const catalogCalls = calls.filter((c) => c.url.includes("/catalog"));
+          const catalogCalls = calls.filter(
+            (c) => c.url.includes("catalog:") || c.url.includes("/catalog"),
+          );
           const catalogHits = catalogCalls.filter((c) => c.cached).length;
-          const zipCalls = calls.filter((c) => c.url.includes(".zip"));
+          const zipCalls = calls.filter(
+            (c) => c.url.includes("zipfile:") || c.url.includes(".zip"),
+          );
           const zipHits = zipCalls.filter((c) => c.cached).length;
-          const fileCalls = calls.filter((c) => c.url.includes("/file"));
+          const fileCalls = calls.filter(
+            (c) => c.url.includes("/file") || c.url.includes("zipfile:"),
+          );
           const fileHits = fileCalls.filter((c) => c.cached).length;
 
           // Determine cache status with nuance
+          let dataCacheStatus: string;
           if (cachedCalls === 0) {
             dataCacheStatus = "miss";
           } else if (cachedCalls === totalCalls) {
@@ -919,6 +999,7 @@ export class RouteGenerator {
 
           // Store for use in formatResponse
           this.lastComputedCacheStatus = dataCacheStatus;
+          computedCacheStatus = dataCacheStatus;
 
           const hit = cachedCalls > 0 && !hasExternalCalls;
 
@@ -926,33 +1007,42 @@ export class RouteGenerator {
           // This ensures headers get the correct cache status even for clean array responses
 
           if ("metadata" in result) {
-            (result as { metadata: Record<string, unknown> }).metadata.cached = hit;
+            (result as { metadata: Record<string, unknown> }).metadata.cached =
+              hit;
           }
           if ("_metadata" in result) {
-            const metadata = (result as { _metadata: Record<string, unknown> })._metadata;
+            const metadata = (result as { _metadata: Record<string, unknown> })
+              ._metadata;
             // Be explicit about what was cached - data sources, NOT responses
             metadata.dataCacheStatus = dataCacheStatus;
             metadata.dataSourcesCached = {
-              catalog: catalogHits > 0 ? `${catalogHits}/${catalogCalls.length}` : false,
+              catalog:
+                catalogHits > 0
+                  ? `${catalogHits}/${catalogCalls.length}`
+                  : false,
               zip: zipHits > 0 ? `${zipHits}/${zipCalls.length}` : false,
               files: fileHits > 0 ? `${fileHits}/${fileCalls.length}` : false,
               summary: `${cachedCalls}/${totalCalls} cached`,
             };
             // CRITICAL: Responses are NEVER cached
             metadata.responseCached = false;
-            metadata.cacheNote = "Only data sources (catalog/ZIP) are cached, never responses";
+            metadata.cacheNote =
+              "Only data sources (catalog/ZIP) are cached, never responses";
           }
         }
       } catch {
         // ignore xray enrichment
       }
 
-      return result;
+      return { data: result, cacheStatus: this.lastComputedCacheStatus };
     }
 
     // For other endpoints that use the functional data fetcher
     // (including zip-cached), just pass through to the fetcher
     const result = await fetcher(dataSourceConfig, params, context);
+
+    // Default cache status for non-ZIP endpoints
+    let computedCacheStatus = "miss";
 
     // Attach X-Ray trace for all endpoints that use ZIP
     if (dataSourceConfig.type === "zip-cached") {
@@ -968,25 +1058,34 @@ export class RouteGenerator {
               }
             ).apiCalls || [];
           const hasExternalCalls =
-            Array.isArray(calls) && calls.some((c) => !c.url.startsWith("internal://"));
+            Array.isArray(calls) &&
+            calls.some((c) => !c.url.startsWith("internal://"));
           const hasInternalHits =
             Array.isArray(calls) &&
             calls.some(
               (c) =>
                 c.cached &&
-                (c.url.startsWith("internal://kv/") || c.url.startsWith("internal://memory/"))
+                (c.url.startsWith("internal://kv/") ||
+                  c.url.startsWith("internal://memory/")),
             );
           // Calculate rich cache status
           const totalCalls = calls.length;
           const cachedCalls = calls.filter((c) => c.cached).length;
-          const catalogCalls = calls.filter((c) => c.url.includes("/catalog"));
+          const catalogCalls = calls.filter(
+            (c) => c.url.includes("catalog:") || c.url.includes("/catalog"),
+          );
           const catalogHits = catalogCalls.filter((c) => c.cached).length;
-          const zipCalls = calls.filter((c) => c.url.includes(".zip"));
+          const zipCalls = calls.filter(
+            (c) => c.url.includes("zipfile:") || c.url.includes(".zip"),
+          );
           const zipHits = zipCalls.filter((c) => c.cached).length;
-          const fileCalls = calls.filter((c) => c.url.includes("/file"));
+          const fileCalls = calls.filter(
+            (c) => c.url.includes("/file") || c.url.includes("zipfile:"),
+          );
           const fileHits = fileCalls.filter((c) => c.cached).length;
 
           // Determine cache status with nuance
+          let dataCacheStatus: string;
           if (cachedCalls === 0) {
             dataCacheStatus = "miss";
           } else if (cachedCalls === totalCalls) {
@@ -1008,25 +1107,32 @@ export class RouteGenerator {
 
           // Store for use in formatResponse
           this.lastComputedCacheStatus = dataCacheStatus;
+          computedCacheStatus = dataCacheStatus;
 
           const hit = cachedCalls > 0 && !hasExternalCalls;
 
           if ("metadata" in result) {
-            (result as { metadata: Record<string, unknown> }).metadata.cached = hit;
+            (result as { metadata: Record<string, unknown> }).metadata.cached =
+              hit;
           }
           if ("_metadata" in result) {
-            const metadata = (result as { _metadata: Record<string, unknown> })._metadata;
+            const metadata = (result as { _metadata: Record<string, unknown> })
+              ._metadata;
             // Be explicit about what was cached - data sources, NOT responses
             metadata.dataCacheStatus = dataCacheStatus;
             metadata.dataSourcesCached = {
-              catalog: catalogHits > 0 ? `${catalogHits}/${catalogCalls.length}` : false,
+              catalog:
+                catalogHits > 0
+                  ? `${catalogHits}/${catalogCalls.length}`
+                  : false,
               zip: zipHits > 0 ? `${zipHits}/${zipCalls.length}` : false,
               files: fileHits > 0 ? `${fileHits}/${fileCalls.length}` : false,
               summary: `${cachedCalls}/${totalCalls} cached`,
             };
             // CRITICAL: Responses are NEVER cached
             metadata.responseCached = false;
-            metadata.cacheNote = "Only data sources (catalog/ZIP) are cached, never responses";
+            metadata.cacheNote =
+              "Only data sources (catalog/ZIP) are cached, never responses";
           }
         }
       } catch {
@@ -1043,7 +1149,7 @@ export class RouteGenerator {
   private async applyTransformations(
     data: unknown,
     transformation: TransformationType | undefined,
-    params: ParsedParams
+    params: ParsedParams,
   ): Promise<unknown> {
     if (!transformation) {
       return data;
@@ -1115,7 +1221,11 @@ export class RouteGenerator {
       const quoteIdx = headers.indexOf("Quote");
       const occurrenceIdx = headers.indexOf("Occurrence");
       const noteIdx = headers.indexOf("Note");
-      const isTNShape = referenceIdx === 0 && quoteIdx >= 0 && occurrenceIdx >= 0 && noteIdx >= 0;
+      const isTNShape =
+        referenceIdx === 0 &&
+        quoteIdx >= 0 &&
+        occurrenceIdx >= 0 &&
+        noteIdx >= 0;
       const looksShort = values.length === headers.length - 1;
       const refVal = values[referenceIdx] || "";
       if (isTNShape && looksShort && /intro/.test(refVal)) {
@@ -1187,7 +1297,7 @@ export class RouteGenerator {
       status: number;
       traceId: string;
       endpointName: string;
-    }
+    },
   ): unknown {
     const base: Record<string, unknown> = {};
     if (data && typeof data === "object") {
@@ -1225,7 +1335,7 @@ export class RouteGenerator {
     statusCode: number,
     message: string,
     details?: unknown,
-    responseTime?: number
+    responseTime?: number,
   ): PlatformResponse {
     const response = {
       error: message,
@@ -1248,7 +1358,9 @@ export class RouteGenerator {
   /**
    * Generate standard headers
    */
-  private generateHeaders(contentType: string = "application/json"): Record<string, string> {
+  private generateHeaders(
+    contentType: string = "application/json",
+  ): Record<string, string> {
     // Add charset=utf-8 if not already present
     const finalContentType = contentType.includes("charset")
       ? contentType
@@ -1274,17 +1386,26 @@ export class RouteGenerator {
   /**
    * Determine response format based on request
    */
-  private determineResponseFormat(params: ParsedParams, request: PlatformRequest): string {
+  private determineResponseFormat(
+    params: ParsedParams,
+    request: PlatformRequest,
+  ): string {
     // Priority 1: Explicit format parameter (overrides everything)
     if (
       params.format &&
-      ["json", "text", "md", "markdown", "usfm"].includes(params.format as string)
+      ["json", "text", "md", "markdown", "usfm"].includes(
+        params.format as string,
+      )
     ) {
       return params.format === "markdown" ? "md" : (params.format as string);
     }
 
     // Priority 2: Accept header only when it explicitly asks for JSON
-    const accept = (request.headers?.accept || request.headers?.Accept || "").toLowerCase();
+    const accept = (
+      request.headers?.accept ||
+      request.headers?.Accept ||
+      ""
+    ).toLowerCase();
     if (accept.includes("application/json")) return "json";
     if (accept.includes("text/markdown")) return "md";
     if (accept.includes("text/plain")) {
@@ -1305,14 +1426,14 @@ export class RouteGenerator {
     format: string,
     metadata: {
       responseTime: number;
-      dataCacheStatus: "hit" | "miss" | "bypass";
+      dataCacheStatus: string;
       success: boolean;
       status: number;
       traceId: string;
       endpointName: string;
       xrayTrace?: unknown;
     },
-    params: ParsedParams
+    params: ParsedParams,
   ): { body: string; headers: Record<string, string> } {
     // Delegate to ResponseFormatter service
     const formatMetadata: FormatMetadata = {
@@ -1324,11 +1445,20 @@ export class RouteGenerator {
       endpoint: metadata.endpointName,
     };
 
-    const formatted = this.responseFormatter.format(data, format, params, formatMetadata);
+    const formatted = this.responseFormatter.format(
+      data,
+      format,
+      params,
+      formatMetadata,
+    );
 
     // Merge with any additional headers we need
     const headers = this.generateHeaders(
-      format === "json" ? "application/json" : format === "md" ? "text/markdown" : "text/plain"
+      format === "json"
+        ? "application/json"
+        : format === "md"
+          ? "text/markdown"
+          : "text/plain",
     );
 
     // Merge formatted headers
@@ -1346,7 +1476,7 @@ export class RouteGenerator {
   private formatTextResponse(
     data: unknown,
     headers: Record<string, string>,
-    params: ParsedParams
+    params: ParsedParams,
   ): { body: string; headers: Record<string, string> } {
     // Delegating to ResponseFormatter - keeping method signature for compatibility
     const result = this.responseFormatter.format(data, "text", params, {});
@@ -1360,7 +1490,7 @@ export class RouteGenerator {
   private formatMarkdownResponse(
     data: unknown,
     headers: Record<string, string>,
-    params: ParsedParams
+    params: ParsedParams,
   ): { body: string; headers: Record<string, string> } {
     // Delegating to ResponseFormatter - keeping method signature for compatibility
     const result = this.responseFormatter.format(data, "md", params, {});
@@ -1519,7 +1649,8 @@ export class RouteGenerator {
 export const routeGenerator = new RouteGenerator();
 
 // Export utility functions
-export const generateHandler = (config: EndpointConfig) => routeGenerator.generateHandler(config);
+export const generateHandler = (config: EndpointConfig) =>
+  routeGenerator.generateHandler(config);
 
 // Export the TSV parsing function for use elsewhere
 export function parseTSV(tsvData: string): Array<Record<string, string>> {

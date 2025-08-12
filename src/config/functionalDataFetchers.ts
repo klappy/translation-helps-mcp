@@ -351,13 +351,15 @@ export const createZIPFetcher = (
         }
 
         // Return clean array of scripture objects as per design
-        return normalized.map(scripture => ({
+        return normalized.map((scripture) => ({
           text: scripture.text,
           reference: referenceStr,
           resource: scripture.resource,
           language: String(params.language || "en"),
           citation: `${referenceStr} (${scripture.resource})`,
-          organization: scripture.actualOrganization || String(params.organization || "unfoldingWord"),
+          organization:
+            scripture.actualOrganization ||
+            String(params.organization || "unfoldingWord"),
         }));
       }
 
