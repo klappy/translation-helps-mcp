@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.5.0](https://github.com/klappy/translation-helps-mcp/compare/v5.4.0...v5.5.0) (2025-08-12)
+
+### 🚀 Developer Experience Revolution
+
+This release transforms the developer experience with powerful new tools and a simplified testing philosophy.
+
+### What's New
+
+#### API Explorer
+
+- **Visual API Testing** - Interactive web interface at `/api-explorer`
+- **Real-time Testing** - Execute requests and see responses instantly
+- **cURL Generation** - Copy commands for automation
+- **Parameter Documentation** - Visual guide for all endpoint parameters
+
+#### Endpoint Generator
+
+- **Instant Endpoint Creation** - Run `npm run create-endpoint`
+- **Pattern Enforcement** - Automatically follows established patterns
+- **Test Generation** - Creates matching test files
+- **Interactive CLI** - Guided endpoint configuration
+
+#### Test Suite Revolution (80/20 Rule)
+
+- **70% Test Reduction** - Archived complex, over-engineered tests
+- **Simple Test Structure** - Focus on what matters to users
+- **Fast Execution** - All tests run in < 30 seconds
+- **Clear Organization** - unit/, integration/, contracts/
+
+### Developer Improvements
+
+- **API Explorer Guide** - Complete documentation for visual testing
+- **Simplified Test Patterns** - Examples that are easy to follow
+- **Clean Documentation** - Removed outdated and confusing guides
+- **Better Smoke Tests** - Updated for new response structures
+
+### Philosophy
+
+Following the 80/20 rule: Test the 20% of scenarios that cover 80% of real usage.
+No edge cases, no over-engineering, just practical tests that ensure our API works.
+
 ## [5.4.0](https://github.com/klappy/translation-helps-mcp/compare/v5.3.0...v5.4.0) (2025-08-12)
 
 ### 🎉 100% API Consistency Achieved!
