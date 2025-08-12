@@ -10,7 +10,7 @@
     { "type": "test", "hidden": false, "section": "Tests" }
   ],
   "scripts": {
-    "postbump": "npm run sync-version",
+    "postbump": "npm run sync-version && cp CHANGELOG.md ui/static/CHANGELOG.md",
     "posttag": "echo '🎉 Version bumped! Don't forget to push tags: git push --follow-tags'"
   },
   "skip": {
