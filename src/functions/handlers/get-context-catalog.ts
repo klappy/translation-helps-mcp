@@ -320,7 +320,7 @@ export const getContextHandler: PlatformHandler = async (
         // X-ray trace in headers only (never response body)
         ...(xrayTrace && {
           "X-Xray-Summary": `${xrayTrace.apiCalls?.length || 0} calls in ${xrayTrace.totalDuration || 0}ms`,
-          "X-Xray-Trace": btoa(JSON.stringify(xrayTrace))
+          "X-Xray-Trace": btoa(JSON.stringify(xrayTrace)),
         }),
       },
       body: JSON.stringify({

@@ -1,0 +1,63 @@
+# Endpoint Consistency & Metadata Standardization PRD
+
+## Project Overview
+Transform the translation-helps-mcp system from a collection of inconsistent endpoints into a unified, maintainable architecture that follows KISS and DRY principles. The fetch-scripture endpoint serves as the golden standard - all other endpoints must match its behavior, caching, metadata handling, and error management while preserving their unique business logic.
+
+## Problem Statement
+Currently, 7 endpoints use the modern configuration-based RouteGenerator system while 11 endpoints still use the old RequestHandler pattern. This creates:
+- Inconsistent metadata structures across endpoints
+- X-ray traces contaminating response bodies instead of staying in headers
+- Manual maintenance burden requiring hours of work to keep endpoints synchronized
+- Risk of regression when one endpoint is updated but others aren't
+- Violation of DRY principles with duplicated error handling and caching logic
+
+## Success Criteria
+1. All 18 endpoints use identical configuration patterns and RouteGenerator
+2. X-ray traces only appear in headers, never in response bodies
+3. Business metadata (source counts, coverage metrics) is standardized across endpoints
+4. Zero regression in fetch-scripture endpoint functionality
+5. Automated endpoint generation prevents future inconsistencies
+6. All original PRD tasks (AI chat interface, showcase experience) are completed
+
+## Technical Requirements
+
+### Phase 1: Stop the Bleeding (Week 1)
+- Remove xrayTrace contamination from all response bodies
+- Add lint rules to prevent future diagnostic data in responses
+- Preserve all existing business metadata functionality
+- Ensure fetch-scripture endpoint remains unchanged
+
+### Phase 2: Standardize Architecture (Week 2-3)
+- Migrate all 11 old endpoints to RouteGenerator system
+- Standardize business metadata interface across all endpoints
+- Create automated endpoint generation script
+- Implement comprehensive testing to prevent regression
+
+### Phase 3: Complete Original Vision (Week 4-5)
+- Implement AI Assistant Chat Interface (Task 9 from original PRD)
+- Create "Taste and See" showcase experience
+- Final testing and deployment
+- Documentation and user guides
+
+## Risk Mitigation
+- Incremental changes with production-ready commits after each phase
+- Comprehensive testing after each endpoint migration
+- Rollback strategy for each phase
+- Preserve fetch-scripture endpoint as immutable reference
+- Automated validation to prevent future inconsistencies
+
+## Deliverables
+1. 18 consistently architected endpoints
+2. Automated endpoint generation system
+3. Standardized business metadata interface
+4. AI chat interface for showcase
+5. Complete documentation and testing suite
+6. Zero regression in existing functionality
+
+## Success Metrics
+- All endpoints pass identical validation tests
+- X-ray traces only in headers, never in response bodies
+- Business metadata follows consistent patterns
+- Automated generation prevents future inconsistencies
+- Original PRD tasks completed
+- Zero production incidents during migration

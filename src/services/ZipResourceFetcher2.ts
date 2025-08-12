@@ -168,7 +168,19 @@ export class ZipResourceFetcher2 {
       let catalogData: { data?: CatalogResource[] } | null = null;
       const kvCatalogStart =
         typeof performance !== "undefined" ? performance.now() : Date.now();
-      const cachedCatalog = await this.kvCache.get(catalogCacheKey);
+
+      // Check if we should bypass cache
+      const forceRefresh =
+        this.requestHeaders?.["x-force-refresh"] === "true" ||
+        this.requestHeaders?.["X-Force-Refresh"] === "true";
+
+      if (forceRefresh) {
+        logger.info(`🚫 Force refresh requested - bypassing catalog cache`);
+      }
+
+      const cachedCatalog = !forceRefresh
+        ? await this.kvCache.get(catalogCacheKey)
+        : null;
       if (cachedCatalog) {
         try {
           const json =

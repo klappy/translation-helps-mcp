@@ -35,10 +35,10 @@ function buildResponse(
   tracer: EdgeXRayTracer | null,
   additionalMetadata: any = {},
   statusCode = 200,
-  contentType = "application/json"
+  contentType = "application/json",
 ) {
   const xrayData = getXRayData(tracer, additionalMetadata);
-  
+
   // Build response with business metadata only
   const responseBody = {
     success: true,
