@@ -11,6 +11,10 @@ import { EdgeXRayTracer, trackedFetch } from "../functions/edge-xray.js";
 import { getKVCache } from "../functions/kv-cache.js";
 import type { ParsedReference } from "../parsers/referenceParser.js";
 import { logger } from "../utils/logger.js";
+import {
+  createCacheValidator,
+  validateCacheableData,
+} from "../middleware/cacheValidator.js";
 
 interface CatalogResource {
   name: string;
@@ -33,11 +37,19 @@ export class ZipResourceFetcher2 {
   private tracer: EdgeXRayTracer;
   private kvCache = getKVCache();
   private requestHeaders?: Record<string, string>;
+  private cacheValidator: ReturnType<typeof createCacheValidator>;
   // Removed in-flight maps to simplify logic per KISS
 
   constructor(tracer?: EdgeXRayTracer) {
     this.tracer =
       tracer || new EdgeXRayTracer(`zip-${Date.now()}`, "ZipResourceFetcher2");
+
+    // Initialize cache validator
+    this.cacheValidator = createCacheValidator({
+      strict: false,
+      autoClean: false, // We handle empty resources ourselves
+      logLevel: "warn",
+    });
   }
 
   setRequestHeaders(headers: Record<string, string>): void {
@@ -691,8 +703,13 @@ export class ZipResourceFetcher2 {
         try {
           const parsed = JSON.parse(body) as { data?: CatalogResource[] };
           resources = parsed.data || [];
-          // Store in KV for reuse across endpoints - only cache non-empty results
-          if (resources.length > 0) {
+          // Store in KV for reuse across endpoints - only cache valid results
+          const validationResult = validateCacheableData(
+            parsed,
+            catalogCacheKey,
+          );
+
+          if (validationResult.cacheable) {
             await this.kvCache.set(
               catalogCacheKey,
               JSON.stringify(parsed),
@@ -700,7 +717,8 @@ export class ZipResourceFetcher2 {
             );
           } else {
             logger.warn(
-              `Empty TSV catalog response for ${catalogCacheKey}, not caching`,
+              `Invalid catalog response for ${catalogCacheKey}, not caching`,
+              { reason: validationResult.reason },
             );
           }
         } catch {
