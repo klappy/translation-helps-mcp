@@ -398,7 +398,7 @@ export class ResponseFormatter {
   private formatJsonResponse(
     data: any,
     headers: Record<string, string>,
-    metadata: FormatMetadata,
+    _metadata: FormatMetadata,
   ): FormattedResponse {
     // If the data is already a clean array of scriptures, return it directly
     if (
@@ -419,23 +419,12 @@ export class ResponseFormatter {
     // Removed scripture normalization logic since we no longer add scriptures field
     // The RouteGenerator now handles proper response shaping
 
-    // Build the complete response with metadata
+    // Build the clean response data (no diagnostic metadata in body!)
     const jsonData = {
       ...data,
-      // Don't add scriptures field - it creates duplicates
-      _metadata: {
-        responseTime: metadata.responseTime || 0,
-        cacheStatus:
-          metadata.dataCacheStatus || (metadata.cached ? "hit" : "miss"),
-        success: true,
-        status: 200,
-        timestamp: new Date().toISOString(),
-        traceId: metadata.traceId || "",
-        endpoint: metadata.endpoint || "",
-      },
     };
 
-    // Add hint for LLMs
+    // Add hint for LLMs if not already present
     if (!jsonData._hint) {
       jsonData._hint =
         "For LLM-optimized responses, add ?format=text or ?format=md to your request";

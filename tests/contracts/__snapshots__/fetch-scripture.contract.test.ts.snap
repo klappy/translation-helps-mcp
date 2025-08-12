@@ -10,8 +10,15 @@ exports[`fetch-scripture Contract Tests > Golden Reference Behavior > John 3:16 
       "language": "en",
       "organization": "unfoldingWord",
     },
-    "length": 4,
-    "type": "array",
+    "hasScripture": true,
+    "scriptureLength": 4,
+    "topLevelFields": {
+      "hasCitation": true,
+      "hasLanguage": true,
+      "hasMetadata": true,
+      "hasOrganization": true,
+    },
+    "type": "object",
   },
   "staticHeaders": {
     "cache-control": "no-store, no-cache, must-revalidate",
