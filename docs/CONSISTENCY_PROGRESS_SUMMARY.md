@@ -4,7 +4,7 @@
 
 We've made EXTRAORDINARY progress on our journey to make the system consistent, clean, simple, DRY, and antifragile!
 
-### Endpoints Migrated: 11 of 16 (69% Complete!)
+### Endpoints Migrated: 14 of 23 (61% Complete!)
 
 1. ✅ health
 2. ✅ languages
@@ -17,6 +17,9 @@ We've made EXTRAORDINARY progress on our journey to make the system consistent, 
 9. ✅ fetch-translation-words
 10. ✅ fetch-translation-academy
 11. ✅ fetch-translation-word-links
+12. ✅ browse-translation-words
+13. ✅ get-translation-word
+14. ✅ get-words-for-reference
 
 ### Code Quality Metrics
 
