@@ -289,7 +289,10 @@ export function parseReference(input: string): Reference | null {
 
   if (bookOnlyMatch) {
     const [, bookStr] = bookOnlyMatch;
-    const normalizedBook = bookStr.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
+    const normalizedBook = bookStr
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/\./g, "");
     const bookInfo = BOOK_MAPPINGS[normalizedBook];
 
     if (bookInfo) {
@@ -309,7 +312,10 @@ export function parseReference(input: string): Reference | null {
 
   if (chapterRangeMatch) {
     const [, bookStr, startChapterStr, endChapterStr] = chapterRangeMatch;
-    const normalizedBook = bookStr.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
+    const normalizedBook = bookStr
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/\./g, "");
     const bookInfo = BOOK_MAPPINGS[normalizedBook];
 
     if (bookInfo) {
@@ -336,7 +342,8 @@ export function parseReference(input: string): Reference | null {
 
   // Original regex for standard patterns
   // Supports: "John 3:16", "Jn 3:16-18", "Genesis 1", "1 Corinthians 13:4-7"
-  const referenceRegex = /^(\d?\s*\w+)[\s\.]*(\d+)(?:[:\.]\s*(\d+)(?:[-–—]\s*(\d+))?)?$/i;
+  const referenceRegex =
+    /^(\d?\s*\w+)[\s\.]*(\d+)(?:[:\.]\s*(\d+)(?:[-–—]\s*(\d+))?)?$/i;
 
   const match = cleanInput.match(referenceRegex);
   if (!match) return null;
@@ -344,7 +351,10 @@ export function parseReference(input: string): Reference | null {
   const [, bookStr, chapterStr, verseStr, verseEndStr] = match;
 
   // Normalize book name
-  const normalizedBook = bookStr.toLowerCase().replace(/\s+/g, "").replace(/\./g, "");
+  const normalizedBook = bookStr
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/\./g, "");
   const bookInfo = BOOK_MAPPINGS[normalizedBook];
 
   if (!bookInfo) return null;
@@ -394,7 +404,8 @@ export function extractReferences(text: string): Reference[] {
   const references: Reference[] = [];
 
   // Simple regex to find potential references
-  const referencePattern = /\b(\d?\s*\w+)\s+(\d+)(?:[:\.]\s*(\d+)(?:[-–—]\s*(\d+))?)?\b/gi;
+  const referencePattern =
+    /\b(\d?\s*\w+)\s+(\d+)(?:[:\.]\s*(\d+)(?:[-–—]\s*(\d+))?)?\b/gi;
 
   let match;
   while ((match = referencePattern.exec(text)) !== null) {
@@ -423,7 +434,10 @@ export function getSupportedBooks(): Array<{
   name: string;
   aliases: string[];
 }> {
-  const books = new Map<string, { code: string; name: string; aliases: string[] }>();
+  const books = new Map<
+    string,
+    { code: string; name: string; aliases: string[] }
+  >();
 
   for (const [alias, info] of Object.entries(BOOK_MAPPINGS)) {
     if (!books.has(info.code)) {

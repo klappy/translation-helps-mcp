@@ -7,13 +7,20 @@
  * GST = Gateway Simplified Text (Strategic Languages) - Meaning-centric translation
  */
 
-import { DEFAULT_STRATEGIC_LANGUAGE, Organization } from "../constants/terminology.js";
+import {
+  DEFAULT_STRATEGIC_LANGUAGE,
+  Organization,
+} from "../constants/terminology.js";
 import type { PlatformHandler } from "../functions/platform-adapter.js";
 import { unifiedCache } from "../functions/unified-cache.js";
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import type { XRayTrace } from "../types/dcs.js";
 import { logger } from "../utils/logger.js";
-import { ParsedUSFM, WordAlignment, parseUSFMAlignment } from "./usfm-alignment-parser.js";
+import {
+  ParsedUSFM,
+  WordAlignment,
+  parseUSFMAlignment,
+} from "./usfm-alignment-parser.js";
 
 interface VerseMapping {
   text: string;
@@ -82,10 +89,13 @@ export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
 
   // Extract parameters
   const reference = url.searchParams.get("reference");
-  const language = url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
-  const organization = url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
+  const language =
+    url.searchParams.get("language") || DEFAULT_STRATEGIC_LANGUAGE;
+  const organization =
+    url.searchParams.get("organization") || Organization.UNFOLDINGWORD;
   const includeAlignment = url.searchParams.get("includeAlignment") !== "false";
-  const includeVerseMapping = url.searchParams.get("includeVerseMapping") !== "false";
+  const includeVerseMapping =
+    url.searchParams.get("includeVerseMapping") !== "false";
   const includeClarity = url.searchParams.get("includeClarity") !== "false";
   const bypassCache = url.searchParams.get("bypassCache") === "true";
 
@@ -179,7 +189,7 @@ export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
       language,
       organization,
       resourceType,
-      reference
+      reference,
     );
 
     if (!scriptureData) {
@@ -313,7 +323,7 @@ async function fetchUSTResource(
   language: string,
   organization: string,
   resourceType: "ust" | "gst",
-  reference: string
+  reference: string,
 ): Promise<{
   usfmText: string;
   cleanText: string;
@@ -365,7 +375,7 @@ async function fetchUSTResource(
     const bookIngredient = resource.ingredients.find(
       (ing) =>
         ing.identifier.toLowerCase() === book.toLowerCase() ||
-        ing.identifier.toLowerCase() === getBookCode(book).toLowerCase()
+        ing.identifier.toLowerCase() === getBookCode(book).toLowerCase(),
     );
 
     if (!bookIngredient || !bookIngredient.path) {
@@ -480,11 +490,18 @@ function extractPassageFromUSFM(usfmText: string, reference: string): string {
 /**
  * Extract verse range from chapter text
  */
-function extractVerseRange(chapterText: string, startVerse: number, endVerse: number): string {
+function extractVerseRange(
+  chapterText: string,
+  startVerse: number,
+  endVerse: number,
+): string {
   const verses: string[] = [];
 
   for (let v = startVerse; v <= endVerse; v++) {
-    const verseRegex = new RegExp(`\\\\v\\s+${v}\\s(.*?)(?=\\\\v\\s+${v + 1}|$)`, "s");
+    const verseRegex = new RegExp(
+      `\\\\v\\s+${v}\\s(.*?)(?=\\\\v\\s+${v + 1}|$)`,
+      "s",
+    );
     const verseMatch = chapterText.match(verseRegex);
 
     if (verseMatch) {
@@ -526,7 +543,7 @@ function generateCleanText(usfmText: string): string {
  */
 function buildVerseMapping(
   usfmText: string,
-  alignmentData: ParsedUSFM
+  alignmentData: ParsedUSFM,
 ): Record<number, VerseMapping> {
   const mapping: Record<number, VerseMapping> = {};
 
@@ -542,7 +559,7 @@ function buildVerseMapping(
 
     // Find alignments for this verse
     const verseAlignments = alignmentData.alignments.filter(
-      (a: WordAlignment) => a.position.verse === verseNum
+      (a: WordAlignment) => a.position.verse === verseNum,
     );
 
     mapping[verseNum] = {
@@ -570,12 +587,15 @@ function calculateAlignmentStats(alignments: WordAlignment[]) {
   }
 
   const total = alignments.length;
-  const totalConfidence = alignments.reduce((sum, a) => sum + (a.confidence || 0), 0);
+  const totalConfidence = alignments.reduce(
+    (sum, a) => sum + (a.confidence || 0),
+    0,
+  );
   const averageConfidence = totalConfidence / total;
 
   const high = alignments.filter((a) => (a.confidence || 0) > 0.8).length;
   const medium = alignments.filter(
-    (a) => (a.confidence || 0) >= 0.5 && (a.confidence || 0) <= 0.8
+    (a) => (a.confidence || 0) >= 0.5 && (a.confidence || 0) <= 0.8,
   ).length;
   const low = alignments.filter((a) => (a.confidence || 0) < 0.5).length;
 
@@ -599,11 +619,13 @@ function calculateClarityMetrics(text: string) {
   const totalSentences = sentences.length;
 
   // Basic readability calculation (simplified Flesch Reading Ease)
-  const avgWordsPerSentence = totalSentences > 0 ? totalWords / totalSentences : 0;
+  const avgWordsPerSentence =
+    totalSentences > 0 ? totalWords / totalSentences : 0;
   const avgSyllablesPerWord = calculateAverageSyllables(words);
 
   // Flesch Reading Ease formula (simplified)
-  const fleschScore = 206.835 - 1.015 * avgWordsPerSentence - 84.6 * avgSyllablesPerWord;
+  const fleschScore =
+    206.835 - 1.015 * avgWordsPerSentence - 84.6 * avgSyllablesPerWord;
   const readabilityScore = Math.max(0, Math.min(100, fleschScore));
 
   // Determine sentence complexity
@@ -774,5 +796,6 @@ function countCommonWords(words: string[]): number {
     "back",
   ]);
 
-  return words.filter((word) => commonWords.has(word.replace(/[^\w]/g, ""))).length;
+  return words.filter((word) => commonWords.has(word.replace(/[^\w]/g, "")))
+    .length;
 }

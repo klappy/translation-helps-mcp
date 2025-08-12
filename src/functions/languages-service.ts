@@ -32,9 +32,12 @@ export interface LanguagesResult {
 /**
  * Core languages fetching logic
  */
-export async function getLanguages(options: LanguagesOptions = {}): Promise<LanguagesResult> {
+export async function getLanguages(
+  options: LanguagesOptions = {},
+): Promise<LanguagesResult> {
   const startTime = Date.now();
-  const { organization = "unfoldingWord", includeAlternateNames = false } = options;
+  const { organization = "unfoldingWord", includeAlternateNames = false } =
+    options;
 
   logger.info(`Core languages service called`, {
     organization,
@@ -44,7 +47,10 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
   // NEVER cache responses - only cache data sources
   // Removed response caching per CRITICAL_NEVER_CACHE_RESPONSES.md
 
-  logger.info(`Processing languages request`, { organization, includeAlternateNames });
+  logger.info(`Processing languages request`, {
+    organization,
+    includeAlternateNames,
+  });
 
   // Search catalog for all available resources to extract languages
   const catalogUrl = `https://git.door43.org/api/v1/catalog/search?owner=${organization}`;
@@ -106,7 +112,9 @@ export async function getLanguages(options: LanguagesOptions = {}): Promise<Lang
     }
   }
 
-  const languages = Array.from(languageMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+  const languages = Array.from(languageMap.values()).sort((a, b) =>
+    a.code.localeCompare(b.code),
+  );
   logger.info(`Extracted unique languages`, { count: languages.length });
 
   const result: LanguagesResult = {
