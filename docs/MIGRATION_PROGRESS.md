@@ -4,11 +4,11 @@
 
 Migrating all endpoints from the complex RouteGenerator pattern to our simple, consistent endpoint pattern.
 
-**Progress: 20 of 23 endpoints migrated (87% complete)**
+**Progress: 23 of 23 endpoints migrated (100% complete!)**
 
 ## Migration Status
 
-### ✅ Completed (20 endpoints)
+### ✅ Completed (23 endpoints)
 
 1. **health** - Basic health check
 2. **languages** - Get available languages
@@ -30,16 +30,17 @@ Migrating all endpoints from the complex RouteGenerator pattern to our simple, c
 18. **get-context** - Aggregate all resources for a reference
 19. **fetch-resources** - Selectively fetch specific resources
 20. **resource-recommendations** - AI-powered resource suggestions
+21. **fetch-scripture** - Main scripture endpoint (all translations)
+22. **fetch-ult-scripture** - ULT-specific scripture endpoint
+23. **fetch-ust-scripture** - UST-specific scripture endpoint
 
 ### 🚧 In Progress
 
-None currently
+None - ALL COMPLETE!
 
 ### 📋 To Do
 
-- fetch-scripture (needs edge-compatible service)
-- fetch-ult-scripture
-- fetch-ust-scripture
+None - ALL COMPLETE!
 
 ### 🚫 Won't Migrate (Special Purpose)
 

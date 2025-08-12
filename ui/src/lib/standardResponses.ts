@@ -36,10 +36,11 @@ export interface ScriptureResponse {
 		language: string;
 		citation: string;
 		organization: string;
+		[key: string]: any; // Allow additional fields
 	}>;
 	language: string;
 	organization: string;
-	citation: string;
+	citation: any; // Can be string or object
 	metadata: StandardMetadata;
 }
 
@@ -67,20 +68,23 @@ export interface ListResponse<T> {
  */
 export function createScriptureResponse(
 	scripture: any[],
-	reference: string,
-	language: string = 'en',
-	organization: string = 'unfoldingWord'
+	additionalMetadata?: Partial<StandardMetadata>
 ): ScriptureResponse {
+	const language = scripture[0]?.language || 'en';
+	const organization = scripture[0]?.organization || 'unfoldingWord';
+	const reference = scripture[0]?.reference || '';
+
 	return {
 		scripture,
 		language,
 		organization,
-		citation: reference,
+		citation: additionalMetadata || reference,
 		metadata: {
 			totalCount: scripture.length,
 			resources: [...new Set(scripture.map((s) => s.resource || s.translation))].filter(Boolean),
 			language,
-			organization
+			organization,
+			...additionalMetadata
 		}
 	};
 }

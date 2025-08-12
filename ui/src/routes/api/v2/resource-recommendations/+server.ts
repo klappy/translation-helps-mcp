@@ -5,9 +5,9 @@
  * Suggests the most relevant resources for a given Bible reference and user needs.
  */
 
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
+import { COMMON_PARAMS } from '$lib/commonValidators.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createListResponse } from '$lib/standardResponses.js';
 
 // Recommendation categories

@@ -5,9 +5,9 @@
  * Like get-context but you choose which resources you want.
  */
 
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
+import { COMMON_PARAMS } from '$lib/commonValidators.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import type { StandardMetadata } from '$lib/standardResponses.js';
 
 // Available resource types
