@@ -495,6 +495,22 @@
 				</div>
 			</div>
 
+			<!-- Server Error Warning -->
+			{#if (xrayTrace.calls || xrayTrace.apiCalls || []).filter((call) => call.status >= 500).length > 0}
+				<div class="mb-4 rounded-lg border border-red-500 bg-red-900/30 p-3">
+					<div class="flex items-start gap-2">
+						<span class="text-2xl">🚨</span>
+						<div>
+							<p class="font-bold text-red-400">DCS Server Blocking Detected!</p>
+							<p class="text-sm text-red-300">
+								{(xrayTrace.calls || xrayTrace.apiCalls || []).filter((call) => call.status >= 500)
+									.length} requests were blocked by Door43's bot detection (500 errors)
+							</p>
+						</div>
+					</div>
+				</div>
+			{/if}
+
 			<!-- Individual DCS Calls -->
 			<div class="space-y-2">
 				<div class="text-sm font-medium text-gray-300">Individual DCS API Calls:</div>
@@ -514,6 +530,12 @@
 									class="inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-1 text-xs font-medium text-emerald-300"
 								>
 									🚀 HIT
+								</span>
+							{:else if call.status >= 500}
+								<span
+									class="inline-flex animate-pulse items-center gap-1 rounded bg-red-500/20 px-2 py-1 text-xs font-medium text-red-300"
+								>
+									❌ ERROR
 								</span>
 							{:else if call.cacheStatus === 'MISS' || call.cached === false}
 								<span
@@ -555,16 +577,23 @@
 
 						<!-- Status Code -->
 						<div class="flex-shrink-0">
-							<span
-								class="inline-flex items-center rounded px-2 py-1 text-xs font-medium {call.statusCode >=
-									200 && call.statusCode < 300
-									? 'bg-emerald-500/20 text-emerald-300'
-									: call.statusCode >= 400
-										? 'bg-red-500/20 text-red-300'
-										: 'bg-gray-500/20 text-gray-300'}"
-							>
-								{call.statusCode}
-							</span>
+							{#if call.status}
+								<span
+									class="inline-flex items-center rounded px-2 py-1 text-xs font-medium {call.status >=
+										200 && call.status < 300
+										? 'bg-emerald-500/20 text-emerald-300'
+										: call.status >= 500
+											? 'animate-pulse bg-red-500/20 text-red-300'
+											: call.status >= 400
+												? 'bg-orange-500/20 text-orange-300'
+												: 'bg-gray-500/20 text-gray-300'}"
+								>
+									{call.status}
+									{#if call.status >= 500}
+										<span class="ml-1 text-xs">⚠️</span>
+									{/if}
+								</span>
+							{/if}
 						</div>
 					</div>
 				{/each}
