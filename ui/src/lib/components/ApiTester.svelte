@@ -579,7 +579,7 @@
 						<div class="flex-shrink-0">
 							{#if call.status}
 								<span
-									class="inline-flex items-center rounded px-2 py-1 text-xs font-medium {call.status >=
+									class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium {call.status >=
 										200 && call.status < 300
 										? 'bg-emerald-500/20 text-emerald-300'
 										: call.status >= 500
@@ -589,8 +589,14 @@
 												: 'bg-gray-500/20 text-gray-300'}"
 								>
 									{call.status}
-									{#if call.status >= 500}
-										<span class="ml-1 text-xs">⚠️</span>
+									{#if call.status >= 200 && call.status < 300}
+										✅
+									{:else if call.status >= 500}
+										⚠️
+									{:else if call.status >= 400}
+										❌
+									{:else}
+										❓
 									{/if}
 								</span>
 							{/if}
