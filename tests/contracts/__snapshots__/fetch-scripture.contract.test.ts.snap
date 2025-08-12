@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`fetch-scripture Contract Tests > Golden Reference Behavior > John 3:16 - matches golden snapshot 1`] = `
+{
+  "bodyStructure": {
+    "firstTranslation": {
+      "hasReference": true,
+      "hasResource": true,
+      "hasText": true,
+      "language": "en",
+      "organization": "unfoldingWord",
+    },
+    "length": 4,
+    "type": "array",
+  },
+  "staticHeaders": {
+    "cache-control": "no-store, no-cache, must-revalidate",
+    "content-type": "application/json; charset=utf-8",
+    "x-available-formats": "json,text,md",
+    "x-cache-status": "hit",
+    "x-recommended-format-llm": "text",
+  },
+  "status": 200,
+}
+`;
