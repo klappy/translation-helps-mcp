@@ -45,11 +45,14 @@ echo "✅ Pre-commit checks passed!"
 echo "🔄 Syncing version files..."
 npm run sync-version >/dev/null 2>&1 || true
 
-# Fallback: ensure no dirty formatting remains (format whole repo and restage)
-# This guards against files outside lint-staged globs and nested workspaces
-echo "🧹 Ensuring repository formatting is clean..."
+# ALWAYS run prettier on everything to avoid formatting surprises later
+# This prevents the "dirty files after push" problem
+echo "🧹 Running prettier on entire repository..."
+npm run format >/dev/null 2>&1 || true
+
+# Check if prettier made any changes
 if ! git diff --quiet; then
-  npm run format >/dev/null 2>&1 || true
+  echo "🔧 Prettier made formatting changes. Adding them to commit..."
   git add -A
 fi
 

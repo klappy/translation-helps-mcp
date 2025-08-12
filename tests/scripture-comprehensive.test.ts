@@ -3,11 +3,7 @@ import { describe, expect, it } from "vitest";
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:8888";
 const TIMEOUT = 30000;
 
-async function fetchScripture(
-  reference: string,
-  language = "en",
-  organization = "unfoldingWord",
-) {
+async function fetchScripture(reference: string, language = "en", organization = "unfoldingWord") {
   const url = new URL(`${BASE_URL}/api/fetch-scripture`);
   url.searchParams.set("reference", reference);
   url.searchParams.set("language", language);
@@ -75,7 +71,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
           // Verify content is present (verse number prefix may be omitted in single-verse)
           expect(String(item.text)).toMatch(/[A-Za-z]/);
         },
-        TIMEOUT,
+        TIMEOUT
       );
     });
   });
@@ -112,11 +108,9 @@ describe("Comprehensive Scripture Fetching Tests", () => {
           expect(String(item.text).length).toBeGreaterThan(20 * verseCount);
 
           // Should start with the starting verse number (allow optional chapter header)
-          expect(String(item.text)).toMatch(
-            new RegExp(`^${startVerse}\\s`, "m"),
-          );
+          expect(String(item.text)).toMatch(new RegExp(`^${startVerse}\\s`, "m"));
         },
-        TIMEOUT,
+        TIMEOUT
       );
     });
   });
@@ -158,7 +152,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
             expect(String(item.text).length).toBeGreaterThan(5000);
           }
         },
-        TIMEOUT,
+        TIMEOUT
       );
     });
   });
@@ -188,18 +182,14 @@ describe("Comprehensive Scripture Fetching Tests", () => {
           // Parse range to validate content length scales with chapters
           const bookAndRange = ref.split(" ");
           if (bookAndRange.length >= 2 && bookAndRange[1].includes("-")) {
-            const [startChapter, endChapter] = bookAndRange[1]
-              .split("-")
-              .map(Number);
+            const [startChapter, endChapter] = bookAndRange[1].split("-").map(Number);
             const chapterCount = endChapter - startChapter + 1;
 
             // More chapters should mean more text
-            expect(String(item.text).length).toBeGreaterThan(
-              200 * chapterCount,
-            );
+            expect(String(item.text).length).toBeGreaterThan(200 * chapterCount);
           }
         },
-        TIMEOUT,
+        TIMEOUT
       );
     });
   });
@@ -243,13 +233,12 @@ describe("Comprehensive Scripture Fetching Tests", () => {
                 text: r.text,
                 translation: r.resource,
               }));
-            if (!Array.isArray(list) || list.length === 0)
-              return resp.scripture || null;
+            if (!Array.isArray(list) || list.length === 0) return resp.scripture || null;
             if (preferred) {
               const found = list.find((i: any) =>
                 String(i.translation || i.resource)
                   .toUpperCase()
-                  .includes(preferred),
+                  .includes(preferred)
               );
               if (found) return found;
             }
@@ -258,7 +247,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
               list.find((i: any) =>
                 String(i.translation || i.resource)
                   .toUpperCase()
-                  .includes("ULT"),
+                  .includes("ULT")
               ) || list[0]
             );
           };
@@ -269,8 +258,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
           if (
             ab &&
             st &&
-            String(ab.translation || ab.resource) !==
-              String(st.translation || st.resource)
+            String(ab.translation || ab.resource) !== String(st.translation || st.resource)
           ) {
             const target = String(st.translation || st.resource).toUpperCase();
             ab = pickFirst(abbreviatedResponse, target) || ab;
@@ -281,7 +269,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
           // Both should return the same content for the same resource
           expect(String(ab.text)).toBe(String(st.text));
         },
-        TIMEOUT,
+        TIMEOUT
       );
     });
   });
@@ -296,11 +284,11 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         } catch (error) {
           const msg = String((error as any)?.message || "");
           expect(msg).toMatch(
-            /HTTP [45]\d\d|Invalid reference|could not be found|Preparing resources|Bad Request|chapter or verse out of range/i,
+            /HTTP [45]\d\d|Invalid reference|could not be found|Preparing resources|Bad Request|chapter or verse out of range/i
           );
         }
       },
-      TIMEOUT,
+      TIMEOUT
     );
 
     it.skip(
@@ -312,11 +300,11 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         } catch (error) {
           const msg = String((error as any)?.message || "");
           expect(msg).toMatch(
-            /HTTP [45]\d\d|Invalid reference|chapter could not be found|Preparing resources|Bad Request|chapter or verse out of range/i,
+            /HTTP [45]\d\d|Invalid reference|chapter could not be found|Preparing resources|Bad Request|chapter or verse out of range/i
           );
         }
       },
-      TIMEOUT,
+      TIMEOUT
     );
 
     it(
@@ -328,38 +316,31 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         } catch (error) {
           const msg = String((error as any)?.message || "");
           expect(msg).toMatch(
-            /HTTP [45]\d\d|Invalid reference|verse|could not be found|Preparing resources/i,
+            /HTTP [45]\d\d|Invalid reference|verse|could not be found|Preparing resources/i
           );
         }
       },
-      TIMEOUT,
+      TIMEOUT
     );
 
     it.skip(
       "should handle malformed references",
       async () => {
-        const malformedRefs = [
-          "FakeBook 1:1",
-          "John 999:1",
-          "John 3:999",
-          "John 3:16:17",
-        ];
+        const malformedRefs = ["FakeBook 1:1", "John 999:1", "John 3:999", "John 3:16:17"];
 
         for (const ref of malformedRefs) {
           try {
             await fetchScriptureWithFallback(ref);
-            expect.fail(
-              `Should have thrown an error for malformed reference: ${ref}`,
-            );
+            expect.fail(`Should have thrown an error for malformed reference: ${ref}`);
           } catch (error) {
             const msg = String((error as any)?.message || "");
             expect(msg).toMatch(
-              /HTTP [45]\d\d|Invalid reference|could not be found|Preparing resources|Bad Request|chapter or verse out of range/i,
+              /HTTP [45]\d\d|Invalid reference|could not be found|Preparing resources|Bad Request|chapter or verse out of range/i
             );
           }
         }
       },
-      TIMEOUT,
+      TIMEOUT
     );
   });
 
@@ -376,7 +357,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         // Should complete within reasonable time (account for cold starts)
         expect(duration).toBeLessThan(10000); // 10 seconds max
       },
-      TIMEOUT,
+      TIMEOUT
     );
 
     it(
@@ -391,9 +372,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         ];
 
         const start = Date.now();
-        const promises = references.map((ref) =>
-          fetchScriptureWithFallback(ref),
-        );
+        const promises = references.map((ref) => fetchScriptureWithFallback(ref));
         const responses = await Promise.all(promises);
         const duration = Date.now() - start;
 
@@ -407,7 +386,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         // Concurrent execution should be faster than sequential
         expect(duration).toBeLessThan(15000); // 15 seconds for 5 concurrent requests
       },
-      TIMEOUT,
+      TIMEOUT
     );
 
     it(
@@ -440,7 +419,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
           expect(response2.metadata.cached).toBe(true);
         }
       },
-      TIMEOUT,
+      TIMEOUT
     );
   });
 
@@ -455,7 +434,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         expect(response.scripture.text).toBeDefined();
         expect(response.organization).toBe("unfoldingWord");
       },
-      TIMEOUT,
+      TIMEOUT
     );
 
     it(
@@ -463,9 +442,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
       async () => {
         const relatedVerses = ["John 3:16", "John 3:17", "John 3:18"];
 
-        const responses = await Promise.all(
-          relatedVerses.map((ref) => fetchScripture(ref)),
-        );
+        const responses = await Promise.all(relatedVerses.map((ref) => fetchScripture(ref)));
 
         responses.forEach((response, index) => {
           const item = response.scriptures?.[0] || response.scripture;
@@ -473,13 +450,11 @@ describe("Comprehensive Scripture Fetching Tests", () => {
           expect(item).toBeDefined();
           expect(item.translation || item.resource).toBeDefined();
           if (index > 0) {
-            expect(item.translation || item.resource).toBe(
-              first.translation || first.resource,
-            );
+            expect(item.translation || item.resource).toBe(first.translation || first.resource);
           }
         });
       },
-      TIMEOUT,
+      TIMEOUT
     );
   });
 
@@ -501,7 +476,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         // Should contain readable text
         expect(String(item.text)).toMatch(/[a-zA-Z]/);
       },
-      TIMEOUT,
+      TIMEOUT
     );
 
     it(
@@ -518,15 +493,11 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         expect(String(item.text).length).toBeGreaterThan(50);
 
         // Should be longer than single verse
-        const singleVerseResponse =
-          await fetchScriptureWithFallback("John 3:16");
-        const singleItem =
-          singleVerseResponse.scriptures?.[0] || singleVerseResponse.scripture;
-        expect(String(item.text).length).toBeGreaterThan(
-          String(singleItem.text).length,
-        );
+        const singleVerseResponse = await fetchScriptureWithFallback("John 3:16");
+        const singleItem = singleVerseResponse.scriptures?.[0] || singleVerseResponse.scripture;
+        expect(String(item.text).length).toBeGreaterThan(String(singleItem.text).length);
       },
-      TIMEOUT,
+      TIMEOUT
     );
 
     it(
@@ -545,7 +516,7 @@ describe("Comprehensive Scripture Fetching Tests", () => {
         // Should not bleed into next chapter
         expect(String(item2.text)).not.toMatch(/\\c\s+2/);
       },
-      TIMEOUT,
+      TIMEOUT
     );
   });
 });

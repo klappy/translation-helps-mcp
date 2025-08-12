@@ -3,13 +3,7 @@
 
 echo "🚀 Running pre-push checks..."
 
-# Ensure formatting is clean before push
-echo "🧹 Running Prettier (full repo) before push..."
-npm run format >/dev/null 2>&1 || true
-git add -A
-if ! git diff --cached --quiet; then
-  echo "🔧 Formatting changes staged for push."
-fi
+# Prettier already ran in pre-commit, no need to run again
 
 # Quick build to catch obvious issues
 echo "🏗️ Building..."
