@@ -862,18 +862,7 @@ export class RouteGenerator {
       try {
         const xray = this.cachedZipFetcher?.getTrace?.();
         if (xray && result && typeof result === "object" && (result as any)) {
-          if ("metadata" in result) {
-            (result as { metadata: Record<string, unknown> }).metadata = {
-              ...(result as { metadata: Record<string, unknown> }).metadata,
-              xrayTrace: xray as unknown,
-            };
-          }
-          if ("_metadata" in result) {
-            (result as { _metadata: Record<string, unknown> })._metadata = {
-              ...(result as { _metadata: Record<string, unknown> })._metadata,
-              xrayTrace: xray as unknown,
-            };
-          }
+          // Don't add xrayTrace to response body - it will be handled by formatter
           // Compute cache status from tracer
           const calls =
             (
@@ -927,18 +916,7 @@ export class RouteGenerator {
       try {
         const xray = this.cachedZipFetcher?.getTrace?.();
         if (xray && result && typeof result === "object" && (result as any)) {
-          if ("metadata" in result) {
-            (result as { metadata: Record<string, unknown> }).metadata = {
-              ...(result as { metadata: Record<string, unknown> }).metadata,
-              xrayTrace: xray as unknown,
-            };
-          }
-          if ("_metadata" in result) {
-            (result as { _metadata: Record<string, unknown> })._metadata = {
-              ...(result as { _metadata: Record<string, unknown> })._metadata,
-              xrayTrace: xray as unknown,
-            };
-          }
+          // Don't add xrayTrace to response body - it will be handled by formatter
           // Compute cache status from tracer
           const calls =
             (

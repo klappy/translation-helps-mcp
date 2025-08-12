@@ -104,6 +104,10 @@ export class ResponseFormatter {
     if (metadata.traceId) headers["X-Trace-Id"] = String(metadata.traceId);
 
     if (metadata.xrayTrace) {
+      logger.debug("Adding X-Ray trace headers", { 
+        hasXrayTrace: true, 
+        xrayKeys: Object.keys(metadata.xrayTrace || {}) 
+      });
       // Create human-readable summary
       const summary = this.createXraySummary(metadata.xrayTrace);
       headers["X-Xray-Summary"] = summary;
@@ -339,7 +343,18 @@ export class ResponseFormatter {
     headers: Record<string, string>,
     metadata: FormatMetadata,
   ): FormattedResponse {
-    // Normalize scripture payload to always include an array shape for consumers
+    // If the data is already a clean array of scriptures, return it directly
+    if (Array.isArray(data) && data.length > 0 && data[0].text && data[0].resource) {
+      return {
+        body: JSON.stringify(data),
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+      };
+    }
+
+    // Otherwise, normalize scripture payload to always include an array shape for consumers
     let scriptures: Array<{
       text: string;
       translation?: string;

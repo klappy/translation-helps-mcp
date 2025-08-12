@@ -337,25 +337,6 @@ export const createZIPFetcher = (
             citation: "",
             language: String(params.language || "en"),
             organization: String(params.organization || "unfoldingWord"),
-            metadata: {
-              cached: false,
-              includeVerseNumbers,
-              format,
-              resourcesFound: normalized.length,
-              filesFound: normalized.length,
-              cacheType: "zip",
-              cacheKey: JSON.stringify({
-                endpoint: "fetch-scripture",
-                params: {
-                  reference: normalizedRefStr,
-                  language: params.language,
-                  organization: params.organization,
-                  resource: params.resource,
-                },
-              }),
-              cacheWarm,
-              ...(notFoundReason ? { notFoundReason } : {}),
-            },
             _metadata: {
               success: false,
               status,
@@ -369,41 +350,15 @@ export const createZIPFetcher = (
           return response;
         }
 
-        return {
-          scripture: {
-            text: primary.text,
-            reference: referenceStr,
-            resource: primary.resource,
-            language: String(params.language || "en"),
-            citation: `${referenceStr} (${primary.resource})`,
-          },
-          resources: normalized.length > 1 ? normalized : undefined,
-          citation: primary ? `${referenceStr} (${primary.resource})` : "",
+        // Return clean array of scripture objects as per design
+        return normalized.map(scripture => ({
+          text: scripture.text,
+          reference: referenceStr,
+          resource: scripture.resource,
           language: String(params.language || "en"),
-          // @ts-expect-error - Use actual organization from primary resource for accurate attribution
-          organization:
-            primary.actualOrganization ||
-            String(params.organization || "unfoldingWord"),
-          metadata: {
-            cached: false,
-            includeVerseNumbers,
-            format,
-            resourcesFound: normalized.length,
-            filesFound: normalized.length,
-            cacheType: "zip",
-            cacheKey: JSON.stringify({
-              endpoint: "fetch-scripture",
-              params: {
-                reference: normalizedRefStr,
-                language: params.language,
-                organization: params.organization,
-                resource: params.resource,
-              },
-            }),
-            cacheWarm,
-            ...(notFoundReason ? { notFoundReason } : {}),
-          },
-        };
+          citation: `${referenceStr} (${scripture.resource})`,
+          organization: scripture.actualOrganization || String(params.organization || "unfoldingWord"),
+        }));
       }
 
       case "getTSVData": {
