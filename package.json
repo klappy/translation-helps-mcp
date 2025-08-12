@@ -36,6 +36,8 @@
     "test:scripture": "vitest run tests/scripture-comprehensive.test.ts",
     "test:parameters": "vitest run tests/scripture-parameters.test.ts",
     "test:terminology": "vitest run tests/terminology-unit.test.ts",
+    "test:contracts": "vitest run tests/contracts/*.contract.test.ts",
+    "test:contracts:update": "vitest run tests/contracts/*.contract.test.ts --update",
     "test:coverage": "vitest run --coverage",
     "load-test:baseline": "cd tests/load/k6 && k6 run baseline.js",
     "load-test:peak": "cd tests/load/k6 && k6 run peak.js",
