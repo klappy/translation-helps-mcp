@@ -6,7 +6,7 @@ Migrating all endpoints from the complex RouteGenerator pattern to our simple, c
 
 ## Migration Status
 
-### ✅ Completed (9 endpoints)
+### ✅ Completed (10 endpoints)
 
 1. **health** - Basic health check
 2. **languages** - Get available languages
@@ -16,6 +16,8 @@ Migrating all endpoints from the complex RouteGenerator pattern to our simple, c
 6. **translation-notes** - Translation notes for references
 7. **get-available-books** - List available Bible books
 8. **list-available-resources** - List all resource types
+9. **fetch-translation-words** - Translation word definitions
+10. **fetch-translation-academy** - Translation academy articles
 
 ### 🚧 In Progress
 
@@ -24,8 +26,6 @@ None currently
 ### 📋 To Do
 
 - fetch-scripture (needs edge-compatible service)
-- fetch-translation-words
-- fetch-translation-academy
 - fetch-translation-word-links
 - fetch-ult-scripture
 - fetch-ust-scripture

@@ -5,12 +5,12 @@
  * Uses all our consistency patterns and DCS fetching utilities.
  */
 
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
-import { createListResponse } from '$lib/standardResponses.js';
-import { fetchRepoContents, mockFetchers } from '$lib/dataFetchers.js';
 import { circuitBreakers } from '$lib/circuitBreaker.js';
+import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
+import { COMMON_PARAMS } from '$lib/commonValidators.js';
+import { fetchRepoContents, mockFetchers } from '$lib/dataFetchers.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
+import { createListResponse } from '$lib/standardResponses.js';
 
 // Bible book metadata
 const BOOK_INFO = {

@@ -5,8 +5,8 @@
  * with circuit breaker protection and consistent error handling.
  */
 
-import { circuitBreakers } from './circuitBreaker.js';
 import { logger } from '../../../src/utils/logger.js';
+import { circuitBreakers } from './circuitBreaker.js';
 
 /**
  * Fetch from DCS API with circuit breaker protection
