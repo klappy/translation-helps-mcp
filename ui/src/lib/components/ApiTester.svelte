@@ -224,6 +224,52 @@
 		</div>
 	{/if}
 
+	<!-- DCS Server Error Warning -->
+	{#if result && result._metadata && result._metadata.serverErrors && result._metadata.serverErrors > 0}
+		<div class="mb-4 rounded-lg border-2 border-red-500 bg-red-900/30 p-4 animate-pulse">
+			<div class="flex items-start gap-3">
+				<span class="text-3xl">🚨</span>
+				<div class="flex-1">
+					<h4 class="text-lg font-bold text-red-400 mb-2">Upstream Server Issue Detected</h4>
+					<p class="text-red-300 mb-3">
+						The Door43 Content Service (DCS) server is currently blocking requests. This is NOT an issue with The Aqueduct API.
+					</p>
+					<div class="space-y-2 text-sm">
+						<div class="flex items-center gap-2">
+							<span class="text-red-400">•</span>
+							<span class="text-red-200">Server errors detected: {result._metadata.serverErrors}</span>
+						</div>
+						{#if result._metadata.dataSourcesCached}
+							<div class="flex items-center gap-2">
+								<span class="text-yellow-400">•</span>
+								<span class="text-yellow-200">
+									Catalog cached: {result._metadata.dataSourcesCached.catalog ? '✅ Yes' : '❌ No'}
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<span class="text-yellow-400">•</span>
+								<span class="text-yellow-200">
+									ZIP files cached: {result._metadata.dataSourcesCached.zip ? '✅ Yes' : '❌ No (Server blocked download)'}
+								</span>
+							</div>
+						{/if}
+						<div class="flex items-center gap-2">
+							<span class="text-blue-400">•</span>
+							<span class="text-blue-200">Response cached: ❌ Never (per architecture rules)</span>
+						</div>
+					</div>
+					<div class="mt-3 p-3 bg-black/50 rounded border border-white/10">
+						<p class="text-xs text-gray-300">
+							<strong>What's happening:</strong> DCS has enabled bot detection that blocks automated requests. 
+							The Aqueduct API correctly identified this issue and returned an honest error message instead of 
+							caching or hiding the problem.
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Performance Indicators -->
 	{#if result?._metadata}
 		<div
@@ -246,14 +292,14 @@
 				<!-- Cache Status -->
 				<div class="flex items-center gap-2">
 					<Database class="h-4 w-4 flex-shrink-0 text-emerald-400" />
-					<span class="text-sm text-gray-300">Cache:</span>
+					<span class="text-sm text-gray-300">Data Cache:</span>
 					<span
 						class="flex items-center gap-1 font-mono text-sm font-semibold {getCacheStatusColor(
-							result._metadata.cacheStatus
+							result._metadata.dataCacheStatus || result._metadata.cacheStatus || 'miss'
 						)}"
 					>
-						<span>{getCacheStatusIcon(result._metadata.cacheStatus)}</span>
-						{result._metadata.cacheStatus.toUpperCase()}
+						<span>{getCacheStatusIcon(result._metadata.dataCacheStatus || result._metadata.cacheStatus || 'miss')}</span>
+						{(result._metadata.dataCacheStatus || result._metadata.cacheStatus || 'miss').toUpperCase()}
 					</span>
 				</div>
 
@@ -295,6 +341,34 @@
 					class="mt-3 inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-900/30 px-3 py-1 text-xs font-medium text-red-400"
 				>
 					🐌 Slow
+				</div>
+			{/if}
+
+			<!-- Cache Details -->
+			{#if result._metadata.dataSourcesCached}
+				<div class="mt-4 rounded-lg bg-black/30 p-3 border border-white/10">
+					<h5 class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Cache Details</h5>
+					<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+						<div class="flex items-center gap-2">
+							<span class={result._metadata.dataSourcesCached.catalog ? 'text-emerald-400' : 'text-gray-500'}>
+								{result._metadata.dataSourcesCached.catalog ? '✅' : '⭕'}
+							</span>
+							<span class="text-gray-300">Catalog</span>
+						</div>
+						<div class="flex items-center gap-2">
+							<span class={result._metadata.dataSourcesCached.zip ? 'text-emerald-400' : 'text-gray-500'}>
+								{result._metadata.dataSourcesCached.zip ? '✅' : '⭕'}
+							</span>
+							<span class="text-gray-300">ZIP Files</span>
+						</div>
+						<div class="flex items-center gap-2">
+							<span class="text-red-400">❌</span>
+							<span class="text-gray-300">Response (Never)</span>
+						</div>
+					</div>
+					{#if result._metadata.cacheNote}
+						<p class="mt-2 text-xs text-gray-500 italic">{result._metadata.cacheNote}</p>
+					{/if}
 				</div>
 			{/if}
 		</div>

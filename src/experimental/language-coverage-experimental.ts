@@ -96,9 +96,7 @@ function calculateCompleteness(coverage: LanguageCoverage): number {
     ResourceType.TQ,
   ];
 
-  const availableCount = requiredResources.filter(
-    (type) => coverage[type]?.available,
-  ).length;
+  const availableCount = requiredResources.filter((type) => coverage[type]?.available).length;
 
   return Math.round((availableCount / requiredResources.length) * 100);
 }
@@ -113,11 +111,8 @@ function isRecommended(completeness: number): boolean {
 /**
  * Build coverage data for a specific language with timeout protection
  */
-async function buildLanguageCoverage(
-  languageCode: string,
-): Promise<LanguageEntry> {
-  const languageInfo =
-    STRATEGIC_LANGUAGES[languageCode as keyof typeof STRATEGIC_LANGUAGES];
+async function buildLanguageCoverage(languageCode: string): Promise<LanguageEntry> {
+  const languageInfo = STRATEGIC_LANGUAGES[languageCode as keyof typeof STRATEGIC_LANGUAGES];
   const languageName = languageInfo?.name || languageCode;
 
   // Use a common reference to check availability
@@ -146,9 +141,7 @@ async function buildLanguageCoverage(
     if (resourceCheck.hasScripture) {
       // Check for ULT/GLT
       const ultResource = availability.scripture.find(
-        (r) =>
-          r.name.toLowerCase().includes("ult") ||
-          r.name.toLowerCase().includes("glt"),
+        (r) => r.name.toLowerCase().includes("ult") || r.name.toLowerCase().includes("glt")
       );
       if (ultResource) {
         coverage[ResourceType.ULT] = {
@@ -160,9 +153,7 @@ async function buildLanguageCoverage(
 
       // Check for UST/GST
       const ustResource = availability.scripture.find(
-        (r) =>
-          r.name.toLowerCase().includes("ust") ||
-          r.name.toLowerCase().includes("gst"),
+        (r) => r.name.toLowerCase().includes("ust") || r.name.toLowerCase().includes("gst")
       );
       if (ustResource) {
         coverage[ResourceType.UST] = {
@@ -241,7 +232,7 @@ async function buildLanguageCoverage(
  * Language Coverage Handler
  */
 export const languageCoverageHandler: PlatformHandler = async (
-  request: PlatformRequest,
+  request: PlatformRequest
 ): Promise<PlatformResponse> => {
   // Handle CORS
   if (request.method === "OPTIONS") {
@@ -339,11 +330,9 @@ export const languageCoverageHandler: PlatformHandler = async (
     // Calculate metadata
     const totalLanguages = Object.keys(languages).length;
     const completeLanguages = Object.values(languages).filter(
-      (lang) => lang.completeness >= 100,
+      (lang) => lang.completeness >= 100
     ).length;
-    const recommendedLanguages = Object.values(languages).filter(
-      (lang) => lang.recommended,
-    ).length;
+    const recommendedLanguages = Object.values(languages).filter((lang) => lang.recommended).length;
 
     const response: LanguageCoverageResponse = {
       languages,
@@ -355,8 +344,8 @@ export const languageCoverageHandler: PlatformHandler = async (
       },
     };
 
-    // Cache the result
-    await cache.set(cacheKey, response, "metadata");
+    // NEVER cache responses - only cache data sources
+    // Removed response caching per CRITICAL_NEVER_CACHE_RESPONSES.md
 
     const duration = Date.now() - startTime;
     logger.info("Language coverage matrix built", { durationMs: duration });

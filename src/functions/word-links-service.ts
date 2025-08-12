@@ -69,25 +69,9 @@ export async function fetchWordLinks(
     throw new Error(`Invalid reference format: ${referenceParam}`);
   }
 
-  // Check for cached transformed response FIRST
+  // NEVER cache responses - only cache data sources
+  // Removed response caching per CRITICAL_NEVER_CACHE_RESPONSES.md
   const responseKey = `wordlinks:${referenceParam}:${language}:${organization}`;
-  const cachedResponse =
-    await cache.getTransformedResponseWithCacheInfo(responseKey);
-
-  if (cachedResponse.value) {
-    logger.info(`FAST cache hit for processed word links`, {
-      key: responseKey,
-    });
-    // Return cached response as-is
-    return {
-      ...cachedResponse.value,
-      metadata: {
-        ...cachedResponse.value.metadata,
-        cached: true,
-        responseTime: Date.now() - startTime,
-      },
-    };
-  }
 
   logger.info(`Processing fresh word links request`, { key: responseKey });
 
@@ -127,8 +111,8 @@ export async function fetchWordLinks(
     },
   };
 
-  // Cache the response
-  await cache.setTransformedResponse(responseKey, result);
+  // NEVER cache responses - only cache data sources
+  // Removed response caching per CRITICAL_NEVER_CACHE_RESPONSES.md
 
   return result;
 }

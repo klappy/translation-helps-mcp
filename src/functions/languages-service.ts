@@ -5,7 +5,6 @@
  */
 
 import { logger } from "../utils/logger.js";
-import { cache } from "./cache";
 
 export interface Language {
   code: string;
@@ -33,38 +32,19 @@ export interface LanguagesResult {
 /**
  * Core languages fetching logic
  */
-export async function getLanguages(
-  options: LanguagesOptions = {},
-): Promise<LanguagesResult> {
+export async function getLanguages(options: LanguagesOptions = {}): Promise<LanguagesResult> {
   const startTime = Date.now();
-  const { organization = "unfoldingWord", includeAlternateNames = false } =
-    options;
+  const { organization = "unfoldingWord", includeAlternateNames = false } = options;
 
   logger.info(`Core languages service called`, {
     organization,
     includeAlternateNames,
   });
 
-  // Check for cached transformed response FIRST
-  const responseKey = `languages:${organization}:${includeAlternateNames}`;
-  const cachedResponse =
-    await cache.getTransformedResponseWithCacheInfo(responseKey);
+  // NEVER cache responses - only cache data sources
+  // Removed response caching per CRITICAL_NEVER_CACHE_RESPONSES.md
 
-  if (cachedResponse.value) {
-    logger.info(`Languages cache HIT`, { responseKey });
-    return {
-      languages: cachedResponse.value.languages || [],
-      metadata: {
-        responseTime: Date.now() - startTime,
-        cached: true,
-        timestamp: new Date().toISOString(),
-        languagesFound: cachedResponse.value.languages?.length || 0,
-        organization,
-      },
-    };
-  }
-
-  logger.info(`Languages cache MISS`, { responseKey });
+  logger.info(`Processing languages request`, { organization, includeAlternateNames });
 
   // Search catalog for all available resources to extract languages
   const catalogUrl = `https://git.door43.org/api/v1/catalog/search?owner=${organization}`;
@@ -126,9 +106,7 @@ export async function getLanguages(
     }
   }
 
-  const languages = Array.from(languageMap.values()).sort((a, b) =>
-    a.code.localeCompare(b.code),
-  );
+  const languages = Array.from(languageMap.values()).sort((a, b) => a.code.localeCompare(b.code));
   logger.info(`Extracted unique languages`, { count: languages.length });
 
   const result: LanguagesResult = {
@@ -142,10 +120,8 @@ export async function getLanguages(
     },
   };
 
-  // Cache the transformed response
-  await cache.setTransformedResponse(responseKey, {
-    languages: result.languages,
-  });
+  // NEVER cache responses - only cache data sources
+  // Removed response caching per CRITICAL_NEVER_CACHE_RESPONSES.md
 
   return result;
 }

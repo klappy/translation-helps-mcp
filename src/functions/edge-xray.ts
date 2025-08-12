@@ -91,7 +91,8 @@ export async function trackedFetch(
       : Date.now();
 
   // Add browser-like headers to avoid bot detection
-  const browserHeaders = {
+  // If client headers are provided in options, prefer those for authentication
+  const defaultHeaders = {
     "User-Agent":
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
     Accept: "*/*",
@@ -107,7 +108,7 @@ export async function trackedFetch(
   const mergedOptions = {
     ...options,
     headers: {
-      ...browserHeaders,
+      ...defaultHeaders,
       ...options?.headers,
     },
   };

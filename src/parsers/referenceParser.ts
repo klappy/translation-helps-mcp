@@ -137,14 +137,12 @@ export function parseReference(referenceString: string): ParsedReference {
 
     // Special handling for numbered books (e.g., 1Co -> 1 Corinthians)
     if (numPrefix) {
-      if (base.startsWith("co") || base.startsWith("cor"))
-        return `${numPrefix} Corinthians`;
+      if (base.startsWith("co") || base.startsWith("cor")) return `${numPrefix} Corinthians`;
       if (base.startsWith("th")) return `${numPrefix} Thessalonians`;
       if (base.startsWith("ti")) return `${numPrefix} Timothy`;
       if (base.startsWith("pe")) return `${numPrefix} Peter`;
       // Only map to numbered John epistles when an explicit number is present
-      if (base === "jn" || base === "jhn" || base === "john")
-        return `${numPrefix} John`;
+      if (base === "jn" || base === "jhn" || base === "john") return `${numPrefix} John`;
       if (base.startsWith("sa")) return `${numPrefix} Samuel`;
       if (base.startsWith("ki")) return `${numPrefix} Kings`;
       if (base.startsWith("ch")) return `${numPrefix} Chronicles`;
@@ -178,8 +176,7 @@ export function parseReference(referenceString: string): ParsedReference {
   // Cross-chapter verse range
   const crossChapterMatch = normalizedInput.match(patterns[0]);
   if (crossChapterMatch) {
-    const [, book, startChapter, startVerse, endChapter, endVerse] =
-      crossChapterMatch;
+    const [, book, startChapter, startVerse, endChapter, endVerse] = crossChapterMatch;
     result = {
       book: book.trim(),
       chapter: parseInt(startChapter, 10),
@@ -273,11 +270,7 @@ export function isValidReference(ref: ParsedReference): boolean {
   if (ref.verse !== undefined && ref.verse <= 0) return false;
 
   // End verse should be >= start verse if present
-  if (
-    ref.endVerse !== undefined &&
-    ref.verse !== undefined &&
-    ref.endVerse < ref.verse
-  ) {
+  if (ref.endVerse !== undefined && ref.verse !== undefined && ref.endVerse < ref.verse) {
     return false;
   }
 
@@ -295,7 +288,11 @@ export function normalizeReference(ref: ParsedReference): string {
   if (ref.chapter) {
     normalized += ` ${ref.chapter}`;
 
-    if (ref.verse) {
+    // Handle chapter range
+    if (ref.endChapter && ref.endChapter !== ref.chapter) {
+      normalized += `-${ref.endChapter}`;
+    } else if (ref.verse) {
+      // Handle verse or verse range
       normalized += `:${ref.verse}`;
 
       if (ref.endVerse && ref.endVerse !== ref.verse) {
