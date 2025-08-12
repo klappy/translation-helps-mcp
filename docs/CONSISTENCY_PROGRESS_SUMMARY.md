@@ -4,7 +4,7 @@
 
 We've made EXTRAORDINARY progress on our journey to make the system consistent, clean, simple, DRY, and antifragile!
 
-### Endpoints Migrated: 14 of 23 (61% Complete!)
+### Endpoints Migrated: 20 of 23 (87% Complete!)
 
 1. ✅ health
 2. ✅ languages
@@ -20,6 +20,12 @@ We've made EXTRAORDINARY progress on our journey to make the system consistent, 
 12. ✅ browse-translation-words
 13. ✅ get-translation-word
 14. ✅ get-words-for-reference
+15. ✅ browse-translation-academy
+16. ✅ language-coverage
+17. ✅ extract-references
+18. ✅ get-context
+19. ✅ fetch-resources
+20. ✅ resource-recommendations
 
 ### Code Quality Metrics
 
@@ -109,8 +115,8 @@ onError: createStandardErrorHandler();
 
 ### What's Next
 
-- 5 more endpoints to migrate (31% remaining)
-- Need edge-compatible services for scripture endpoints
+- Only 3 endpoints remaining (13% to go!)
+- All are scripture endpoints needing edge-compatible services
 - Then deprecate RouteGenerator entirely
 - System will be 100% consistent, simple, maintainable
 
