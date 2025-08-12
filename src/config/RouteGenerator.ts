@@ -24,6 +24,7 @@ import type {
   ParamConfig,
   TransformationType,
 } from "./EndpointConfig.js";
+import { createResponseValidator } from "../middleware/responseValidator.js";
 
 /**
  * Book code to number mapping (for DCS file naming)
@@ -214,10 +215,18 @@ export class RouteGenerator {
   private cachedZipFetcher?: any;
   private responseFormatter: ResponseFormatter;
   private lastComputedCacheStatus: string = "miss";
+  private responseValidator: ReturnType<typeof createResponseValidator>;
 
   constructor() {
     this.dcsClient = new DCSApiClient();
     this.responseFormatter = new ResponseFormatter();
+
+    // Initialize response validator with auto-clean in production
+    this.responseValidator = createResponseValidator({
+      strict: false, // Don't throw in production
+      autoClean: true, // Clean responses automatically
+      logLevel: "warn",
+    });
   }
 
   /**
@@ -1456,6 +1465,9 @@ export class RouteGenerator {
     },
     params: ParsedParams,
   ): { body: string; headers: Record<string, string> } {
+    // Validate and clean response data before formatting
+    const validatedData = this.responseValidator(data);
+
     // Delegate to ResponseFormatter service
     const formatMetadata: FormatMetadata = {
       cached: metadata.dataCacheStatus === "hit",
@@ -1467,7 +1479,7 @@ export class RouteGenerator {
     };
 
     const formatted = this.responseFormatter.format(
-      data,
+      validatedData,
       format,
       params,
       formatMetadata,
