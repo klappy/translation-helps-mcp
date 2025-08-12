@@ -363,30 +363,44 @@
 					<h5 class="mb-2 text-xs font-semibold tracking-wider text-gray-400 uppercase">
 						Cache Details
 					</h5>
-					<div class="grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
+					<div class="grid grid-cols-1 gap-3 text-xs">
 						<div class="flex items-center gap-2">
 							<span
-								class={result._metadata.dataSourcesCached.catalog
+								class={result._metadata.dataSourcesCached.catalog && result._metadata.dataSourcesCached.catalog !== false
 									? 'text-emerald-400'
 									: 'text-gray-500'}
 							>
-								{result._metadata.dataSourcesCached.catalog ? '✅' : '⭕'}
+								{result._metadata.dataSourcesCached.catalog && result._metadata.dataSourcesCached.catalog !== false ? '📁' : '⭕'}
 							</span>
-							<span class="text-gray-300">Catalog</span>
+							<span class="text-gray-300">Catalog: {result._metadata.dataSourcesCached.catalog || 'No calls'}</span>
 						</div>
 						<div class="flex items-center gap-2">
 							<span
-								class={result._metadata.dataSourcesCached.zip
+								class={result._metadata.dataSourcesCached.zip && result._metadata.dataSourcesCached.zip !== false
 									? 'text-emerald-400'
 									: 'text-gray-500'}
 							>
-								{result._metadata.dataSourcesCached.zip ? '✅' : '⭕'}
+								{result._metadata.dataSourcesCached.zip && result._metadata.dataSourcesCached.zip !== false ? '📦' : '⭕'}
 							</span>
-							<span class="text-gray-300">ZIP Files</span>
+							<span class="text-gray-300">ZIP Files: {result._metadata.dataSourcesCached.zip || 'No calls'}</span>
+						</div>
+						<div class="flex items-center gap-2">
+							<span
+								class={result._metadata.dataSourcesCached.files && result._metadata.dataSourcesCached.files !== false
+									? 'text-emerald-400'
+									: 'text-gray-500'}
+							>
+								{result._metadata.dataSourcesCached.files && result._metadata.dataSourcesCached.files !== false ? '📄' : '⭕'}
+							</span>
+							<span class="text-gray-300">Extracted Files: {result._metadata.dataSourcesCached.files || 'No calls'}</span>
+						</div>
+						<div class="flex items-center gap-2 pt-2 border-t border-white/10">
+							<span class="text-blue-400">📊</span>
+							<span class="text-gray-300 font-semibold">Summary: {result._metadata.dataSourcesCached.summary || 'No API calls'}</span>
 						</div>
 						<div class="flex items-center gap-2">
 							<span class="text-red-400">❌</span>
-							<span class="text-gray-300">Response (Never)</span>
+							<span class="text-gray-300">Response: Never cached</span>
 						</div>
 					</div>
 					{#if result._metadata.cacheNote}

@@ -210,6 +210,7 @@ export class RouteGenerator {
   private dcsClient: DCSApiClient;
   private cachedZipFetcher?: any;
   private responseFormatter: ResponseFormatter;
+  private lastComputedCacheStatus: string = "miss";
 
   constructor() {
     this.dcsClient = new DCSApiClient();
@@ -259,7 +260,7 @@ export class RouteGenerator {
         // The dataCacheStatus below tracks whether underlying data sources (catalog/ZIP) were cached
         const cacheKey = this.generateCacheKey(config.name, params);
         // CRITICAL: This tracks data source caching, NOT response caching
-        const dataCacheStatus: "hit" | "miss" | "bypass" = "miss";
+        const dataCacheStatus: string = "miss";
 
         const bypassOptions = {
           queryParams: request.queryStringParameters,
@@ -317,6 +318,12 @@ export class RouteGenerator {
         const format = this.determineResponseFormat(params, request);
 
         // Build response based on format
+        logger.debug("formatResponse cache status", {
+          lastComputedCacheStatus: this.lastComputedCacheStatus,
+          dataCacheStatus,
+          final: this.lastComputedCacheStatus || dataCacheStatus,
+        });
+
         const { body, headers } = this.formatResponse(
           transformedData,
           format,
@@ -328,7 +335,7 @@ export class RouteGenerator {
                 ? (request as unknown as { __cacheDecodeMs?: number }).__cacheDecodeMs!
                 : responseTime
             ),
-            dataCacheStatus,
+            dataCacheStatus: this.lastComputedCacheStatus || dataCacheStatus,
             success: true,
             status: 200,
             traceId,
@@ -880,20 +887,56 @@ export class RouteGenerator {
                 c.cached &&
                 (c.url.startsWith("internal://kv/") || c.url.startsWith("internal://memory/"))
             );
-          const hit = !hasExternalCalls || hasInternalHits;
+          // Calculate rich cache status
+          const totalCalls = calls.length;
+          const cachedCalls = calls.filter((c) => c.cached).length;
+          const catalogCalls = calls.filter((c) => c.url.includes("/catalog"));
+          const catalogHits = catalogCalls.filter((c) => c.cached).length;
+          const zipCalls = calls.filter((c) => c.url.includes(".zip"));
+          const zipHits = zipCalls.filter((c) => c.cached).length;
+          const fileCalls = calls.filter((c) => c.url.includes("/file"));
+          const fileHits = fileCalls.filter((c) => c.cached).length;
+
+          // Determine cache status with nuance
+          if (cachedCalls === 0) {
+            dataCacheStatus = "miss";
+          } else if (cachedCalls === totalCalls) {
+            dataCacheStatus = "hit";
+          } else {
+            dataCacheStatus = `partial (${cachedCalls}/${totalCalls})`;
+          }
+
+          // Debug logging
+          logger.debug("Cache status calculation", {
+            totalCalls,
+            cachedCalls,
+            dataCacheStatus,
+            hasExternalCalls,
+            catalogHits,
+            zipHits,
+            fileHits,
+          });
+
+          // Store for use in formatResponse
+          this.lastComputedCacheStatus = dataCacheStatus;
+
+          const hit = cachedCalls > 0 && !hasExternalCalls;
+
+          // Always update the outer dataCacheStatus for passing to formatResponse
+          // This ensures headers get the correct cache status even for clean array responses
+
           if ("metadata" in result) {
             (result as { metadata: Record<string, unknown> }).metadata.cached = hit;
           }
           if ("_metadata" in result) {
             const metadata = (result as { _metadata: Record<string, unknown> })._metadata;
             // Be explicit about what was cached - data sources, NOT responses
-            metadata.dataCacheStatus = hit ? "hit" : "miss";
+            metadata.dataCacheStatus = dataCacheStatus;
             metadata.dataSourcesCached = {
-              catalog: calls.some((c) => c.cached && c.url.includes("/catalog")),
-              zip: calls.some((c) => c.cached && c.url.includes(".zip")),
-              other: calls.some(
-                (c) => c.cached && !c.url.includes("/catalog") && !c.url.includes(".zip")
-              ),
+              catalog: catalogHits > 0 ? `${catalogHits}/${catalogCalls.length}` : false,
+              zip: zipHits > 0 ? `${zipHits}/${zipCalls.length}` : false,
+              files: fileHits > 0 ? `${fileHits}/${fileCalls.length}` : false,
+              summary: `${cachedCalls}/${totalCalls} cached`,
             };
             // CRITICAL: Responses are NEVER cached
             metadata.responseCached = false;
@@ -933,7 +976,40 @@ export class RouteGenerator {
                 c.cached &&
                 (c.url.startsWith("internal://kv/") || c.url.startsWith("internal://memory/"))
             );
-          const hit = hasInternalHits && !hasExternalCalls;
+          // Calculate rich cache status
+          const totalCalls = calls.length;
+          const cachedCalls = calls.filter((c) => c.cached).length;
+          const catalogCalls = calls.filter((c) => c.url.includes("/catalog"));
+          const catalogHits = catalogCalls.filter((c) => c.cached).length;
+          const zipCalls = calls.filter((c) => c.url.includes(".zip"));
+          const zipHits = zipCalls.filter((c) => c.cached).length;
+          const fileCalls = calls.filter((c) => c.url.includes("/file"));
+          const fileHits = fileCalls.filter((c) => c.cached).length;
+
+          // Determine cache status with nuance
+          if (cachedCalls === 0) {
+            dataCacheStatus = "miss";
+          } else if (cachedCalls === totalCalls) {
+            dataCacheStatus = "hit";
+          } else {
+            dataCacheStatus = `partial (${cachedCalls}/${totalCalls})`;
+          }
+
+          // Debug logging
+          logger.debug("Cache status calculation", {
+            totalCalls,
+            cachedCalls,
+            dataCacheStatus,
+            hasExternalCalls,
+            catalogHits,
+            zipHits,
+            fileHits,
+          });
+
+          // Store for use in formatResponse
+          this.lastComputedCacheStatus = dataCacheStatus;
+
+          const hit = cachedCalls > 0 && !hasExternalCalls;
 
           if ("metadata" in result) {
             (result as { metadata: Record<string, unknown> }).metadata.cached = hit;
@@ -941,13 +1017,12 @@ export class RouteGenerator {
           if ("_metadata" in result) {
             const metadata = (result as { _metadata: Record<string, unknown> })._metadata;
             // Be explicit about what was cached - data sources, NOT responses
-            metadata.dataCacheStatus = hit ? "hit" : "miss";
+            metadata.dataCacheStatus = dataCacheStatus;
             metadata.dataSourcesCached = {
-              catalog: calls.some((c) => c.cached && c.url.includes("/catalog")),
-              zip: calls.some((c) => c.cached && c.url.includes(".zip")),
-              other: calls.some(
-                (c) => c.cached && !c.url.includes("/catalog") && !c.url.includes(".zip")
-              ),
+              catalog: catalogHits > 0 ? `${catalogHits}/${catalogCalls.length}` : false,
+              zip: zipHits > 0 ? `${zipHits}/${zipCalls.length}` : false,
+              files: fileHits > 0 ? `${fileHits}/${fileCalls.length}` : false,
+              summary: `${cachedCalls}/${totalCalls} cached`,
             };
             // CRITICAL: Responses are NEVER cached
             metadata.responseCached = false;
@@ -1242,6 +1317,7 @@ export class RouteGenerator {
     // Delegate to ResponseFormatter service
     const formatMetadata: FormatMetadata = {
       cached: metadata.dataCacheStatus === "hit",
+      cacheStatus: metadata.dataCacheStatus,
       responseTime: metadata.responseTime,
       traceId: metadata.traceId,
       xrayTrace: metadata.xrayTrace,
