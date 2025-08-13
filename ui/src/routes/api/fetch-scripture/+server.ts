@@ -52,10 +52,8 @@ async function fetchScripture(params: Record<string, any>, _request: Request): P
 	return {
 		...createScriptureResponse(result.data, {
 			reference,
-			language,
-			organization,
 			requestedResources,
-			foundResources: result.data.map((s: any) => s.resource)
+			foundResources: result.data.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase())
 		}),
 		_trace: result.trace
 	};
