@@ -449,20 +449,32 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Check for API key - try multiple sources
 		const apiKey =
-			// Cloudflare Workers env binding
-			(platform as any)?.env?.OPENAI_API_KEY ||
+			// Cloudflare Workers env binding (properly typed now)
+			platform?.env?.OPENAI_API_KEY ||
 			// Local development
 			process.env.OPENAI_API_KEY ||
 			// Vite client env (shouldn't be used but as fallback)
 			import.meta.env.VITE_OPENAI_API_KEY;
 
 		if (!apiKey) {
-			logger.error('OpenAI API key not found in any environment source');
+			logger.error('OpenAI API key not found in any environment source', {
+				platformExists: !!platform,
+				platformEnvExists: !!platform?.env,
+				platformEnvKeys: platform?.env ? Object.keys(platform.env) : [],
+				hasProcessEnv: typeof process !== 'undefined' && !!process.env,
+				importMetaEnvKeys: Object.keys(import.meta.env || {})
+			});
 			return json(
 				{
 					success: false,
 					error: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.',
-					timestamp: new Date().toISOString()
+					timestamp: new Date().toISOString(),
+					debug: {
+						platformExists: !!platform,
+						platformEnvExists: !!platform?.env,
+						// Don't expose actual env var names in production error responses
+						hint: 'Check Cloudflare Pages secret configuration'
+					}
 				},
 				{ status: 500 }
 			);
