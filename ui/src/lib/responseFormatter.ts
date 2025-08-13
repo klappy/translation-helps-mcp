@@ -135,16 +135,45 @@ export function formatTranslationHelpsResponse(
 		// Add header
 		markdown += `# Translation ${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}\n\n`;
 
+		// Add metadata section
+		if (includeMetadata && data.metadata) {
+			markdown += `## Metadata\n\n`;
+			markdown += `- **Language**: ${data.language || data.metadata.language || 'unknown'}\n`;
+			markdown += `- **Organization**: ${data.organization || data.metadata.organization || 'unknown'}\n`;
+			if (data.metadata.source) {
+				markdown += `- **Source**: ${data.metadata.source}\n`;
+			}
+			if (data.metadata.resourceType) {
+				markdown += `- **Resource Type**: ${data.metadata.resourceType.toUpperCase()}\n`;
+			}
+			if (data.metadata.license) {
+				markdown += `- **License**: ${data.metadata.license}\n`;
+			}
+			if (data.metadata.copyright) {
+				markdown += `- **Copyright**: ${data.metadata.copyright}\n`;
+			}
+			if (data.metadata.version) {
+				markdown += `- **Version**: ${data.metadata.version}\n`;
+			}
+			markdown += '\n';
+		}
+
 		if (includeMetadata && data.reference) {
 			markdown += `**Reference**: ${data.reference}\n\n`;
 		}
 
 		// Add items
 		items.forEach((item: any, index: number) => {
-			// Determine title based on item type
-			let title = item.title || item.question || item.word;
+			// Determine title based on item type (check both cases)
+			let title = item.title || item.term || item.question || item.Question || item.word;
 			if (!title && item.noteType) {
 				title = `Note (${item.noteType})`;
+			}
+			if (!title && item.Quote) {
+				title = item.Quote;
+			}
+			if (!title && item.ID) {
+				title = `${item.ID}`;
 			}
 			if (!title) {
 				title = `Item ${index + 1}`;
@@ -152,19 +181,34 @@ export function formatTranslationHelpsResponse(
 
 			markdown += `## ${index + 1}. ${title}\n\n`;
 
-			// Main content
-			const content = item.content || item.answer || item.definition || item.text;
+			// Main content (check both cases)
+			const content =
+				item.content || item.answer || item.Response || item.Note || item.definition || item.text;
 			if (content) {
 				markdown += `${content}\n\n`;
 			}
 
-			// Additional fields for translation notes
-			if (item.reference && item.reference !== data.reference) {
+			// Additional fields for translation notes/questions
+			if (item.Reference && item.Reference !== data.reference) {
+				markdown += `**Reference**: ${item.Reference}\n\n`;
+			} else if (item.reference && item.reference !== data.reference) {
 				markdown += `**Reference**: ${item.reference}\n\n`;
 			}
 
-			if (item.supportReference) {
-				markdown += `**Support Reference**: ${item.supportReference}\n\n`;
+			if (item.ID && title !== item.ID) {
+				markdown += `**ID**: ${item.ID}\n\n`;
+			}
+
+			if (item.SupportReference || item.supportReference) {
+				markdown += `**Support Reference**: ${item.SupportReference || item.supportReference}\n\n`;
+			}
+
+			if (item.Quote) {
+				markdown += `**Quote**: ${item.Quote}\n\n`;
+			}
+
+			if (item.Occurrence) {
+				markdown += `**Occurrence**: ${item.Occurrence}\n\n`;
 			}
 
 			if (item.examples?.length) {
@@ -194,16 +238,38 @@ export function formatTranslationHelpsResponse(
 		text += `TRANSLATION ${resourceType.toUpperCase()}\n`;
 		text += `${'='.repeat(20)}\n\n`;
 
+		// Add metadata section
+		if (includeMetadata && data.metadata) {
+			text += `Language: ${data.language || data.metadata.language || 'unknown'}\n`;
+			text += `Organization: ${data.organization || data.metadata.organization || 'unknown'}\n`;
+			if (data.metadata.source) {
+				text += `Source: ${data.metadata.source}\n`;
+			}
+			if (data.metadata.resourceType) {
+				text += `Resource Type: ${data.metadata.resourceType.toUpperCase()}\n`;
+			}
+			if (data.metadata.license) {
+				text += `License: ${data.metadata.license}\n`;
+			}
+			text += '\n';
+		}
+
 		if (includeMetadata && data.reference) {
 			text += `Reference: ${data.reference}\n\n`;
 		}
 
 		// Add items
 		items.forEach((item: any, index: number) => {
-			// Determine title based on item type
-			let title = item.title || item.question || item.word;
+			// Determine title based on item type (check both cases)
+			let title = item.title || item.term || item.question || item.Question || item.word;
 			if (!title && item.noteType) {
 				title = `Note (${item.noteType})`;
+			}
+			if (!title && item.Quote) {
+				title = item.Quote;
+			}
+			if (!title && item.ID) {
+				title = `${item.ID}`;
 			}
 			if (!title) {
 				title = `Item ${index + 1}`;
@@ -212,15 +278,32 @@ export function formatTranslationHelpsResponse(
 			text += `${index + 1}. ${title}\n`;
 			text += `${'-'.repeat(40)}\n`;
 
-			// Main content
-			const content = item.content || item.answer || item.definition || item.text;
+			// Main content (check both cases)
+			const content =
+				item.content || item.answer || item.Response || item.Note || item.definition || item.text;
 			if (content) {
 				text += `${content}\n`;
 			}
 
-			// Additional fields for translation notes
-			if (item.supportReference) {
-				text += `Support: ${item.supportReference}\n`;
+			// Additional fields for translation notes/questions
+			if (item.SupportReference || item.supportReference) {
+				text += `Support: ${item.SupportReference || item.supportReference}\n`;
+			}
+
+			if (item.ID && title !== item.ID) {
+				text += `ID: ${item.ID}\n`;
+			}
+
+			if (item.Reference) {
+				text += `Reference: ${item.Reference}\n`;
+			}
+
+			if (item.Quote) {
+				text += `Quote: ${item.Quote}\n`;
+			}
+
+			if (item.Occurrence) {
+				text += `Occurrence: ${item.Occurrence}\n`;
 			}
 
 			if (item.examples?.length) {

@@ -24,9 +24,16 @@ async function fetchTranslationWords(params: Record<string, any>, _request: Requ
 		throw new Error(`No translation words found for ${reference}`);
 	}
 
+	// Extract metadata from the first word if available
+	const metadata = words[0]?.metadata || {};
+
 	// Return in standard format
-	// Note: _getWordsForReference doesn't return trace data like the others
-	return createTranslationHelpsResponse(words, reference, language, organization, 'tw');
+	// Note: fetchTranslationWordsFromDCS doesn't return trace data like the others
+	return createTranslationHelpsResponse(words, reference, language, organization, 'tw', {
+		license: metadata.license || 'CC BY-SA 4.0',
+		copyright: metadata.copyright,
+		version: metadata.version
+	});
 }
 
 // Create the endpoint with all our consistent utilities
@@ -35,6 +42,9 @@ export const GET = createSimpleEndpoint({
 
 	// Use common parameter validators
 	params: [COMMON_PARAMS.reference, COMMON_PARAMS.language, COMMON_PARAMS.organization],
+
+	// Enable format support
+	supportsFormats: true,
 
 	fetch: fetchTranslationWords,
 

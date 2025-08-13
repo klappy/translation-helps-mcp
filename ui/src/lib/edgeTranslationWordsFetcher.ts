@@ -17,6 +17,27 @@ interface TranslationWord {
 }
 
 /**
+ * Decode base64 string with proper Unicode support
+ */
+function decodeBase64Unicode(base64: string): string {
+	try {
+		// Decode base64 to binary string
+		const binaryString = atob(base64);
+		// Convert binary string to Uint8Array
+		const bytes = new Uint8Array(binaryString.length);
+		for (let i = 0; i < binaryString.length; i++) {
+			bytes[i] = binaryString.charCodeAt(i);
+		}
+		// Decode UTF-8 bytes to string
+		return new TextDecoder('utf-8').decode(bytes);
+	} catch (error) {
+		logger.error('Failed to decode base64', { error });
+		// Fallback to simple atob
+		return atob(base64);
+	}
+}
+
+/**
  * Parse Bible reference to get book, chapter, verse
  */
 function parseReference(reference: string): {
@@ -226,8 +247,8 @@ export async function fetchTranslationWordsFromDCS(
 				const fileData = await fetchFromDCS(endpoint);
 
 				if (fileData.content) {
-					// Decode base64 content
-					const mdContent = atob(fileData.content);
+					// Decode base64 content with proper Unicode support
+					const mdContent = decodeBase64Unicode(fileData.content);
 
 					// Parse the markdown
 					const word = parseWordMarkdown(mdContent, wordId);

@@ -33,9 +33,16 @@ async function fetchTranslationQuestions(
 		throw new Error(`No translation questions found for ${reference}`);
 	}
 
+	// Extract metadata from the result if available
+	const metadata = result.data[0]?.metadata || {};
+
 	// Return in standard format with trace data
 	return {
-		...createTranslationHelpsResponse(result.data, reference, language, organization, 'tq'),
+		...createTranslationHelpsResponse(result.data, reference, language, organization, 'tq', {
+			license: metadata.license || 'CC BY-SA 4.0',
+			copyright: metadata.copyright,
+			version: metadata.version
+		}),
 		_trace: result.trace
 	};
 }

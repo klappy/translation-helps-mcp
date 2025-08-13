@@ -28,9 +28,16 @@ async function fetchTranslationNotes(params: Record<string, any>, _request: Requ
 		throw new Error(`No translation notes found for ${reference}`);
 	}
 
+	// Extract metadata from the result if available
+	const metadata = result.data[0]?.metadata || {};
+
 	// Return in standard format with trace data
 	return {
-		...createTranslationHelpsResponse(result.data, reference, language, organization, 'tn'),
+		...createTranslationHelpsResponse(result.data, reference, language, organization, 'tn', {
+			license: metadata.license || 'CC BY-SA 4.0',
+			copyright: metadata.copyright,
+			version: metadata.version
+		}),
 		_trace: result.trace
 	};
 }
