@@ -9,6 +9,7 @@ import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js'
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
+import { fetchTranslationNotesFromDCS } from '$lib/edgeTranslationNotesFetcher.js';
 
 // Mock translation notes data for demo
 const MOCK_NOTES = {
@@ -52,9 +53,19 @@ const MOCK_NOTES = {
 async function fetchTranslationNotes(params: Record<string, any>, _request: Request): Promise<any> {
 	const { reference, language, organization } = params;
 
-	// In real implementation, this would fetch from ZIP cache
-	// For now, return mock data
-	const notes = MOCK_NOTES[reference as keyof typeof MOCK_NOTES] || [];
+	let notes = [];
+
+	// Try to fetch real data first
+	try {
+		notes = await fetchTranslationNotesFromDCS(reference, language, organization);
+	} catch (error) {
+		console.error('Failed to fetch from DCS, falling back to mock data:', error);
+	}
+
+	// Fall back to mock data if needed
+	if (notes.length === 0) {
+		notes = MOCK_NOTES[reference as keyof typeof MOCK_NOTES] || [];
+	}
 
 	if (notes.length === 0) {
 		throw new Error(`No translation notes found for ${reference}`);

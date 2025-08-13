@@ -9,18 +9,30 @@ We've successfully started connecting real data sources to our v2 endpoints, mov
 ### ✅ Scripture Fetching
 
 - **Endpoint**: `/api/v2/fetch-scripture`
-- **Status**: Partially connected to real data
+- **Status**: Connected to real data
 - **Resources**: UST (unfoldingWord Simplified Text) confirmed working
 - **Fallback**: Still uses mock data when real data fetch fails
 
+### ✅ Translation Notes
+
+- **Endpoint**: `/api/v2/translation-notes`
+- **Status**: Connected to real data
+- **Format**: Parses TSV files from DCS
+- **Fallback**: Uses mock data when real data unavailable
+
 ### Implementation Details
 
-Created `edgeScriptureFetcher.ts` - A lightweight, edge-compatible scripture fetcher that:
+1. **edgeScriptureFetcher.ts** - Scripture fetcher that:
+   - Connects directly to the DCS API
+   - Searches the catalog for available resources
+   - Fetches USFM files and extracts requested verses
+   - Works within edge runtime constraints
 
-- Connects directly to the DCS API
-- Searches the catalog for available resources
-- Fetches USFM files and extracts requested verses
-- Works within edge runtime constraints
+2. **edgeTranslationNotesFetcher.ts** - Translation notes fetcher that:
+   - Searches for TSV Translation Notes resources
+   - Parses TSV format into structured data
+   - Filters notes by reference
+   - Categorizes notes by type (general, translation, key-term)
 
 ## Architecture
 
