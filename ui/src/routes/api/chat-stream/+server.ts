@@ -17,8 +17,8 @@
 
 import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
+import { initializeKVCache } from '$lib/../../../src/functions/kv-cache.js';
 import type { RequestHandler } from './$types';
-import { initializeKVCache } from '../../../../src/functions/kv-cache.js';
 
 interface ChatRequest {
 	message: string;
