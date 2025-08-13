@@ -7,7 +7,7 @@
 
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { _getWordsForReference } from '$lib/edgeZipFetcher.js';
+import { fetchTranslationWordsFromDCS } from '$lib/edgeTranslationWordsFetcher.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 
@@ -17,8 +17,8 @@ import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 async function fetchTranslationWords(params: Record<string, any>, _request: Request): Promise<any> {
 	const { reference, language, organization } = params;
 
-	// Fetch using ZIP-based approach
-	const words = await _getWordsForReference(reference, language, organization);
+	// Fetch using DCS approach
+	const words = await fetchTranslationWordsFromDCS(reference, language, organization);
 
 	if (!words || words.length === 0) {
 		throw new Error(`No translation words found for ${reference}`);
