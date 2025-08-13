@@ -527,9 +527,24 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		const { data, apiCalls } = await executeMCPCalls(endpointCalls, baseUrl);
 		timings.mcpExecution = Date.now() - mcpExecutionStart;
 
-		// Step 4: Format data for OpenAI context
+		// Step 4: Format data for OpenAI context, including any tool errors so the LLM can respond gracefully
 		const contextFormattingStart = Date.now();
-		const context = formatDataForContext(data);
+		const toolErrors = apiCalls.filter(
+			(c) => (typeof c.status === 'number' && c.status >= 400) || c.error
+		);
+		const hasErrors = toolErrors.length > 0;
+		let errorContext = '';
+		if (hasErrors) {
+			errorContext +=
+				'Tool errors were encountered while gathering context. Provide a clear, user-friendly explanation and suggest alternate ways to proceed.\n';
+			errorContext += 'Errors (do not expose internal URLs):\n';
+			for (const err of toolErrors) {
+				errorContext += `- endpoint: ${err.endpoint}, status: ${err.status || 'n/a'}, message: ${err.error || 'Unknown error'}, params: ${JSON.stringify(err.params)}\n`;
+			}
+			errorContext +=
+				'\nIf a requested resource was not found, explain what is available instead (e.g., try a different verse, or use notes/questions/scripture).\n\n';
+		}
+		const context = `${errorContext}${formatDataForContext(data)}`;
 		timings.contextFormatting = Date.now() - contextFormattingStart;
 
 		// Step 5: Call OpenAI with the data
@@ -595,7 +610,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 				apiCallsCount: apiCalls.length,
 				totalDuration,
 				totalTime: totalDuration,
-				hasErrors: false,
+				hasErrors: apiCalls.some(
+					(c) => (typeof c.status === 'number' && c.status >= 400) || c.error
+				),
 				apiCalls,
 				// Transform apiCalls to tools format for XRayPanel
 				tools: apiCalls.map((call, index) => ({
