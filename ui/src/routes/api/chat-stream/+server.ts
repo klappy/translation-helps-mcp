@@ -358,14 +358,13 @@ function formatDataForContext(data: any[]): string {
 async function callOpenAI(
 	message: string,
 	context: string,
-	chatHistory: Array<{ role: string; content: string }> = []
+	chatHistory: Array<{ role: string; content: string }> = [],
+	apiKey: string
 ): Promise<{ response: string; error?: string }> {
-	const apiKey = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-
 	if (!apiKey) {
 		return {
 			response: '',
-			error: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+			error: 'OpenAI API key not provided to callOpenAI function.'
 		};
 	}
 
@@ -438,19 +437,12 @@ async function callOpenAI(
 }
 
 export const POST: RequestHandler = async ({ request, url, platform }) => {
-	console.log('=== CHAT-STREAM START ===');
-	console.log('Platform exists:', !!platform);
-	console.log('Platform.env exists:', !!platform?.env);
-	console.log('Has OPENAI_API_KEY:', !!platform?.env?.OPENAI_API_KEY);
-	
 	const startTime = Date.now();
 	const timings: Record<string, number> = {};
 
 	try {
-		console.log('Parsing request...');
 		const { message, chatHistory = [], enableXRay = false }: ChatRequest = await request.json();
 		const baseUrl = `${url.protocol}//${url.host}`;
-		console.log('Request parsed successfully');
 
 		logger.info('Chat stream request', { message, historyLength: chatHistory.length });
 
@@ -525,7 +517,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Step 5: Call OpenAI with the data
 		const llmResponseStart = Date.now();
-		const { response, error } = await callOpenAI(message, context, chatHistory);
+		const { response, error } = await callOpenAI(message, context, chatHistory, apiKey);
 		timings.llmResponse = Date.now() - llmResponseStart;
 
 		// Log the response for debugging
