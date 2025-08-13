@@ -38,7 +38,13 @@ CRITICAL RULES YOU MUST FOLLOW:
 2. CITATIONS:
    - ALWAYS provide citations for EVERY quote or reference
    - Format: [Resource Name - Reference]
-   - Example: [ULT v86 - John 3:16]
+   - Examples:
+     * Scripture: [ULT v86 - John 3:16]
+     * Notes: [TN v86 - John 3:16]
+     * Questions: [TQ v86 - John 3:16]
+     * Words: [TW v86]
+   - When citing translation notes/questions, include the specific verse reference
+   - NEVER present information without a citation
 
 3. DATA SOURCES:
    - ONLY use information from the MCP server responses
@@ -49,6 +55,8 @@ CRITICAL RULES YOU MUST FOLLOW:
 4. ANSWERING QUESTIONS:
    - You may reword translation notes/questions for clarity
    - But ALWAYS cite the source of your answer
+   - When paraphrasing notes/questions, include citations after each point
+   - Example: "Paul emphasizes God's faithfulness [TN v86 - Titus 1:2]"
    - List all resources used to formulate your response
 
 When you receive MCP data, use it to provide accurate, helpful responses while maintaining these strict guidelines. Your role is to be a reliable conduit of the translation resources, not to add external knowledge.`;
@@ -286,21 +294,32 @@ function formatDataForContext(data: any[]): string {
 			}
 			context += '\n';
 		} else if (item.type === 'translation-notes' && item.result.items) {
-			context += `Translation Notes for ${item.params.reference}:\n`;
+			const metadata = item.result.metadata || {};
+			const source = metadata.source || 'TN';
+			const version = metadata.version || '';
+			context += `Translation Notes for ${item.params.reference} [${source} ${version}]:\n`;
 			for (const note of item.result.items) {
-				context += `- ${note.Quote || 'General'}: ${note.Note}\n`;
+				const noteRef = note.Reference || item.params.reference;
+				context += `- ${note.Quote || 'General'}: ${note.Note} [${source} ${version} - ${noteRef}]\n`;
 			}
 			context += '\n';
 		} else if (item.type === 'translation-questions' && item.result.items) {
-			context += `Study Questions for ${item.params.reference}:\n`;
+			const metadata = item.result.metadata || {};
+			const source = metadata.source || 'TQ';
+			const version = metadata.version || '';
+			context += `Study Questions for ${item.params.reference} [${source} ${version}]:\n`;
 			for (const q of item.result.items) {
-				context += `- Q: ${q.Question}\n  A: ${q.Response}\n`;
+				const qRef = q.Reference || item.params.reference;
+				context += `- Q: ${q.Question}\n  A: ${q.Response} [${source} ${version} - ${qRef}]\n`;
 			}
 			context += '\n';
 		} else if (item.type === 'fetch-translation-words' && item.result.items) {
-			context += `Translation Words:\n`;
+			const metadata = item.result.metadata || {};
+			const source = metadata.source || 'TW';
+			const version = metadata.version || '';
+			context += `Translation Words [${source} ${version}]:\n`;
 			for (const word of item.result.items) {
-				context += `- ${word.term}: ${word.definition}\n`;
+				context += `- ${word.term}: ${word.definition} [${source} ${version}]\n`;
 			}
 			context += '\n';
 		} else {
@@ -464,8 +483,19 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 				queryType: 'ai-assisted',
 				apiCallsCount: apiCalls.length,
 				totalDuration,
+				totalTime: totalDuration,
 				hasErrors: false,
-				apiCalls
+				apiCalls,
+				// Transform apiCalls to tools format for XRayPanel
+				tools: apiCalls.map((call, index) => ({
+					id: `tool-${index}`,
+					name: call.endpoint,
+					duration: parseInt(call.duration.replace('ms', '')) || 0,
+					cached: false, // We don't have cache info from the basic API calls
+					params: call.params,
+					status: call.status,
+					error: call.error
+				}))
 			};
 		}
 

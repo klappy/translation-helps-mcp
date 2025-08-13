@@ -159,14 +159,16 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 
 		// Add event listener for RC links - only in browser
 		if (browser) {
-			document.addEventListener('click', handleRCLinkClick);
+			// Remove this - we're handling RC links differently
+			// document.addEventListener('click', handleRCLinkClick);
 		}
 	});
 
 	onDestroy(() => {
 		// Clean up event listener - only in browser
 		if (browser) {
-			document.removeEventListener('click', handleRCLinkClick);
+			// Remove this - we're handling RC links differently
+			// document.removeEventListener('click', handleRCLinkClick);
 		}
 	});
 
