@@ -15,9 +15,9 @@
  * 4. When answering questions, cite all sources used
  */
 
+import { initializeKVCache } from '$lib/../../../src/functions/kv-cache.js';
 import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
-import { initializeKVCache } from '$lib/../../../src/functions/kv-cache.js';
 import type { RequestHandler } from './$types';
 
 interface ChatRequest {
