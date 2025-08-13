@@ -17,7 +17,7 @@
 		Zap
 	} from 'lucide-svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import '../app.css';
+	import '../../app.css';
 
 	// Navigation items
 	const navItems = [

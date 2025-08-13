@@ -3,8 +3,8 @@
 	import { page } from '$app/stores';
 	import { Activity, Beaker, Check, Copy, Database, Link } from 'lucide-svelte';
 	import { onMount } from 'svelte';
-	import ApiTester from '../../lib/components/ApiTester.svelte';
-	import PerformanceMetrics from '../../lib/components/PerformanceMetrics.svelte';
+	import ApiTester from '../../../lib/components/ApiTester.svelte';
+	import PerformanceMetrics from '../../../lib/components/PerformanceMetrics.svelte';
 
 	// Three main categories
 	type MainCategory = 'core' | 'extended' | 'experimental' | 'health';
