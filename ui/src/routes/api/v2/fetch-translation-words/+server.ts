@@ -7,9 +7,9 @@
 
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
+import { fetchTranslationWordsFromDCS } from '$lib/edgeTranslationWordsFetcher.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
-import { fetchTranslationWordsFromDCS } from '$lib/edgeTranslationWordsFetcher.js';
 
 // Mock translation words data for demo
 const MOCK_WORDS = {

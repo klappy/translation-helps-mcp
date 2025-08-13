@@ -37,6 +37,23 @@ We've successfully started connecting real data sources to our v2 endpoints, mov
 - **Note**: Some encoding issues with special characters
 - **Fallback**: Uses mock data when real data unavailable
 
+### ✅ Languages Discovery
+
+- **Endpoint**: `/api/v2/simple-languages`
+- **Status**: Connected to real data
+- **Format**: Extracts languages from DCS catalog
+- **Features**: Language metadata, resource filtering, coverage stats
+- **Real Count**: 45+ languages available
+- **Fallback**: Uses mock data when real data unavailable
+
+### ✅ Books Discovery
+
+- **Endpoint**: `/api/v2/get-available-books`
+- **Status**: Connected to real data
+- **Format**: Extracts available books from DCS catalog
+- **Features**: Book metadata, testament filtering, chapter counts
+- **Fallback**: Uses multiple fallback strategies (repo contents, then mock)
+
 ### Implementation Details
 
 1. **edgeScriptureFetcher.ts** - Scripture fetcher that:
@@ -62,6 +79,18 @@ We've successfully started connecting real data sources to our v2 endpoints, mov
    - Fetches markdown files for word definitions
    - Parses markdown to extract definitions, related terms, references
    - Currently uses a simplified approach (will need proper indexing)
+
+5. **edgeLanguagesFetcher.ts** - Languages discovery fetcher that:
+   - Searches the entire Bible catalog
+   - Extracts unique languages from all resources
+   - Calculates coverage statistics per language
+   - Supports resource-based filtering
+
+6. **edgeBooksFetcher.ts** - Books discovery fetcher that:
+   - Searches for resources by language and type
+   - Extracts available books from ingredients
+   - Maintains canonical book order
+   - Supports testament and resource filtering
 
 ## Architecture
 

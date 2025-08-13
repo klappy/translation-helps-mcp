@@ -11,6 +11,7 @@ import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { fetchRepoContents, mockFetchers } from '$lib/dataFetchers.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createListResponse } from '$lib/standardResponses.js';
+import { fetchBooksFromDCS } from '$lib/edgeBooksFetcher.js';
 
 // Bible book metadata
 const BOOK_INFO = {
@@ -83,88 +84,129 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 		});
 	}
 
-	// Build repository name
-	const repoName = resource ? `${language}_${resource}` : `${language}_ult`; // Default to ULT
+	let books = [];
 
+	// Try to fetch real data first using the new fetcher
 	try {
-		// Fetch repository contents to see which books exist
-		const contents = await fetchRepoContents(organization, repoName);
+		books = await fetchBooksFromDCS(language, resource, testament, organization);
 
-		// Filter for book directories (they're usually 2-3 letter codes)
-		const bookDirs = contents.filter(
-			(item) => item.type === 'dir' && item.name.match(/^[0-9]{2,3}-?[A-Z1-3]{3}$/i) // Matches patterns like "01-GEN" or "MAT"
-		);
+		if (books.length > 0) {
+			console.log(
+				`[available-books] Fetched ${books.length} real books from DCS for ${language}/${resource || 'all'}`
+			);
 
-		// Map to our book structure
-		const availableBooks = bookDirs
-			.map((dir) => {
-				// Extract book code from directory name (e.g., "01-GEN" -> "gen")
-				const bookCode = dir.name.replace(/^[0-9]+-?/, '').toLowerCase();
-				const bookInfo = BOOK_INFO[bookCode];
-
-				if (!bookInfo) {
-					return null; // Skip unknown books
-				}
-
-				const book: any = {
-					id: bookCode,
-					name: bookInfo.name,
-					testament: bookInfo.testament,
-					available: true,
-					path: dir.path
+			// Transform to match expected format with all options
+			books = books.map((book) => {
+				const bookInfo = BOOK_INFO[book.id];
+				const result: any = {
+					id: book.id,
+					name: book.name,
+					testament: book.testament,
+					available: true
 				};
 
-				if (includeChapters) {
-					book.chapters = bookInfo.chapters;
+				if (includeChapters && bookInfo) {
+					result.chapters = bookInfo.chapters;
 				}
 
-				if (includeCoverage) {
-					// In a real implementation, we'd check actual chapter files
-					book.coverage = {
+				if (includeCoverage && bookInfo) {
+					result.coverage = {
 						chapters: bookInfo.chapters,
 						completed: bookInfo.chapters, // Assume complete for now
 						percentage: 100
 					};
 				}
 
-				return book;
-			})
-			.filter(Boolean); // Remove nulls
-
-		// Filter by testament if requested
-		let filteredBooks = availableBooks;
-		if (testament) {
-			filteredBooks = availableBooks.filter((book) => book.testament === testament);
-		}
-
-		// Sort books by canonical order (would need full implementation)
-		filteredBooks.sort((a, b) => {
-			const aIndex = Object.keys(BOOK_INFO).indexOf(a.id);
-			const bIndex = Object.keys(BOOK_INFO).indexOf(b.id);
-			return aIndex - bIndex;
-		});
-
-		return createListResponse(filteredBooks, {
-			language,
-			organization,
-			resource: resource || 'ult',
-			source: 'DCS API',
-			circuitBreakerState: circuitBreakers.dcs.getState().state,
-			...(testament && { filteredBy: { testament } })
-		});
-	} catch (error) {
-		// If repo doesn't exist, return empty list
-		if (error instanceof Error && error.message.includes('404')) {
-			return createListResponse([], {
-				language,
-				organization,
-				resource: resource || 'ult',
-				source: 'DCS API',
-				error: 'Repository not found'
+				return result;
 			});
 		}
-		throw error;
+	} catch (error) {
+		console.warn('[available-books] Failed to fetch real data:', error);
+
+		// Try the old approach as fallback
+		const repoName = resource ? `${language}_${resource}` : `${language}_ult`;
+		try {
+			const contents = await fetchRepoContents(organization, repoName);
+			const bookDirs = contents.filter(
+				(item) => item.type === 'dir' && item.name.match(/^[0-9]{2,3}-?[A-Z1-3]{3}$/i)
+			);
+
+			books = bookDirs
+				.map((dir) => {
+					const bookCode = dir.name.replace(/^[0-9]+-?/, '').toLowerCase();
+					const bookInfo = BOOK_INFO[bookCode];
+
+					if (!bookInfo) return null;
+
+					const book: any = {
+						id: bookCode,
+						name: bookInfo.name,
+						testament: bookInfo.testament,
+						available: true,
+						path: dir.path
+					};
+
+					if (includeChapters) {
+						book.chapters = bookInfo.chapters;
+					}
+
+					if (includeCoverage) {
+						book.coverage = {
+							chapters: bookInfo.chapters,
+							completed: bookInfo.chapters,
+							percentage: 100
+						};
+					}
+
+					return book;
+				})
+				.filter(Boolean);
+
+			// Apply testament filter
+			if (testament) {
+				books = books.filter((book) => book.testament === testament);
+			}
+		} catch (fallbackError) {
+			console.warn('[available-books] Fallback also failed:', fallbackError);
+
+			// Last resort: use mock data
+			if (fallbackError instanceof Error && fallbackError.message.includes('404')) {
+				return createListResponse([], {
+					language,
+					organization,
+					resource: resource || 'ult',
+					source: 'DCS API',
+					error: 'Repository not found'
+				});
+			}
+		}
 	}
+
+	// If still no books, use mock data
+	if (books.length === 0) {
+		let mockBooks = await mockFetchers.getAvailableBooks(language, resource);
+		if (testament) {
+			mockBooks = mockBooks.filter((book: any) => book.testament === testament);
+		}
+		books = mockBooks;
+		console.log(`[available-books] Using ${books.length} mock books`);
+	}
+
+	// Sort books by canonical order
+	books.sort((a, b) => {
+		const aIndex = Object.keys(BOOK_INFO).indexOf(a.id);
+		const bIndex = Object.keys(BOOK_INFO).indexOf(b.id);
+		return aIndex - bIndex;
+	});
+
+	return createListResponse(books, {
+		language,
+		organization,
+		resource: resource || 'ult',
+		source: books.length > 0 && !books[0].mock ? 'DCS API' : 'mock',
+		circuitBreakerState: circuitBreakers.dcs.getState().state,
+		...(testament && { filteredBy: { testament } })
+	});
 }
 
 // Create the endpoint

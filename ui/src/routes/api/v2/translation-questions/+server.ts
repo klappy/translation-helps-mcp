@@ -7,11 +7,11 @@
  * - Consistent response shapes
  */
 
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
-import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
+import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { fetchTranslationQuestionsFromDCS } from '$lib/edgeTranslationQuestionsFetcher.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
+import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 
 // Mock translation questions data for demo
 const MOCK_QUESTIONS = {

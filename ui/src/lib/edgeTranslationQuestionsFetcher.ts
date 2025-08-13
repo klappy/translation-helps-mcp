@@ -5,8 +5,8 @@
  * Parses TSV format and returns structured data.
  */
 
-import { edgeLogger as logger } from './edgeLogger.js';
 import { fetchFromDCS } from './dataFetchers.js';
+import { edgeLogger as logger } from './edgeLogger.js';
 
 interface TranslationQuestion {
 	id: string;
