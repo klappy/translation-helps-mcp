@@ -114,6 +114,7 @@ function parseParams(
 export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandler {
 	return async ({ url, request }) => {
 		const startTime = Date.now();
+		let parsedParams: Record<string, any> = {};
 
 		try {
 			// 1. Parse parameters including format if supported
@@ -137,7 +138,9 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 			}
 
 			const allParams = formatParam ? [...params, formatParam] : params;
-			const { params: parsedParams, errors } = parseParams(url, allParams);
+			const parseResult = parseParams(url, allParams);
+			parsedParams = parseResult.params;
+			const errors = parseResult.errors;
 
 			if (errors.length > 0) {
 				return json(
@@ -178,18 +181,57 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 				contentType = format === 'md' ? 'text/markdown' : 'text/plain';
 			}
 
-			// 5. Return success response
-			const responseTime = Date.now() - startTime;
+			// 5. Extract trace data if present
+			let traceData: any = null;
+			if (data && typeof data === 'object' && '_trace' in data) {
+				traceData = data._trace;
+				// Remove _trace from the response data for clean output
+				delete data._trace;
+				if (formattedData && typeof formattedData === 'object' && '_trace' in formattedData) {
+					delete formattedData._trace;
+				}
+			}
 
-			// For non-JSON formats, return plain text response
+			// 6. Build response headers with X-ray trace data
+			const responseTime = Date.now() - startTime;
+			const headers: Record<string, string> = {
+				'Cache-Control': 'public, max-age=3600',
+				'X-Response-Time': `${responseTime}ms`,
+				'X-Endpoint': config.name
+			};
+
+			// Add X-ray trace headers if available
+			if (traceData) {
+				// Calculate cache status
+				const cacheStats = traceData.cacheStats || { hits: 0, misses: 0 };
+				let cacheStatus = 'miss';
+				if (cacheStats.hits > 0 && cacheStats.misses === 0) {
+					cacheStatus = 'hit';
+				} else if (cacheStats.hits > 0 && cacheStats.misses > 0) {
+					cacheStatus = 'partial';
+				}
+
+				headers['X-Cache-Status'] = cacheStatus;
+
+				// Add full trace as base64 encoded JSON
+				const fullTrace = {
+					traceId: traceData.traceId,
+					mainEndpoint: traceData.mainEndpoint,
+					startTime: traceData.startTime,
+					totalDuration: traceData.totalDuration || responseTime,
+					apiCalls: traceData.apiCalls || [],
+					cacheStats: traceData.cacheStats
+				};
+				headers['X-XRay-Trace'] = btoa(JSON.stringify(fullTrace));
+			}
+
+			// 7. Return response with appropriate format
 			if (format !== 'json' && typeof formattedData === 'string') {
 				return new Response(formattedData, {
 					status: 200,
 					headers: {
+						...headers,
 						'Content-Type': `${contentType}; charset=utf-8`,
-						'Cache-Control': 'public, max-age=3600',
-						'X-Response-Time': `${responseTime}ms`,
-						'X-Endpoint': config.name,
 						'X-Format': format
 					}
 				});
@@ -197,14 +239,47 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 
 			return json(formattedData, {
 				headers: {
-					'Cache-Control': 'public, max-age=3600',
-					'X-Response-Time': `${responseTime}ms`,
-					'X-Endpoint': config.name,
+					...headers,
 					'X-Content-Type': contentType
 				}
 			});
 		} catch (error) {
+			const responseTime = Date.now() - startTime;
 			logger.error(`${config.name}: Error`, { error });
+
+			// Build detailed error response
+			const errorDetails: any = {
+				endpoint: config.name,
+				path: url.pathname,
+				params: parsedParams || {},
+				timestamp: new Date().toISOString()
+			};
+
+			// Include stack trace in development
+			if (import.meta.env.DEV && error instanceof Error) {
+				errorDetails.stack = error.stack?.split('\n').slice(0, 5);
+			}
+
+			// Build error headers with X-ray trace
+			const errorHeaders: Record<string, string> = {
+				'X-Response-Time': `${responseTime}ms`,
+				'X-Endpoint': config.name,
+				'X-Error': 'true',
+				'X-Path': url.pathname,
+				'X-Cache-Status': 'miss' // Errors are never cached
+			};
+
+			// Add simplified X-ray trace for errors
+			const errorTrace = {
+				traceId: `error-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+				mainEndpoint: config.name,
+				startTime: startTime,
+				totalDuration: responseTime,
+				apiCalls: [],
+				cacheStats: { hits: 0, misses: 0 },
+				error: error instanceof Error ? error.message : 'Unknown error'
+			};
+			errorHeaders['X-XRay-Trace'] = btoa(JSON.stringify(errorTrace));
 
 			// Custom error handling
 			if (config.onError && error instanceof Error) {
@@ -212,16 +287,12 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 				return json(
 					{
 						error: message,
-						endpoint: config.name,
+						details: errorDetails,
 						status
 					},
 					{
 						status,
-						headers: {
-							'X-Response-Time': `${Date.now() - startTime}ms`,
-							'X-Endpoint': config.name,
-							'X-Error': 'true'
-						}
+						headers: errorHeaders
 					}
 				);
 			}
@@ -230,16 +301,12 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 			return json(
 				{
 					error: error instanceof Error ? error.message : 'Internal server error',
-					endpoint: config.name,
+					details: errorDetails,
 					status: 500
 				},
 				{
 					status: 500,
-					headers: {
-						'X-Response-Time': `${Date.now() - startTime}ms`,
-						'X-Endpoint': config.name,
-						'X-Error': 'true'
-					}
+					headers: errorHeaders
 				}
 			);
 		}

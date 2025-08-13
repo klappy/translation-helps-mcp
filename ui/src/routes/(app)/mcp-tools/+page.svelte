@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import ApiTester from '../../../lib/components/ApiTester.svelte';
 	import PerformanceMetrics from '../../../lib/components/PerformanceMetrics.svelte';
+	import XRayTraceView from '../../../lib/components/XRayTraceView.svelte';
 
 	// Three main categories
 	type MainCategory = 'core' | 'extended' | 'experimental' | 'health';
@@ -290,6 +291,7 @@
 		// Set loading state
 		isLoading = true;
 		apiResult = null;
+		const startTime = Date.now();
 
 		try {
 			// Build query string from formData
@@ -344,8 +346,9 @@
 			};
 
 			try {
-				// X-ray trace
-				const xrayHeader = response.headers.get('X-Xray-Trace');
+				// X-ray trace (case-sensitive header name)
+				const xrayHeader =
+					response.headers.get('X-XRay-Trace') || response.headers.get('x-xray-trace');
 				if (xrayHeader) {
 					const cleaned = xrayHeader.replace(/\s+/g, '');
 					headerDiagnostics.xrayTrace = JSON.parse(atob(cleaned));
@@ -397,6 +400,36 @@
 			handleApiResponse(endpoint, responseWithDiagnostics);
 		} catch (error: any) {
 			console.error(`❌ API test failed for ${endpoint.name}:`, error);
+
+			// Even for network errors, try to create a minimal error response
+			apiResult = {
+				error: error.message || 'Network or request error',
+				details: {
+					endpoint: endpoint.name,
+					path: endpoint.path,
+					timestamp: new Date().toISOString()
+				},
+				status: 0
+			};
+
+			// Create error trace data for visualization
+			const errorTrace = {
+				traceId: `error-${Date.now()}`,
+				mainEndpoint: endpoint.name,
+				totalDuration: Date.now() - startTime,
+				apiCalls: [],
+				cacheStats: { hits: 0, misses: 0 },
+				error: error.message
+			};
+
+			// Store performance data even for errors
+			performanceData[endpoint.name] = {
+				responseTime: Date.now() - startTime,
+				timestamp: new Date(),
+				xrayTrace: errorTrace,
+				error: true
+			};
+
 			loadingError = `Failed to test ${endpoint.name}: ${error.message || error}`;
 		} finally {
 			isLoading = false;
@@ -957,6 +990,31 @@
 					{#if performanceData[selectedEndpoint.name]}
 						<PerformanceMetrics data={performanceData[selectedEndpoint.name]} />
 					{/if}
+
+					<!-- X-Ray Trace Visualization -->
+					{#if performanceData[selectedEndpoint.name] && performanceData[selectedEndpoint.name].xrayTrace}
+						<XRayTraceView
+							trace={performanceData[selectedEndpoint.name].xrayTrace}
+							error={performanceData[selectedEndpoint.name].error ? apiResult : null}
+						/>
+					{:else if performanceData[selectedEndpoint.name] && performanceData[selectedEndpoint.name].calls && performanceData[selectedEndpoint.name].calls.length > 0}
+						<XRayTraceView
+							trace={{
+								apiCalls: performanceData[selectedEndpoint.name].calls,
+								totalDuration: performanceData[selectedEndpoint.name].totalDuration,
+								cacheStats: performanceData[selectedEndpoint.name].cacheStats,
+								traceId: performanceData[selectedEndpoint.name].traceId
+							}}
+						/>
+					{:else if apiResult && apiResult.error}
+						<XRayTraceView
+							error={{
+								serverErrors: apiResult.details?.stack ? 1 : 0,
+								message: apiResult.error,
+								details: apiResult.details
+							}}
+						/>
+					{/if}
 				</div>
 			{:else if selectedEndpoint}
 				<!-- Full Width for Experimental/Health Endpoints -->
@@ -1019,6 +1077,31 @@
 					<!-- Performance Metrics -->
 					{#if performanceData[selectedEndpoint.name]}
 						<PerformanceMetrics data={performanceData[selectedEndpoint.name]} />
+					{/if}
+
+					<!-- X-Ray Trace Visualization -->
+					{#if performanceData[selectedEndpoint.name] && performanceData[selectedEndpoint.name].xrayTrace}
+						<XRayTraceView
+							trace={performanceData[selectedEndpoint.name].xrayTrace}
+							error={performanceData[selectedEndpoint.name].error ? apiResult : null}
+						/>
+					{:else if performanceData[selectedEndpoint.name] && performanceData[selectedEndpoint.name].calls && performanceData[selectedEndpoint.name].calls.length > 0}
+						<XRayTraceView
+							trace={{
+								apiCalls: performanceData[selectedEndpoint.name].calls,
+								totalDuration: performanceData[selectedEndpoint.name].totalDuration,
+								cacheStats: performanceData[selectedEndpoint.name].cacheStats,
+								traceId: performanceData[selectedEndpoint.name].traceId
+							}}
+						/>
+					{:else if apiResult && apiResult.error}
+						<XRayTraceView
+							error={{
+								serverErrors: apiResult.details?.stack ? 1 : 0,
+								message: apiResult.error,
+								details: apiResult.details
+							}}
+						/>
 					{/if}
 				</div>
 			{:else if selectedCategory === 'core'}
