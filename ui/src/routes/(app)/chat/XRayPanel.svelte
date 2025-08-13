@@ -81,6 +81,7 @@
 				<div class="space-y-3">
 					{#each data.tools as tool, index}
 						{@const hasExpandableContent = tool.params || tool.response || tool.error}
+						{@const cacheStatus = tool.cacheStatus || (tool.cached ? 'hit' : 'miss')}
 						<div class="rounded-lg border border-gray-700 bg-gray-800/50 transition-all">
 							{#if hasExpandableContent}
 								<button
@@ -96,8 +97,12 @@
 											<Clock class="h-3 w-3" />
 											{formatDuration(tool.duration)}
 										</span>
-										{#if tool.cached}
+										{#if cacheStatus === 'hit'}
 											<span class="text-green-400">
+												<Database class="h-3 w-3" />
+											</span>
+										{:else if cacheStatus === 'partial'}
+											<span class="text-yellow-400">
 												<Database class="h-3 w-3" />
 											</span>
 										{:else}
@@ -123,8 +128,12 @@
 											<Clock class="h-3 w-3" />
 											{formatDuration(tool.duration)}
 										</span>
-										{#if tool.cached}
+										{#if cacheStatus === 'hit'}
 											<span class="text-green-400">
+												<Database class="h-3 w-3" />
+											</span>
+										{:else if cacheStatus === 'partial'}
+											<span class="text-yellow-400">
 												<Database class="h-3 w-3" />
 											</span>
 										{:else}
@@ -179,8 +188,14 @@
 									{/if}
 									<div class="mb-2 text-sm">
 										<span class="font-medium text-gray-400">Cache Status:</span>
-										<span class="ml-2 {tool.cached ? 'text-green-400' : 'text-orange-400'}">
-											{tool.cached ? 'Hit' : 'Miss'}
+										<span
+											class="ml-2 {cacheStatus === 'hit'
+												? 'text-green-400'
+												: cacheStatus === 'partial'
+													? 'text-yellow-400'
+													: 'text-orange-400'}"
+										>
+											{cacheStatus.charAt(0).toUpperCase() + cacheStatus.slice(1)}
 										</span>
 									</div>
 								</div>

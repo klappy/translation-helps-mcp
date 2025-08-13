@@ -248,6 +248,9 @@ async function executeMCPCalls(
 					result = await response.text();
 				}
 
+				// Extract cache status from headers
+				const cacheStatus = response.headers.get('X-Cache-Status') || 'miss';
+
 				data.push({
 					type: call.endpoint,
 					params: call.params,
@@ -257,7 +260,8 @@ async function executeMCPCalls(
 					endpoint: call.endpoint,
 					params: call.params,
 					duration: `${duration}ms`,
-					status: response.status
+					status: response.status,
+					cacheStatus
 				});
 			} else {
 				logger.error('MCP call failed', {
@@ -585,7 +589,8 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 					id: `tool-${index}`,
 					name: call.endpoint,
 					duration: parseInt(call.duration.replace('ms', '')) || 0,
-					cached: false, // We don't have cache info from the basic API calls
+					cached: call.cacheStatus === 'hit',
+					cacheStatus: call.cacheStatus || 'miss',
 					params: call.params,
 					status: call.status,
 					error: call.error
