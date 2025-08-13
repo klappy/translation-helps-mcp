@@ -82,6 +82,9 @@ export const GET = createSimpleEndpoint({
 	// Same parameter validators
 	params: [COMMON_PARAMS.reference, COMMON_PARAMS.language, COMMON_PARAMS.organization],
 
+	// Enable format support
+	supportsFormats: true,
+
 	fetch: fetchTranslationNotes,
 
 	// Same error handler with custom message

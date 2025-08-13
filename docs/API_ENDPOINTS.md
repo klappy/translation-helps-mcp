@@ -17,12 +17,17 @@ Most endpoints accept these standard parameters:
 | `reference`    | string | Usually  | Bible reference (e.g., "John 3:16", "Genesis 1:1-5") |
 | `language`     | string | Often    | Language code (e.g., "en", "es", "fr")               |
 | `organization` | string | Often    | Organization name (e.g., "unfoldingWord")            |
+| `format`       | string | No       | Response format: "json" (default), "md", "text"      |
 
 ## Response Format
 
-All endpoints return consistent JSON responses:
+All endpoints support multiple response formats via the `format` parameter:
 
-### Success Response
+- **JSON** (default) - Structured data for programmatic access
+- **Markdown** (`format=md`) - Human-readable with rich formatting
+- **Text** (`format=text`) - Plain text for simple consumption
+
+### Success Response (JSON)
 
 ```json
 {
@@ -34,6 +39,22 @@ All endpoints return consistent JSON responses:
     "organization": "unfoldingWord"
   }
 }
+```
+
+### Success Response (Markdown)
+
+```markdown
+# Response Title
+
+## Metadata
+
+- **Reference**: John 3:16
+- **Language**: en
+- **Organization**: unfoldingWord
+
+## Content
+
+...formatted content...
 ```
 
 ### Error Response

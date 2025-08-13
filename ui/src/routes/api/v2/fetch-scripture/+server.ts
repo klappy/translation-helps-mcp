@@ -112,7 +112,7 @@ function formatScripture(
  * Fetch scripture for a reference
  */
 async function fetchScripture(params: Record<string, any>, _request: Request): Promise<any> {
-	const { reference, language, organization, resource: resourceParam, format = 'json' } = params;
+	const { reference, language, organization, resource: resourceParam } = params;
 
 	// Get requested resources
 	const requestedResources = parseResources(resourceParam);
@@ -153,34 +153,17 @@ async function fetchScripture(params: Record<string, any>, _request: Request): P
 		}
 	}
 
-	// Handle different formats
-	if (format === 'text') {
-		// Plain text format
-		return {
-			body: scripture.map((s) => `${s.citation}\n${s.text}`).join('\n\n'),
-			headers: { 'Content-Type': 'text/plain' }
-		};
-	} else if (format === 'md' || format === 'markdown') {
-		// Markdown format
-		const markdown = scripture.map((s) => `## ${s.citation}\n\n${s.text}\n\n---`).join('\n\n');
-		return {
-			body: markdown,
-			headers: { 'Content-Type': 'text/markdown' }
-		};
-	}
-
-	// Default JSON format
+	// Always return structured data - formatting is handled by the endpoint wrapper
 	return createScriptureResponse(scripture, {
 		reference,
 		language,
 		organization,
-		format,
 		requestedResources,
 		foundResources: scripture.map((s) => s.resource)
 	});
 }
 
-// Create the endpoint
+// Create the endpoint with format support
 export const GET = createSimpleEndpoint({
 	name: 'fetch-scripture-v2',
 
@@ -197,16 +180,11 @@ export const GET = createSimpleEndpoint({
 				const resources = value.split(',').map((r) => r.trim());
 				return resources.every((r) => ['ult', 'ust', 't4t', 'ueb'].includes(r));
 			}
-		},
-		{
-			name: 'format',
-			default: 'json',
-			validate: (value) => {
-				if (!value) return true;
-				return ['json', 'text', 'md', 'markdown', 'usfm'].includes(value);
-			}
 		}
 	],
+
+	// Enable format support - format parameter will be added automatically
+	supportsFormats: true,
 
 	fetch: fetchScripture,
 
