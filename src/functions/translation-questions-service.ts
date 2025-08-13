@@ -4,8 +4,8 @@
  * Uses unified resource discovery to minimize DCS API calls
  */
 
-import { logger } from "../utils/logger.js";
 import { proxyFetch } from "../utils/httpClient.js";
+import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
@@ -75,17 +75,48 @@ function parseTQFromTSV(
     const verse = parseInt(refMatch[2]);
 
     // Only include questions for the requested reference
-    if (
-      chapter === reference.chapter &&
-      (reference.verse === undefined || verse === reference.verse)
-    ) {
-      questions.push({
-        id: id || `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
-        reference: `${reference.bookName} ${chapter}:${verse}`,
-        question: question.trim(),
-        response: response.trim(),
-        tags: tags ? tags.split(",").map((t) => t.trim()) : [],
-      });
+    if (chapter === reference.chapter) {
+      // Handle verse ranges and exact matches
+      if (reference.verse === undefined) {
+        // Include all verses in the chapter
+        questions.push({
+          id: id || `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
+          reference: `${reference.bookName} ${chapter}:${verse}`,
+          question: question.trim(),
+          response: response.trim(),
+          tags: tags ? tags.split(",").map((t) => t.trim()) : [],
+        });
+      } else {
+        // Check verse range or exact match
+        const endVerse = reference.endVerse || reference.verseEnd;
+        if (endVerse) {
+          // Check if verse is within range
+          if (verse >= reference.verse && verse <= endVerse) {
+            questions.push({
+              id:
+                id ||
+                `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
+              reference: `${reference.bookName} ${chapter}:${verse}`,
+              question: question.trim(),
+              response: response.trim(),
+              tags: tags ? tags.split(",").map((t) => t.trim()) : [],
+            });
+          }
+        } else {
+          // Exact verse match
+          if (verse === reference.verse) {
+            questions.push({
+              id:
+                id ||
+                `tq-${reference.book}-${chapter}-${verse}-${questionId++}`,
+              reference: `${reference.bookName} ${chapter}:${verse}`,
+              question: question.trim(),
+              response: response.trim(),
+              tags: tags ? tags.split(",").map((t) => t.trim()) : [],
+            });
+          }
+        }
+      }
     }
   }
 
@@ -94,8 +125,11 @@ function parseTQFromTSV(
 
 interface ParsedReference {
   book: string;
+  bookName?: string;
   chapter: number;
   verse?: number;
+  endVerse?: number;
+  verseEnd?: number;
 }
 
 /**
@@ -171,6 +205,7 @@ export async function fetchTranslationQuestions(
 
   // Build URL for the TSV file
   // Direct raw URL fetch disabled. Use ZIP + ingredients path via ZipResourceFetcher2 service.
+  const fileUrl = undefined as unknown as string;
 
   // Try to get from cache first
   const cacheKey = `tq:${fileUrl}`;

@@ -15,7 +15,7 @@
  * 4. When answering questions, cite all sources used
  */
 
-import { logger } from '$lib/logger';
+import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -362,7 +362,7 @@ async function callOpenAI(
 	}
 }
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request, url, platform }) => {
 	const startTime = Date.now();
 
 	try {
@@ -371,9 +371,17 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		logger.info('Chat stream request', { message, historyLength: chatHistory.length });
 
-		// Check for API key
-		const apiKey = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+		// Check for API key - try multiple sources
+		const apiKey =
+			// Cloudflare Workers env binding
+			platform?.env?.OPENAI_API_KEY ||
+			// Local development
+			process.env.OPENAI_API_KEY ||
+			// Vite client env (shouldn't be used but as fallback)
+			import.meta.env.VITE_OPENAI_API_KEY;
+
 		if (!apiKey) {
+			logger.error('OpenAI API key not found in any environment source');
 			return json(
 				{
 					success: false,
@@ -458,12 +466,27 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			}
 		});
 	} catch (error) {
-		logger.error('Chat stream error', { error });
+		logger.error('Chat stream error', {
+			error: error instanceof Error ? error.message : 'Unknown error',
+			stack: error instanceof Error ? error.stack : undefined,
+			type: error?.constructor?.name
+		});
+
+		// Return more detailed error in development
+		const isDev = import.meta.env.DEV || process.env.NODE_ENV === 'development';
+
 		return json(
 			{
 				success: false,
 				error: error instanceof Error ? error.message : 'Internal server error',
-				timestamp: new Date().toISOString()
+				timestamp: new Date().toISOString(),
+				...(isDev && {
+					details: {
+						message: error instanceof Error ? error.message : 'Unknown error',
+						stack: error instanceof Error ? error.stack?.split('\n').slice(0, 5) : undefined,
+						type: error?.constructor?.name
+					}
+				})
 			},
 			{ status: 500 }
 		);

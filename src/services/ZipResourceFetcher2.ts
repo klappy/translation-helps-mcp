@@ -1830,11 +1830,30 @@ export class ZipResourceFetcher2 {
         const matchCv = ref.match(/(\d+:\d+)\b/);
         const refCv = matchCv ? matchCv[1] : ref;
 
-        // Exact verse match when verse provided (avoid 13:16 matching 3:16)
+        // Handle verse ranges and exact verse matches
         if (reference.verse) {
-          const target = `${reference.chapter}:${reference.verse}`;
-          if (refCv === target) {
-            results.push(row as Record<string, string>);
+          // Parse the verse number from the reference
+          const verseMatch = refCv.match(/^(\d+):(\d+)$/);
+          if (verseMatch) {
+            const chapterNum = parseInt(verseMatch[1]);
+            const verseNum = parseInt(verseMatch[2]);
+
+            // Check if chapter matches
+            if (chapterNum === reference.chapter) {
+              // Handle verse range if endVerse or verseEnd is provided
+              const endVerse = reference.endVerse || reference.verseEnd;
+              if (endVerse) {
+                // Check if verse is within range
+                if (verseNum >= reference.verse && verseNum <= endVerse) {
+                  results.push(row as Record<string, string>);
+                }
+              } else {
+                // Exact verse match when no range provided
+                if (verseNum === reference.verse) {
+                  results.push(row as Record<string, string>);
+                }
+              }
+            }
           }
           continue;
         }
