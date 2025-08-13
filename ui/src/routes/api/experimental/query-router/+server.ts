@@ -1,8 +1,11 @@
 /**
- * Chat Endpoint - Showcase for Translation Helps MCP
+ * Query Router - Experimental Pattern-Matching Router
  *
- * This endpoint demonstrates the self-discoverable nature of the API
- * by intelligently routing natural language queries to the appropriate endpoints.
+ * This endpoint provides a simple pattern-matching router that can interpret
+ * natural language queries and route them to the appropriate API endpoints.
+ *
+ * Note: This is NOT an AI assistant - it's a deterministic router for quick lookups.
+ * For the full AI-powered assistant, use /api/chat instead.
  */
 
 import { json } from '@sveltejs/kit';
