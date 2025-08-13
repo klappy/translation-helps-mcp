@@ -11,6 +11,7 @@ import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js'
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
+import { fetchTranslationQuestionsFromDCS } from '$lib/edgeTranslationQuestionsFetcher.js';
 
 // Mock translation questions data for demo
 const MOCK_QUESTIONS = {
@@ -54,9 +55,30 @@ async function fetchTranslationQuestions(
 ): Promise<any> {
 	const { reference, language, organization } = params;
 
-	// In real implementation, this would fetch from ZIP cache
-	// For now, return mock data
-	const questions = MOCK_QUESTIONS[reference as keyof typeof MOCK_QUESTIONS] || [];
+	let questions = [];
+
+	// Try to fetch real data first
+	try {
+		questions = await fetchTranslationQuestionsFromDCS(reference, language, organization);
+
+		if (questions.length > 0) {
+			console.log(
+				`[translation-questions] Fetched ${questions.length} real questions for ${reference}`
+			);
+		}
+	} catch (error) {
+		console.warn('[translation-questions] Failed to fetch real data, falling back to mock:', error);
+	}
+
+	// Fall back to mock data if real data failed
+	if (questions.length === 0) {
+		questions = MOCK_QUESTIONS[reference as keyof typeof MOCK_QUESTIONS] || [];
+		if (questions.length > 0) {
+			console.log(
+				`[translation-questions] Using ${questions.length} mock questions for ${reference}`
+			);
+		}
+	}
 
 	if (questions.length === 0) {
 		throw new Error(`No translation questions found for ${reference}`);

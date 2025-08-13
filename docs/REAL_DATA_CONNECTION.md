@@ -20,6 +20,14 @@ We've successfully started connecting real data sources to our v2 endpoints, mov
 - **Format**: Parses TSV files from DCS
 - **Fallback**: Uses mock data when real data unavailable
 
+### ✅ Translation Questions
+
+- **Endpoint**: `/api/v2/translation-questions`
+- **Status**: Connected to real data
+- **Format**: Parses TSV Translation Questions from DCS
+- **Features**: Chapter-based filtering, includes answers when available
+- **Fallback**: Uses mock data when real data unavailable
+
 ### Implementation Details
 
 1. **edgeScriptureFetcher.ts** - Scripture fetcher that:
@@ -33,6 +41,12 @@ We've successfully started connecting real data sources to our v2 endpoints, mov
    - Parses TSV format into structured data
    - Filters notes by reference
    - Categorizes notes by type (general, translation, key-term)
+
+3. **edgeTranslationQuestionsFetcher.ts** - Translation questions fetcher that:
+   - Searches for TSV Translation Questions resources
+   - Parses TSV format with question/answer pairs
+   - Filters questions by chapter reference
+   - Returns structured data with optional answers
 
 ## Architecture
 
