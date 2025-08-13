@@ -16,15 +16,17 @@ import { createScriptureResponse } from '$lib/standardResponses.js';
  * Parse resource parameter
  */
 function parseResources(resourceParam: string | undefined): string[] {
+	const availableResources = ['ult', 'ust', 't4t', 'ueb'];
+
 	if (!resourceParam || resourceParam === 'all') {
-		return ['ult', 'ust'];
+		return availableResources;
 	}
 
 	// Handle comma-separated resources
 	return resourceParam
 		.split(',')
 		.map((r) => r.trim())
-		.filter((r) => ['ult', 'ust'].includes(r));
+		.filter((r) => availableResources.includes(r));
 }
 
 /**

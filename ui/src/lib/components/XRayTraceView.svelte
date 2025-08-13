@@ -158,11 +158,17 @@
 					<span class="w-8 text-center font-mono text-sm text-gray-500">{index + 1}</span>
 
 					<!-- Cache Status -->
+					{@const cacheStatus =
+						call.cached === true
+							? 'hit'
+							: call.cached === false
+								? 'miss'
+								: call.cacheStatus || 'miss'}
 					<span
-						class={`flex w-16 items-center gap-1 text-sm font-semibold ${getCacheStatusColor(call.cacheStatus)}`}
+						class={`flex w-16 items-center gap-1 text-sm font-semibold ${getCacheStatusColor(cacheStatus)}`}
 					>
-						<span>{getCacheStatusIcon(call.cacheStatus)}</span>
-						<span class="uppercase">{call.cacheStatus || 'MISS'}</span>
+						<span>{getCacheStatusIcon(cacheStatus)}</span>
+						<span class="uppercase">{cacheStatus}</span>
 					</span>
 
 					<!-- URL -->
