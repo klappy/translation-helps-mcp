@@ -124,6 +124,15 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 			if (kv) {
 				initializeKVCache(kv);
 				logger.debug('KV cache initialized for endpoint', { endpoint: config.name });
+			} else {
+				// Log why KV wasn't initialized
+				logger.debug('KV cache not available', { 
+					endpoint: config.name,
+					hasPlatform: !!platform,
+					hasPlatformEnv: !!platform?.env,
+					// @ts-expect-error platform typing
+					envKeys: platform?.env ? Object.keys(platform.env) : []
+				});
 			}
 		} catch (error) {
 			logger.warn('Failed to initialize KV cache', { error });
