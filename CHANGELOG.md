@@ -1,6 +1,30 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file.
+
+## [6.2.0] - 2025-01-13
+
+### Enhanced
+
+- **AI Chat Context Awareness** - The AI assistant now maintains conversation context across messages
+  - Chat history is passed to endpoint determination for better verse reference understanding
+  - Correctly handles follow-up questions like "What about notes with greek quotes?"
+  - Prevents wrong verse lookups when referencing "this verse" or "the verse again"
+
+### Fixed
+
+- **AI Chat Blank Responses** - Fixed issue where AI would show "Fetching..." but return no content
+  - Added comprehensive error logging for debugging
+  - Added empty response checks with clear error messages
+  - Improved response validation and error handling
+
+### Improved
+
+- **X-ray Tracing** - Enhanced performance visibility
+  - Added detailed timing breakdown for all AI chat phases
+  - Shows time spent in endpoint discovery, LLM decision making, MCP execution, and response generation
+  - XRayPanel only shows expandable content when actual data exists
+  - Fixed duplicate event listeners causing href.replace errors See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 ## [6.1.0](https://github.com/klappy/translation-helps-mcp/compare/v6.0.0...v6.1.0) (2025-08-13)
 
