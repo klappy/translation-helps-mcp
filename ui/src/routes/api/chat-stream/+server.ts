@@ -68,10 +68,14 @@ async function discoverMCPEndpoints(baseUrl: string): Promise<any[]> {
 
 		// Flatten all endpoints from all categories
 		const endpoints: any[] = [];
-		for (const category of Object.values(config.endpoints)) {
-			if (Array.isArray(category)) {
-				endpoints.push(...category);
+		if (config.endpoints && typeof config.endpoints === 'object') {
+			for (const category of Object.values(config.endpoints)) {
+				if (Array.isArray(category)) {
+					endpoints.push(...category);
+				}
 			}
+		} else {
+			logger.error('Invalid MCP config structure', { config });
 		}
 
 		logger.info('Discovered MCP endpoints', { count: endpoints.length });
