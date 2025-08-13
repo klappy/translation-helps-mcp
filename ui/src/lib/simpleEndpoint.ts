@@ -9,9 +9,9 @@
 
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
+import { initializeKVCache } from '../../../src/functions/kv-cache.js';
 import { logger } from '../../../src/utils/logger.js';
 import { formatResponse, type ResponseFormat } from './responseFormatter.js';
-import { initializeKVCache } from '../../../src/functions/kv-cache.js';
 
 // Simple parameter validation
 export interface ParamSchema {
