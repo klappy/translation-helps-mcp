@@ -28,6 +28,15 @@ We've successfully started connecting real data sources to our v2 endpoints, mov
 - **Features**: Chapter-based filtering, includes answers when available
 - **Fallback**: Uses mock data when real data unavailable
 
+### ✅ Translation Words
+
+- **Endpoint**: `/api/v2/fetch-translation-words`
+- **Status**: Connected to real data
+- **Format**: Parses Markdown Translation Words from DCS
+- **Features**: Dictionary definitions, related terms, Bible references
+- **Note**: Some encoding issues with special characters
+- **Fallback**: Uses mock data when real data unavailable
+
 ### Implementation Details
 
 1. **edgeScriptureFetcher.ts** - Scripture fetcher that:
@@ -47,6 +56,12 @@ We've successfully started connecting real data sources to our v2 endpoints, mov
    - Parses TSV format with question/answer pairs
    - Filters questions by chapter reference
    - Returns structured data with optional answers
+
+4. **edgeTranslationWordsFetcher.ts** - Translation words fetcher that:
+   - Searches for Translation Words resources
+   - Fetches markdown files for word definitions
+   - Parses markdown to extract definitions, related terms, references
+   - Currently uses a simplified approach (will need proper indexing)
 
 ## Architecture
 

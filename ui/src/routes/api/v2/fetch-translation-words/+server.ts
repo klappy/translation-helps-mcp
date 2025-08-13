@@ -9,6 +9,7 @@ import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
+import { fetchTranslationWordsFromDCS } from '$lib/edgeTranslationWordsFetcher.js';
 
 // Mock translation words data for demo
 const MOCK_WORDS = {
@@ -97,16 +98,37 @@ const MOCK_WORDS = {
 async function fetchTranslationWords(params: Record<string, any>, _request: Request): Promise<any> {
 	const { reference, language, organization } = params;
 
-	// In real implementation, this would fetch from ZIP cache
-	// For now, return mock data
-	const words = MOCK_WORDS[reference as keyof typeof MOCK_WORDS] || [];
+	let words = [];
 
-	if (words.length === 0) {
-		// Return empty array with proper metadata instead of error
-		return createTranslationHelpsResponse([], reference, language, organization, 'tw');
+	// Try to fetch real data first
+	try {
+		const realWords = await fetchTranslationWordsFromDCS(reference, language, organization);
+
+		if (realWords.length > 0) {
+			// Transform to match our expected format
+			words = realWords.map((word) => ({
+				id: word.id,
+				word: word.term,
+				definition: word.definition,
+				...(word.related && { aliases: word.related }),
+				...(word.references && { examples: word.references }),
+				reference: reference
+			}));
+			console.log(`[translation-words] Fetched ${words.length} real words for ${reference}`);
+		}
+	} catch (error) {
+		console.warn('[translation-words] Failed to fetch real data, falling back to mock:', error);
 	}
 
-	// Return in standard format
+	// Fall back to mock data if real data failed
+	if (words.length === 0) {
+		words = MOCK_WORDS[reference as keyof typeof MOCK_WORDS] || [];
+		if (words.length > 0) {
+			console.log(`[translation-words] Using ${words.length} mock words for ${reference}`);
+		}
+	}
+
+	// Return in standard format (empty array is OK)
 	return createTranslationHelpsResponse(words, reference, language, organization, 'tw');
 }
 
