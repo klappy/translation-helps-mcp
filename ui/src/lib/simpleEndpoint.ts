@@ -11,6 +11,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { logger } from '../../../src/utils/logger.js';
 import { formatResponse, type ResponseFormat } from './responseFormatter.js';
+import { initializeKVCache } from '../../../src/functions/kv-cache.js';
 
 // Simple parameter validation
 export interface ParamSchema {
@@ -112,9 +113,21 @@ function parseParams(
  * ```
  */
 export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandler {
-	return async ({ url, request }) => {
+	return async ({ url, request, platform }) => {
 		const startTime = Date.now();
 		let parsedParams: Record<string, any> = {};
+
+		// Initialize KV cache if available
+		try {
+			// @ts-expect-error platform typing differs by adapter
+			const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
+			if (kv) {
+				initializeKVCache(kv);
+				logger.debug('KV cache initialized for endpoint', { endpoint: config.name });
+			}
+		} catch (error) {
+			logger.warn('Failed to initialize KV cache', { error });
+		}
 
 		try {
 			// 1. Parse parameters including format if supported
@@ -317,7 +330,18 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
  * Create OPTIONS handler for CORS
  */
 export function createCORSHandler(): RequestHandler {
-	return async () => {
+	return async ({ platform }) => {
+		// Initialize KV cache if available (even for OPTIONS requests to keep singleton warm)
+		try {
+			// @ts-expect-error platform typing differs by adapter
+			const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
+			if (kv) {
+				initializeKVCache(kv);
+			}
+		} catch {
+			// Ignore errors for OPTIONS requests
+		}
+
 		return new Response(null, {
 			status: 200,
 			headers: {

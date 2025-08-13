@@ -18,6 +18,7 @@
 import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { initializeKVCache } from '../../../../src/functions/kv-cache.js';
 
 interface ChatRequest {
 	message: string;
@@ -443,6 +444,18 @@ async function callOpenAI(
 export const POST: RequestHandler = async ({ request, url, platform }) => {
 	const startTime = Date.now();
 	const timings: Record<string, number> = {};
+
+	// Initialize KV cache if available
+	try {
+		// @ts-expect-error platform typing differs by adapter
+		const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
+		if (kv) {
+			initializeKVCache(kv);
+			logger.debug('KV cache initialized for chat-stream endpoint');
+		}
+	} catch (error) {
+		logger.warn('Failed to initialize KV cache', { error });
+	}
 
 	try {
 		const { message, chatHistory = [], enableXRay = false }: ChatRequest = await request.json();

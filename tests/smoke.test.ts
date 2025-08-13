@@ -3,10 +3,7 @@ import { apiGet } from "./helpers/http";
 
 const TIMEOUT = 15000; // Shorter timeout for smoke tests
 
-async function makeRequest(
-  endpoint: string,
-  params: Record<string, string | undefined> = {},
-) {
+async function makeRequest(endpoint: string, params: Record<string, string | undefined> = {}) {
   return apiGet(endpoint, params);
 }
 
@@ -21,7 +18,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.version).toBeDefined();
       expect(response.version).toBe("6.2.1");
     },
-    TIMEOUT,
+    TIMEOUT
   );
 
   it(
@@ -41,7 +38,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.language).toBe("en");
       expect(response.organization).toBe("unfoldingWord");
     },
-    TIMEOUT,
+    TIMEOUT
   );
 
   it(
@@ -61,7 +58,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.language).toBe("en");
       expect(response.organization).toBe("unfoldingWord");
     },
-    TIMEOUT,
+    TIMEOUT
   );
 
   it(
@@ -82,10 +79,7 @@ describe("Smoke Tests - Quick Health Check", () => {
 
       // Remove timestamps and response times for comparison
       const normalizeTimestamps = (obj: unknown) => {
-        const normalized = JSON.parse(JSON.stringify(obj)) as Record<
-          string,
-          unknown
-        >;
+        const normalized = JSON.parse(JSON.stringify(obj)) as Record<string, unknown>;
         if ("responseTime" in normalized) delete normalized.responseTime;
         if (
           normalized.metadata &&
@@ -100,11 +94,9 @@ describe("Smoke Tests - Quick Health Check", () => {
         return normalized;
       };
 
-      expect(normalizeTimestamps(mcpResponse)).toEqual(
-        normalizeTimestamps(apiResponse),
-      );
+      expect(normalizeTimestamps(mcpResponse)).toEqual(normalizeTimestamps(apiResponse));
     },
-    TIMEOUT,
+    TIMEOUT
   );
 
   it(
@@ -122,7 +114,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.metadata).toBeDefined();
       // Remove citations check as it's not in the response structure
     },
-    TIMEOUT,
+    TIMEOUT
   );
 
   it.skip(
@@ -136,6 +128,6 @@ describe("Smoke Tests - Quick Health Check", () => {
 
       expect(response || {}).toBeTruthy();
     },
-    TIMEOUT,
+    TIMEOUT
   );
 });
