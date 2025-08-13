@@ -9,7 +9,8 @@
 
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { fetchTSVFromZIP, parseReference } from '$lib/edgeZipFetcher.js';
+import { fetchTSVFromZIP } from '$lib/edgeZipFetcher.js';
+import { parseReference } from '$lib/referenceParser.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 

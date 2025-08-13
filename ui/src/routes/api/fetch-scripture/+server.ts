@@ -7,7 +7,8 @@
 
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { fetchScriptureFromZIP, parseReference } from '$lib/edgeZipFetcher.js';
+import { fetchScriptureFromZIP } from '$lib/edgeZipFetcher.js';
+import { parseReference } from '$lib/referenceParser.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createScriptureResponse } from '$lib/standardResponses.js';
 
