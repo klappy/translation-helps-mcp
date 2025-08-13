@@ -1,22 +1,9 @@
 <script>
-	import { onMount, onDestroy, afterUpdate } from 'svelte';
-	import {
-		MessageSquare,
-		Send,
-		Sparkles,
-		Eye,
-		EyeOff,
-		Clock,
-		Database,
-		Droplets,
-		TrendingUp,
-		User
-	} from 'lucide-svelte';
-	import BibleVerse from '$lib/components/BibleVerse.svelte';
-	import TranslationWord from '$lib/components/TranslationWord.svelte';
-	import XRayPanel from './XRayPanel.svelte';
-	import { marked } from 'marked';
 	import { browser } from '$app/environment';
+	import { Droplets, Eye, EyeOff, Send, TrendingUp, User } from 'lucide-svelte';
+	import { marked } from 'marked';
+	import { afterUpdate, onDestroy, onMount } from 'svelte';
+	import XRayPanel from './XRayPanel.svelte';
 
 	// Configure marked for safe HTML rendering
 	marked.setOptions({
@@ -219,14 +206,17 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 
 		scrollToBottom();
 
-		// Call the chat API directly for fastest response
+		// Call the AI-powered chat API
 		try {
-			const response = await fetch('/api/chat', {
+			const response = await fetch('/api/chat-stream', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					message: userMessage.content,
-					history: messages.slice(0, -1), // Exclude current user message
+					chatHistory: messages.slice(0, -2).map((m) => ({
+						role: m.role,
+						content: m.content
+					})), // Convert to expected format, exclude loading message
 					enableXRay: true
 				})
 			});

@@ -422,10 +422,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		const totalDuration = Date.now() - startTime;
 
-		// Build response
+		// Build response to match ChatInterface expectations
 		const result: any = {
 			success: true,
-			response,
+			content: response, // ChatInterface expects 'content', not 'response'
 			timestamp: new Date().toISOString(),
 			contextUsed: {
 				type: 'mcp-data',
