@@ -68,7 +68,14 @@ async function discoverMCPEndpoints(baseUrl: string): Promise<any[]> {
 
 		// Flatten all endpoints from all categories
 		const endpoints: any[] = [];
-		if (config.endpoints && typeof config.endpoints === 'object') {
+		if (config.data && typeof config.data === 'object') {
+			for (const category of Object.values(config.data)) {
+				if (Array.isArray(category)) {
+					endpoints.push(...category);
+				}
+			}
+		} else if (config.endpoints && typeof config.endpoints === 'object') {
+			// Fallback for old structure
 			for (const category of Object.values(config.endpoints)) {
 				if (Array.isArray(category)) {
 					endpoints.push(...category);
