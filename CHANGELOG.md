@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.1.0](https://github.com/klappy/translation-helps-mcp/compare/v6.0.0...v6.1.0) (2025-08-13)
+
+### ⚠ BREAKING CHANGES
+
+- /api/chat moved to /api/experimental/query-router
+
+* Create /api/chat-stream endpoint using OpenAI GPT-4o-mini
+* Implement self-discoverable endpoint selection via /api/mcp-config
+* Let LLM intelligently choose which endpoints to call
+* Let LLM select optimal response format (md/text/json)
+* Enforce strict content rules (no paraphrasing, citations required)
+* Move pattern-matching chat to /api/experimental/query-router
+* Add comprehensive documentation (AI_CHAT_RULES.md, AI_CHAT_ARCHITECTURE.md)
+* Create tests to prevent regressions
+* Document streaming as future enhancement
+* Support OPENAI_API_KEY configuration
+
+### Features
+
+- Add chat showcase endpoint and metadata consistency ([77f83ce](https://github.com/klappy/translation-helps-mcp/commit/77f83ce253922f6b439f821309d37bca975b1055))
+- Add translation attribution to scripture quotes ([4d53aa2](https://github.com/klappy/translation-helps-mcp/commit/4d53aa265118e2ddd811423effcc6b568f6cdfcd))
+- Implement AI-powered chat with OpenAI GPT-4o-mini ([a5bdcb1](https://github.com/klappy/translation-helps-mcp/commit/a5bdcb1743c8568d6ed6e86e39d9f469de3aebd3))
+- implement verse range support for translation notes and questions ([5aed14d](https://github.com/klappy/translation-helps-mcp/commit/5aed14dcb4142e4485ae5df5f2e62fffc99cdb78))
+
+### Bug Fixes
+
+- Wire up ChatInterface to use new AI-powered chat-stream endpoint ([3c382bb](https://github.com/klappy/translation-helps-mcp/commit/3c382bb7c64c0510422901568c056cd05553c331))
+
+### Documentation
+
+- Add chat purpose analysis diagrams ([9235b13](https://github.com/klappy/translation-helps-mcp/commit/9235b13e7d3312c3dc6e6402e5689692c7488f1d))
+- Add v6.0.0 release notes to changelog ([a6be206](https://github.com/klappy/translation-helps-mcp/commit/a6be2066d635b69f17009d00217cbab623add1d6))
+- Add V6.0.0 release summary ([7a06b71](https://github.com/klappy/translation-helps-mcp/commit/7a06b71aa284559a8c24588aa6dd05b7a47799f6))
+
 ## [6.0.0](https://github.com/klappy/translation-helps-mcp/compare/v5.7.0...v6.0.0) (2025-01-10)
 
 ### 🚨 BREAKING CHANGES
