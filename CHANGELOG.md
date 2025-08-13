@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.6.0](https://github.com/klappy/translation-helps-mcp/compare/v5.5.0...v5.6.0) (2025-08-13)
+
+### Features
+
+- add format support to v2 endpoints ([46f3063](https://github.com/klappy/translation-helps-mcp/commit/46f30638797543f742800cc484e358f328bf0e95))
+- add real metadata support from DCS ([1b7fbe3](https://github.com/klappy/translation-helps-mcp/commit/1b7fbe3f21c8f76ba0664ec360e9f6ad2aad573a))
+- connect real data to scripture endpoint ([d4178b9](https://github.com/klappy/translation-helps-mcp/commit/d4178b9a86c17b6fc8e414361570dd97b3cdb098))
+- connect translation notes to real data ([0a61846](https://github.com/klappy/translation-helps-mcp/commit/0a618468d3d02580b38d92d5584c42933063e0e8))
+- connect translation questions to real data ([482bd93](https://github.com/klappy/translation-helps-mcp/commit/482bd93360a1d57dea59d6be00bf8f57774b63e4))
+- connect translation words to real data ([05ffc79](https://github.com/klappy/translation-helps-mcp/commit/05ffc79a74b84f51a4f2d397a8795c91592239ff))
+- fix API Explorer and connect discovery endpoints to real data ([1eb332d](https://github.com/klappy/translation-helps-mcp/commit/1eb332d2ec17c4cb53557662fb91dcc5d6da2fe5))
+
+### Bug Fixes
+
+- clean up API Explorer UI with light theme ([af56f6c](https://github.com/klappy/translation-helps-mcp/commit/af56f6c081f9c285c6b88bea45ae5583748557ce))
+
+### Tests
+
+- update smoke test for v5.5.0 ([0685d67](https://github.com/klappy/translation-helps-mcp/commit/0685d67f5fb65a3fe004c35e1ef6f2d6eabde668))
+
+### Documentation
+
+- add session summary for real data connection progress ([44a6334](https://github.com/klappy/translation-helps-mcp/commit/44a63344e7f098ea8d06650e14835921c75f0e2f))
+- add session summary for real data connection progress ([c5092d1](https://github.com/klappy/translation-helps-mcp/commit/c5092d151bf7e19f1b94c9e8e114b0dd77424fe5))
+- add session summary for v5.5.0 developer experience revolution ([74098bd](https://github.com/klappy/translation-helps-mcp/commit/74098bd395fe9f1fd8c8ede41ae8396c91836880))
+- clean up v5.5.0 changelog ([89677e3](https://github.com/klappy/translation-helps-mcp/commit/89677e3699b50d83bbff54c914513b38bf66af0f))
+
 ## [5.5.0](https://github.com/klappy/translation-helps-mcp/compare/v5.4.0...v5.5.0) (2025-08-12)
 
 ### 🚀 Developer Experience Revolution
