@@ -44,6 +44,14 @@ const REFERENCE_PARAMS = {
     example: "unfoldingWord",
     options: ["unfoldingWord", "Door43-Catalog"],
   },
+  format: {
+    type: "string" as const,
+    required: false,
+    default: "json",
+    description: "Response format",
+    example: "json",
+    options: ["json", "md", "text"],
+  },
 };
 
 /**
@@ -70,6 +78,7 @@ const TERM_PARAMS = {
   },
   language: REFERENCE_PARAMS.language,
   organization: REFERENCE_PARAMS.organization,
+  format: REFERENCE_PARAMS.format,
 };
 
 /**
