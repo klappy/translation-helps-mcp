@@ -192,21 +192,21 @@ ${word.definition}\n`);
 		}
 	}
 
-	// Build final response
+	// Build final response - match what ChatInterface expects
 	return {
-		response: sections.join('\n\n'),
-		metadata: {
+		content: sections.join('\n\n'), // ChatInterface expects 'content', not 'response'
+		xrayData: {
 			queryType: detectQueryType(userQuery),
 			apiCallsCount: apiCalls.length,
 			totalDuration,
-			hasErrors
-		},
-		apiCalls: apiCalls.map((call) => ({
-			endpoint: call.url,
-			duration: call.duration,
-			success: !call.error,
-			error: call.error
-		}))
+			hasErrors,
+			apiCalls: apiCalls.map((call) => ({
+				endpoint: call.url,
+				duration: call.duration,
+				success: !call.error,
+				error: call.error
+			}))
+		}
 	};
 }
 
@@ -296,20 +296,20 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// If no patterns matched, try to be helpful
 		if (apiCalls.length === 0 && !PATTERNS.discovery.test(message)) {
 			return json({
-				response: `I'm not sure what you're asking for. Try one of these:
+				content: `I'm not sure what you're asking for. Try one of these:
 
 - "What is John 3:16?" - to see scripture
 - "What does 'love' mean in the Bible?" - for word definitions  
 - "Explain the notes on Ephesians 2:8-9" - for translation notes
 - "What questions should I consider for Genesis 1?" - for study questions
 - "What can you do?" - to see all capabilities`,
-				metadata: {
+				xrayData: {
 					queryType: 'unknown',
 					apiCallsCount: 0,
 					totalDuration: 0,
-					hasErrors: false
-				},
-				apiCalls: []
+					hasErrors: false,
+					apiCalls: []
+				}
 			});
 		}
 
@@ -319,9 +319,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// Add X-ray tracing headers
 		return json(chatResponse, {
 			headers: {
-				'X-Chat-Query-Type': chatResponse.metadata.queryType,
-				'X-Chat-API-Calls': String(chatResponse.metadata.apiCallsCount),
-				'X-Chat-Duration': `${chatResponse.metadata.totalDuration}ms`
+				'X-Chat-Query-Type': chatResponse.xrayData.queryType,
+				'X-Chat-API-Calls': String(chatResponse.xrayData.apiCallsCount),
+				'X-Chat-Duration': `${chatResponse.xrayData.totalDuration}ms`
 			}
 		});
 	} catch (error) {
