@@ -92,8 +92,8 @@ export const FETCH_SCRIPTURE_ZIP_CONFIG: EndpointConfig = {
  * Example: Translation Questions using ZIP-cached TSV data
  */
 export const FETCH_TRANSLATION_QUESTIONS_ZIP_CONFIG: EndpointConfig = {
-  name: "fetch-translation-questions",
-  path: "/fetch-translation-questions",
+  name: "translation-questions",
+  path: "/translation-questions",
   title: "Fetch Translation Questions (ZIP Cached)",
   description: "Retrieve comprehension questions from cached ZIP files",
   category: "core",
@@ -139,7 +139,7 @@ export const FETCH_TRANSLATION_QUESTIONS_ZIP_CONFIG: EndpointConfig = {
  */
 export const FETCH_TRANSLATION_NOTES_ZIP_CONFIG: EndpointConfig = {
   name: "fetch-translation-notes",
-  path: "/fetch-translation-notes",
+  path: "/translation-notes",
   title: "Fetch Translation Notes (ZIP Cached)",
   description: "Retrieve translation notes from cached ZIP files",
   category: "core",

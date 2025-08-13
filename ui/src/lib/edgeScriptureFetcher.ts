@@ -5,9 +5,8 @@
  * Uses DCS API directly for real data.
  */
 
-import { edgeLogger as logger } from './edgeLogger.js';
 import { fetchFromDCS } from './dataFetchers.js';
-import { fetchCatalogMetadata as _fetchCatalogMetadata } from './edgeMetadataFetcher.js';
+import { edgeLogger as logger } from './edgeLogger.js';
 
 interface ScriptureData {
 	reference: string;
