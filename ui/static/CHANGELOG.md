@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [5.6.0](https://github.com/klappy/translation-helps-mcp/compare/v5.5.0...v5.6.0) (2025-08-13)
+
+### 🎯 Real Data Integration
+
+This release connects all major v2 endpoints to real Bible translation data from Door43 Content Service (DCS), eliminating mock data and providing actual translation resources.
+
+### What's New
+
+#### Real Data Connection
+
+- **Scripture Endpoints** - Fetch actual USFM scripture from DCS repositories
+- **Translation Notes** - Parse real TSV files with translation notes
+- **Translation Questions** - Access actual comprehension questions for passages
+- **Translation Words** - Retrieve word definitions from Markdown files
+- **Language Discovery** - Dynamic language list from DCS catalog
+- **Book Discovery** - Real-time available books per language/resource
+
+#### Enhanced Response Formats
+
+- **Multiple Formats** - All v2 endpoints now support `?format=json|md|text`
+- **Markdown Output** - Beautiful formatted output for LLM consumption
+- **Plain Text** - Simple, clean format for basic text processing
+- **Consistent Structure** - Same data across all formats
+
+#### Real Metadata Support
+
+- **Actual Licenses** - Real license information from DCS (CC BY-SA 4.0, etc.)
+- **Copyright Info** - Proper copyright attribution from source
+- **Contributors** - Lists of actual contributors to resources
+- **Publisher Details** - Real publisher information (unfoldingWord, etc.)
+- **Version Tracking** - Actual resource versions from repositories
+
+### Developer Experience
+
+- **API Explorer UI Fix** - Clean, light theme with proper styling
+- **Fallback Mechanism** - Graceful degradation to mock data when DCS is unavailable
+- **Edge Runtime** - All fetchers are edge-compatible for serverless deployment
+
+### Technical Details
+
+- Enhanced data fetchers with real DCS integration
+- USFM, TSV, and Markdown parsing for different resource types
+- Centralized response formatting utility
+- Real metadata extraction from DCS catalog and repositories
+
 ## [5.5.0](https://github.com/klappy/translation-helps-mcp/compare/v5.4.0...v5.5.0) (2025-08-12)
 
 ### 🚀 Developer Experience Revolution
