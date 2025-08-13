@@ -147,7 +147,12 @@ Important:
   - "text" for simple plain text needs
   - "json" only if you need structured data processing
 - Default to "md" format when available for better readability
-- If no endpoints are needed, return an empty array: []`;
+- If no endpoints are needed (e.g., for greetings, general questions, or non-biblical queries), return an empty array: []
+- Return an empty array if the query is asking about capabilities, help, or non-resource questions`;
+
+	// Add timeout
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
 	try {
 		const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -168,8 +173,10 @@ Important:
 				],
 				temperature: 0.1,
 				max_tokens: 500
-			})
+			}),
+			signal: controller.signal
 		});
+		clearTimeout(timeout);
 
 		if (!response.ok) {
 			logger.error('Failed to determine MCP calls', { status: response.status });
@@ -188,7 +195,14 @@ Important:
 			return [];
 		}
 	} catch (error) {
-		logger.error('Error calling OpenAI for endpoint determination', { error });
+		clearTimeout(timeout);
+
+		// Log timeout errors specifically
+		if (error instanceof Error && error.name === 'AbortError') {
+			logger.error('Timeout determining MCP calls after 15 seconds');
+		} else {
+			logger.error('Error calling OpenAI for endpoint determination', { error });
+		}
 		return [];
 	}
 }
@@ -356,33 +370,57 @@ async function callOpenAI(
 			{ role: 'user', content: message }
 		];
 
-		const response = await fetch('https://api.openai.com/v1/chat/completions', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${apiKey}`
-			},
-			body: JSON.stringify({
-				model: 'gpt-4o-mini',
-				messages,
-				temperature: 0.3, // Lower temperature for more factual responses
-				max_tokens: 1000
-			})
-		});
+		// Add timeout using AbortController
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-		if (!response.ok) {
-			const error = await response.text();
-			logger.error('OpenAI API error', { status: response.status, error });
+		try {
+			const response = await fetch('https://api.openai.com/v1/chat/completions', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${apiKey}`
+				},
+				body: JSON.stringify({
+					model: 'gpt-4o-mini',
+					messages,
+					temperature: 0.3, // Lower temperature for more factual responses
+					max_tokens: 1000
+				}),
+				signal: controller.signal
+			});
+			clearTimeout(timeout);
+
+			if (!response.ok) {
+				const error = await response.text();
+				logger.error('OpenAI API error', { status: response.status, error });
+				return {
+					response: '',
+					error: `OpenAI API error: ${response.status}`
+				};
+			}
+
+			const data = await response.json();
+			return {
+				response: data.choices[0]?.message?.content || 'No response generated'
+			};
+		} catch (error) {
+			clearTimeout(timeout);
+			logger.error('Failed to call OpenAI', { error });
+
+			// Handle timeout specifically
+			if (error instanceof Error && error.name === 'AbortError') {
+				return {
+					response: '',
+					error: 'Request timed out after 30 seconds. Please try again.'
+				};
+			}
+
 			return {
 				response: '',
-				error: `OpenAI API error: ${response.status}`
+				error: error instanceof Error ? error.message : 'Unknown error'
 			};
 		}
-
-		const data = await response.json();
-		return {
-			response: data.choices[0]?.message?.content || 'No response generated'
-		};
 	} catch (error) {
 		logger.error('Failed to call OpenAI', { error });
 		return {
@@ -394,6 +432,7 @@ async function callOpenAI(
 
 export const POST: RequestHandler = async ({ request, url, platform }) => {
 	const startTime = Date.now();
+	const timings: Record<string, number> = {};
 
 	try {
 		const { message, chatHistory = [], enableXRay = false }: ChatRequest = await request.json();
@@ -404,7 +443,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		// Check for API key - try multiple sources
 		const apiKey =
 			// Cloudflare Workers env binding
-			platform?.env?.OPENAI_API_KEY ||
+			(platform as any)?.env?.OPENAI_API_KEY ||
 			// Local development
 			process.env.OPENAI_API_KEY ||
 			// Vite client env (shouldn't be used but as fallback)
@@ -423,7 +462,10 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		}
 
 		// Step 1: Discover available endpoints dynamically
+		const discoveryStart = Date.now();
 		const endpoints = await discoverMCPEndpoints(baseUrl);
+		timings.endpointDiscovery = Date.now() - discoveryStart;
+
 		if (endpoints.length === 0) {
 			return json(
 				{
@@ -436,16 +478,29 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		}
 
 		// Step 2: Let the LLM decide which endpoints to call
+		const llmDecisionStart = Date.now();
 		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints);
+		timings.llmDecision = Date.now() - llmDecisionStart;
+
+		// Log if no endpoints were selected
+		if (endpointCalls.length === 0) {
+			logger.info('LLM decided no MCP endpoints needed for this query', { message });
+		}
 
 		// Step 3: Execute the MCP calls
+		const mcpExecutionStart = Date.now();
 		const { data, apiCalls } = await executeMCPCalls(endpointCalls, baseUrl);
+		timings.mcpExecution = Date.now() - mcpExecutionStart;
 
 		// Step 4: Format data for OpenAI context
+		const contextFormattingStart = Date.now();
 		const context = formatDataForContext(data);
+		timings.contextFormatting = Date.now() - contextFormattingStart;
 
 		// Step 5: Call OpenAI with the data
+		const llmResponseStart = Date.now();
 		const { response, error } = await callOpenAI(message, context, chatHistory);
+		timings.llmResponse = Date.now() - llmResponseStart;
 
 		if (error) {
 			return json(
@@ -495,7 +550,23 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 					params: call.params,
 					status: call.status,
 					error: call.error
-				}))
+				})),
+				// Add detailed timing breakdown
+				timings: {
+					endpointDiscovery: timings.endpointDiscovery || 0,
+					llmDecision: timings.llmDecision || 0,
+					mcpExecution: timings.mcpExecution || 0,
+					contextFormatting: timings.contextFormatting || 0,
+					llmResponse: timings.llmResponse || 0,
+					// Add percentages for easy visualization
+					breakdown: {
+						'Endpoint Discovery': `${timings.endpointDiscovery || 0}ms (${Math.round(((timings.endpointDiscovery || 0) / totalDuration) * 100)}%)`,
+						'LLM Decision Making': `${timings.llmDecision || 0}ms (${Math.round(((timings.llmDecision || 0) / totalDuration) * 100)}%)`,
+						'MCP Tool Execution': `${timings.mcpExecution || 0}ms (${Math.round(((timings.mcpExecution || 0) / totalDuration) * 100)}%)`,
+						'Context Formatting': `${timings.contextFormatting || 0}ms (${Math.round(((timings.contextFormatting || 0) / totalDuration) * 100)}%)`,
+						'LLM Response Generation': `${timings.llmResponse || 0}ms (${Math.round(((timings.llmResponse || 0) / totalDuration) * 100)}%)`
+					}
+				}
 			};
 		}
 

@@ -1,17 +1,17 @@
-<script>
+<script lang="ts">
 	import { X, ChevronDown, ChevronRight, Clock, Database, Zap, AlertCircle } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
 
-	export let data = null;
+	export let data: any = null;
 
 	const dispatch = createEventDispatcher();
-	let expandedTools = {};
+	let expandedTools: Record<string, boolean> = {};
 
-	function toggleTool(toolId) {
+	function toggleTool(toolId: string) {
 		expandedTools[toolId] = !expandedTools[toolId];
 	}
 
-	function getToolIcon(toolName) {
+	function getToolIcon(toolName: string) {
 		if (toolName.includes('scripture')) return '📖';
 		if (toolName.includes('notes')) return '📝';
 		if (toolName.includes('words')) return '📚';
@@ -20,7 +20,7 @@
 		return '🔧';
 	}
 
-	function formatDuration(ms) {
+	function formatDuration(ms: number) {
 		if (ms < 1000) return `${ms}ms`;
 		return `${(ms / 1000).toFixed(2)}s`;
 	}
@@ -50,7 +50,7 @@
 				<h4 class="mb-3 text-sm font-medium text-gray-300">Summary</h4>
 				<div class="grid grid-cols-2 gap-4">
 					<div class="text-center">
-						<div class="text-2xl font-bold text-white">{data.tools.length}</div>
+						<div class="text-2xl font-bold text-white">{data.tools?.length || 0}</div>
 						<div class="text-xs text-gray-400">Tools Used</div>
 					</div>
 					<div class="text-center">
@@ -60,67 +60,123 @@
 				</div>
 			</div>
 
+			<!-- Timing Breakdown Section -->
+			{#if data.timings?.breakdown}
+				<div class="mb-6 rounded-lg bg-gray-800 p-4">
+					<h4 class="mb-3 text-sm font-medium text-gray-300">Performance Breakdown</h4>
+					<div class="space-y-2">
+						{#each Object.entries(data.timings.breakdown) as [phase, timing]}
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-gray-400">{phase}</span>
+								<span class="font-mono text-white">{timing}</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
 			<!-- Tool List -->
 			<div>
 				<h4 class="mb-3 text-sm font-medium text-gray-300">Tool Calls</h4>
 				<div class="space-y-3">
 					{#each data.tools as tool, index}
+						{@const hasExpandableContent = tool.params || tool.response || tool.error}
 						<div class="rounded-lg border border-gray-700 bg-gray-800/50 transition-all">
-							<button
-								class="flex w-full cursor-pointer items-center justify-between p-3 hover:bg-gray-800"
-								on:click={() => toggleTool(tool.id)}
-							>
-								<div class="flex items-center gap-2">
-									<span class="text-xl">{getToolIcon(tool.name)}</span>
-									<span class="font-medium text-white">{tool.name}</span>
-								</div>
-								<div class="flex items-center gap-3 text-sm">
-									<span class="flex items-center gap-1">
-										<Clock class="h-3 w-3" />
-										{formatDuration(tool.duration)}
-									</span>
-									{#if tool.cached}
-										<span class="text-green-400">
-											<Database class="h-3 w-3" />
+							{#if hasExpandableContent}
+								<button
+									class="flex w-full cursor-pointer items-center justify-between p-3 hover:bg-gray-800"
+									on:click={() => toggleTool(tool.id)}
+								>
+									<div class="flex items-center gap-2">
+										<span class="text-xl">{getToolIcon(tool.name)}</span>
+										<span class="font-medium text-white">{tool.name}</span>
+									</div>
+									<div class="flex items-center gap-3 text-sm">
+										<span class="flex items-center gap-1">
+											<Clock class="h-3 w-3" />
+											{formatDuration(tool.duration)}
 										</span>
-									{:else}
-										<span class="text-orange-400">
-											<Zap class="h-3 w-3" />
+										{#if tool.cached}
+											<span class="text-green-400">
+												<Database class="h-3 w-3" />
+											</span>
+										{:else}
+											<span class="text-orange-400">
+												<Zap class="h-3 w-3" />
+											</span>
+										{/if}
+										{#if expandedTools[tool.id]}
+											<ChevronDown class="h-4 w-4 text-gray-400" />
+										{:else}
+											<ChevronRight class="h-4 w-4 text-gray-400" />
+										{/if}
+									</div>
+								</button>
+							{:else}
+								<div class="flex items-center justify-between p-3">
+									<div class="flex items-center gap-2">
+										<span class="text-xl">{getToolIcon(tool.name)}</span>
+										<span class="font-medium text-white">{tool.name}</span>
+									</div>
+									<div class="flex items-center gap-3 text-sm">
+										<span class="flex items-center gap-1">
+											<Clock class="h-3 w-3" />
+											{formatDuration(tool.duration)}
 										</span>
-									{/if}
-									{#if expandedTools[tool.id]}
-										<ChevronDown class="h-4 w-4 text-gray-400" />
-									{:else}
-										<ChevronRight class="h-4 w-4 text-gray-400" />
-									{/if}
+										{#if tool.cached}
+											<span class="text-green-400">
+												<Database class="h-3 w-3" />
+											</span>
+										{:else}
+											<span class="text-orange-400">
+												<Zap class="h-3 w-3" />
+											</span>
+										{/if}
+									</div>
 								</div>
-							</button>
+							{/if}
 
-							{#if expandedTools[tool.id]}
+							{#if expandedTools[tool.id] && hasExpandableContent}
 								<div
 									class="border-t border-gray-700 p-3"
 									style="background-color: rgba(15, 23, 42, 0.5);"
 								>
-									<div class="mb-2 text-sm">
-										<span class="font-medium text-gray-400">Parameters:</span>
-										<pre
-											class="mt-1 rounded p-2 font-mono text-xs text-gray-300"
-											style="background-color: #0f172a;">{JSON.stringify(
-												tool.params,
-												null,
-												2
-											)}</pre>
-									</div>
-									<div class="mb-2 text-sm">
-										<span class="font-medium text-gray-400">Response:</span>
-										<pre
-											class="mt-1 rounded p-2 font-mono text-xs text-gray-300"
-											style="background-color: #0f172a;">{JSON.stringify(
-												tool.response,
-												null,
-												2
-											).substring(0, 200)}...</pre>
-									</div>
+									{#if tool.params}
+										<div class="mb-2 text-sm">
+											<span class="font-medium text-gray-400">Parameters:</span>
+											<pre
+												class="mt-1 rounded p-2 font-mono text-xs text-gray-300"
+												style="background-color: #0f172a;">{JSON.stringify(
+													tool.params,
+													null,
+													2
+												)}</pre>
+										</div>
+									{/if}
+									{#if tool.response}
+										<div class="mb-2 text-sm">
+											<span class="font-medium text-gray-400">Response:</span>
+											<pre
+												class="mt-1 rounded p-2 font-mono text-xs text-gray-300"
+												style="background-color: #0f172a;">{JSON.stringify(
+													tool.response,
+													null,
+													2
+												).substring(0, 200)}...</pre>
+										</div>
+									{/if}
+									{#if tool.status}
+										<div class="mb-2 text-sm">
+											<span class="font-medium text-gray-400">Status:</span>
+											<span class="ml-2 font-mono text-xs">
+												{#if tool.error}
+													<span class="text-red-400">Error: {tool.error}</span>
+												{:else}
+													<span class="text-green-400">HTTP {tool.status}</span>
+												{/if}
+											</span>
+										</div>
+									{/if}
 									<div class="mb-2 text-sm">
 										<span class="font-medium text-gray-400">Cache Status:</span>
 										<span class="ml-2 {tool.cached ? 'text-green-400' : 'text-orange-400'}">
