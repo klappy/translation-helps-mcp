@@ -107,7 +107,8 @@ async function discoverMCPEndpoints(baseUrl: string): Promise<any[]> {
 async function determineMCPCalls(
 	message: string,
 	apiKey: string,
-	endpoints: any[]
+	endpoints: any[],
+	chatHistory: Array<{ role: string; content: string }> = []
 ): Promise<Array<{ endpoint: string; params: Record<string, string> }>> {
 	// Format endpoints for the LLM prompt
 	const endpointDescriptions = endpoints
@@ -118,12 +119,18 @@ async function determineMCPCalls(
 		})
 		.join('\n');
 
-	const prompt = `Based on the user's query, determine which MCP endpoints to call. Return a JSON array of endpoint calls.
+	// Build context from recent chat history
+	const recentContext = chatHistory
+		.slice(-4) // Last 4 messages for context
+		.map((msg) => `${msg.role}: ${msg.content.substring(0, 200)}...`) // Limit content length
+		.join('\n');
 
-Available endpoints:
+	const prompt = `Based on the user's query and conversation context, determine which MCP endpoints to call. Return a JSON array of endpoint calls.
+
+${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}Available endpoints:
 ${endpointDescriptions}
 
-User query: "${message}"
+Current user query: "${message}"
 
 Return ONLY a JSON array like this (no markdown, no explanation):
 [
@@ -479,7 +486,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Step 2: Let the LLM decide which endpoints to call
 		const llmDecisionStart = Date.now();
-		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints);
+		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints, chatHistory);
 		timings.llmDecision = Date.now() - llmDecisionStart;
 
 		// Log if no endpoints were selected
@@ -502,11 +509,32 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		const { response, error } = await callOpenAI(message, context, chatHistory);
 		timings.llmResponse = Date.now() - llmResponseStart;
 
+		// Log the response for debugging
+		logger.info('LLM response', {
+			hasResponse: !!response,
+			responseLength: response?.length || 0,
+			hasError: !!error,
+			contextLength: context.length
+		});
+
 		if (error) {
 			return json(
 				{
 					success: false,
 					error,
+					timestamp: new Date().toISOString()
+				},
+				{ status: 500 }
+			);
+		}
+
+		// Check for empty response
+		if (!response || response.trim() === '') {
+			logger.error('Empty response from LLM', { message, contextLength: context.length });
+			return json(
+				{
+					success: false,
+					error: 'No response generated from AI. Please try again.',
 					timestamp: new Date().toISOString()
 				},
 				{ status: 500 }
