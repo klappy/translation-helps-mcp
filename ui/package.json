@@ -15,13 +15,16 @@
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"test:visual": "playwright test tests/visual",
+		"test:visual:update": "playwright test tests/visual --update-snapshots",
+		"test:visual:ui": "playwright test tests/visual --ui"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
 		"@eslint/js": "^9.18.0",
 		"@fontsource/fira-mono": "^5.0.0",
-		"@playwright/test": "^1.49.1",
+		"@playwright/test": "^1.54.2",
 		"@sveltejs/adapter-static": "^3.0.8",
 		"@tailwindcss/typography": "^0.5.16",
 		"@vitest/browser": "^3.2.3",

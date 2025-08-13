@@ -19,6 +19,20 @@ export interface StandardMetadata {
 	organization?: string;
 	/** Resources included */
 	resources?: string[];
+	/** License information */
+	license?: string;
+	/** Copyright information */
+	copyright?: string;
+	/** Publisher information */
+	publisher?: string;
+	/** Contributors list */
+	contributors?: string[];
+	/** Date issued */
+	issued?: string;
+	/** Date modified */
+	modified?: string;
+	/** Checking level */
+	checkingLevel?: string;
 	/** Any filtering applied */
 	filteredBy?: Record<string, any>;
 	/** Circuit breaker state if applicable */
@@ -74,6 +88,10 @@ export function createScriptureResponse(
 	const organization = scripture[0]?.organization || 'unfoldingWord';
 	const reference = scripture[0]?.reference || '';
 
+	// Extract real metadata from first scripture with metadata
+	const firstWithMetadata = scripture.find((s) => s.metadata);
+	const realMetadata = firstWithMetadata?.metadata || {};
+
 	return {
 		scripture,
 		language,
@@ -84,6 +102,14 @@ export function createScriptureResponse(
 			resources: [...new Set(scripture.map((s) => s.resource || s.translation))].filter(Boolean),
 			language,
 			organization,
+			// Include real metadata
+			license: realMetadata.license || 'CC BY-SA 4.0',
+			copyright: realMetadata.copyright,
+			publisher: realMetadata.publisher,
+			contributors: realMetadata.contributors,
+			issued: realMetadata.issued,
+			modified: realMetadata.modified,
+			checkingLevel: realMetadata.checkingLevel,
 			...additionalMetadata
 		}
 	};
@@ -97,7 +123,8 @@ export function createTranslationHelpsResponse(
 	reference: string,
 	language: string = 'en',
 	organization: string = 'unfoldingWord',
-	resourceType: string
+	resourceType: string,
+	additionalMetadata?: Partial<StandardMetadata>
 ): TranslationHelpsResponse {
 	return {
 		reference,
@@ -108,7 +135,9 @@ export function createTranslationHelpsResponse(
 			totalCount: items.length,
 			source: resourceType.toUpperCase(),
 			language,
-			organization
+			organization,
+			resourceType,
+			...additionalMetadata
 		}
 	};
 }

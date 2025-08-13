@@ -7,8 +7,8 @@
 
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { fetchScriptureFromDCS } from '$lib/edgeScriptureFetcher.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createScriptureResponse } from '$lib/standardResponses.js';
 
 // Mock scripture data
@@ -131,6 +131,10 @@ async function fetchScripture(params: Record<string, any>, _request: Request): P
 				organization,
 				supportedResources
 			);
+			console.log('[fetch-scripture] Real data fetched:', scripture.length, 'items');
+			if (scripture.length > 0) {
+				console.log('[fetch-scripture] First item metadata:', scripture[0].metadata);
+			}
 		}
 	} catch (error) {
 		console.error('Failed to fetch from DCS, falling back to mock data:', error);

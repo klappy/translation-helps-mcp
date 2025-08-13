@@ -41,6 +41,21 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 			if (data.metadata.resources?.length) {
 				markdown += `- **Resources**: ${data.metadata.resources.join(', ')}\n`;
 			}
+			if (data.metadata.license) {
+				markdown += `- **License**: ${data.metadata.license}\n`;
+			}
+			if (data.metadata.copyright) {
+				markdown += `- **Copyright**: ${data.metadata.copyright}\n`;
+			}
+			if (data.metadata.publisher) {
+				markdown += `- **Publisher**: ${data.metadata.publisher}\n`;
+			}
+			if (data.metadata.contributors?.length) {
+				markdown += `- **Contributors**: ${data.metadata.contributors.join(', ')}\n`;
+			}
+			if (data.metadata.checkingLevel) {
+				markdown += `- **Checking Level**: ${data.metadata.checkingLevel}\n`;
+			}
 			markdown += '\n';
 		}
 

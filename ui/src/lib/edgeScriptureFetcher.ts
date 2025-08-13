@@ -7,6 +7,7 @@
 
 import { edgeLogger as logger } from './edgeLogger.js';
 import { fetchFromDCS } from './dataFetchers.js';
+import { fetchCatalogMetadata as _fetchCatalogMetadata } from './edgeMetadataFetcher.js';
 
 interface ScriptureData {
 	reference: string;
@@ -23,6 +24,15 @@ interface ScriptureData {
 		description: string;
 		language: string;
 		textDirection: string;
+	};
+	metadata?: {
+		license: string;
+		copyright?: string;
+		contributors?: string[];
+		publisher?: string;
+		issued?: string;
+		modified?: string;
+		checkingLevel?: string;
 	};
 }
 
@@ -258,22 +268,35 @@ export async function fetchScriptureFromDCS(
 				continue;
 			}
 
-			// Build result
+			// Build result with real metadata
 			results.push({
 				reference,
 				text,
 				resource,
 				language,
 				organization,
-				version: resource.toUpperCase(),
+				version: catalog.version || resource.toUpperCase(),
 				citation: `${reference} (${resource.toUpperCase()})`,
-				copyright: catalog.metadata?.rights || 'Public Domain',
+				copyright: catalog.rights || catalog.metadata?.rights || 'CC BY-SA 4.0',
 				direction: catalog.language_direction || 'ltr',
 				resourceInfo: {
 					name: catalog.title || resourceInfo.name,
-					description: resourceInfo.description,
+					description: catalog.description || resourceInfo.description,
 					language,
 					textDirection: catalog.language_direction || 'ltr'
+				},
+				metadata: {
+					license: catalog.rights || 'CC BY-SA 4.0',
+					copyright: catalog.copyright,
+					contributors: catalog.contributor
+						? Array.isArray(catalog.contributor)
+							? catalog.contributor
+							: [catalog.contributor]
+						: [],
+					publisher: catalog.publisher || 'unfoldingWord',
+					issued: catalog.issued,
+					modified: catalog.modified,
+					checkingLevel: catalog.checking_level
 				}
 			});
 		} catch (error) {
