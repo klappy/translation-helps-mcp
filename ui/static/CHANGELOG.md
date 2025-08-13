@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.1.0](https://github.com/klappy/translation-helps-mcp/compare/v6.0.0...v6.1.0) (2025-08-13)
+
+### 🚀 New Features
+
+#### Verse Range Support for Translation Helps
+
+- Translation notes and questions now support verse ranges (e.g., John 3:1-19)
+- Query multiple verses at once to get all related notes and questions
+- Consistent behavior across all endpoints - scripture already supported ranges
+
+#### AI-Powered Bible Assistant
+
+- New intelligent chat endpoint powered by OpenAI GPT-4o-mini
+- Automatically discovers and calls appropriate MCP endpoints
+- Enforces biblical accuracy: no paraphrasing, citations required
+- Supports multiple response formats (JSON, Markdown, Text)
+
+### 🎨 Improvements
+
+- Added translation attribution to scripture quotes (e.g., "ULT v86")
+- Enhanced metadata consistency across all endpoints
+- Improved error messages with detailed debugging information
+
+### 🐛 Bug Fixes
+
+- Fixed chat interface to use new AI-powered endpoint
+- Resolved edge runtime logger compatibility issues
+
+### 📚 Documentation
+
+- Added comprehensive AI chat documentation
+- Created visual diagrams for chat data flow
+- Updated API examples with verse range usage
+
 ## [6.0.0](https://github.com/klappy/translation-helps-mcp/compare/v5.7.0...v6.0.0) (2025-01-10)
 
 ### 🚨 BREAKING CHANGES

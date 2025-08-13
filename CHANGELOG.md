@@ -4,37 +4,37 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [6.1.0](https://github.com/klappy/translation-helps-mcp/compare/v6.0.0...v6.1.0) (2025-08-13)
 
-### ⚠ BREAKING CHANGES
+### 🚀 New Features
 
-- /api/chat moved to /api/experimental/query-router
+#### Verse Range Support for Translation Helps
 
-* Create /api/chat-stream endpoint using OpenAI GPT-4o-mini
-* Implement self-discoverable endpoint selection via /api/mcp-config
-* Let LLM intelligently choose which endpoints to call
-* Let LLM select optimal response format (md/text/json)
-* Enforce strict content rules (no paraphrasing, citations required)
-* Move pattern-matching chat to /api/experimental/query-router
-* Add comprehensive documentation (AI_CHAT_RULES.md, AI_CHAT_ARCHITECTURE.md)
-* Create tests to prevent regressions
-* Document streaming as future enhancement
-* Support OPENAI_API_KEY configuration
+- Translation notes and questions now support verse ranges (e.g., John 3:1-19)
+- Query multiple verses at once to get all related notes and questions
+- Consistent behavior across all endpoints - scripture already supported ranges
 
-### Features
+#### AI-Powered Bible Assistant
 
-- Add chat showcase endpoint and metadata consistency ([77f83ce](https://github.com/klappy/translation-helps-mcp/commit/77f83ce253922f6b439f821309d37bca975b1055))
-- Add translation attribution to scripture quotes ([4d53aa2](https://github.com/klappy/translation-helps-mcp/commit/4d53aa265118e2ddd811423effcc6b568f6cdfcd))
-- Implement AI-powered chat with OpenAI GPT-4o-mini ([a5bdcb1](https://github.com/klappy/translation-helps-mcp/commit/a5bdcb1743c8568d6ed6e86e39d9f469de3aebd3))
-- implement verse range support for translation notes and questions ([5aed14d](https://github.com/klappy/translation-helps-mcp/commit/5aed14dcb4142e4485ae5df5f2e62fffc99cdb78))
+- New intelligent chat endpoint powered by OpenAI GPT-4o-mini
+- Automatically discovers and calls appropriate MCP endpoints
+- Enforces biblical accuracy: no paraphrasing, citations required
+- Supports multiple response formats (JSON, Markdown, Text)
 
-### Bug Fixes
+### 🎨 Improvements
 
-- Wire up ChatInterface to use new AI-powered chat-stream endpoint ([3c382bb](https://github.com/klappy/translation-helps-mcp/commit/3c382bb7c64c0510422901568c056cd05553c331))
+- Added translation attribution to scripture quotes (e.g., "ULT v86")
+- Enhanced metadata consistency across all endpoints
+- Improved error messages with detailed debugging information
 
-### Documentation
+### 🐛 Bug Fixes
 
-- Add chat purpose analysis diagrams ([9235b13](https://github.com/klappy/translation-helps-mcp/commit/9235b13e7d3312c3dc6e6402e5689692c7488f1d))
-- Add v6.0.0 release notes to changelog ([a6be206](https://github.com/klappy/translation-helps-mcp/commit/a6be2066d635b69f17009d00217cbab623add1d6))
-- Add V6.0.0 release summary ([7a06b71](https://github.com/klappy/translation-helps-mcp/commit/7a06b71aa284559a8c24588aa6dd05b7a47799f6))
+- Fixed chat interface to use new AI-powered endpoint
+- Resolved edge runtime logger compatibility issues
+
+### 📚 Documentation
+
+- Added comprehensive AI chat documentation
+- Created visual diagrams for chat data flow
+- Updated API examples with verse range usage
 
 ## [6.0.0](https://github.com/klappy/translation-helps-mcp/compare/v5.7.0...v6.0.0) (2025-01-10)
 
