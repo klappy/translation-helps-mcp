@@ -438,12 +438,19 @@ async function callOpenAI(
 }
 
 export const POST: RequestHandler = async ({ request, url, platform }) => {
+	console.log('=== CHAT-STREAM START ===');
+	console.log('Platform exists:', !!platform);
+	console.log('Platform.env exists:', !!platform?.env);
+	console.log('Has OPENAI_API_KEY:', !!platform?.env?.OPENAI_API_KEY);
+	
 	const startTime = Date.now();
 	const timings: Record<string, number> = {};
 
 	try {
+		console.log('Parsing request...');
 		const { message, chatHistory = [], enableXRay = false }: ChatRequest = await request.json();
 		const baseUrl = `${url.protocol}//${url.host}`;
+		console.log('Request parsed successfully');
 
 		logger.info('Chat stream request', { message, historyLength: chatHistory.length });
 
