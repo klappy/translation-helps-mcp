@@ -5,7 +5,7 @@
  * Test what matters, skip the edge cases.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { makeRequest } from "../../test-utils";
 
 describe("Health Endpoints", () => {

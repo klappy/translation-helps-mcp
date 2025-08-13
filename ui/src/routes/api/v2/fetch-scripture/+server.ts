@@ -8,6 +8,7 @@
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
+import { fetchScriptureFromDCS } from '$lib/edgeScriptureFetcher.js';
 import { createScriptureResponse } from '$lib/standardResponses.js';
 
 // Mock scripture data
@@ -116,19 +117,39 @@ async function fetchScripture(params: Record<string, any>, _request: Request): P
 	// Get requested resources
 	const requestedResources = parseResources(resourceParam);
 
-	// Get mock data for reference
-	const scriptureData = MOCK_SCRIPTURE_DATA[reference as keyof typeof MOCK_SCRIPTURE_DATA];
+	let scripture = [];
 
-	if (!scriptureData) {
-		throw new Error(`Scripture not found for reference: ${reference}`);
+	// Try to fetch real data first
+	try {
+		// Only try real resources we support
+		const supportedResources = requestedResources.filter((r) => ['ult', 'ust'].includes(r));
+
+		if (supportedResources.length > 0) {
+			scripture = await fetchScriptureFromDCS(
+				reference,
+				language,
+				organization,
+				supportedResources
+			);
+		}
+	} catch (error) {
+		console.error('Failed to fetch from DCS, falling back to mock data:', error);
 	}
 
-	// Build scripture array
-	const scripture = [];
-	for (const resource of requestedResources) {
-		const text = scriptureData[resource as keyof typeof scriptureData];
-		if (text) {
-			scripture.push(formatScripture(reference, text, resource, language, organization));
+	// Fall back to mock data if needed
+	if (scripture.length === 0) {
+		const scriptureData = MOCK_SCRIPTURE_DATA[reference as keyof typeof MOCK_SCRIPTURE_DATA];
+
+		if (!scriptureData) {
+			throw new Error(`Scripture not found for reference: ${reference}`);
+		}
+
+		// Build scripture array from mock data
+		for (const resource of requestedResources) {
+			const text = scriptureData[resource as keyof typeof scriptureData];
+			if (text) {
+				scripture.push(formatScripture(reference, text, resource, language, organization));
+			}
 		}
 	}
 

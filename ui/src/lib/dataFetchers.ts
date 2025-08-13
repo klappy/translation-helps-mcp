@@ -5,7 +5,7 @@
  * with circuit breaker protection and consistent error handling.
  */
 
-import { logger } from '../../../src/utils/logger.js';
+import { edgeLogger as logger } from './edgeLogger.js';
 import { circuitBreakers } from './circuitBreaker.js';
 
 /**

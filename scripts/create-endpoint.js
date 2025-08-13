@@ -7,11 +7,11 @@
  * Ensures consistency, includes tests, and follows best practices.
  */
 
+import chalk from "chalk";
 import { promises as fs } from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import readline from "readline";
-import chalk from "chalk";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
