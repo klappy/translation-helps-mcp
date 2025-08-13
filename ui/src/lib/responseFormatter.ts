@@ -29,7 +29,9 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 		let markdown = '';
 
 		// Add header
-		if (includeMetadata && data.citation) {
+		if (data.reference) {
+			markdown += `# ${data.reference}\n\n`;
+		} else if (includeMetadata && data.citation) {
 			markdown += `# ${typeof data.citation === 'string' ? data.citation : data.citation.reference || 'Scripture'}\n\n`;
 		}
 
@@ -66,8 +68,9 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 			if (verse.reference) {
 				markdown += `### ${verse.reference}\n\n`;
 			}
-			if (verse.resource) {
-				markdown += `**${verse.resource.toUpperCase()}**: `;
+			// Add translation attribution
+			if (verse.translation) {
+				markdown += `**${verse.translation}**\n\n`;
 			}
 			markdown += `${verse.text}\n\n`;
 		}
@@ -79,7 +82,9 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 		let text = '';
 
 		// Add header
-		if (includeMetadata && data.citation) {
+		if (data.reference) {
+			text += `${data.reference}\n${'='.repeat(data.reference.length)}\n\n`;
+		} else if (includeMetadata && data.citation) {
 			const citation = typeof data.citation === 'string' ? data.citation : data.citation.reference;
 			text += `${citation}\n${'='.repeat(citation.length)}\n\n`;
 		}
@@ -89,11 +94,10 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 			if (verse.reference) {
 				text += `${verse.reference}: `;
 			}
-			text += `${verse.text}\n`;
-			if (verse.resource) {
-				text += `(${verse.resource.toUpperCase()})\n`;
+			if (verse.translation) {
+				text += `[${verse.translation}] `;
 			}
-			text += '\n';
+			text += `${verse.text}\n\n`;
 		}
 
 		// Add metadata footer
