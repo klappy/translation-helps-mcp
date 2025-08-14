@@ -62,4 +62,3 @@ If KV still doesn't work after binding:
 3. Trigger a fresh deployment
 4. Check Cloudflare Pages build logs for binding errors
 5. Use `/api/kv-status` endpoint to diagnose issues
-

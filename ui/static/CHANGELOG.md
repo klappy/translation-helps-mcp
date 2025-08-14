@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.2.1] - 2025-01-13
+
+### Fixed
+
+- **AI Chat X-ray Cache Status** - Display accurate cache status (hit/miss/partial) from internal MCP endpoints
+  - Extract X-Cache-Status header from MCP endpoint responses
+  - Pass through actual cache status instead of hardcoded "miss"
+  - Support all three cache states: hit (green), partial (yellow), miss (orange)
+  - Cache status now correctly reflects ZIP-based caching performance
+
+### Removed
+
+- Temporary debug documentation created during OpenAI API key troubleshooting
+
 ## [6.2.0] - 2025-01-13
 
 ### Enhanced
