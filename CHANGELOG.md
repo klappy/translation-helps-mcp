@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.5.0](https://github.com/klappy/translation-helps-mcp/compare/v6.4.0...v6.5.0) (2025-08-14)
+
+### Features
+
+- **ui/chat:** pin composer to bottom, make conversation the only scroller, and add rich starter suggestions; mobile svh + safe-area padding; hide footer on chat route ([06d5311](https://github.com/klappy/translation-helps-mcp/commit/06d5311a1899b409e992740fd21520836d828fef))
+
+### Chores
+
+- apply prettier formatting to version bump files ([4edcc46](https://github.com/klappy/translation-helps-mcp/commit/4edcc4685f14213837fa514c592f543036d0fc52))
+
 ## [6.4.0](https://github.com/klappy/translation-helps-mcp/compare/v6.3.0...v6.4.0) (2025-08-14)
 
 ### Features
