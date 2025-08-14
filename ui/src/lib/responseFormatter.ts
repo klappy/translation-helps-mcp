@@ -436,6 +436,16 @@ export function formatResponse(data: any, options: FormatterOptions): string | o
 		return formatScriptureResponse(data, options);
 	}
 
+	// If a single translation word-like object has raw markdown content, return it directly for md
+	if (
+		options.format === 'md' &&
+		typeof data === 'object' &&
+		data &&
+		typeof data.content === 'string'
+	) {
+		return data.content;
+	}
+
 	// Check for translation helps (notes, questions, words)
 	if (data.items && data.metadata?.resourceType) {
 		return formatTranslationHelpsResponse(data, options);

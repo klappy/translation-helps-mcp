@@ -167,7 +167,9 @@ export const GET = createSimpleEndpoint({
 			status: 404,
 			message: 'No Translation Words catalog available for the requested language/organization.'
 		}
-	})
+	}),
+
+	supportsFormats: true
 });
 
 // CORS handler
