@@ -798,7 +798,7 @@ export class ZipResourceFetcher2 {
       };
       const subject = subjectMap[resourceType];
 
-      // 1) Catalog lookup with subject-specific filtering
+      // 1) Catalog lookup with subject-specific filtering (KV + memory cached)
       const baseCatalog = `https://git.door43.org/api/v1/catalog/search`;
       const params = new URLSearchParams();
       params.set("lang", language);
@@ -810,17 +810,78 @@ export class ZipResourceFetcher2 {
       params.set("includeMetadata", "true");
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
-      const catalogResponse = await trackedFetch(this.tracer, catalogUrl, {
-        headers: this.getClientHeaders(),
-      });
-      if (!catalogResponse.ok)
-        return resourceType === "tw"
-          ? { articles: [] }
-          : { modules: [], categories: [] };
-      const catalogData = (await catalogResponse.json()) as {
-        data?: CatalogResource[];
-      };
-      const resource = (catalogData.data || [])[0]; // API filtering already applied
+      // KV-backed cache key aligned with other helpers
+      const catalogCacheKey = `catalog:${language}:${organization}:prod:rc:${subject}`;
+
+      let catalogData: { data?: CatalogResource[] } | null = null;
+      const kvStart =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+      const cachedCatalog = await this.kvCache.get(catalogCacheKey);
+      if (cachedCatalog) {
+        try {
+          const json =
+            typeof cachedCatalog === "string"
+              ? (cachedCatalog as string)
+              : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
+          catalogData = JSON.parse(json) as { data?: CatalogResource[] };
+          // Log synthetic cache hit for X-Ray
+          this.tracer.addApiCall({
+            url: `internal://kv/catalog/${language}/${organization}/${subject}`,
+            duration: Math.max(
+              1,
+              Math.round(
+                (typeof performance !== "undefined"
+                  ? performance.now()
+                  : Date.now()) - (kvStart as number),
+              ),
+            ),
+            status: 200,
+            size: json.length || 0,
+            cached: true,
+          });
+        } catch {
+          // fall through to network
+        }
+      }
+
+      if (!catalogData) {
+        const catalogResponse = await trackedFetch(this.tracer, catalogUrl, {
+          headers: this.getClientHeaders(),
+        });
+        if (!catalogResponse.ok)
+          return resourceType === "tw"
+            ? { articles: [] }
+            : { modules: [], categories: [] };
+        const body = await catalogResponse.text();
+        try {
+          catalogData = JSON.parse(body) as { data?: CatalogResource[] };
+          // Validate and cache if appropriate
+          const validationResult = validateCacheableData(
+            catalogData,
+            catalogCacheKey,
+          );
+          if (validationResult.cacheable) {
+            await this.kvCache.set(
+              catalogCacheKey,
+              JSON.stringify(catalogData),
+              3600,
+            );
+          } else {
+            logger.warn(
+              `Invalid catalog response for ${catalogCacheKey}, not caching`,
+              {
+                reason: validationResult.reason,
+              },
+            );
+          }
+        } catch {
+          return resourceType === "tw"
+            ? { articles: [] }
+            : { modules: [], categories: [] };
+        }
+      }
+
+      const resource = (catalogData?.data || [])[0]; // API filtering already applied
       if (!resource)
         return resourceType === "tw"
           ? { articles: [] }

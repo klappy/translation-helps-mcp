@@ -5,6 +5,9 @@
  * Parses markdown format and returns structured data.
  */
 
+import { getKVCache } from '$lib/../../../src/functions/kv-cache.js';
+import type { EdgeXRayTrace } from '../../../src/functions/edge-xray.js';
+import { EdgeXRayTracer, trackedFetch } from '../../../src/functions/edge-xray.js';
 import { fetchFromDCS } from './dataFetchers.js';
 import { edgeLogger as logger } from './edgeLogger.js';
 
@@ -90,7 +93,7 @@ function getBookCode(bookName: string): string {
 /**
  * Parse markdown content into structured word definition
  */
-function parseWordMarkdown(content: string, wordId: string): TranslationWord | null {
+export function parseWordMarkdown(content: string, wordId: string): TranslationWord | null {
 	// Extract the main term from the first heading
 	const termMatch = content.match(/^#\s+(.+)$/m);
 	const term = termMatch ? termMatch[1].trim() : wordId;
@@ -267,5 +270,143 @@ export async function fetchTranslationWordsFromDCS(
 	} catch (error) {
 		logger.error('Failed to fetch translation words', { error });
 		throw error;
+	}
+}
+
+/**
+ * Fetch a single Translation Word article by term (DRY helper for endpoints)
+ */
+export async function fetchSingleTranslationWord(
+	term: string,
+	language: string = 'en',
+	organization: string = 'unfoldingWord',
+	tracer?: EdgeXRayTracer
+): Promise<{ item: any; _trace?: EdgeXRayTrace } | null> {
+	const wordKey = term.toLowerCase().replace(/\s+/g, '');
+	const base = 'https://git.door43.org';
+	const kv = getKVCache();
+
+	try {
+		// Search for TW catalog
+		const searchUrl = `${base}/api/v1/catalog/search?lang=${language}&subject=Translation%20Words&limit=25`;
+		const catalogKey = `catalog:tw:${language}:${organization}`;
+		let searchRes: any | null = null;
+		const cachedCatalog = await kv.get(catalogKey);
+		if (cachedCatalog) {
+			try {
+				const decoded =
+					cachedCatalog instanceof ArrayBuffer
+						? new TextDecoder().decode(new Uint8Array(cachedCatalog))
+						: (cachedCatalog as any);
+				searchRes = typeof decoded === 'string' ? JSON.parse(decoded) : decoded;
+				if (tracer) {
+					tracer.addApiCall({
+						url: `${searchUrl}#kv`,
+						duration: 1,
+						status: 200,
+						size: 0,
+						cached: true
+					});
+				}
+			} catch {
+				searchRes = null;
+			}
+		}
+		if (!searchRes) {
+			searchRes = tracer
+				? await (await trackedFetch(tracer, searchUrl)).json()
+				: await fetchFromDCS(`/api/v1/catalog/search`, {
+						lang: language,
+						subject: 'Translation Words',
+						limit: '25'
+					});
+			// Cache catalog result (1h)
+			await kv.set(catalogKey, searchRes, 3600);
+		}
+
+		const catalog = (searchRes?.data || []).find(
+			(item: any) =>
+				item.subject === 'Translation Words' &&
+				item.owner?.toLowerCase() === organization.toLowerCase()
+		);
+		if (!catalog) return null;
+
+		const repoName = catalog.name;
+		const owner = catalog.owner;
+		const categories = [
+			{ key: 'kt', name: 'Key Terms' },
+			{ key: 'names', name: 'Names' },
+			{ key: 'other', name: 'Other' }
+		];
+
+		for (const cat of categories) {
+			const endpoint = `${base}/api/v1/repos/${owner}/${repoName}/contents/bible/${cat.key}/${wordKey}.md`;
+			try {
+				const fileKey = `tw:file:${owner}:${repoName}:${cat.key}:${wordKey}`;
+				let fileData: any | null = null;
+				const cachedFile = await kv.get(fileKey);
+				if (cachedFile) {
+					try {
+						const decoded =
+							cachedFile instanceof ArrayBuffer
+								? new TextDecoder().decode(new Uint8Array(cachedFile))
+								: (cachedFile as any);
+						fileData = typeof decoded === 'string' ? JSON.parse(decoded) : decoded;
+						if (tracer) {
+							tracer.addApiCall({
+								url: `${endpoint}#kv`,
+								duration: 1,
+								status: 200,
+								size: 0,
+								cached: true
+							});
+						}
+					} catch {
+						fileData = null;
+					}
+				}
+
+				if (!fileData) {
+					fileData = tracer
+						? await (await trackedFetch(tracer, endpoint)).json()
+						: await fetchFromDCS(
+								`/api/v1/repos/${owner}/${repoName}/contents/bible/${cat.key}/${wordKey}.md`
+							);
+					// Cache minimal payload (content only) for 4h
+					if (fileData?.content) {
+						await kv.set(fileKey, JSON.stringify({ content: fileData.content }), 14400);
+					}
+				}
+
+				if (fileData?.content) {
+					const mdContent = decodeBase64Unicode(fileData.content);
+					const parsed = parseWordMarkdown(mdContent, wordKey);
+					if (!parsed) continue;
+
+					const item = {
+						id: `${cat.key}:${wordKey}`,
+						word: parsed.term,
+						category: cat.key,
+						categoryName: cat.name,
+						definition: parsed.definition,
+						...(parsed.related && { relatedWords: parsed.related }),
+						...(parsed.references && { references: parsed.references }),
+						language,
+						organization,
+						source: 'TW',
+						content: mdContent
+					};
+
+					return { item, ...(tracer && { _trace: tracer.getTrace() }) };
+				}
+			} catch {
+				// try next category
+			}
+		}
+
+		return tracer ? { item: null, _trace: tracer.getTrace() } : null;
+	} catch (error) {
+		logger.error('Failed to fetch single translation word', { error });
+		return tracer ? { item: null, _trace: tracer.getTrace() } : null;
 	}
 }
