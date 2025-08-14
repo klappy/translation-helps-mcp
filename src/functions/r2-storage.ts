@@ -15,6 +15,13 @@ export interface R2LikeBucket {
   ): Promise<void>;
 }
 
+function contentTypeForKey(key: string): string {
+  const lower = key.toLowerCase();
+  if (lower.includes(".tar.gz") || lower.endsWith(".tgz"))
+    return "application/gzip";
+  return "application/zip";
+}
+
 export class R2Storage {
   constructor(
     private bucket: R2LikeBucket | undefined,
@@ -71,7 +78,7 @@ export class R2Storage {
         req,
         new Response(buf, {
           headers: {
-            "Content-Type": "application/zip",
+            "Content-Type": contentTypeForKey(key),
             "Cache-Control": "public, max-age=604800",
           },
         }),
@@ -106,7 +113,7 @@ export class R2Storage {
         req,
         new Response(buf, {
           headers: {
-            "Content-Type": "application/zip",
+            "Content-Type": contentTypeForKey(key),
             "Cache-Control": "public, max-age=604800",
           },
         }),
@@ -119,7 +126,7 @@ export class R2Storage {
     if (!this.bucket) return;
     await this.bucket.put(key, buf, {
       httpMetadata: {
-        contentType: "application/zip",
+        contentType: contentTypeForKey(key),
         cacheControl: "public, max-age=604800",
       },
       customMetadata: meta,
@@ -130,7 +137,7 @@ export class R2Storage {
         new Request(`https://r2.local/${key}`),
         new Response(buf, {
           headers: {
-            "Content-Type": "application/zip",
+            "Content-Type": contentTypeForKey(key),
             "Cache-Control": "public, max-age=604800",
           },
         }),
