@@ -9,6 +9,16 @@ compatibility_flags = ["nodejs_compat"]
 [env.production.vars]
   NODE_ENV = "production"
 
+[env.production]
+  # Duplicate bindings under production environment so Pages Functions get them
+  [[env.production.kv_namespaces]]
+  binding = "TRANSLATION_HELPS_CACHE"
+  id = "116847d7b0714a9c8d2882335b05d35a"
+
+  [[env.production.r2_buckets]]
+  binding = "ZIP_FILES"
+  bucket_name = "translation-helps-mcp-zip-persistence"
+
 [env.preview.vars]
   NODE_ENV = "development"
 
