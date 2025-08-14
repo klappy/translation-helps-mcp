@@ -47,18 +47,91 @@ export const SCRIPTURE_SHAPE: ResponseShape = {
         structure: {
           required: ["text", "translation", "citation"],
           optional: ["alignment", "usfm"],
+          fieldDescriptions: [
+            {
+              name: "text",
+              type: "string",
+              description:
+                "The scripture text for the requested reference in the specified translation",
+              example: "For God so loved the world...",
+            },
+            {
+              name: "translation",
+              type: "string",
+              description: "Which translation the scripture text comes from",
+              example: "ULT v86",
+              semantics: { options: ["ULT", "UST", "T4T", "UEB"] },
+            },
+            {
+              name: "usfm",
+              type: "string",
+              description: "USFM formatted version of the scripture text (raw markup)",
+              example: "\\c 3\\v 16 For God so loved...",
+            },
+            {
+              name: "alignment",
+              type: "object",
+              description:
+                "Alignment data derived from USFM (\\zaln-s/\\zaln-e groups and \\w word markers). Includes an array of alignment entries and summary metadata.",
+              example: {
+                words: 3,
+                metadata: { totalAlignments: 3, averageConfidence: 0.9 },
+              },
+            },
+          ],
           nested: {
             citation: CITATION_SHAPE,
             alignment: {
               dataType: "scripture",
               structure: {
                 required: ["words", "metadata"],
+                fieldDescriptions: [
+                  {
+                    name: "words",
+                    type: "array",
+                    description:
+                      "Array of alignment entries parsed from USFM (\\zaln-s groups with \\w words). Each entry contains targetWord (translated), sourceWord (original, from x-content), attributes (x-strong, x-lemma, x-morph, x-occurrence, x-occurrences, x-content, x-tw, x-note), position (start, end, chapter, verse), type (alignment type), and optionally a derived confidence score.",
+                    example: [
+                      {
+                        targetWord: "loved",
+                        sourceWord: "ἠγάπησεν",
+                        attributes: {
+                          "x-strong": "G25",
+                          "x-lemma": "ἀγαπάω",
+                          "x-morph": "Gr,VT,,,,VAAI3S,",
+                          "x-occurrence": "1",
+                          "x-occurrences": "1",
+                          "x-content": "ἠγάπησεν",
+                        },
+                        position: {
+                          start: 123,
+                          end: 140,
+                          chapter: 3,
+                          verse: 16,
+                        },
+                        type: "WORD_LEVEL",
+                      },
+                    ],
+                  },
+                  {
+                    name: "metadata",
+                    type: "object",
+                    description:
+                      "Summary statistics computed during parsing (not part of USFM markers).",
+                    example: {
+                      totalAlignments: 110,
+                      averageConfidence: 0.92,
+                      hasCompleteAlignment: true,
+                      parseTime: 12,
+                    },
+                  },
+                ],
                 nested: {
                   metadata: {
                     dataType: "context",
                     structure: {
                       required: ["totalAlignments", "averageConfidence"],
-                      optional: ["coverage"],
+                      optional: ["hasCompleteAlignment", "parseTime"],
                     },
                     performance: {
                       maxResponseTime: 5,
@@ -95,17 +168,47 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
   structure: {
     required: ["verseNotes", "citation", "metadata"],
     optional: ["contextNotes", "_metadata"],
+    fieldDescriptions: [
+      {
+        name: "verseNotes",
+        type: "array",
+        description: "Primary notes for the requested verse reference",
+        example: [],
+      },
+      {
+        name: "contextNotes",
+        type: "array",
+        description: "Broader context notes (front/chapter intros) when included",
+        example: [],
+      },
+      {
+        name: "citation",
+        type: "object",
+        description: "Resource citation metadata (resource, language, organization, version, url)",
+        example: {
+          resource: "tn",
+          language: "en",
+          organization: "unfoldingWord",
+          version: "v86",
+        },
+      },
+      {
+        name: "metadata",
+        type: "object",
+        description: "Standard response metadata (responseTime, cached, timestamp)",
+        example: {
+          responseTime: 85,
+          cached: true,
+          timestamp: "2025-01-01T00:00:00Z",
+        },
+      },
+    ],
     nested: {
       citation: CITATION_SHAPE,
       metadata: {
         dataType: "context",
         structure: {
-          required: [
-            "sourceNotesCount",
-            "verseNotesCount",
-            "cached",
-            "responseTime",
-          ],
+          required: ["sourceNotesCount", "verseNotesCount", "cached", "responseTime"],
           optional: ["contextNotesCount", "timestamp"],
         },
         performance: {
@@ -118,13 +221,7 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       dataType: "translation-notes",
       structure: {
         required: ["id", "reference", "note"],
-        optional: [
-          "quote",
-          "occurrence",
-          "occurrences",
-          "markdown",
-          "supportReference",
-        ],
+        optional: ["quote", "occurrence", "occurrences", "markdown", "supportReference"],
         // NEW: Field descriptions for self-discovery
         fieldDescriptions: [
           {
@@ -166,23 +263,20 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
           {
             name: "occurrences",
             type: "number",
-            description:
-              "Total number of times this phrase appears in the verse",
+            description: "Total number of times this phrase appears in the verse",
             example: 1,
           },
           {
             name: "supportReference",
             type: "string",
-            description:
-              "Additional biblical references that support or relate to this note",
+            description: "Additional biblical references that support or relate to this note",
             example: "Romans 5:8",
           },
           {
             name: "markdown",
             type: "string",
             description: "Original markdown content from the source file",
-            example:
-              "## Quote\n\nοὕτως γὰρ ἠγάπησεν ὁ Θεὸς\n\n## Note\n\nThis phrase means...",
+            example: "## Quote\n\nοὕτως γὰρ ἠγάπησεν ὁ Θεὸς\n\n## Note\n\nThis phrase means...",
           },
         ],
       },
@@ -205,6 +299,35 @@ export const TRANSLATION_WORDS_SHAPE: ResponseShape = {
   structure: {
     required: ["translationWords", "citation", "metadata"],
     optional: ["_metadata"],
+    fieldDescriptions: [
+      {
+        name: "translationWords",
+        type: "array",
+        description: "List of translation word articles (structured from markdown)",
+        example: [],
+      },
+      {
+        name: "citation",
+        type: "object",
+        description: "Resource citation metadata (resource, language, organization, version, url)",
+        example: {
+          resource: "tw",
+          language: "en",
+          organization: "unfoldingWord",
+          version: "v14",
+        },
+      },
+      {
+        name: "metadata",
+        type: "object",
+        description: "Standard response metadata (responseTime, cached, timestamp)",
+        example: {
+          responseTime: 120,
+          cached: false,
+          timestamp: "2025-01-01T00:00:00Z",
+        },
+      },
+    ],
     nested: {
       citation: CITATION_SHAPE,
       metadata: {
@@ -247,10 +370,8 @@ export const TRANSLATION_WORDS_SHAPE: ResponseShape = {
           {
             name: "translationHelps",
             type: "string",
-            description:
-              "Guidance on how to translate this term in different contexts",
-            example:
-              "Use 'love' for God's love, 'care for' for human relationships...",
+            description: "Guidance on how to translate this term in different contexts",
+            example: "Use 'love' for God's love, 'care for' for human relationships...",
           },
           {
             name: "examples",
@@ -285,6 +406,35 @@ export const TRANSLATION_QUESTIONS_SHAPE: ResponseShape = {
   structure: {
     required: ["questions", "citation", "metadata"],
     optional: ["_metadata"],
+    fieldDescriptions: [
+      {
+        name: "questions",
+        type: "array",
+        description: "Collection of translation questions for the requested reference",
+        example: [],
+      },
+      {
+        name: "citation",
+        type: "object",
+        description: "Resource citation metadata (resource, language, organization, version, url)",
+        example: {
+          resource: "tq",
+          language: "en",
+          organization: "unfoldingWord",
+          version: "v86",
+        },
+      },
+      {
+        name: "metadata",
+        type: "object",
+        description: "Standard response metadata (responseTime, cached, timestamp)",
+        example: {
+          responseTime: 120,
+          cached: false,
+          timestamp: "2025-01-01T00:00:00Z",
+        },
+      },
+    ],
     nested: {
       citation: CITATION_SHAPE,
       metadata: CORE_METADATA_SHAPE,
@@ -385,6 +535,69 @@ export const TRANSLATION_ACADEMY_SHAPE: ResponseShape = {
           "content",
         ],
         optional: ["prerequisites", "relatedModules", "exercises"],
+        fieldDescriptions: [
+          {
+            name: "id",
+            type: "string",
+            description: "Unique identifier for the module",
+            example: "ta-intro-translation-notes",
+          },
+          {
+            name: "title",
+            type: "string",
+            description: "Module title",
+            example: "How to Use Translation Notes",
+          },
+          {
+            name: "description",
+            type: "string",
+            description: "Brief summary of the module",
+            example: "Learn how to effectively use translation notes in your workflow.",
+          },
+          {
+            name: "category",
+            type: "string",
+            description: "Module category",
+            example: "translation-principles",
+          },
+          {
+            name: "difficulty",
+            type: "string",
+            description: "Skill level required",
+            example: "beginner",
+            semantics: { options: ["beginner", "intermediate", "advanced"] },
+          },
+          {
+            name: "estimatedTime",
+            type: "string",
+            description: "Estimated time to complete the module",
+            example: "20 minutes",
+          },
+          {
+            name: "content",
+            type: "string",
+            description: "Module content in Markdown format",
+            example: "## Overview\n\nThis module explains...",
+          },
+          {
+            name: "prerequisites",
+            type: "array",
+            description: "List of modules recommended before this one",
+            example: ["ta-intro-translation-words"],
+          },
+          {
+            name: "relatedModules",
+            type: "array",
+            description: "Other related modules",
+            example: ["ta-translation-ambiguity"],
+          },
+          {
+            name: "exercises",
+            type: "array",
+            description: "Practice exercises included in the module",
+            example: ["Identify translation challenges in John 3:16"],
+          },
+        ],
       },
       performance: {
         maxResponseTime: 50,
@@ -414,6 +627,45 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
       structure: {
         required: ["word", "reference", "strong"],
         optional: ["originalWord", "occurrence", "occurrences"],
+        fieldDescriptions: [
+          {
+            name: "word",
+            type: "string",
+            description: "The translation word found in the verse",
+            example: "love",
+          },
+          {
+            name: "reference",
+            type: "string",
+            description: "The verse reference that contains this word",
+            example: "John 3:16",
+          },
+          {
+            name: "strong",
+            type: "string",
+            description: "Strong's number linking to the original language lexicon entry",
+            example: "G25",
+          },
+          {
+            name: "originalWord",
+            type: "string",
+            description: "The original language word corresponding to the translation word",
+            example: "ἠγάπησεν",
+            semantics: { language: "Greek", isOriginalText: true },
+          },
+          {
+            name: "occurrence",
+            type: "number",
+            description: "Which occurrence of this word in the verse",
+            example: 1,
+          },
+          {
+            name: "occurrences",
+            type: "number",
+            description: "Total occurrences of this word in the verse",
+            example: 1,
+          },
+        ],
       },
       performance: {
         maxResponseTime: 5,
@@ -438,13 +690,7 @@ export const LANGUAGES_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: [
-            "responseTime",
-            "cached",
-            "timestamp",
-            "languagesFound",
-            "organization",
-          ],
+          required: ["responseTime", "cached", "timestamp", "languagesFound", "organization"],
           optional: ["alternateNamesIncluded"],
         },
         performance: {
@@ -458,6 +704,45 @@ export const LANGUAGES_SHAPE: ResponseShape = {
       structure: {
         required: ["code", "name", "direction"],
         optional: ["alternateNames", "region", "nativeName"],
+        fieldDescriptions: [
+          {
+            name: "code",
+            type: "string",
+            description: "ISO language code",
+            example: "en",
+          },
+          {
+            name: "name",
+            type: "string",
+            description: "English name of the language",
+            example: "English",
+          },
+          {
+            name: "direction",
+            type: "string",
+            description: "Text direction for the language",
+            example: "ltr",
+            semantics: { options: ["ltr", "rtl"] },
+          },
+          {
+            name: "alternateNames",
+            type: "array",
+            description: "Other names this language is known by",
+            example: ["Modern English"],
+          },
+          {
+            name: "region",
+            type: "string",
+            description: "Primary geographic region for this language",
+            example: "Worldwide",
+          },
+          {
+            name: "nativeName",
+            type: "string",
+            description: "Name of the language written in the language itself",
+            example: "English",
+          },
+        ],
       },
       performance: {
         maxResponseTime: 2,
@@ -496,6 +781,65 @@ export const RESOURCES_SHAPE: ResponseShape = {
       structure: {
         required: ["name", "type", "language", "organization"],
         optional: ["description", "version", "lastUpdated", "size"],
+        fieldDescriptions: [
+          {
+            name: "name",
+            type: "string",
+            description: "Display name of the resource",
+            example: "English ULT Bible",
+          },
+          {
+            name: "type",
+            type: "string",
+            description: "Kind of resource",
+            example: "Bible",
+            semantics: {
+              options: [
+                "Bible",
+                "TSV Translation Notes",
+                "Translation Words",
+                "Translation Questions",
+                "Translation Academy",
+              ],
+            },
+          },
+          {
+            name: "language",
+            type: "string",
+            description: "Language code of the resource",
+            example: "en",
+          },
+          {
+            name: "organization",
+            type: "string",
+            description: "Owning organization for the resource",
+            example: "unfoldingWord",
+          },
+          {
+            name: "description",
+            type: "string",
+            description: "Short description of the resource",
+            example: "unfoldingWord Literal Text (ULT) English Bible",
+          },
+          {
+            name: "version",
+            type: "string",
+            description: "Version tag for the resource",
+            example: "v86",
+          },
+          {
+            name: "lastUpdated",
+            type: "string",
+            description: "ISO timestamp when the resource was last updated",
+            example: "2024-07-12T10:15:00Z",
+          },
+          {
+            name: "size",
+            type: "number",
+            description: "Approximate size of the resource package in bytes",
+            example: 1048576,
+          },
+        ],
       },
       performance: {
         maxResponseTime: 5,
@@ -524,6 +868,50 @@ export const REFERENCES_SHAPE: ResponseShape = {
       structure: {
         required: ["reference", "book", "chapter", "verse"],
         optional: ["startVerse", "endVerse", "context"],
+        fieldDescriptions: [
+          {
+            name: "reference",
+            type: "string",
+            description: "Normalized reference string",
+            example: "John 3:16",
+          },
+          {
+            name: "book",
+            type: "string",
+            description: "Book code or name",
+            example: "John",
+          },
+          {
+            name: "chapter",
+            type: "number",
+            description: "Chapter number",
+            example: 3,
+          },
+          {
+            name: "verse",
+            type: "number",
+            description: "Verse number",
+            example: 16,
+          },
+          {
+            name: "startVerse",
+            type: "number",
+            description: "Start verse for ranges",
+            example: 16,
+          },
+          {
+            name: "endVerse",
+            type: "number",
+            description: "End verse for ranges",
+            example: 18,
+          },
+          {
+            name: "context",
+            type: "string",
+            description: "Free-form context about how this reference is used",
+            example: "Primary study verse",
+          },
+        ],
       },
       performance: {
         maxResponseTime: 2,
@@ -549,12 +937,7 @@ export const CONTEXT_SHAPE: ResponseShape = {
         dataType: "context",
         structure: {
           required: [],
-          optional: [
-            "scripture",
-            "translationNotes",
-            "translationWords",
-            "translationQuestions",
-          ],
+          optional: ["scripture", "translationNotes", "translationWords", "translationQuestions"],
           nested: {
             scripture: SCRIPTURE_SHAPE,
             translationNotes: TRANSLATION_NOTES_SHAPE,
@@ -570,13 +953,7 @@ export const CONTEXT_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: [
-            "responseTime",
-            "cached",
-            "timestamp",
-            "resourcesRequested",
-            "resourcesFound",
-          ],
+          required: ["responseTime", "cached", "timestamp", "resourcesRequested", "resourcesFound"],
           optional: ["aggregationTime", "cacheHitRate"],
         },
         performance: {
@@ -636,9 +1013,7 @@ export const RESPONSE_SHAPES = {
 } as const;
 
 // Utility function to get response shape by data type
-export function getResponseShape(
-  dataType: keyof typeof RESPONSE_SHAPES,
-): ResponseShape {
+export function getResponseShape(dataType: keyof typeof RESPONSE_SHAPES): ResponseShape {
   const shape = RESPONSE_SHAPES[dataType];
   if (!shape) {
     throw new Error(`Unknown response shape: ${dataType}`);
@@ -650,7 +1025,7 @@ export function getResponseShape(
 export function validateResponseShape(
   response: unknown,
   shape: ResponseShape,
-  path = "root",
+  path = "root"
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -671,11 +1046,7 @@ export function validateResponseShape(
   if (shape.structure.nested) {
     for (const [field, nestedShape] of Object.entries(shape.structure.nested)) {
       if (field in obj && obj[field] !== null && obj[field] !== undefined) {
-        const nestedResult = validateResponseShape(
-          obj[field],
-          nestedShape,
-          `${path}.${field}`,
-        );
+        const nestedResult = validateResponseShape(obj[field], nestedShape, `${path}.${field}`);
         errors.push(...nestedResult.errors);
       }
     }
