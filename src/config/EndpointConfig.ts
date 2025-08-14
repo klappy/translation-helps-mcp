@@ -71,6 +71,30 @@ export type TransformationType =
   | "reference-parse";
 
 // Response Shape Types
+export interface ResponseFieldDescription {
+  /** The field name */
+  name: string;
+
+  /** What type of data this field contains */
+  type: string;
+
+  /** Human-readable description of what this field contains */
+  description: string;
+
+  /** Example value to illustrate the field */
+  example?: any;
+
+  /** Additional semantic information */
+  semantics?: {
+    /** What language/format (e.g., "Greek", "Hebrew", "Markdown") */
+    language?: string;
+    /** Whether this is original text vs translation */
+    isOriginalText?: boolean;
+    /** Any other relevant metadata */
+    [key: string]: any;
+  };
+}
+
 export interface ResponseShape {
   /** Primary data field type */
   dataType:
@@ -99,6 +123,9 @@ export interface ResponseShape {
 
     /** Array item shapes */
     arrayItems?: ResponseShape;
+
+    /** Field descriptions - NEW! */
+    fieldDescriptions?: ResponseFieldDescription[];
   };
 
   /** Performance expectations */

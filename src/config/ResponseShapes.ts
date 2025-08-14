@@ -125,6 +125,66 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
           "markdown",
           "supportReference",
         ],
+        // NEW: Field descriptions for self-discovery
+        fieldDescriptions: [
+          {
+            name: "id",
+            type: "string",
+            description: "Unique identifier for this translation note",
+            example: "tn-jhn-3-16-01",
+          },
+          {
+            name: "reference",
+            type: "string",
+            description: "The Bible verse reference this note applies to",
+            example: "John 3:16",
+          },
+          {
+            name: "note",
+            type: "string",
+            description: "The explanatory text or commentary for this passage",
+            example: "This phrase means that God loved the world deeply...",
+          },
+          {
+            name: "quote",
+            type: "string",
+            description:
+              "The Greek or Hebrew text from the original language that this note explains",
+            example: "οὕτως γὰρ ἠγάπησεν ὁ Θεὸς",
+            semantics: {
+              language: "Greek",
+              isOriginalText: true,
+            },
+          },
+          {
+            name: "occurrence",
+            type: "number",
+            description:
+              "Which occurrence of this phrase in the verse (if it appears multiple times)",
+            example: 1,
+          },
+          {
+            name: "occurrences",
+            type: "number",
+            description:
+              "Total number of times this phrase appears in the verse",
+            example: 1,
+          },
+          {
+            name: "supportReference",
+            type: "string",
+            description:
+              "Additional biblical references that support or relate to this note",
+            example: "Romans 5:8",
+          },
+          {
+            name: "markdown",
+            type: "string",
+            description: "Original markdown content from the source file",
+            example:
+              "## Quote\n\nοὕτως γὰρ ἠγάπησεν ὁ Θεὸς\n\n## Note\n\nThis phrase means...",
+          },
+        ],
       },
       performance: {
         maxResponseTime: 5,
@@ -164,6 +224,47 @@ export const TRANSLATION_WORDS_SHAPE: ResponseShape = {
       structure: {
         required: ["id", "word", "definition"],
         optional: ["translationHelps", "examples", "related"],
+        // Field descriptions for self-discovery
+        fieldDescriptions: [
+          {
+            name: "id",
+            type: "string",
+            description: "Unique identifier for this translation word",
+            example: "tw-love",
+          },
+          {
+            name: "word",
+            type: "string",
+            description: "The biblical term or concept being defined",
+            example: "love",
+          },
+          {
+            name: "definition",
+            type: "string",
+            description: "The definition and explanation of this biblical term",
+            example: "Love is a deep, selfless care for others...",
+          },
+          {
+            name: "translationHelps",
+            type: "string",
+            description:
+              "Guidance on how to translate this term in different contexts",
+            example:
+              "Use 'love' for God's love, 'care for' for human relationships...",
+          },
+          {
+            name: "examples",
+            type: "array",
+            description: "Biblical examples of how this term is used",
+            example: ["John 3:16", "1 Corinthians 13:4-7"],
+          },
+          {
+            name: "related",
+            type: "array",
+            description: "Related terms or concepts",
+            example: ["grace", "mercy", "kindness"],
+          },
+        ],
       },
       performance: {
         maxResponseTime: 20,
@@ -193,6 +294,51 @@ export const TRANSLATION_QUESTIONS_SHAPE: ResponseShape = {
       structure: {
         required: ["id", "reference", "question"],
         optional: ["answer", "difficulty", "category"],
+        // Field descriptions for self-discovery
+        fieldDescriptions: [
+          {
+            name: "id",
+            type: "string",
+            description: "Unique identifier for this translation question",
+            example: "tq-jhn-3-16-01",
+          },
+          {
+            name: "reference",
+            type: "string",
+            description: "The Bible verse reference this question applies to",
+            example: "John 3:16",
+          },
+          {
+            name: "question",
+            type: "string",
+            description: "The comprehension question about this passage",
+            example: "What does it mean that God 'gave' his only Son?",
+          },
+          {
+            name: "answer",
+            type: "string",
+            description: "The answer or explanation for this question",
+            example: "This means that God willingly sacrificed his Son...",
+          },
+          {
+            name: "difficulty",
+            type: "string",
+            description: "Difficulty level of this question",
+            example: "beginner",
+            semantics: {
+              options: ["beginner", "intermediate", "advanced"],
+            },
+          },
+          {
+            name: "category",
+            type: "string",
+            description: "Category or topic of this question",
+            example: "theology",
+            semantics: {
+              options: ["theology", "grammar", "culture", "translation"],
+            },
+          },
+        ],
       },
       performance: {
         maxResponseTime: 10,

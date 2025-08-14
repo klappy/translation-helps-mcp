@@ -522,7 +522,7 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
   path: "/translation-notes",
   title: "Fetch Translation Notes",
   description:
-    "Retrieve detailed translation notes explaining difficult passages and terms",
+    "Retrieve detailed translation notes explaining difficult passages and terms. Each note includes the original Greek or Hebrew text (in the 'quote' field) along with explanations of what that text means.",
   category: "core",
   responseShape: TRANSLATION_NOTES_SHAPE,
 
@@ -568,6 +568,25 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
         minLength: 200,
         fields: {
           notes: "array",
+          reference: "Ephesians 2:8-9",
+        },
+      },
+    },
+    {
+      name: "Greek Quotes",
+      description: "Get notes with Greek text in quote field",
+      params: {
+        reference: "Titus 1:14",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["μύθοις Ἰουδαϊκοῖς", "Jewish myths"],
+        minLength: 100,
+        fields: {
+          notes: "array",
+          quote: "string (Greek text)",
+          reference: "Titus 1:14",
         },
       },
     },
