@@ -1135,129 +1135,100 @@ export class ZipResourceFetcher2 {
     const _inFlightKey = `zip:${organization}/${repository}:${ref || "master"}`;
     const task = (async () => {
       try {
-        // inFlightKey currently unused since we rely on R2 + Cache API
-
-        // R2 + Cache API first
+        // Build preferred URLs
         const zipUrl =
           zipballUrl ||
           `https://git.door43.org/${organization}/${repository}/archive/${encodeURIComponent(
             ref || "master",
           )}.zip`;
-        const { key: r2Key } = r2KeyFromUrl(zipUrl);
+        const tarUrl = zipUrl.replace(/\.zip(\?.*)?$/i, ".tar.gz$1");
+
+        // R2 + Cache API first: try ZIP key, then TAR key
+        const { key: zipKey } = r2KeyFromUrl(zipUrl);
+        const { key: tarKey } = r2KeyFromUrl(tarUrl);
         const { bucket, caches } = getR2Env();
         const r2 = new R2Storage(bucket as any, caches as any);
 
-        const {
-          data: r2Data,
-          source,
-          durationMs,
-          size,
-        } = await r2.getZipWithInfo(r2Key);
-        if (r2Data) {
-          try {
-            this.tracer.addApiCall({
-              url: `internal://${source}/zip/${organization}/${repository}:${ref || "master"}`,
-              duration: durationMs,
-              status: 200,
-              size,
-              cached: source === "cache",
-            });
-          } catch {
-            // ignore
+        // Try ZIP key
+        {
+          const { data, source, durationMs, size } =
+            await r2.getZipWithInfo(zipKey);
+          if (data) {
+            try {
+              this.tracer.addApiCall({
+                url: `internal://${source}/zip-url/${organization}/${repository}:${ref || "master"}`,
+                duration: durationMs,
+                status: 200,
+                size,
+                cached: source === "cache",
+              });
+            } catch {
+              // ignore trace add errors
+            }
+            return data;
           }
-          logger.info(`Using ${source.toUpperCase()} ZIP for ${repository}`);
-          return r2Data;
         }
 
-        // Download the ZIP (prefer provided zipball URL)
-        logger.info(`Downloading ZIP: ${zipUrl}`);
-
-        // Record attempted fetch URL as a miss before fetch (in case of throws early)
-        try {
-          this.tracer.addApiCall({
-            url: zipUrl,
-            duration: 1,
-            status: 0,
-            size: 0,
-            cached: false,
-          });
-        } catch (_e) {
-          // ignore trace errors
+        // Try TAR key
+        {
+          const { data, source, durationMs, size } =
+            await r2.getZipWithInfo(tarKey);
+          if (data) {
+            try {
+              this.tracer.addApiCall({
+                url: `internal://${source}/tar-url/${organization}/${repository}:${ref || "master"}`,
+                duration: durationMs,
+                status: 200,
+                size,
+                cached: source === "cache",
+              });
+            } catch {
+              // ignore trace add errors
+            }
+            return data;
+          }
         }
+
+        // Download ZIP first
         let response = await trackedFetch(this.tracer, zipUrl, {
           headers: this.getClientHeaders(),
         });
+
         if (!response.ok) {
-          // Fallback: try immutable Link (often .tar.gz) if provided
+          // Try immutable Link header first
           const linkHeader =
             response.headers.get("link") || response.headers.get("Link");
           const match = linkHeader?.match(/<([^>]+)>\s*;\s*rel="immutable"/i);
           if (match?.[1]) {
             const altUrl = match[1];
-            logger.warn(
-              `Primary archive failed (${response.status}). Retrying via Link: ${altUrl}`,
-            );
-            try {
-              this.tracer.addApiCall({
-                url: altUrl,
-                duration: 1,
-                status: 0,
-                size: 0,
-                cached: false,
-              });
-            } catch (_e) {
-              // ignore trace errors
-            }
             response = await trackedFetch(this.tracer, altUrl, {
               headers: this.getClientHeaders(),
             });
             if (!response.ok) {
-              logger.error(`Fallback archive fetch failed: ${response.status}`);
-              return null;
+              // Fallback to tar.gz
+              response = await trackedFetch(this.tracer, tarUrl, {
+                headers: this.getClientHeaders(),
+              });
+              if (!response.ok) return null;
             }
-            // Use the alt URL as the canonical key for this archive
-            // We'll store under the alt URL key below; no need to mutate existing variables
           } else {
-            logger.error(`Failed to download ZIP: ${response.status}`);
-            return null;
+            // No Link header; directly try tar.gz
+            response = await trackedFetch(this.tracer, tarUrl, {
+              headers: this.getClientHeaders(),
+            });
+            if (!response.ok) return null;
           }
         }
 
         const buffer = await response.arrayBuffer();
-        const data = new Uint8Array(buffer);
+        if (buffer.byteLength < 1024) return null;
 
-        // Validate ZIP data before caching (minimum 1KB to be valid)
-        if (buffer.byteLength < 1024) {
-          logger.error(
-            `Downloaded ZIP is too small to be valid: ${buffer.byteLength} bytes`,
-          );
-          return null;
-        }
-
-        // Write-through to R2 and warm Cache API
-        // If response URL differs from original (e.g., Link fallback), compute key from actual URL
+        // Store only under the final URL-derived key
         const finalUrl = (response as any).url || zipUrl;
-        const { key: storageKey, meta: storageMeta } = r2KeyFromUrl(finalUrl);
-        await r2.putZip(storageKey, buffer, storageMeta);
-        try {
-          this.tracer.addApiCall({
-            url: `internal://r2/zip-write/${organization}/${repository}:${ref || "master"}`,
-            duration: 1,
-            status: 200,
-            size: buffer.byteLength,
-            cached: false,
-          });
-        } catch {
-          // ignore
-        }
+        const { key: storeKey, meta } = r2KeyFromUrl(finalUrl);
+        await r2.putZip(storeKey, buffer, meta);
 
-        logger.info(`Cached archive in R2 and Cache API`, {
-          sizeMB: (buffer.byteLength / 1024 / 1024).toFixed(2),
-          repository,
-          organization,
-          ref,
-        });
-        return data;
+        return new Uint8Array(buffer);
       } catch (error) {
         logger.error("Error downloading ZIP:", error as Error);
         return null;
