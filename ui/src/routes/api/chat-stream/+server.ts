@@ -441,6 +441,120 @@ async function callOpenAI(
 	}
 }
 
+/**
+ * Stream OpenAI responses via SSE-compatible Web Streams API
+ */
+async function callOpenAIStream(
+	message: string,
+	context: string,
+	chatHistory: Array<{ role: string; content: string }> = [],
+	apiKey: string
+): Promise<ReadableStream<Uint8Array>> {
+	const encoder = new TextEncoder();
+	const decoder = new TextDecoder();
+
+	const stream = new ReadableStream<Uint8Array>({
+		start: async (controller) => {
+			try {
+				const messages = [
+					{ role: 'system', content: SYSTEM_PROMPT },
+					{ role: 'system', content: context },
+					...chatHistory.slice(-6),
+					{ role: 'user', content: message }
+				];
+
+				const response = await fetch('https://api.openai.com/v1/chat/completions', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${apiKey}`
+					},
+					body: JSON.stringify({
+						model: 'gpt-4o-mini',
+						messages,
+						temperature: 0.3,
+						stream: true,
+						max_tokens: 600
+					})
+				});
+
+				if (!response.ok || !response.body) {
+					const msg =
+						`event: error\n` +
+						`data: ${JSON.stringify({ error: `OpenAI error: ${response.status}` })}\n\n`;
+					controller.enqueue(encoder.encode(msg));
+					controller.close();
+					return;
+				}
+
+				const reader = response.body.getReader();
+				let buffer = '';
+
+				// Helper to emit SSE data events
+				const emit = (event: string, data: unknown) => {
+					const payload = `event: ${event}\n` + `data: ${JSON.stringify(data)}\n\n`;
+					controller.enqueue(encoder.encode(payload));
+				};
+
+				// Signal start
+				emit('llm:start', { started: true });
+
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					buffer += decoder.decode(value, { stream: true });
+
+					const parts = buffer.split('\n\n');
+					buffer = parts.pop() || '';
+
+					for (const part of parts) {
+						const line = part.trim();
+						if (!line.startsWith('data:')) continue;
+						const jsonStr = line.replace(/^data:\s*/, '');
+						if (jsonStr === '[DONE]') {
+							emit('llm:done', { done: true });
+							controller.close();
+							return;
+						}
+						try {
+							const event = JSON.parse(jsonStr);
+							const delta = event.choices?.[0]?.delta?.content;
+							if (typeof delta === 'string' && delta.length > 0) {
+								emit('llm:delta', { text: delta });
+							}
+						} catch {
+							// ignore malformed chunk
+						}
+					}
+				}
+
+				// Flush remainder if any
+				if (buffer.length > 0) {
+					try {
+						const event = JSON.parse(buffer.replace(/^data:\s*/, ''));
+						const delta = event.choices?.[0]?.delta?.content;
+						if (typeof delta === 'string' && delta.length > 0) {
+							emit('llm:delta', { text: delta });
+						}
+					} catch {
+						// ignore
+					}
+				}
+
+				emit('llm:done', { done: true });
+				controller.close();
+			} catch (error) {
+				const err = error instanceof Error ? error.message : String(error);
+				const msg = `event: error\n` + `data: ${JSON.stringify({ error: err })}\n\n`;
+				controller.enqueue(encoder.encode(msg));
+				controller.close();
+			}
+		}
+	});
+
+	return stream;
+}
+
 export const POST: RequestHandler = async ({ request, url, platform }) => {
 	const startTime = Date.now();
 	const timings: Record<string, number> = {};
@@ -547,7 +661,24 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		const context = `${errorContext}${formatDataForContext(data)}`;
 		timings.contextFormatting = Date.now() - contextFormattingStart;
 
-		// Step 5: Call OpenAI with the data
+		// Step 5: Call OpenAI with the data (support streaming)
+		const streamMode =
+			url.searchParams.get('stream') === '1' ||
+			(request.headers.get('accept') || '').includes('text/event-stream');
+
+		if (streamMode) {
+			const sseStream = await callOpenAIStream(message, context, chatHistory, apiKey);
+			const totalDuration = Date.now() - startTime;
+			return new Response(sseStream, {
+				headers: {
+					'Content-Type': 'text/event-stream',
+					'Cache-Control': 'no-store',
+					'X-Chat-Model': 'gpt-4o-mini',
+					'X-Chat-Duration': `${totalDuration}ms`
+				}
+			});
+		}
+
 		const llmResponseStart = Date.now();
 		const { response, error } = await callOpenAI(message, context, chatHistory, apiKey);
 		timings.llmResponse = Date.now() - llmResponseStart;
