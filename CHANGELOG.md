@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [6.6.2](https://github.com/klappy/translation-helps-mcp/compare/v6.6.1...v6.6.2) (2025-08-14)
+
+### Bug Fixes
+
+- **api:** replace mock get-translation-word with real DCS-backed fetch; keep /mcp-tools self-discovery intact ([daa39ea](https://github.com/klappy/translation-helps-mcp/commit/daa39ea95fd2929f03d826339dee619f17026a0c))
+
 ### [6.6.1](https://github.com/klappy/translation-helps-mcp/compare/v6.6.0...v6.6.1) (2025-08-14)
 
 ### Features
