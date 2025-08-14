@@ -124,9 +124,53 @@ async function determineMCPCalls(
 	// Format endpoints for the LLM prompt
 	const endpointDescriptions = endpoints
 		.map((ep) => {
-			const params = ep.parameters?.map((p: any) => p.name || p).join(', ') || '';
-			const supportsFormats = ep.supportsFormats ? ' (supports format=json|md|text)' : '';
-			return `- ${ep.path.replace('/api/', '')}: ${ep.description}${supportsFormats}\n  Parameters: ${params}`;
+			const rawParams = ep.parameters || ep.params || [];
+			const endpointName = (ep.path || '')
+				.toString()
+				.replace(/^\/api\//, '')
+				.replace(/^\//, '');
+
+			// Build detailed param descriptions
+			let paramDetails = '';
+			if (Array.isArray(rawParams)) {
+				paramDetails = rawParams
+					.map((p: any) =>
+						typeof p === 'string' ? `- ${p}` : `- ${p.name || p.key || p.param || ''}`
+					)
+					.filter(Boolean)
+					.join('\n');
+			} else if (rawParams && typeof rawParams === 'object') {
+				paramDetails = Object.entries(rawParams)
+					.map(([name, def]: [string, any]) => {
+						const required = def?.required ? 'required' : 'optional';
+						const type = def?.type || 'string';
+						const desc = def?.description ? ` - ${def.description}` : '';
+						const ex =
+							def?.example !== undefined ? `; example: ${JSON.stringify(def.example)}` : '';
+						const opts =
+							Array.isArray(def?.options) && def.options.length
+								? `; options: ${def.options.join('|')}`
+								: '';
+						const dflt =
+							def?.default !== undefined ? `; default: ${JSON.stringify(def.default)}` : '';
+						return `- ${name} (${required}, ${type})${desc}${ex}${opts}${dflt}`;
+					})
+					.join('\n');
+			}
+
+			// Include an example params block if provided on endpoint config
+			let exampleBlock = '';
+			if (Array.isArray(ep.examples) && ep.examples.length && ep.examples[0]?.params) {
+				exampleBlock = `\nExample params: ${JSON.stringify(ep.examples[0].params)}`;
+			}
+
+			// Special guidance for get-translation-word
+			const specialNote =
+				endpointName === 'get-translation-word'
+					? `\nNotes: Provide either term (preferred) or path ending with .md. Do not include reference. Use format=md for full article output.`
+					: '';
+
+			return `- ${endpointName}: ${ep.description || ''}\n  Parameters:\n${paramDetails || '  (none)'}${exampleBlock}${specialNote}`;
 		})
 		.join('\n');
 
@@ -238,12 +282,31 @@ async function executeMCPCalls(
 	for (const call of calls) {
 		const startTime = Date.now();
 		try {
+			// Normalize endpoint name: strip leading /api/ and leading /
+			const endpointName = (call.endpoint || '')
+				.toString()
+				.replace(/^\/api\//, '')
+				.replace(/^\//, '');
 			// Normalize params with sensible defaults to avoid LLM omissions
 			const normalizedParams: Record<string, string> = {
 				...call.params
 			};
 			if (!normalizedParams.language) normalizedParams.language = 'en';
 			if (!normalizedParams.organization) normalizedParams.organization = 'unfoldingWord';
+			// Param aliasing for robustness (LLM may send 'word' instead of 'term')
+			if (endpointName === 'get-translation-word') {
+				if (!normalizedParams.term && (normalizedParams.word || normalizedParams.termName)) {
+					normalizedParams.term = normalizedParams.word || normalizedParams.termName;
+					delete normalizedParams.word;
+					delete normalizedParams.termName;
+				}
+				// Reference is not required for this endpoint; ignore if present
+				if (normalizedParams.reference) delete normalizedParams.reference;
+				// If LLM supplied an invalid path (e.g., "bible"), drop it to avoid 400s
+				if (normalizedParams.path && !/\.md$/i.test(normalizedParams.path)) {
+					delete normalizedParams.path;
+				}
+			}
 			// Prefer markdown for human-readable resources when format is omitted
 			if (
 				!normalizedParams.format &&
@@ -252,8 +315,9 @@ async function executeMCPCalls(
 					'translation-notes',
 					'translation-questions',
 					'fetch-translation-words',
-					'fetch-translation-academy'
-				].includes(call.endpoint)
+					'fetch-translation-academy',
+					'get-translation-word'
+				].includes(endpointName)
 			) {
 				normalizedParams.format = 'md';
 			}
@@ -261,8 +325,8 @@ async function executeMCPCalls(
 			// Build query string
 			const queryParams = new URLSearchParams(normalizedParams);
 
-			const url = `${baseUrl}/api/${call.endpoint}?${queryParams}`;
-			logger.info('Executing MCP call', { endpoint: call.endpoint, params: normalizedParams });
+			const url = `${baseUrl}/api/${endpointName}?${queryParams}`;
+			logger.info('Executing MCP call', { endpoint: endpointName, params: normalizedParams });
 
 			const response = await fetch(url);
 			const duration = Date.now() - startTime;
@@ -283,12 +347,12 @@ async function executeMCPCalls(
 				const cacheStatus = response.headers.get('X-Cache-Status') || 'miss';
 
 				data.push({
-					type: call.endpoint,
+					type: endpointName,
 					params: normalizedParams,
 					result
 				});
 				apiCalls.push({
-					endpoint: call.endpoint,
+					endpoint: endpointName,
 					params: normalizedParams,
 					duration: `${duration}ms`,
 					status: response.status,
@@ -296,12 +360,12 @@ async function executeMCPCalls(
 				});
 			} else {
 				logger.error('MCP call failed', {
-					endpoint: call.endpoint,
+					endpoint: endpointName,
 					status: response.status,
 					statusText: response.statusText
 				});
 				apiCalls.push({
-					endpoint: call.endpoint,
+					endpoint: endpointName,
 					params: normalizedParams,
 					duration: `${duration}ms`,
 					status: response.status,
@@ -310,11 +374,11 @@ async function executeMCPCalls(
 			}
 		} catch (error) {
 			logger.error('Failed to execute MCP call', {
-				endpoint: call.endpoint,
+				endpoint: (call.endpoint || '').toString(),
 				error
 			});
 			apiCalls.push({
-				endpoint: call.endpoint,
+				endpoint: (call.endpoint || '').toString(),
 				params: { ...call.params },
 				duration: `${Date.now() - startTime}ms`,
 				error: error instanceof Error ? error.message : 'Unknown error'
@@ -376,6 +440,38 @@ function formatDataForContext(data: any[]): string {
 			context += `Translation Words [${source} ${version}]:\n`;
 			for (const word of item.result.items) {
 				context += `- ${word.term}: ${word.definition} [${source} ${version}]\n`;
+			}
+			context += '\n';
+		} else if (
+			item.type === 'get-translation-word' &&
+			item.result &&
+			typeof item.result === 'object'
+		) {
+			// Pretty-print a single TW article
+			const w = item.result;
+			context += `Translation Word Article: ${w.word || w.term || '(unknown)'}\n`;
+			if (w.definition) context += `Definition: ${w.definition}\n`;
+			if (w.extendedDefinition) context += `Extended: ${w.extendedDefinition}\n`;
+			if (Array.isArray(w.facts) && w.facts.length) {
+				context += `Facts:\n`;
+				for (const f of w.facts) context += `- ${f}\n`;
+			}
+			if (Array.isArray(w.examples) && w.examples.length) {
+				context += `Examples:\n`;
+				for (const ex of w.examples) context += `- ${ex.reference}: ${ex.text}\n`;
+			}
+			if (Array.isArray(w.translationSuggestions) && w.translationSuggestions.length) {
+				context += `Translation Suggestions:\n`;
+				for (const s of w.translationSuggestions) context += `- ${s}\n`;
+			}
+			if (Array.isArray(w.relatedWords) && w.relatedWords.length) {
+				context += `Related: ${w.relatedWords.join(', ')}\n`;
+			}
+			if (Array.isArray(w.strongs) && w.strongs.length) {
+				context += `Strongs: ${w.strongs.join(', ')}\n`;
+			}
+			if (Array.isArray(w.aliases) && w.aliases.length) {
+				context += `Aliases: ${w.aliases.join(', ')}\n`;
 			}
 			context += '\n';
 		} else {
