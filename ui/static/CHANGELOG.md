@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.3.0](https://github.com/klappy/translation-helps-mcp/compare/v6.2.2...v6.3.0) (2025-08-14)
+
+### Tests
+
+- update smoke test expected version to 6.2.2 ([305a12c](https://github.com/klappy/translation-helps-mcp/commit/305a12cb79b47a23f44e37a5665cc1e674909b67))
+
 ### [6.2.2](https://github.com/klappy/translation-helps-mcp/compare/v6.2.1...v6.2.2) (2025-08-14)
 
 ### Features
