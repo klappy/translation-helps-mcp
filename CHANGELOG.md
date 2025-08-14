@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.6.0](https://github.com/klappy/translation-helps-mcp/compare/v6.5.0...v6.6.0) (2025-08-14)
+
+### Features
+
+- **chat:** better self-discovery and tool usage\n\n- Add fieldDescriptions across resources (TW, TQ, scripture alignment)\n- Expose flattened selfDiscovery in /api/mcp-config\n- Improve endpoint descriptions with detailed params and examples\n- Normalize endpoint names and alias params (word->term)\n- Default md for get-translation-word; drop bad path/reference\n- Pretty-print TW article content into model context\n\nBuilds clean; tests require dev server routing which we skip pre-release ([9a44327](https://github.com/klappy/translation-helps-mcp/commit/9a443279be159333578e1e71212c82f7742fee85))
+
+### Tests
+
+- update smoke test to expect version 6.5.0 ([4bae7e8](https://github.com/klappy/translation-helps-mcp/commit/4bae7e886a08e221f23e4d8eeec4e124ea593736))
+
+### Chores
+
+- **changelog:** sync UI changelog to 6.5.0 from root ([4273821](https://github.com/klappy/translation-helps-mcp/commit/42738214ad9da02a4269b9ccecc65c9c26513c0b))
+- **release:** ensure UI changelog copy is staged and fix posttag message quoting ([6be7c0e](https://github.com/klappy/translation-helps-mcp/commit/6be7c0e088211b48377bd52c11929edbe230e2cd))
+
 ## [6.5.0](https://github.com/klappy/translation-helps-mcp/compare/v6.4.0...v6.5.0) (2025-08-14)
 
 ### Features

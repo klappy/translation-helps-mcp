@@ -65,7 +65,8 @@ export const SCRIPTURE_SHAPE: ResponseShape = {
             {
               name: "usfm",
               type: "string",
-              description: "USFM formatted version of the scripture text (raw markup)",
+              description:
+                "USFM formatted version of the scripture text (raw markup)",
               example: "\\c 3\\v 16 For God so loved...",
             },
             {
@@ -178,13 +179,15 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       {
         name: "contextNotes",
         type: "array",
-        description: "Broader context notes (front/chapter intros) when included",
+        description:
+          "Broader context notes (front/chapter intros) when included",
         example: [],
       },
       {
         name: "citation",
         type: "object",
-        description: "Resource citation metadata (resource, language, organization, version, url)",
+        description:
+          "Resource citation metadata (resource, language, organization, version, url)",
         example: {
           resource: "tn",
           language: "en",
@@ -195,7 +198,8 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       {
         name: "metadata",
         type: "object",
-        description: "Standard response metadata (responseTime, cached, timestamp)",
+        description:
+          "Standard response metadata (responseTime, cached, timestamp)",
         example: {
           responseTime: 85,
           cached: true,
@@ -208,7 +212,12 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: ["sourceNotesCount", "verseNotesCount", "cached", "responseTime"],
+          required: [
+            "sourceNotesCount",
+            "verseNotesCount",
+            "cached",
+            "responseTime",
+          ],
           optional: ["contextNotesCount", "timestamp"],
         },
         performance: {
@@ -221,7 +230,13 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
       dataType: "translation-notes",
       structure: {
         required: ["id", "reference", "note"],
-        optional: ["quote", "occurrence", "occurrences", "markdown", "supportReference"],
+        optional: [
+          "quote",
+          "occurrence",
+          "occurrences",
+          "markdown",
+          "supportReference",
+        ],
         // NEW: Field descriptions for self-discovery
         fieldDescriptions: [
           {
@@ -263,20 +278,23 @@ export const TRANSLATION_NOTES_SHAPE: ResponseShape = {
           {
             name: "occurrences",
             type: "number",
-            description: "Total number of times this phrase appears in the verse",
+            description:
+              "Total number of times this phrase appears in the verse",
             example: 1,
           },
           {
             name: "supportReference",
             type: "string",
-            description: "Additional biblical references that support or relate to this note",
+            description:
+              "Additional biblical references that support or relate to this note",
             example: "Romans 5:8",
           },
           {
             name: "markdown",
             type: "string",
             description: "Original markdown content from the source file",
-            example: "## Quote\n\nοὕτως γὰρ ἠγάπησεν ὁ Θεὸς\n\n## Note\n\nThis phrase means...",
+            example:
+              "## Quote\n\nοὕτως γὰρ ἠγάπησεν ὁ Θεὸς\n\n## Note\n\nThis phrase means...",
           },
         ],
       },
@@ -303,13 +321,15 @@ export const TRANSLATION_WORDS_SHAPE: ResponseShape = {
       {
         name: "translationWords",
         type: "array",
-        description: "List of translation word articles (structured from markdown)",
+        description:
+          "List of translation word articles (structured from markdown)",
         example: [],
       },
       {
         name: "citation",
         type: "object",
-        description: "Resource citation metadata (resource, language, organization, version, url)",
+        description:
+          "Resource citation metadata (resource, language, organization, version, url)",
         example: {
           resource: "tw",
           language: "en",
@@ -320,7 +340,8 @@ export const TRANSLATION_WORDS_SHAPE: ResponseShape = {
       {
         name: "metadata",
         type: "object",
-        description: "Standard response metadata (responseTime, cached, timestamp)",
+        description:
+          "Standard response metadata (responseTime, cached, timestamp)",
         example: {
           responseTime: 120,
           cached: false,
@@ -370,8 +391,10 @@ export const TRANSLATION_WORDS_SHAPE: ResponseShape = {
           {
             name: "translationHelps",
             type: "string",
-            description: "Guidance on how to translate this term in different contexts",
-            example: "Use 'love' for God's love, 'care for' for human relationships...",
+            description:
+              "Guidance on how to translate this term in different contexts",
+            example:
+              "Use 'love' for God's love, 'care for' for human relationships...",
           },
           {
             name: "examples",
@@ -410,13 +433,15 @@ export const TRANSLATION_QUESTIONS_SHAPE: ResponseShape = {
       {
         name: "questions",
         type: "array",
-        description: "Collection of translation questions for the requested reference",
+        description:
+          "Collection of translation questions for the requested reference",
         example: [],
       },
       {
         name: "citation",
         type: "object",
-        description: "Resource citation metadata (resource, language, organization, version, url)",
+        description:
+          "Resource citation metadata (resource, language, organization, version, url)",
         example: {
           resource: "tq",
           language: "en",
@@ -427,7 +452,8 @@ export const TRANSLATION_QUESTIONS_SHAPE: ResponseShape = {
       {
         name: "metadata",
         type: "object",
-        description: "Standard response metadata (responseTime, cached, timestamp)",
+        description:
+          "Standard response metadata (responseTime, cached, timestamp)",
         example: {
           responseTime: 120,
           cached: false,
@@ -552,7 +578,8 @@ export const TRANSLATION_ACADEMY_SHAPE: ResponseShape = {
             name: "description",
             type: "string",
             description: "Brief summary of the module",
-            example: "Learn how to effectively use translation notes in your workflow.",
+            example:
+              "Learn how to effectively use translation notes in your workflow.",
           },
           {
             name: "category",
@@ -643,13 +670,15 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
           {
             name: "strong",
             type: "string",
-            description: "Strong's number linking to the original language lexicon entry",
+            description:
+              "Strong's number linking to the original language lexicon entry",
             example: "G25",
           },
           {
             name: "originalWord",
             type: "string",
-            description: "The original language word corresponding to the translation word",
+            description:
+              "The original language word corresponding to the translation word",
             example: "ἠγάπησεν",
             semantics: { language: "Greek", isOriginalText: true },
           },
@@ -690,7 +719,13 @@ export const LANGUAGES_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: ["responseTime", "cached", "timestamp", "languagesFound", "organization"],
+          required: [
+            "responseTime",
+            "cached",
+            "timestamp",
+            "languagesFound",
+            "organization",
+          ],
           optional: ["alternateNamesIncluded"],
         },
         performance: {
@@ -937,7 +972,12 @@ export const CONTEXT_SHAPE: ResponseShape = {
         dataType: "context",
         structure: {
           required: [],
-          optional: ["scripture", "translationNotes", "translationWords", "translationQuestions"],
+          optional: [
+            "scripture",
+            "translationNotes",
+            "translationWords",
+            "translationQuestions",
+          ],
           nested: {
             scripture: SCRIPTURE_SHAPE,
             translationNotes: TRANSLATION_NOTES_SHAPE,
@@ -953,7 +993,13 @@ export const CONTEXT_SHAPE: ResponseShape = {
       metadata: {
         dataType: "context",
         structure: {
-          required: ["responseTime", "cached", "timestamp", "resourcesRequested", "resourcesFound"],
+          required: [
+            "responseTime",
+            "cached",
+            "timestamp",
+            "resourcesRequested",
+            "resourcesFound",
+          ],
           optional: ["aggregationTime", "cacheHitRate"],
         },
         performance: {
@@ -1013,7 +1059,9 @@ export const RESPONSE_SHAPES = {
 } as const;
 
 // Utility function to get response shape by data type
-export function getResponseShape(dataType: keyof typeof RESPONSE_SHAPES): ResponseShape {
+export function getResponseShape(
+  dataType: keyof typeof RESPONSE_SHAPES,
+): ResponseShape {
   const shape = RESPONSE_SHAPES[dataType];
   if (!shape) {
     throw new Error(`Unknown response shape: ${dataType}`);
@@ -1025,7 +1073,7 @@ export function getResponseShape(dataType: keyof typeof RESPONSE_SHAPES): Respon
 export function validateResponseShape(
   response: unknown,
   shape: ResponseShape,
-  path = "root"
+  path = "root",
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -1046,7 +1094,11 @@ export function validateResponseShape(
   if (shape.structure.nested) {
     for (const [field, nestedShape] of Object.entries(shape.structure.nested)) {
       if (field in obj && obj[field] !== null && obj[field] !== undefined) {
-        const nestedResult = validateResponseShape(obj[field], nestedShape, `${path}.${field}`);
+        const nestedResult = validateResponseShape(
+          obj[field],
+          nestedShape,
+          `${path}.${field}`,
+        );
         errors.push(...nestedResult.errors);
       }
     }
