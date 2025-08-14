@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [6.4.0](https://github.com/klappy/translation-helps-mcp/compare/v6.3.0...v6.4.0) (2025-08-14)
+
+### Features
+
+- **chat:** restore X-ray in streaming mode\n\n- Emit xray and xray:final SSE events with tools and timings\n- Client listens and attaches xrayData to streaming assistant message\n- Fix eslint issues in streaming loop and try/catch ([d4b17ff](https://github.com/klappy/translation-helps-mcp/commit/d4b17ff937f8618eff2f9eafc9619bdc75e85331))
+- enhance MCP self-discovery with field descriptions for translation notes ([5366dd9](https://github.com/klappy/translation-helps-mcp/commit/5366dd943e817f19652cf478033002c85b8440ea))
+
+### Bug Fixes
+
+- **chat:** add safe defaults for tool-call params (language, organization, format)\n\n- language=en, organization=unfoldingWord when omitted\n- default format=md for human-facing endpoints\n- stabilizes context answers and X-ray tool details ([750fc06](https://github.com/klappy/translation-helps-mcp/commit/750fc06952d62b8259c37b63dfeaeced3d4eb065))
+
+### Chores
+
+- **release:** 6.3.0 context aggregation via TN intros; add SSE streaming server support\n\n- get-context now aggregates front:intro and {chapter}:intro only\n- exclude verse-level notes to avoid overlap with notes endpoint\n- support ranges (book/chapter) for intros\n- chat endpoint: add edge-safe SSE streaming (server side)\n- prep for client streaming UI\n- bump tests to 6.3.0 ([6657db0](https://github.com/klappy/translation-helps-mcp/commit/6657db068aefa96349f21dbb0637d93ea9791180))
+
 ## [6.3.0](https://github.com/klappy/translation-helps-mcp/compare/v6.2.2...v6.3.0) (2025-08-14)
 
 ### Tests
