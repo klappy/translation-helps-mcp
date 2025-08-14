@@ -1,6 +1,28 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [6.2.2](https://github.com/klappy/translation-helps-mcp/compare/v6.2.1...v6.2.2) (2025-08-14)
+
+### Features
+
+- add KV debugging features ([c8e0ba9](https://github.com/klappy/translation-helps-mcp/commit/c8e0ba95909cde222f8d44c06881eae47edc20c5))
+- add KV status diagnostic endpoint ([82896d5](https://github.com/klappy/translation-helps-mcp/commit/82896d576641f72b14d3802e9ff0715010c4d930))
+
+### Bug Fixes
+
+- **chat:** surface tool errors to LLM context and X-ray ([7798f1a](https://github.com/klappy/translation-helps-mcp/commit/7798f1a141726bd4ca63a6bacaf20691dadef579))
+- correct import path for KV cache in chat-stream endpoint ([6d3aabb](https://github.com/klappy/translation-helps-mcp/commit/6d3aabbab584243ab598ec1d8428b78a3acd023b))
+- initialize KV cache on every request ([aa2d4ed](https://github.com/klappy/translation-helps-mcp/commit/aa2d4ed04433485992f94267f7722a1ae18b4779))
+
+### Chores
+
+- bump version to 6.2.1 and update changelog ([a50e780](https://github.com/klappy/translation-helps-mcp/commit/a50e7808c9c87604133318a76029ef0358ccffc8))
+
+### Documentation
+
+- add AI Chat implementation summary ([6257c31](https://github.com/klappy/translation-helps-mcp/commit/6257c3132cdf8bda5e34b3510d0be178edb9c3ae))
+- add Cloudflare Pages KV binding guide ([4e88351](https://github.com/klappy/translation-helps-mcp/commit/4e88351a1747abb020dfab160215a48f3076024a))
 
 ## [6.2.1] - 2025-01-13
 

@@ -13,27 +13,32 @@ The AI-powered Bible study assistant is now live at `https://translation-helps-m
 ## Key Features
 
 ### 1. Dynamic Endpoint Discovery
+
 - Automatically discovers available MCP endpoints via `/api/mcp-config`
 - No hardcoded endpoint mappings
 - Adapts to new endpoints as they're added
 
 ### 2. LLM-Driven Tool Selection
+
 - GPT-4o-mini analyzes user queries and determines which MCP endpoints to call
 - Supports multiple format types (JSON, Markdown, Text)
 - Intelligently chooses the most appropriate format for each query
 
 ### 3. Strict Content Rules
+
 - **Scripture Integrity**: Always quotes scripture word-for-word, never paraphrases
 - **Citations**: Every quote includes proper citation (e.g., [ULT v86 - John 3:16])
 - **Data Sources**: Uses only MCP server data, no training data or external sources
 - **Translation Notes/Questions**: Can be reworded for clarity but always with citations
 
 ### 4. Context Awareness
+
 - Maintains conversation history across messages
 - Correctly handles follow-up questions like "What about this verse?"
 - Prevents incorrect verse lookups when context is implied
 
 ### 5. Enhanced X-Ray Tracing
+
 - Detailed performance breakdown:
   - Endpoint Discovery time
   - LLM Decision Making time
@@ -46,11 +51,13 @@ The AI-powered Bible study assistant is now live at `https://translation-helps-m
 ## Production Configuration
 
 ### API Key Setup
+
 - OpenAI API key is configured as a Cloudflare Pages secret
 - Accessed via `platform.env.OPENAI_API_KEY` in the edge runtime
 - Type definitions in `ui/src/app.d.ts` for proper TypeScript support
 
 ### Security
+
 - API keys are never exposed in responses
 - All debug endpoints have been removed
 - Proper error handling without revealing sensitive information
@@ -58,12 +65,14 @@ The AI-powered Bible study assistant is now live at `https://translation-helps-m
 ## Recent Fixes
 
 ### v6.2.0 - Context Awareness & Error Handling
+
 - Added chat history to endpoint determination
 - Fixed blank response issues
 - Enhanced error logging and user feedback
 - Improved X-ray trace timing breakdown
 
 ### v6.2.1 - Cache Status Accuracy
+
 - Fixed cache status display to show actual MCP endpoint cache performance
 - Extracts `X-Cache-Status` header from internal API calls
 - Displays hit (green), partial (yellow), or miss (orange) appropriately
@@ -86,18 +95,21 @@ graph TD
 ## Usage Examples
 
 ### Simple Scripture Query
+
 ```
 User: "What is John 3:16?"
 AI: Returns all 4 translations (ULT, UST, T4T, UEB) with proper citations
 ```
 
 ### Translation Notes with Greek
+
 ```
 User: "Show me the Greek words in John 3:16 translation notes"
 AI: Lists Greek terms with transliterations and meanings, all properly cited
 ```
 
 ### Context-Aware Follow-up
+
 ```
 User: "What is Titus 1:1?"
 AI: [Shows Titus 1:1]
@@ -121,6 +133,7 @@ AI: [Shows Greek notes for Titus 1:1, not John 3:16]
 ## Testing
 
 The implementation includes:
+
 - Unit tests for citation formatting
 - Integration tests for endpoint discovery
 - Visual tests for UI components
