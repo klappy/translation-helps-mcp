@@ -30,6 +30,7 @@ export interface EdgeXRayTrace {
 export class EdgeXRayTracer {
   private trace: EdgeXRayTrace;
   private startTime: number;
+  private static lastTracer: EdgeXRayTracer | null = null;
 
   constructor(traceId: string, endpoint: string) {
     this.startTime =
@@ -48,6 +49,8 @@ export class EdgeXRayTracer {
         total: 0,
       },
     };
+    // Register as the most recent tracer
+    EdgeXRayTracer.lastTracer = this;
   }
 
   addApiCall(call: Omit<EdgeApiCall, "timestamp">): void {
@@ -67,6 +70,8 @@ export class EdgeXRayTracer {
     } else {
       this.trace.cacheStats.misses++;
     }
+    // Update last tracer reference on activity
+    EdgeXRayTracer.lastTracer = this;
   }
 
   getTrace(): EdgeXRayTrace {
@@ -76,6 +81,11 @@ export class EdgeXRayTracer {
         : Date.now();
     this.trace.totalDuration = Math.max(1, Math.round(now - this.startTime));
     return { ...this.trace };
+  }
+
+  static getLastTrace(): EdgeXRayTrace | null {
+    const t = EdgeXRayTracer.lastTracer;
+    return t ? t.getTrace() : null;
   }
 }
 

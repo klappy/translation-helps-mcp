@@ -1172,6 +1172,18 @@ export class ZipResourceFetcher2 {
         // Download the ZIP (prefer provided zipball URL)
         logger.info(`Downloading ZIP: ${zipUrl}`);
 
+        // Record attempted fetch URL as a miss before fetch (in case of throws early)
+        try {
+          this.tracer.addApiCall({
+            url: zipUrl,
+            duration: 1,
+            status: 0,
+            size: 0,
+            cached: false,
+          });
+        } catch (_e) {
+          // ignore trace errors
+        }
         let response = await trackedFetch(this.tracer, zipUrl, {
           headers: this.getClientHeaders(),
         });
@@ -1185,6 +1197,17 @@ export class ZipResourceFetcher2 {
             logger.warn(
               `Primary archive failed (${response.status}). Retrying via Link: ${altUrl}`,
             );
+            try {
+              this.tracer.addApiCall({
+                url: altUrl,
+                duration: 1,
+                status: 0,
+                size: 0,
+                cached: false,
+              });
+            } catch (_e) {
+              // ignore trace errors
+            }
             response = await trackedFetch(this.tracer, altUrl, {
               headers: this.getClientHeaders(),
             });
