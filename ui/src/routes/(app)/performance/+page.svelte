@@ -139,7 +139,7 @@
 				'Exceptional throughput (6x)',
 				'Near-zero cost',
 				'Global edge',
-				'~1ms cold starts'
+				'Very low cold starts in practice'
 			],
 			weakPoints: ['Variable response times', 'Memory-only cache', 'Less mature ecosystem'],
 			pricing: { freeLimit: '100k/day', costAfter: '$0.50/million' }
@@ -148,7 +148,7 @@
 
 	// Cost analysis updated with real Cloudflare data
 	const costAnalysis = {
-		cloudfare: {
+		cloudflare: {
 			requests: 0.0000005, // per request after 100k/day
 			freeTier: 100000, // per day
 			dailyFree: true
@@ -693,6 +693,10 @@
 						💡 <strong class="text-blue-300">Key Insight:</strong> Cloudflare's daily free tier (100k
 						requests) vs Netlify's monthly tier (125k requests) makes Cloudflare virtually free for most
 						use cases.
+					</p>
+					<p class="mt-4 text-sm text-gray-400">
+						📊 <strong>Methodology:</strong> Metrics from internal load tests (July 2025). See X-Ray
+						headers on endpoint calls for real-time performance data.
 					</p>
 				</div>
 			</div>
