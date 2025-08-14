@@ -1826,6 +1826,22 @@ export class ZipResourceFetcher2 {
         const ref = (row.Reference || row.reference || "").trim();
         if (!ref) continue;
 
+        // Always include book/chapter intros for the covered chapter(s), even when a verse is specified
+        // - Book intro: "front:intro"
+        // - Chapter intro: "{chapter}:intro"
+        if (ref === "front:intro") {
+          results.push(row as Record<string, string>);
+          continue;
+        }
+        const introMatch = ref.match(/^(\d+):intro$/);
+        if (introMatch) {
+          const introChapter = parseInt(introMatch[1]);
+          if (introChapter === reference.chapter) {
+            results.push(row as Record<string, string>);
+            continue;
+          }
+        }
+
         // Normalize reference cell: extract trailing chapter:verse if present (e.g., "John 3:16" -> "3:16")
         const matchCv = ref.match(/(\d+:\d+)\b/);
         const refCv = matchCv ? matchCv[1] : ref;
