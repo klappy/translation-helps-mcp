@@ -228,11 +228,31 @@ async function executeMCPCalls(
 	for (const call of calls) {
 		const startTime = Date.now();
 		try {
-			// Build query string - let the LLM decide the format
-			const queryParams = new URLSearchParams(call.params);
+			// Normalize params with sensible defaults to avoid LLM omissions
+			const normalizedParams: Record<string, string> = {
+				...call.params
+			};
+			if (!normalizedParams.language) normalizedParams.language = 'en';
+			if (!normalizedParams.organization) normalizedParams.organization = 'unfoldingWord';
+			// Prefer markdown for human-readable resources when format is omitted
+			if (
+				!normalizedParams.format &&
+				[
+					'fetch-scripture',
+					'translation-notes',
+					'translation-questions',
+					'fetch-translation-words',
+					'fetch-translation-academy'
+				].includes(call.endpoint)
+			) {
+				normalizedParams.format = 'md';
+			}
+
+			// Build query string
+			const queryParams = new URLSearchParams(normalizedParams);
 
 			const url = `${baseUrl}/api/${call.endpoint}?${queryParams}`;
-			logger.info('Executing MCP call', { endpoint: call.endpoint, params: call.params });
+			logger.info('Executing MCP call', { endpoint: call.endpoint, params: normalizedParams });
 
 			const response = await fetch(url);
 			const duration = Date.now() - startTime;
@@ -254,12 +274,12 @@ async function executeMCPCalls(
 
 				data.push({
 					type: call.endpoint,
-					params: call.params,
+					params: normalizedParams,
 					result
 				});
 				apiCalls.push({
 					endpoint: call.endpoint,
-					params: call.params,
+					params: normalizedParams,
 					duration: `${duration}ms`,
 					status: response.status,
 					cacheStatus
@@ -272,7 +292,7 @@ async function executeMCPCalls(
 				});
 				apiCalls.push({
 					endpoint: call.endpoint,
-					params: call.params,
+					params: normalizedParams,
 					duration: `${duration}ms`,
 					status: response.status,
 					error: response.statusText
@@ -285,7 +305,7 @@ async function executeMCPCalls(
 			});
 			apiCalls.push({
 				endpoint: call.endpoint,
-				params: call.params,
+				params: { ...call.params },
 				duration: `${Date.now() - startTime}ms`,
 				error: error instanceof Error ? error.message : 'Unknown error'
 			});
