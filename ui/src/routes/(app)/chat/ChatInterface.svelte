@@ -20,6 +20,7 @@
 	let showXRay = false;
 	let currentXRayData = null;
 	let messagesContainer;
+	const USE_STREAM = true;
 
 	// Helper function to render markdown with proper styling
 	function renderMarkdown(content) {
@@ -210,47 +211,41 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 
 		// Call the AI-powered chat API
 		try {
-			const response = await fetch('/api/chat-stream', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					message: userMessage.content,
-					chatHistory: messages.slice(0, -2).map((m) => ({
-						role: m.role,
-						content: m.content
-					})), // Convert to expected format, exclude loading message
-					enableXRay: true
-				})
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to get response');
-			}
-
-			const data = await response.json();
-
-			// Check if we got an error response
-			if (data.error) {
-				const errorMessage = {
-					id: (Date.now() + 1).toString(),
-					role: 'assistant',
-					content: `❌ Error: ${data.error}\n\nDetails: ${data.details || 'No additional details'}${data.suggestion ? '\n\nSuggestion: ' + data.suggestion : ''}`,
-					timestamp: new Date(),
-					isError: true
-				};
-				messages = [...messages, errorMessage];
+			if (USE_STREAM) {
+				await streamChat(userMessage);
 			} else {
-				const assistantMessage = {
-					id: (Date.now() + 1).toString(),
-					role: 'assistant',
-					content: data.content || '',
-					timestamp: new Date(),
-					xrayData: data.xrayData,
-					isSetupGuide: data.isSetupGuide
-				};
-
-				messages = [...messages, assistantMessage];
-				currentXRayData = data.xrayData;
+				const response = await fetch('/api/chat-stream', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						message: userMessage.content,
+						chatHistory: messages.slice(0, -2).map((m) => ({ role: m.role, content: m.content })),
+						enableXRay: true
+					})
+				});
+				if (!response.ok) throw new Error('Failed to get response');
+				const data = await response.json();
+				if (data.error) {
+					const errorMessage = {
+						id: (Date.now() + 1).toString(),
+						role: 'assistant',
+						content: `❌ Error: ${data.error}\n\nDetails: ${data.details || 'No additional details'}${data.suggestion ? '\n\nSuggestion: ' + data.suggestion : ''}`,
+						timestamp: new Date(),
+						isError: true
+					};
+					messages = [...messages, errorMessage];
+				} else {
+					const assistantMessage = {
+						id: (Date.now() + 1).toString(),
+						role: 'assistant',
+						content: data.content || '',
+						timestamp: new Date(),
+						xrayData: data.xrayData,
+						isSetupGuide: data.isSetupGuide
+					};
+					messages = [...messages, assistantMessage];
+					currentXRayData = data.xrayData;
+				}
 			}
 		} catch (error) {
 			console.error('Chat error:', error);
@@ -265,6 +260,93 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		} finally {
 			isLoading = false;
 			scrollToBottom();
+		}
+	}
+
+	// Streaming via SSE
+	async function streamChat(userMessage) {
+		const body = JSON.stringify({
+			message: userMessage.content,
+			chatHistory: messages.slice(0, -2).map((m) => ({ role: m.role, content: m.content })),
+			enableXRay: false
+		});
+
+		const response = await fetch('/api/chat-stream?stream=1', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'text/event-stream'
+			},
+			body
+		});
+		if (!response.body) throw new Error('No response body');
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+
+		// Replace loading message with a real assistant message that we append to
+		let streamingMessageIndex = messages.length - 1; // loading message index
+		let accumulated = '';
+
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
+			const parts = buffer.split('\n\n');
+			buffer = parts.pop() || '';
+
+			for (const part of parts) {
+				const lines = part.split('\n');
+				let event = 'message';
+				let data = '';
+				for (const line of lines) {
+					if (line.startsWith('event:')) event = line.replace('event:', '').trim();
+					else if (line.startsWith('data:')) data += line.replace('data:', '').trim();
+				}
+				if (event === 'llm:delta') {
+					try {
+						const json = JSON.parse(data);
+						if (json.text) {
+							accumulated += json.text;
+							messages[streamingMessageIndex] = {
+								...messages[streamingMessageIndex],
+								isLoading: false,
+								content: accumulated
+							};
+							messages = [...messages];
+						}
+					} catch {
+						// ignore
+					}
+				} else if (event === 'xray' || event === 'xray:final') {
+					try {
+						const json = JSON.parse(data);
+						// Attach or update xray on the streaming message
+						messages[streamingMessageIndex] = {
+							...messages[streamingMessageIndex],
+							xrayData: {
+								...(messages[streamingMessageIndex].xrayData || {}),
+								...json
+							}
+						};
+						messages = [...messages];
+						// If final, also set panel data
+						if (event === 'xray:final') {
+							currentXRayData = messages[streamingMessageIndex].xrayData;
+						}
+					} catch {}
+				} else if (event === 'error') {
+					messages[streamingMessageIndex] = {
+						...messages[streamingMessageIndex],
+						isLoading: false,
+						content: `❌ Error: ${data}`
+					};
+					messages = [...messages];
+				} else if (event === 'llm:done') {
+					// finished
+				}
+			}
 		}
 	}
 

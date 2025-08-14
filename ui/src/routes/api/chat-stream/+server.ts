@@ -448,7 +448,10 @@ async function callOpenAIStream(
 	message: string,
 	context: string,
 	chatHistory: Array<{ role: string; content: string }> = [],
-	apiKey: string
+	apiKey: string,
+	xrayInit?: any,
+	preTimings?: Record<string, number>,
+	overallStartTime?: number
 ): Promise<ReadableStream<Uint8Array>> {
 	const encoder = new TextEncoder();
 	const decoder = new TextDecoder();
@@ -463,6 +466,13 @@ async function callOpenAIStream(
 					{ role: 'user', content: message }
 				];
 
+				// Helper to emit SSE data events
+				const emit = (event: string, data: unknown) => {
+					const payload = `event: ${event}\n` + `data: ${JSON.stringify(data)}\n\n`;
+					controller.enqueue(encoder.encode(payload));
+				};
+
+				const llmStart = Date.now();
 				const response = await fetch('https://api.openai.com/v1/chat/completions', {
 					method: 'POST',
 					headers: {
@@ -490,16 +500,15 @@ async function callOpenAIStream(
 				const reader = response.body.getReader();
 				let buffer = '';
 
-				// Helper to emit SSE data events
-				const emit = (event: string, data: unknown) => {
-					const payload = `event: ${event}\n` + `data: ${JSON.stringify(data)}\n\n`;
-					controller.enqueue(encoder.encode(payload));
-				};
-
 				// Signal start
 				emit('llm:start', { started: true });
 
-				while (true) {
+				// Emit initial X-ray snapshot if provided
+				if (xrayInit) {
+					emit('xray', xrayInit);
+				}
+
+				for (;;) {
 					const { done, value } = await reader.read();
 					if (done) break;
 					buffer += decoder.decode(value, { stream: true });
@@ -512,6 +521,33 @@ async function callOpenAIStream(
 						if (!line.startsWith('data:')) continue;
 						const jsonStr = line.replace(/^data:\s*/, '');
 						if (jsonStr === '[DONE]') {
+							// Final X-ray update with llmResponse timing if possible
+							try {
+								const finalTimings: Record<string, number> = { ...(preTimings || {}) };
+								finalTimings.llmResponse = Date.now() - llmStart;
+								const totalDuration = overallStartTime
+									? Date.now() - overallStartTime
+									: (finalTimings.endpointDiscovery || 0) +
+										(finalTimings.llmDecision || 0) +
+										(finalTimings.mcpExecution || 0) +
+										(finalTimings.contextFormatting || 0) +
+										(finalTimings.llmResponse || 0);
+								const breakdown = {
+									'Endpoint Discovery': `${finalTimings.endpointDiscovery || 0}ms (${totalDuration ? Math.round(((finalTimings.endpointDiscovery || 0) / totalDuration) * 100) : 0}%)`,
+									'LLM Decision Making': `${finalTimings.llmDecision || 0}ms (${totalDuration ? Math.round(((finalTimings.llmDecision || 0) / totalDuration) * 100) : 0}%)`,
+									'MCP Tool Execution': `${finalTimings.mcpExecution || 0}ms (${totalDuration ? Math.round(((finalTimings.mcpExecution || 0) / totalDuration) * 100) : 0}%)`,
+									'Context Formatting': `${finalTimings.contextFormatting || 0}ms (${totalDuration ? Math.round(((finalTimings.contextFormatting || 0) / totalDuration) * 100) : 0}%)`,
+									'LLM Response Generation': `${finalTimings.llmResponse || 0}ms (${totalDuration ? Math.round(((finalTimings.llmResponse || 0) / totalDuration) * 100) : 0}%)`
+								};
+								emit('xray:final', {
+									timings: { ...finalTimings, breakdown },
+									totalTime: totalDuration,
+									totalDuration
+								});
+							} catch (_e) {
+								// ignored: best-effort final xray emission
+							}
+
 							emit('llm:done', { done: true });
 							controller.close();
 							return;
@@ -667,7 +703,49 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			(request.headers.get('accept') || '').includes('text/event-stream');
 
 		if (streamMode) {
-			const sseStream = await callOpenAIStream(message, context, chatHistory, apiKey);
+			// Build initial X-ray snapshot (always emit so client can show tools during streaming)
+			const totalDurationSoFar = Date.now() - startTime;
+			const xrayInit: any = {
+				queryType: 'ai-assisted',
+				apiCallsCount: apiCalls.length,
+				totalDuration: totalDurationSoFar,
+				totalTime: totalDurationSoFar,
+				hasErrors: apiCalls.some(
+					(c) => (typeof c.status === 'number' && c.status >= 400) || c.error
+				),
+				apiCalls,
+				tools: apiCalls.map((call, index) => ({
+					id: `tool-${index}`,
+					name: call.endpoint,
+					duration: parseInt(call.duration.replace('ms', '')) || 0,
+					cached: call.cacheStatus === 'hit',
+					cacheStatus: call.cacheStatus || 'miss',
+					params: call.params,
+					status: call.status,
+					error: call.error
+				})),
+				timings: {
+					endpointDiscovery: timings.endpointDiscovery || 0,
+					llmDecision: timings.llmDecision || 0,
+					mcpExecution: timings.mcpExecution || 0,
+					contextFormatting: timings.contextFormatting || 0
+				}
+			};
+
+			const sseStream = await callOpenAIStream(
+				message,
+				context,
+				chatHistory,
+				apiKey,
+				xrayInit,
+				{
+					endpointDiscovery: timings.endpointDiscovery || 0,
+					llmDecision: timings.llmDecision || 0,
+					mcpExecution: timings.mcpExecution || 0,
+					contextFormatting: timings.contextFormatting || 0
+				},
+				startTime
+			);
 			const totalDuration = Date.now() - startTime;
 			return new Response(sseStream, {
 				headers: {
