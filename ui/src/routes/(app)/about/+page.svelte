@@ -61,8 +61,9 @@
 						comprehension questions, and word definitions from canonical sources.
 					</p>
 					<p>
-						<strong class="text-green-300">Smart Caching:</strong> Intelligent caching system that keeps
-						responses fast while staying current with source updates.
+						<strong class="text-green-300">Smart Caching:</strong> Intelligent caching system for DCS
+						fetches and ZIP downloads that keeps responses fast while staying current with source updates.
+						No response caching to ensure data freshness.
 					</p>
 					<p>
 						<strong class="text-green-300">MCP Integration:</strong> Full Model Context Protocol support

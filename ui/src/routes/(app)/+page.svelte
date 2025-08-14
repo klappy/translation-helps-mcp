@@ -219,8 +219,8 @@
 					<div>
 						<h3 class="mb-2 font-semibold text-white">Edge-Optimized Performance</h3>
 						<p class="text-sm text-gray-300">
-							Sub-200ms response times with intelligent caching and request coalescing. Deployed
-							globally on Cloudflare Workers.
+							Sub-200ms typical for cached endpoints with intelligent caching and in-flight ZIP
+							fetch coalescing. Deployed globally on Cloudflare Workers.
 						</p>
 					</div>
 				</div>
