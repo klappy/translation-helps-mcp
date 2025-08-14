@@ -1195,38 +1195,46 @@ export class ZipResourceFetcher2 {
         });
 
         if (!response.ok) {
-          // Try immutable Link header first
-          const linkHeader =
-            response.headers.get("link") || response.headers.get("Link");
-          const match = linkHeader?.match(/<([^>]+)>\s*;\s*rel="immutable"/i);
-          if (match?.[1]) {
-            const altUrl = match[1];
-            response = await trackedFetch(this.tracer, altUrl, {
-              headers: this.getClientHeaders(),
-            });
-            if (!response.ok) {
-              // Fallback to tar.gz
-              response = await trackedFetch(this.tracer, tarUrl, {
+          // Prefer plain tag tar.gz first
+          let tarResp = await trackedFetch(this.tracer, tarUrl, {
+            headers: this.getClientHeaders(),
+          });
+          if (!tarResp.ok) {
+            // Then try immutable Link header (often commit tarball) if available
+            const linkHeader =
+              response.headers.get("link") || response.headers.get("Link");
+            const match = linkHeader?.match(/<([^>]+)>\s*;\s*rel="immutable"/i);
+            if (match?.[1]) {
+              const altUrl = match[1];
+              tarResp = await trackedFetch(this.tracer, altUrl, {
                 headers: this.getClientHeaders(),
               });
-              if (!response.ok) return null;
+              if (!tarResp.ok) return null;
+            } else {
+              return null;
             }
-          } else {
-            // No Link header; directly try tar.gz
-            response = await trackedFetch(this.tracer, tarUrl, {
-              headers: this.getClientHeaders(),
-            });
-            if (!response.ok) return null;
           }
+          response = tarResp;
         }
 
         const buffer = await response.arrayBuffer();
         if (buffer.byteLength < 1024) return null;
 
-        // Store only under the final URL-derived key
+        // Store under the final URL-derived key
         const finalUrl = (response as any).url || zipUrl;
         const { key: storeKey, meta } = r2KeyFromUrl(finalUrl);
         await r2.putZip(storeKey, buffer, meta);
+
+        // If we fetched via an immutable tar URL (differs from simple tarUrl),
+        // also store under the ref-based tar key so future lookups hit without re-fetching
+        try {
+          if (finalUrl !== tarUrl) {
+            const { key: refTarKey } = r2KeyFromUrl(tarUrl);
+            await r2.putZip(refTarKey, buffer, meta);
+          }
+        } catch {
+          // best-effort secondary write
+        }
 
         return new Uint8Array(buffer);
       } catch (error) {
