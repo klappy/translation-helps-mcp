@@ -6,9 +6,11 @@
  * DRY: All resources use the same pattern
  */
 
-import { cache } from "../functions/cache.js";
 import { EdgeXRayTracer, trackedFetch } from "../functions/edge-xray.js";
 import { getKVCache } from "../functions/kv-cache.js";
+import { getR2Env } from "../functions/r2-env.js";
+import { r2KeyFromUrl } from "../functions/r2-keys.js";
+import { R2Storage } from "../functions/r2-storage.js";
 import {
   createCacheValidator,
   validateCacheableData,
@@ -47,7 +49,6 @@ export class ZipResourceFetcher2 {
     // Initialize cache validator
     this.cacheValidator = createCacheValidator({
       strict: false,
-      autoClean: false, // We handle empty resources ourselves
       logLevel: "warn",
     });
   }
@@ -319,7 +320,7 @@ export class ZipResourceFetcher2 {
       const results: ScriptureResult[] = [];
 
       // Prepare targets with resolved ingredient path and zip info
-      const bookCode = this.getBookCode(reference.bookName || reference.book);
+      const bookCode = this.getBookCode(reference.book);
       const normalize = (s: unknown) =>
         String(s || "")
           .toLowerCase()
@@ -343,7 +344,7 @@ export class ZipResourceFetcher2 {
             [];
           // Select ingredient with strict path-code preference to avoid John vs 1 John confusion
           const code = bookCode.toLowerCase();
-          const full = normalize(reference.bookName || reference.book);
+          const full = normalize(reference.book);
           const isPathForCode = (p: string) =>
             p.endsWith(`/${code}.usfm`) ||
             p.endsWith(`${code}.usfm`) ||
@@ -512,9 +513,9 @@ export class ZipResourceFetcher2 {
         if (!reference.chapter && !reference.verse) {
           verseText = this.extractFullBookFromUSFM(contentStr);
         } else if (
-          reference.verseEnd &&
+          (reference as any).verseEnd &&
           !reference.verse &&
-          reference.verseEnd !== reference.chapter
+          (reference as any).verseEnd !== reference.chapter
         ) {
           // Chapter range: verseEnd is being used to store end chapter
           verseText = this.extractChapterRangeFromUSFM(contentStr, reference);
@@ -589,9 +590,9 @@ export class ZipResourceFetcher2 {
         if (!reference.chapter && !reference.verse) {
           verseText = this.extractFullBookFromUSFM(fileContent);
         } else if (
-          reference.verseEnd &&
+          (reference as any).verseEnd &&
           !reference.verse &&
-          reference.verseEnd !== reference.chapter
+          (reference as any).verseEnd !== reference.chapter
         ) {
           // Chapter range: verseEnd is being used to store end chapter
           verseText = this.extractChapterRangeFromUSFM(fileContent, reference);
@@ -1133,86 +1134,28 @@ export class ZipResourceFetcher2 {
     ref?: string | null,
     zipballUrl?: string | null,
   ): Promise<Uint8Array | null> {
-    const inFlightKey = `zip:${organization}/${repository}:${ref || "master"}`;
+    const _inFlightKey = `zip:${organization}/${repository}:${ref || "master"}`;
     const task = (async () => {
       try {
-        const cacheKey = inFlightKey;
+        // inFlightKey currently unused since we rely on R2 + Cache API
 
-        // Try KV cache first (includes memory cache)
-        const kvStart =
-          typeof performance !== "undefined" ? performance.now() : Date.now();
-        const cached = await this.kvCache.get(cacheKey);
-        logger.debug(`KV/Memory cache check`, {
-          cacheKey,
-          status: cached ? "HIT" : "MISS",
-        });
-
-        if (cached instanceof ArrayBuffer) {
-          logger.info(`Using cached ZIP for ${repository}`);
-          logger.debug(`Cached ZIP size (MB)`, {
-            sizeMB: (cached.byteLength / 1024 / 1024).toFixed(2),
-          });
-          // Log synthetic KV hit for X-Ray
-          try {
-            const kvMs = Math.max(
-              1,
-              Math.round(
-                (typeof performance !== "undefined"
-                  ? performance.now()
-                  : Date.now()) - kvStart,
-              ),
-            );
-            this.tracer.addApiCall({
-              url: `internal://kv/zip/${organization}/${repository}:${ref || "master"}`,
-              duration: kvMs,
-              status: 200,
-              size: cached.byteLength,
-              cached: true,
-            });
-          } catch {
-            // ignore
-          }
-          return new Uint8Array(cached);
-        }
-
-        // Fallback to regular cache if KV missed
-        const memStart =
-          typeof performance !== "undefined" ? performance.now() : Date.now();
-        const memoryCached = await cache.get(cacheKey);
-        if (memoryCached instanceof ArrayBuffer) {
-          logger.info(`Using memory-only cached ZIP for ${repository}`);
-          // Warm KV cache with the value
-          await this.kvCache.set(cacheKey, memoryCached, 30 * 24 * 60 * 60); // 30 days
-          // Log synthetic memory hit for X-Ray
-          try {
-            const memMs = Math.max(
-              1,
-              Math.round(
-                (typeof performance !== "undefined"
-                  ? performance.now()
-                  : Date.now()) - memStart,
-              ),
-            );
-            this.tracer.addApiCall({
-              url: `internal://memory/zip/${organization}/${repository}:${ref || "master"}`,
-              duration: memMs,
-              status: 200,
-              size: memoryCached.byteLength,
-              cached: true,
-            });
-          } catch {
-            // eslint-disable-next-line no-empty -- ignore tracer add failure
-            void 0;
-          }
-          return new Uint8Array(memoryCached);
-        }
-
-        // Download the ZIP (prefer provided zipball URL)
+        // R2 + Cache API first
         const zipUrl =
           zipballUrl ||
           `https://git.door43.org/${organization}/${repository}/archive/${encodeURIComponent(
             ref || "master",
           )}.zip`;
+        const { key: r2Key, meta } = r2KeyFromUrl(zipUrl);
+        const { bucket, caches } = getR2Env();
+        const r2 = new R2Storage(bucket as any, caches as any);
+
+        const r2Hit = await r2.getZip(r2Key);
+        if (r2Hit) {
+          logger.info(`Using R2/Cache ZIP for ${repository}`);
+          return r2Hit;
+        }
+
+        // Download the ZIP (prefer provided zipball URL)
         logger.info(`Downloading ZIP: ${zipUrl}`);
 
         const response = await trackedFetch(this.tracer, zipUrl, {
@@ -1234,11 +1177,10 @@ export class ZipResourceFetcher2 {
           return null;
         }
 
-        // Cache in both places for 30 days (seconds)
-        await cache.set(cacheKey, buffer, "fileContent", 30 * 24 * 60 * 60);
-        await this.kvCache.set(cacheKey, buffer, 30 * 24 * 60 * 60); // 30 days
+        // Write-through to R2 and warm Cache API
+        await r2.putZip(r2Key, buffer, meta);
 
-        logger.info(`Cached ZIP in memory and KV`, {
+        logger.info(`Cached ZIP in R2 and Cache API`, {
           sizeMB: (buffer.byteLength / 1024 / 1024).toFixed(2),
           repository,
           organization,
@@ -1397,55 +1339,21 @@ export class ZipResourceFetcher2 {
   ): Promise<string | null> {
     const task = (async () => {
       try {
-        // KV+memory cache for extracted file content
+        // R2 + Cache API cache for extracted file content
         if (zipCacheKey) {
-          const fileKey = `zipfile:${zipCacheKey}:${filePath.replace(/^\./, "")}`;
-          const kvStart =
-            typeof performance !== "undefined" ? performance.now() : Date.now();
-          const cached = await this.kvCache.get(fileKey);
-          if (cached) {
-            let contentStr: string | null = null;
-            try {
-              if (cached instanceof ArrayBuffer) {
-                contentStr = new TextDecoder("utf-8").decode(
-                  cached as ArrayBuffer,
-                );
-              } else if (cached instanceof Uint8Array) {
-                contentStr = new TextDecoder("utf-8").decode(
-                  cached as Uint8Array,
-                );
-              } else if (typeof cached === "string") {
-                // Stored as JSON string by kvCache.set for string values; remove potential quotes
-                contentStr = cached.startsWith('"')
-                  ? JSON.parse(cached)
-                  : cached;
-              }
-            } catch {
-              contentStr = null;
-            }
-            if (contentStr !== null) {
-              try {
-                const kvMs = Math.max(
-                  1,
-                  Math.round(
-                    (typeof performance !== "undefined"
-                      ? performance.now()
-                      : Date.now()) - kvStart,
-                  ),
-                );
-                this.tracer.addApiCall({
-                  url: `internal://kv/file/${fileKey}`,
-                  duration: kvMs,
-                  status: 200,
-                  size: contentStr.length,
-                  cached: true,
-                });
-              } catch {
-                // ignore
-              }
-              return contentStr;
-            }
-          }
+          const cleanInner = filePath.replace(/^\./, "");
+          const fileKey = `${zipCacheKey}/files/${cleanInner}`;
+          const { bucket, caches } = getR2Env();
+          const r2 = new R2Storage(bucket as any, caches as any);
+          // Heuristic content type for text files; these are markdown/tsv/usfm
+          const ext = cleanInner.toLowerCase();
+          const contentType = ext.endsWith(".md")
+            ? "text/markdown; charset=utf-8"
+            : ext.endsWith(".tsv")
+              ? "text/tab-separated-values; charset=utf-8"
+              : "text/plain; charset=utf-8";
+          const cached = await r2.getFile(fileKey, contentType);
+          if (cached !== null) return cached;
         }
 
         const { unzipSync } = await import("fflate");
@@ -1474,16 +1382,18 @@ export class ZipResourceFetcher2 {
           const content = decoder.decode(filtered[matchedKey]);
           if (zipCacheKey) {
             try {
-              const fileKey = `zipfile:${zipCacheKey}:${filePath.replace(/^\./, "")}`;
-              const buf = new TextEncoder().encode(content);
-              await this.kvCache.set(fileKey, buf.buffer, 30 * 24 * 60 * 60); // 30 days
-              // Record as a write, not a cache hit
-              this.tracer.addApiCall({
-                url: `internal://kv/file-write/${fileKey}`,
-                duration: 1,
-                status: 200,
-                size: content.length,
-                cached: false,
+              const cleanInner = filePath.replace(/^\./, "");
+              const fileKey = `${zipCacheKey}/files/${cleanInner}`;
+              const { bucket, caches } = getR2Env();
+              const r2 = new R2Storage(bucket as any, caches as any);
+              const ext = cleanInner.toLowerCase();
+              const contentType = ext.endsWith(".md")
+                ? "text/markdown; charset=utf-8"
+                : ext.endsWith(".tsv")
+                  ? "text/tab-separated-values; charset=utf-8"
+                  : "text/plain; charset=utf-8";
+              await r2.putFile(fileKey, content, contentType, {
+                zip_key: zipCacheKey,
               });
             } catch {
               // ignore
@@ -1602,7 +1512,8 @@ export class ZipResourceFetcher2 {
 
       // For verse ranges, keep verse numbers
       const isRange =
-        reference.verseEnd && reference.verseEnd > reference.verse;
+        (reference as any).verseEnd &&
+        (reference as any).verseEnd > reference.verse;
 
       if (isRange) {
         // Clean USFM but preserve verse markers for ranges
@@ -1857,7 +1768,8 @@ export class ZipResourceFetcher2 {
             // Check if chapter matches
             if (chapterNum === reference.chapter) {
               // Handle verse range if endVerse or verseEnd is provided
-              const endVerse = reference.endVerse || reference.verseEnd;
+              const endVerse =
+                reference.endVerse || (reference as any).verseEnd;
               if (endVerse) {
                 // Check if verse is within range
                 if (verseNum >= reference.verse && verseNum <= endVerse) {
