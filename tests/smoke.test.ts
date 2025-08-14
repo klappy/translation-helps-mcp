@@ -19,7 +19,7 @@ describe("Smoke Tests - Quick Health Check", () => {
       expect(response.status).toBeDefined();
       expect(["healthy", "error", "warning"]).toContain(response.status);
       expect(response.version).toBeDefined();
-      expect(response.version).toBe("6.3.0");
+      expect(response.version).toBe("6.4.0");
     },
     TIMEOUT,
   );
