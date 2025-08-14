@@ -10,6 +10,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { initializeKVCache } from '../../../src/functions/kv-cache.js';
+import { initializeR2Env } from '../../../src/functions/r2-env.js';
 import { logger } from '../../../src/utils/logger.js';
 import { formatResponse, type ResponseFormat } from './responseFormatter.js';
 
@@ -119,8 +120,8 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 
 		// Initialize KV cache if available
 		try {
-			// @ts-expect-error platform typing differs by adapter
-			const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
+			// platform typing differs by adapter
+			const kv = (platform as any)?.env?.TRANSLATION_HELPS_CACHE;
 			if (kv) {
 				initializeKVCache(kv);
 				logger.debug('KV cache initialized for endpoint', { endpoint: config.name });
@@ -130,12 +131,27 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 					endpoint: config.name,
 					hasPlatform: !!platform,
 					hasPlatformEnv: !!platform?.env,
-					// @ts-expect-error platform typing
-					envKeys: platform?.env ? Object.keys(platform.env) : []
+					envKeys: (platform as any)?.env ? Object.keys((platform as any).env) : []
 				});
 			}
 		} catch (error) {
 			logger.warn('Failed to initialize KV cache', { error });
+		}
+
+		// Initialize R2 environment if available
+		try {
+			const r2 = (platform as any)?.env?.ZIP_FILES;
+			const caches: CacheStorage | undefined = (platform as any)?.caches;
+			if (r2 || caches) {
+				initializeR2Env(r2, caches);
+				logger.debug('R2 env initialized', {
+					endpoint: config.name,
+					hasBucket: !!r2,
+					hasCaches: !!caches
+				});
+			}
+		} catch (error) {
+			logger.warn('Failed to initialize R2 env', { error });
 		}
 
 		try {
@@ -342,8 +358,7 @@ export function createCORSHandler(): RequestHandler {
 	return async ({ platform }) => {
 		// Initialize KV cache if available (even for OPTIONS requests to keep singleton warm)
 		try {
-			// @ts-expect-error platform typing differs by adapter
-			const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
+			const kv = (platform as any)?.env?.TRANSLATION_HELPS_CACHE;
 			if (kv) {
 				initializeKVCache(kv);
 			}

@@ -1,5 +1,24 @@
 // See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
+// Minimal Cloudflare R2 types to satisfy TypeScript during UI build
+interface R2ObjectBody {
+	body: ReadableStream | null;
+	arrayBuffer(): Promise<ArrayBuffer>;
+	text(): Promise<string>;
+	writeHttpMetadata?: (headers: Headers) => void;
+}
+interface R2Bucket {
+	get(key: string): Promise<R2ObjectBody | null>;
+	put(
+		key: string,
+		value: string | ArrayBuffer | ReadableStream,
+		options?: {
+			httpMetadata?: { contentType?: string; cacheControl?: string };
+			customMetadata?: Record<string, string>;
+		}
+	): Promise<void>;
+}
+
 declare global {
 	namespace App {
 		// interface Error {}
@@ -10,6 +29,8 @@ declare global {
 			env?: {
 				// KV Namespace binding
 				TRANSLATION_HELPS_CACHE?: KVNamespace;
+				// R2 bucket for ZIPs and extracted files
+				ZIP_FILES?: R2Bucket;
 				// Secrets
 				OPENAI_API_KEY?: string;
 				ANTHROPIC_API_KEY?: string;
