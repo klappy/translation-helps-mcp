@@ -117,6 +117,8 @@ export default ts.config(
   {
     // Ignore generated files and external dependencies
     ignores: [
+      // Avoid self-referential terminology rule trips
+      "eslint.config.js",
       "node_modules/**",
       "dist/**",
       "build/**",

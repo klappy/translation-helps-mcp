@@ -1,6 +1,7 @@
 // tests/helpers/http.ts
 
-const DEFAULT_PORTS = [8175, 8174, 8176, 5175, 5173, 8787, 8788, 8789];
+// Enforce Cloudflare Pages dev ports first
+const DEFAULT_PORTS = [8788, 8787, 8789];
 let resolvedBaseUrl: string | null = null;
 let apiReady = false;
 
