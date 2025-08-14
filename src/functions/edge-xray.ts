@@ -90,20 +90,17 @@ export async function trackedFetch(
       ? performance.now()
       : Date.now();
 
-  // Add browser-like headers to avoid bot detection
-  // If client headers are provided in options, prefer those for authentication
+  // Prefer our whitelisted UA with contact info for DCS access; allow caller headers to override
+  // Import lazily to avoid any potential top-level circular deps in edge runtimes
+  const { USER_AGENT } = await import("../utils/httpClient.js");
   const defaultHeaders = {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "User-Agent": USER_AGENT,
     Accept: "*/*",
     "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "gzip, deflate, br",
     "Cache-Control": "no-cache",
     Pragma: "no-cache",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "cross-site",
-  };
+  } as Record<string, string>;
 
   const mergedOptions = {
     ...options,

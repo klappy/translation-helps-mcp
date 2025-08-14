@@ -461,54 +461,48 @@ export class ZipResourceFetcher2 {
 
       // KISS: no per-request target de-duplication; rely on in-flight coalescing instead
 
-      // First: try file-level KV cache for each target (no ZIP needed on hit)
-      const fileKeys = targets.map(
-        (t) =>
-          `zipfile:zip:${t.owner}/${t.name}:${t.refTag || "master"}:${t.ingredientPath.replace(/^\./, "")}`,
-      );
-      const cachedContents = await Promise.all(
-        fileKeys.map((key) => this.kvCache.get(key)),
-      );
-
+      // First: try R2/Cache for extracted file content (no ZIP needed on hit)
       const misses: number[] = [];
       for (let i = 0; i < targets.length; i++) {
-        const cached = cachedContents[i];
-        if (!cached) {
-          misses.push(i);
-          continue;
-        }
-        let contentStr: string | null = null;
-        try {
-          if (cached instanceof ArrayBuffer) {
-            contentStr = new TextDecoder("utf-8").decode(cached as ArrayBuffer);
-          } else if (cached instanceof Uint8Array) {
-            contentStr = new TextDecoder("utf-8").decode(cached as Uint8Array);
-          } else if (typeof cached === "string") {
-            contentStr = cached.startsWith('"') ? JSON.parse(cached) : cached;
-          }
-        } catch {
-          contentStr = null;
-        }
+        const t = targets[i];
+        const zipUrl =
+          t.zipballUrl ||
+          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(
+            t.refTag || "master",
+          )}.zip`;
+        const { key: r2Key } = r2KeyFromUrl(zipUrl);
+        const cleanInner = t.ingredientPath.replace(/^\./, "");
+        const fileKey = `${r2Key}/files/${cleanInner}`;
+        const { bucket, caches } = getR2Env();
+        const r2 = new R2Storage(bucket as any, caches as any);
+        const ext = cleanInner.toLowerCase();
+        const contentType = ext.endsWith(".md")
+          ? "text/markdown; charset=utf-8"
+          : ext.endsWith(".tsv")
+            ? "text/tab-separated-values; charset=utf-8"
+            : "text/plain; charset=utf-8";
+        const {
+          data: contentStr,
+          source,
+          durationMs,
+          size,
+        } = await r2.getFileWithInfo(fileKey, contentType);
         if (!contentStr) {
           misses.push(i);
           continue;
         }
-
-        // Trace synthetic KV hit (to mirror extractFileFromZip behavior)
         try {
           this.tracer.addApiCall({
-            url: `internal://kv/file/${fileKeys[i]}`,
-            duration: 1,
+            url: `internal://${source}/file/${fileKey}`,
+            duration: durationMs,
             status: 200,
-            size: contentStr.length,
-            cached: true,
+            size,
+            cached: source === "cache",
           });
         } catch {
           // ignore tracer issues
         }
 
-        // Parse USFM to text and append result
-        const t = targets[i];
         let verseText: string;
         if (!reference.chapter && !reference.verse) {
           verseText = this.extractFullBookFromUSFM(contentStr);
@@ -517,7 +511,6 @@ export class ZipResourceFetcher2 {
           !reference.verse &&
           (reference as any).verseEnd !== reference.chapter
         ) {
-          // Chapter range: verseEnd is being used to store end chapter
           verseText = this.extractChapterRangeFromUSFM(contentStr, reference);
         } else if (reference.chapter && !reference.verse) {
           verseText = this.extractVerseFromUSFM(contentStr, reference);
@@ -536,7 +529,6 @@ export class ZipResourceFetcher2 {
                 : upper.includes("UEB")
                   ? "UEB"
                   : upper;
-          // Attach version via inline suffix to translation for formatter visibility without type change
           const withVersion = t.refTag
             ? `${normalizedTrans} ${t.refTag}`
             : normalizedTrans;
@@ -577,11 +569,17 @@ export class ZipResourceFetcher2 {
         const zipData = missZipDatas[m];
         if (!zipData) continue;
 
+        const zipUrl =
+          t.zipballUrl ||
+          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(
+            t.refTag || "master",
+          )}.zip`;
+        const { key: r2Key } = r2KeyFromUrl(zipUrl);
         const fileContent = await this.extractFileFromZip(
           zipData,
           t.ingredientPath,
           t.name,
-          `zip:${t.owner}/${t.name}:${t.refTag || "master"}`,
+          r2Key,
         );
         if (!fileContent) continue;
 
@@ -1149,10 +1147,26 @@ export class ZipResourceFetcher2 {
         const { bucket, caches } = getR2Env();
         const r2 = new R2Storage(bucket as any, caches as any);
 
-        const r2Hit = await r2.getZip(r2Key);
-        if (r2Hit) {
-          logger.info(`Using R2/Cache ZIP for ${repository}`);
-          return r2Hit;
+        const {
+          data: r2Data,
+          source,
+          durationMs,
+          size,
+        } = await r2.getZipWithInfo(r2Key);
+        if (r2Data) {
+          try {
+            this.tracer.addApiCall({
+              url: `internal://${source}/zip/${organization}/${repository}:${ref || "master"}`,
+              duration: durationMs,
+              status: 200,
+              size,
+              cached: source === "cache",
+            });
+          } catch {
+            // ignore
+          }
+          logger.info(`Using ${source.toUpperCase()} ZIP for ${repository}`);
+          return r2Data;
         }
 
         // Download the ZIP (prefer provided zipball URL)
@@ -1179,6 +1193,17 @@ export class ZipResourceFetcher2 {
 
         // Write-through to R2 and warm Cache API
         await r2.putZip(r2Key, buffer, meta);
+        try {
+          this.tracer.addApiCall({
+            url: `internal://r2/zip-write/${organization}/${repository}:${ref || "master"}`,
+            duration: 1,
+            status: 200,
+            size: buffer.byteLength,
+            cached: false,
+          });
+        } catch {
+          // ignore
+        }
 
         logger.info(`Cached ZIP in R2 and Cache API`, {
           sizeMB: (buffer.byteLength / 1024 / 1024).toFixed(2),
@@ -1352,8 +1377,24 @@ export class ZipResourceFetcher2 {
             : ext.endsWith(".tsv")
               ? "text/tab-separated-values; charset=utf-8"
               : "text/plain; charset=utf-8";
-          const cached = await r2.getFile(fileKey, contentType);
-          if (cached !== null) return cached;
+          const { data, source, durationMs, size } = await r2.getFileWithInfo(
+            fileKey,
+            contentType,
+          );
+          if (data !== null) {
+            try {
+              this.tracer.addApiCall({
+                url: `internal://${source}/file/${fileKey}`,
+                duration: durationMs,
+                status: 200,
+                size,
+                cached: source === "cache",
+              });
+            } catch {
+              // ignore
+            }
+            return data;
+          }
         }
 
         const { unzipSync } = await import("fflate");
@@ -1395,6 +1436,17 @@ export class ZipResourceFetcher2 {
               await r2.putFile(fileKey, content, contentType, {
                 zip_key: zipCacheKey,
               });
+              try {
+                this.tracer.addApiCall({
+                  url: `internal://r2/file-write/${fileKey}`,
+                  duration: 1,
+                  status: 200,
+                  size: content.length,
+                  cached: false,
+                });
+              } catch {
+                // ignore
+              }
             } catch {
               // ignore
             }
