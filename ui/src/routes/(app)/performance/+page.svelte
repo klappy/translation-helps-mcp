@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
+	import { fly } from 'svelte/transition';
 
 	let currentMetrics = {
 		responseTime: 0,
@@ -139,7 +139,7 @@
 				'Exceptional throughput (6x)',
 				'Near-zero cost',
 				'Global edge',
-				'Very low cold starts in practice'
+				'~1ms cold starts'
 			],
 			weakPoints: ['Variable response times', 'Memory-only cache', 'Less mature ecosystem'],
 			pricing: { freeLimit: '100k/day', costAfter: '$0.50/million' }
