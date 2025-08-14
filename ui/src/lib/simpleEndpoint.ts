@@ -9,6 +9,7 @@
 
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
+import { EdgeXRayTracer } from '../../../src/functions/edge-xray.js';
 import { initializeKVCache } from '../../../src/functions/kv-cache.js';
 import { initializeR2Env } from '../../../src/functions/r2-env.js';
 import { logger } from '../../../src/utils/logger.js';
@@ -233,7 +234,9 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 			// 6. Build response headers with X-ray trace data
 			const responseTime = Date.now() - startTime;
 			const headers: Record<string, string> = {
-				'Cache-Control': 'public, max-age=3600',
+				// CRITICAL: never cache endpoint responses
+				'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate',
+				Pragma: 'no-cache',
 				'X-Response-Time': `${responseTime}ms`,
 				'X-Endpoint': config.name
 			};
@@ -300,6 +303,9 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 
 			// Build error headers with X-ray trace
 			const errorHeaders: Record<string, string> = {
+				// CRITICAL: never cache endpoint responses
+				'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate',
+				Pragma: 'no-cache',
 				'X-Response-Time': `${responseTime}ms`,
 				'X-Endpoint': config.name,
 				'X-Error': 'true',
@@ -307,14 +313,15 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 				'X-Cache-Status': 'miss' // Errors are never cached
 			};
 
-			// Add simplified X-ray trace for errors
-			const errorTrace = {
+			// Attach best-available X-ray trace for errors (prefer last tracer if present)
+			const last = (EdgeXRayTracer as any)?.getLastTrace?.();
+			const errorTrace = last || {
 				traceId: `error-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 				mainEndpoint: config.name,
 				startTime: startTime,
 				totalDuration: responseTime,
 				apiCalls: [],
-				cacheStats: { hits: 0, misses: 0 },
+				cacheStats: { hits: 0, misses: 0, total: 0 },
 				error: error instanceof Error ? error.message : 'Unknown error'
 			};
 			errorHeaders['X-XRay-Trace'] = btoa(JSON.stringify(errorTrace));

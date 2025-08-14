@@ -471,7 +471,7 @@ export class ZipResourceFetcher2 {
             t.refTag || "master",
           )}.zip`;
         const { key: r2Key } = r2KeyFromUrl(zipUrl);
-        const cleanInner = t.ingredientPath.replace(/^\./, "");
+        const cleanInner = t.ingredientPath.replace(/^(\.\/|\/)+/, "");
         const fileKey = `${r2Key}/files/${cleanInner}`;
         const { bucket, caches } = getR2Env();
         const r2 = new R2Storage(bucket as any, caches as any);
@@ -1412,7 +1412,7 @@ export class ZipResourceFetcher2 {
       try {
         // R2 + Cache API cache for extracted file content
         if (zipCacheKey) {
-          const cleanInner = filePath.replace(/^\./, "");
+          const cleanInner = filePath.replace(/^(\.\/|\/)+/, "");
           const fileKey = `${zipCacheKey}/files/${cleanInner}`;
           const { bucket, caches } = getR2Env();
           const r2 = new R2Storage(bucket as any, caches as any);
@@ -1443,7 +1443,7 @@ export class ZipResourceFetcher2 {
           }
         }
 
-        const { unzipSync } = await import("fflate");
+        const { unzipSync, gunzipSync } = await import("fflate");
         // Remove leading ./ if present
         const cleanPath = filePath.replace(/^\.\//, "");
         const possiblePaths = [
@@ -1453,23 +1453,92 @@ export class ZipResourceFetcher2 {
           `${repository}/${cleanPath}`,
         ];
 
-        // Filtered single-file extraction: only inflate matching entries
-        const filtered = unzipSync(zipData, {
-          filter: (f) => {
-            const n = f.name;
-            if (possiblePaths.includes(n)) return true;
-            return n.endsWith(cleanPath) || n.endsWith(`/${cleanPath}`);
-          },
-        });
+        // Detect tar.gz by key hint or fallback when ZIP decode fails
+        const keyHint = (zipCacheKey || "").toLowerCase();
+        const looksLikeTarGz =
+          keyHint.includes(".tar.gz") || keyHint.includes(".tgz");
 
-        // Find the first matching entry
-        const matchedKey = Object.keys(filtered)[0];
-        if (matchedKey) {
-          const decoder = new TextDecoder("utf-8");
-          const content = decoder.decode(filtered[matchedKey]);
+        let decodedContent: string | null = null;
+
+        if (!looksLikeTarGz) {
+          try {
+            // Filtered single-file extraction: only inflate matching entries (ZIP)
+            const filtered = unzipSync(zipData, {
+              filter: (f) => {
+                const n = f.name;
+                if (possiblePaths.includes(n)) return true;
+                return n.endsWith(cleanPath) || n.endsWith(`/${cleanPath}`);
+              },
+            });
+            const matchedKey = Object.keys(filtered)[0];
+            if (matchedKey) {
+              const decoder = new TextDecoder("utf-8");
+              decodedContent = decoder.decode(filtered[matchedKey]);
+            }
+          } catch (_zipErr) {
+            // If it fails, try tar.gz path
+          }
+        }
+
+        if (!decodedContent) {
+          try {
+            // Attempt tar.gz flow (gunzip + TAR walk)
+            const tarBytes = gunzipSync(zipData);
+            const decoder = new TextDecoder("utf-8");
+            const matches = (name: string) => {
+              if (possiblePaths.includes(name)) return true;
+              return name.endsWith(cleanPath) || name.endsWith(`/${cleanPath}`);
+            };
+            const readOct = (
+              arr: Uint8Array,
+              start: number,
+              len: number,
+            ): number => {
+              let s = "";
+              for (let i = start; i < start + len; i++) {
+                const c = arr[i];
+                if (c === 0 || c === 32) continue;
+                s += String.fromCharCode(c);
+              }
+              const trimmed = s.replace(/\0+$/, "").trim();
+              return trimmed ? parseInt(trimmed, 8) : 0;
+            };
+            let offset = 0;
+            while (offset + 512 <= tarBytes.length) {
+              const block = tarBytes.subarray(offset, offset + 512);
+              const zero = block.every((b) => b === 0);
+              if (zero) break;
+              const nameRaw = block.subarray(0, 100);
+              let name = decoder.decode(nameRaw).replace(/\0+$/, "");
+              // Handle USTAR prefix if present
+              const ustar = decoder.decode(block.subarray(257, 263));
+              if (ustar.startsWith("ustar")) {
+                const prefix = decoder
+                  .decode(block.subarray(345, 500))
+                  .replace(/\0+$/, "")
+                  .trim();
+                if (prefix) name = `${prefix}/${name}`;
+              }
+              const size = readOct(block, 124, 12);
+              const dataStart = offset + 512;
+              const dataEnd = dataStart + size;
+              if (matches(name)) {
+                const fileBytes = tarBytes.subarray(dataStart, dataEnd);
+                decodedContent = decoder.decode(fileBytes);
+                break;
+              }
+              const pad = (512 - (size % 512)) % 512;
+              offset = dataEnd + pad;
+            }
+          } catch (_tarErr) {
+            // Not a tar.gz or failed to parse; will fall through to not found
+          }
+        }
+
+        if (decodedContent !== null) {
           if (zipCacheKey) {
             try {
-              const cleanInner = filePath.replace(/^\./, "");
+              const cleanInner = filePath.replace(/^(\.\/|\/)+/, "");
               const fileKey = `${zipCacheKey}/files/${cleanInner}`;
               const { bucket, caches } = getR2Env();
               const r2 = new R2Storage(bucket as any, caches as any);
@@ -1479,7 +1548,7 @@ export class ZipResourceFetcher2 {
                 : ext.endsWith(".tsv")
                   ? "text/tab-separated-values; charset=utf-8"
                   : "text/plain; charset=utf-8";
-              await r2.putFile(fileKey, content, contentType, {
+              await r2.putFile(fileKey, decodedContent, contentType, {
                 zip_key: zipCacheKey,
               });
               try {
@@ -1487,7 +1556,7 @@ export class ZipResourceFetcher2 {
                   url: `internal://r2/file-write/${fileKey}`,
                   duration: 1,
                   status: 200,
-                  size: content.length,
+                  size: decodedContent.length,
                   cached: false,
                 });
               } catch {
@@ -1497,7 +1566,7 @@ export class ZipResourceFetcher2 {
               // ignore
             }
           }
-          return content;
+          return decodedContent;
         }
 
         logger.warn(
