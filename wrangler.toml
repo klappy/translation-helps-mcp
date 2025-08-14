@@ -23,7 +23,7 @@ preview_id = "550f39aa441a453aaf682eddbb97a618"
 # R2 bucket for ZIPs and extracted files
 [[r2_buckets]]
 binding = "ZIP_FILES"
-bucket_name = "translation-helps-mcp-zip-persistance"
+bucket_name = "translation-helps-mcp-zip-persistence"
 
 # For Pages deployment, use: npx wrangler pages deploy ui/build
 # For secrets: npx wrangler secret put ANTHROPIC_API_KEY 
