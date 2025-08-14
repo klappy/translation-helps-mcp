@@ -22,6 +22,34 @@
 	let messagesContainer;
 	const USE_STREAM = true;
 
+	// Rich starter suggestions (shown before conversation starts)
+	const suggestions = [
+		{
+			title: 'Find a specific Bible verse with exact formatting',
+			prompt:
+				'Show me John 3:16 in ULT. Use verse number without a period and no blank lines between verses.',
+			description: 'Ask for a verse with your preferred translation and formatting.'
+		},
+		{
+			title: 'Explore translation notes for a chapter',
+			prompt:
+				'What do the Translation Notes say about Titus 1? Summarize key translation issues and include links to the specific notes.',
+			description: 'Deep-dive notes with source links you can follow.'
+		},
+		{
+			title: 'Define a biblical term from Translation Words',
+			prompt:
+				"Define 'agape' from Translation Words and explain how it differs from 'phileo', with 2–3 scripture examples.",
+			description: 'Grounded definitions and distinctions from TW, with examples.'
+		},
+		{
+			title: 'Study questions to guide a passage review',
+			prompt:
+				'Give me study questions for Genesis 1 that focus on literary structure, repeated words, and the order of creation.',
+			description: 'Structured prompts drawn from official resources.'
+		}
+	];
+
 	// Helper function to render markdown with proper styling
 	function renderMarkdown(content) {
 		if (!content) return '';
@@ -371,7 +399,30 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 </script>
 
 <div class="flex h-full flex-col" style="background-color: #0f172a;">
-	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto px-4 py-6">
+	<div
+		bind:this={messagesContainer}
+		class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6"
+	>
+		{#if messages.length === 1}
+			<!-- Starter suggestions area -->
+			<div class="mx-auto mb-6 max-w-4xl">
+				<div class="mb-3 text-sm text-gray-400">Try one of these to get started:</div>
+				<div class="grid gap-3 sm:grid-cols-2">
+					{#each suggestions as s (s.title)}
+						<button
+							class="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left text-gray-200 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+							on:click={() => {
+								inputValue = s.prompt;
+								sendMessage();
+							}}
+						>
+							<div class="mb-1 text-sm font-semibold">{s.title}</div>
+							<div class="text-xs text-gray-400">{s.description}</div>
+						</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
 		{#each messages as message (message.id)}
 			<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4">
 				<div class="flex max-w-[80%] items-end space-x-2">
@@ -421,9 +472,53 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 				</div>
 			</div>
 		{/each}
+
+		{#if messages.length <= 2}
+			<div class="mt-3 flex flex-wrap gap-2">
+				<button
+					on:click={() => {
+						inputValue = 'Show me John 3:16';
+						sendMessage();
+					}}
+					class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
+				>
+					📖 John 3:16
+				</button>
+				<button
+					on:click={() => {
+						inputValue = "What does 'love' mean in the Bible?";
+						sendMessage();
+					}}
+					class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
+				>
+					💝 Define "love"
+				</button>
+				<button
+					on:click={() => {
+						inputValue = 'Explain the notes on Ephesians 2:8-9';
+						sendMessage();
+					}}
+					class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
+				>
+					📝 Notes on grace
+				</button>
+				<button
+					on:click={() => {
+						inputValue = 'What questions should I consider for Genesis 1?';
+						sendMessage();
+					}}
+					class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
+				>
+					❓ Study questions
+				</button>
+			</div>
+		{/if}
 	</div>
 
-	<div class="border-t border-gray-800 p-4" style="background-color: #0f172a;">
+	<div
+		class="border-t border-gray-800 p-4 pb-[env(safe-area-inset-bottom)]"
+		style="background-color: #0f172a;"
+	>
 		<div class="mx-auto flex max-w-4xl items-end gap-3">
 			<div class="flex-1">
 				<textarea
@@ -482,48 +577,6 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 			</div>
 		{/if}
 	</div>
-
-	<!-- Quick suggestions -->
-	{#if messages.length <= 2}
-		<div class="mt-3 flex flex-wrap gap-2 px-4">
-			<button
-				on:click={() => {
-					inputValue = 'Show me John 3:16';
-					sendMessage();
-				}}
-				class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
-			>
-				📖 John 3:16
-			</button>
-			<button
-				on:click={() => {
-					inputValue = "What does 'love' mean in the Bible?";
-					sendMessage();
-				}}
-				class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
-			>
-				💝 Define "love"
-			</button>
-			<button
-				on:click={() => {
-					inputValue = 'Explain the notes on Ephesians 2:8-9';
-					sendMessage();
-				}}
-				class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
-			>
-				📝 Notes on grace
-			</button>
-			<button
-				on:click={() => {
-					inputValue = 'What questions should I consider for Genesis 1?';
-					sendMessage();
-				}}
-				class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
-			>
-				❓ Study questions
-			</button>
-		</div>
-	{/if}
 </div>
 
 {#if showXRay && currentXRayData}

@@ -10,6 +10,13 @@
 	/>
 </svelte:head>
 
-<div class="h-screen" style="background-color: #0f172a;">
+<div class="h-[calc(100svh-4rem)]" style="background-color: #0f172a;">
 	<ChatInterface />
 </div>
+
+<style>
+	/* Hide the global footer on the chat page so only the conversation scrolls */
+	:global(footer) {
+		display: none;
+	}
+</style>
