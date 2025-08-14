@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [6.6.1](https://github.com/klappy/translation-helps-mcp/compare/v6.6.0...v6.6.1) (2025-08-14)
+
+### Features
+
+- **archives:** fallback to Link header (tar.gz) when zipball fetch fails; store under alt URL key; keep R2/Cache x-ray events ([f64cbb7](https://github.com/klappy/translation-helps-mcp/commit/f64cbb7ac0442daffab84dc355b6d7c4bf1f0ba0))
+- **archives:** prefer tag tar.gz before immutable Link when ZIP fails; keep dual-write to ref tar key for cache hits ([1df4489](https://github.com/klappy/translation-helps-mcp/commit/1df448920f2db3f281fcbb6c6e1a1a89b8055d06))
+- **cache,r2:** ZIP-first R2 lookup with tar.gz fallback; correct content-type; add health R2 diagnostics and ZIP-first proof ([ad317c5](https://github.com/klappy/translation-helps-mcp/commit/ad317c5b8f2f487a16e1f2c0da83593a0415a428))
+- **cache:** add R2 + Cache API support for zip and tar.gz archives; improve X-Ray tracing and disable response caching\n\n- Add tar.gz extraction (gunzip + TAR walk) in ZipResourceFetcher2\n- Use URL-derived R2 keys and store extracted files under /files/<path>\n- Initialize R2 env per request and always include trace on errors\n- Mark endpoint responses as no-store; only R2/Cache used for files\n- Normalize inner paths to avoid double slashes in file keys ([7801f59](https://github.com/klappy/translation-helps-mcp/commit/7801f59c9f08ced1641e3c32e39d4730908d2603))
+- **storage:** use R2 + Cache API for ZIPs and extracted files; add ZIP_FILES binding and helpers; bucket name set to translation-helps-mcp-zip-persistance ([48f1fe1](https://github.com/klappy/translation-helps-mcp/commit/48f1fe15dda3ed42c916e0dc328c0dd5ac778ff2))
+- **tracing:** always record attempted archive URLs (primary and Link fallback) so X-Ray never shows empty apiCalls array; expose getLastTrace helper ([2f46864](https://github.com/klappy/translation-helps-mcp/commit/2f468642a70b1eaa0a563ad059a91b39ec43e0ff))
+
+### Bug Fixes
+
+- **fetch:** use whitelisted USER_AGENT for DCS in trackedFetch to avoid 500; fully remove KV lookups for file paths in ZipResourceFetcher2 and trace R2/cache events ([75b9b6e](https://github.com/klappy/translation-helps-mcp/commit/75b9b6e8b169e14146aebbc475b0a2b5a614204e))
+- restore Cloudflare Workers ~1ms cold start platform claim ([55c5484](https://github.com/klappy/translation-helps-mcp/commit/55c5484792c1d03595c449cb41ca9d11feaa1348))
+- update outdated website claims and performance assertions ([95203c9](https://github.com/klappy/translation-helps-mcp/commit/95203c96620b8b569d5531d99f985c81fdf5a9c8))
+
+### Chores
+
+- **cf:** add KV and R2 bindings under env.production for Pages Functions ([5791ad1](https://github.com/klappy/translation-helps-mcp/commit/5791ad1ab85bab869fbf1d48b0e91bd90d4da748))
+- **lint:** exclude eslint.config.js from lint scope to avoid self-referential terminology rule ([22ed4e8](https://github.com/klappy/translation-helps-mcp/commit/22ed4e8ed5e6551bee40eb9a00b7bf403dbef5fe))
+
 ## [6.6.0](https://github.com/klappy/translation-helps-mcp/compare/v6.5.0...v6.6.0) (2025-08-14)
 
 ### Features
