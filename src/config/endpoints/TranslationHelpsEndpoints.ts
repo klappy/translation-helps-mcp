@@ -198,36 +198,37 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
 
   examples: [
     {
-      name: "Key Term",
-      description: "Get definition and usage of the term 'grace'",
+      name: "Table of Contents",
+      description: "Get all available translation word categories and examples",
       params: {
-        term: "grace",
         language: "en",
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["undeserved", "favor", "gift from God"],
-        minLength: 200,
+        contains: ["Key Terms", "Names", "Other Terms"],
+        minLength: 500,
         fields: {
-          term: "grace",
-          definition: "string",
-          facts: "array",
+          tableOfContents: {
+            categories: "array",
+            usage: "object",
+          },
         },
       },
     },
     {
-      name: "Biblical Concept",
-      description: "Get explanation of the concept 'covenant'",
+      name: "RC Link Lookup",
+      description:
+        "Look up a term using RC link format (currently returns 404)",
       params: {
-        term: "covenant",
+        rcLink: "rc://en/tw/dict/bible/kt/love",
         language: "en",
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["agreement", "promise", "binding"],
-        minLength: 300,
+        contains: ["love"],
+        minLength: 200,
         fields: {
-          term: "covenant",
+          term: "love",
           definition: "string",
         },
       },
