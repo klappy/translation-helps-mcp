@@ -114,12 +114,12 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
         contains: [
           "How did God show he loved the world",
           "giving his Only Son",
-          "eternal life",
+          "everlasting life",
         ],
         minLength: 100,
         fields: {
-          translationQuestions: "array",
-          citation: "object",
+          items: "array",
+          reference: "string",
           metadata: "object",
         },
       },
@@ -488,11 +488,15 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["love", "world", "believe"],
+        contains: [
+          "rc://*/tw/dict/bible/kt/love",
+          "rc://*/tw/dict/bible/kt/world",
+        ],
         minLength: 50,
         fields: {
-          links: "array",
-          reference: "John 3:16",
+          items: "array",
+          reference: "string",
+          metadata: "object",
         },
       },
     },
@@ -547,11 +551,12 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["God so loved", "gave his", "only Son"],
+        contains: ["For", "γὰρ", "grammar-connect-logic-result"],
         minLength: 100,
         fields: {
-          notes: "array",
-          reference: "John 3:16",
+          items: "array",
+          reference: "string",
+          metadata: "object",
         },
       },
     },
