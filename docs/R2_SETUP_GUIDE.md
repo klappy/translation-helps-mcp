@@ -1,63 +1,68 @@
 # R2 Bucket Setup Guide
 
-## Problem
+## How It Works
 
-Production returns 404 errors for translation resources (notes, words, academy) even though the code is deployed correctly. This happens because the R2 bucket is empty.
+The system automatically downloads and caches ZIP files from Door43 Content Service (DCS) to R2:
 
-## Solution
+1. **Automatic Download**: When a resource is requested, the system fetches it from DCS
+2. **ZIP Fallback**: If `.zip` files return 500 errors, it automatically tries `.tar.gz`
+3. **R2 Caching**: Successfully downloaded files are stored in R2 for future requests
+4. **File Extraction**: Individual files are extracted and cached separately
 
-The R2 bucket needs to be populated with ZIP files from Door43 Content Service (DCS).
+## Troubleshooting Production Issues
 
-### Manual Setup (Current Method)
+### 404 Errors for Translation Resources
 
-Since there's no automated seeding script yet, you'll need to:
+If production returns 404 errors while dev works:
 
-1. **Access Cloudflare Dashboard**
-   - Go to R2 > translation-helps-mcp-zip-persistence
-   - This bucket stores all the ZIP files for resources
+1. **Check R2 Permissions**
+   - Ensure the production deployment has write access to R2 bucket
+   - Verify R2 bindings are correctly configured in `wrangler.toml`
 
-2. **Required ZIP Files**
-   - Translation Notes: `en_tn.zip` from https://git.door43.org/unfoldingWord/en_tn
-   - Translation Words: `en_tw.zip` from https://git.door43.org/unfoldingWord/en_tw
-   - Translation Academy: `en_ta.zip` from https://git.door43.org/unfoldingWord/en_ta
-   - Translation Questions: `en_tq.zip` from https://git.door43.org/unfoldingWord/en_tq
-   - Scripture (ULT): `en_ult.zip` from https://git.door43.org/unfoldingWord/en_ult
-   - Scripture (UST): `en_ust.zip` from https://git.door43.org/unfoldingWord/en_ust
+2. **Check DCS Availability**
+   - DCS might be blocking or rate-limiting production requests
+   - ZIP files might be returning 500 errors without proper tar.gz fallback
 
-3. **Download and Upload**
-   - Download each ZIP from the releases page
-   - Upload to R2 bucket with the correct naming convention:
-     - Pattern: `{language}_{resource}.zip`
-     - Example: `en_tn.zip`, `en_tw.zip`, etc.
+3. **Check Browser DevTools**
+   - Look for CORS errors or blocked requests
+   - Check Network tab for actual error responses
 
-### Automated Solution (TODO)
+4. **Force Cache Refresh**
+   - Add `X-Force-Refresh: true` header to bypass cache
+   - This forces fresh download from DCS
 
-We need to create a script that:
+### Common Issues
 
-1. Fetches ZIP URLs from DCS API
-2. Downloads the ZIPs
-3. Uploads them to R2 using Wrangler CLI
-4. Could be run during deployment or as a scheduled job
+1. **R2 Write Permissions**
+   - Production might not have write access to R2 bucket
+   - Check Cloudflare dashboard for R2 bucket permissions
 
-### Verification
+2. **DCS Rate Limiting**
+   - Production domain might be rate-limited by DCS
+   - Check if direct DCS URLs work from production
 
-After uploading, test the endpoints:
+3. **Worker Environment Differences**
+   - ZIP extraction uses async operations that might behave differently in production
+   - Check for "code:13" errors in logs
+
+### Manual Cache Warming (If Needed)
+
+If automatic caching isn't working, you can warm the cache by:
 
 ```bash
-# Should return actual data, not 404
-curl https://translation-helps-mcp.pages.dev/api/translation-notes?reference=John%203:16
+# Force download each resource type
+curl -H "X-Force-Refresh: true" "https://translation-helps-mcp.pages.dev/api/translation-notes?reference=John%203:16"
+curl -H "X-Force-Refresh: true" "https://translation-helps-mcp.pages.dev/api/translation-questions?reference=John%203:16"
+curl -H "X-Force-Refresh: true" "https://translation-helps-mcp.pages.dev/api/fetch-translation-word-links?reference=John%203:16"
 ```
 
-## Why This Happens
+### Debug Information
 
-- Dev environment might have cached data or different ZIP access
-- Production R2 bucket starts empty after creation
-- No automatic seeding process exists yet
+The system logs detailed information about the caching process:
 
-## Temporary Workaround
+- ZIP download attempts (both .zip and .tar.gz)
+- R2 storage operations
+- Cache hits/misses
+- Extraction errors
 
-Until R2 is populated, the app will:
-
-- Scripture endpoints might work (if using direct API calls)
-- Translation helps will return 404 errors
-- Health check shows R2 as "available" but resources won't load
+Check the Cloudflare Workers logs for detailed error messages.
