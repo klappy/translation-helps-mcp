@@ -452,20 +452,26 @@
 			) {
 				testParams.reference = 'John 3:16';
 				testParams.outputFormat = 'text';
-			} else if (endpoint.name === 'fetch-translation-notes') {
+			} else if (endpoint.name === 'translation-notes') {
 				testParams.reference = 'John 3:16';
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
 			} else if (endpoint.name === 'fetch-translation-words') {
 				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'fetch-translation-questions') {
+			} else if (endpoint.name === 'translation-questions') {
 				testParams.reference = 'John 3:16';
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
 			} else if (endpoint.name === 'get-translation-word') {
 				testParams.term = 'faith';
 			} else if (endpoint.name === 'fetch-translation-word-links') {
 				testParams.reference = 'John 3:16';
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
 			} else if (endpoint.name === 'get-context') {
 				testParams.reference = 'John 3:16';
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
 			} else if (endpoint.name === 'get-words-for-reference') {
 				testParams.reference = 'John 3:16';
 			} else if (endpoint.name === 'browse-translation-words') {
@@ -477,6 +483,10 @@
 				testParams.text = 'Check John 3:16';
 			} else if (endpoint.name === 'get-available-books') {
 				testParams.resource = 'tn';
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
+			} else if (endpoint.name === 'resolve-rc-link') {
+				testParams.rcLink = 'rc://*/tw/dict/bible/kt/love';
 			}
 
 			// Build query string
