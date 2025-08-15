@@ -120,6 +120,16 @@ export class ZipResourceFetcher2 {
       };
     };
 
+    // Check if the fields are directly on the resource first
+    const res = resource as Record<string, unknown>;
+    if (res.zipball_url || res.branch_or_tag_name) {
+      return {
+        refTag: (res.branch_or_tag_name as string) || null,
+        zipballUrl: (res.zipball_url as string) || null,
+      };
+    }
+
+    // Then check nested paths for backward compatibility
     const paths: Array<(r: Record<string, unknown>) => unknown> = [
       (r) => (r as ProdPath).catalog?.prod,
       (r) => (r as RepoPath).repo?.catalog?.prod,
@@ -467,9 +477,7 @@ export class ZipResourceFetcher2 {
         const t = targets[i];
         const zipUrl =
           t.zipballUrl ||
-          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(
-            t.refTag || "master",
-          )}.zip`;
+          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(t.refTag)}.zip`;
         const { key: r2Key } = r2KeyFromUrl(zipUrl);
         const cleanInner = t.ingredientPath.replace(/^(\.\/|\/)+/, "");
         const fileKey = `${r2Key}/files/${cleanInner}`;
@@ -571,9 +579,7 @@ export class ZipResourceFetcher2 {
 
         const zipUrl =
           t.zipballUrl ||
-          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(
-            t.refTag || "master",
-          )}.zip`;
+          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(t.refTag)}.zip`;
         const { key: r2Key } = r2KeyFromUrl(zipUrl);
         const fileContent = await this.extractFileFromZip(
           zipData,
@@ -765,7 +771,7 @@ export class ZipResourceFetcher2 {
         zipData,
         targetIngredient.path,
         resource.name,
-        `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+        `zip:${resource.owner}/${resource.name}:${refTag}`,
       );
 
       if (!tsvContent) return [];
@@ -889,6 +895,17 @@ export class ZipResourceFetcher2 {
 
       // 2) Download ZIP (prefer catalog-provided ref and zipball URL)
       const { refTag, zipballUrl } = this.resolveRefAndZip(resource as unknown);
+
+      // We must have a tag - no fallback to master
+      if (!refTag) {
+        console.error(
+          `[getMarkdownContent] No ref tag found for ${resource.name}`,
+        );
+        return resourceType === "tw"
+          ? { articles: [] }
+          : { modules: [], categories: [] };
+      }
+
       const zipData = await this.getOrDownloadZip(
         resource.owner,
         resource.name,
@@ -969,11 +986,8 @@ export class ZipResourceFetcher2 {
         }
 
         if (!targetPath) {
-          console.log(`[TW] No target path found for term: ${term}`);
           return { articles: [] };
         }
-
-        console.log(`[TW] Looking for file at path: ${targetPath}`);
 
         // If the target path was constructed (not a direct match), try all categories
         let content: string | null = null;
@@ -985,6 +999,7 @@ export class ZipResourceFetcher2 {
 
         if (isConstructedPath) {
           // Try all category patterns for constructed paths
+
           const baseDir = ingredients.find((ing) => {
             const path = (ing.path || "").toLowerCase();
             return (
@@ -998,28 +1013,27 @@ export class ZipResourceFetcher2 {
 
             for (const category of categories) {
               const tryPath = `${cleanBase}/${category}/${term}.md`;
-              console.log(`[TW] Trying category ${category}: ${tryPath}`);
 
+              // Always try with repository prefix first for directory-based ingredients
+              const repoPrefixed = `${resource.name}/${tryPath}`;
               content = await this.extractFileFromZip(
                 zipData,
-                tryPath,
+                repoPrefixed,
                 resource.name,
-                `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+                `zip:${resource.owner}/${resource.name}:${refTag}`,
               );
 
+              // If that didn't work, try without repo prefix (rare case)
               if (!content) {
-                const repoPrefixed = `${resource.name.replace(/\/$/, "")}/${tryPath.replace(/^\//, "")}`;
-                console.log(`[TW] Trying repo-prefixed: ${repoPrefixed}`);
                 content = await this.extractFileFromZip(
                   zipData,
-                  repoPrefixed,
+                  tryPath,
                   resource.name,
-                  `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+                  `zip:${resource.owner}/${resource.name}:${refTag}`,
                 );
               }
 
               if (content) {
-                console.log(`[TW] Found content in category: ${category}`);
                 targetPath = tryPath; // Update targetPath to reflect successful path
                 break;
               }
@@ -1031,24 +1045,21 @@ export class ZipResourceFetcher2 {
             zipData,
             targetPath,
             resource.name,
-            `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+            `zip:${resource.owner}/${resource.name}:${refTag}`,
           );
           if (!content) {
-            const repoPrefixed = `${resource.name.replace(/\/$/, "")}/${targetPath.replace(/^\//, "")}`;
-            console.log(
-              `[TW] First attempt failed, trying repo-prefixed path: ${repoPrefixed}`,
-            );
+            // Try with repository prefix
+            const repoPrefixed = `${resource.name}/${targetPath.replace(/^\.\//, "")}`;
             content = await this.extractFileFromZip(
               zipData,
               repoPrefixed,
               resource.name,
-              `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+              `zip:${resource.owner}/${resource.name}:${refTag}`,
             );
           }
         }
 
         if (!content) {
-          console.log(`[TW] Failed to extract content for: ${targetPath}`);
           return { articles: [] };
         }
 
@@ -1127,7 +1138,7 @@ export class ZipResourceFetcher2 {
           zipData,
           modulePath,
           resource.name,
-          `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+          `zip:${resource.owner}/${resource.name}:${refTag}`,
         );
         if (!content) {
           const repoPrefixed = `${resource.name.replace(/\/$/, "")}/${modulePath.replace(/^\//, "")}`;
@@ -1135,7 +1146,7 @@ export class ZipResourceFetcher2 {
             zipData,
             repoPrefixed,
             resource.name,
-            `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+            `zip:${resource.owner}/${resource.name}:${refTag}`,
           );
         }
         if (!content) return { modules: [] };
@@ -1292,14 +1303,23 @@ export class ZipResourceFetcher2 {
     ref?: string | null,
     zipballUrl?: string | null,
   ): Promise<Uint8Array | null> {
-    const _inFlightKey = `zip:${organization}/${repository}:${ref || "master"}`;
+    const _inFlightKey = ref
+      ? `zip:${organization}/${repository}:${ref}`
+      : `zip:${organization}/${repository}`;
     const task = (async () => {
       try {
         // Build preferred URLs
+        if (!zipballUrl && !ref) {
+          console.error(
+            `[getOrDownloadZip] No zipballUrl or ref provided for ${organization}/${repository}`,
+          );
+          return null;
+        }
+
         const zipUrl =
           zipballUrl ||
           `https://git.door43.org/${organization}/${repository}/archive/${encodeURIComponent(
-            ref || "master",
+            ref!,
           )}.zip`;
         const tarUrl = zipUrl.replace(/\.zip(\?.*)?$/i, ".tar.gz$1");
 
@@ -1332,7 +1352,7 @@ export class ZipResourceFetcher2 {
             } else {
               try {
                 this.tracer.addApiCall({
-                  url: `internal://${source}/zip-url/${organization}/${repository}:${ref || "master"}`,
+                  url: `internal://${source}/zip-url/${organization}/${repository}:${ref || "unknown"}`,
                   duration: durationMs,
                   status: 200,
                   size,
@@ -1369,7 +1389,7 @@ export class ZipResourceFetcher2 {
             } else {
               try {
                 this.tracer.addApiCall({
-                  url: `internal://${source}/tar-url/${organization}/${repository}:${ref || "master"}`,
+                  url: `internal://${source}/tar-url/${organization}/${repository}:${ref || "unknown"}`,
                   duration: durationMs,
                   status: 200,
                   size,
@@ -1651,12 +1671,21 @@ export class ZipResourceFetcher2 {
         const { unzip, gunzip } = await import("fflate");
         // Remove leading ./ if present
         const cleanPath = filePath.replace(/^\.\//, "");
+
+        // Get the ref tag from the cache key if available
+        const refMatch = (zipCacheKey || "").match(/:([^:]+)$/);
+        const ref = refMatch ? refMatch[1] : null;
+
         const possiblePaths = [
           cleanPath,
           `./${cleanPath}`,
-          `${repository}-master/${cleanPath}`,
           `${repository}/${cleanPath}`,
         ];
+
+        // Only add ref-specific paths if we have a ref
+        if (ref) {
+          possiblePaths.push(`${repository}-${ref}/${cleanPath}`);
+        }
 
         // Detect tar.gz by key hint or fallback when ZIP decode fails
         const keyHint = (zipCacheKey || "").toLowerCase();
