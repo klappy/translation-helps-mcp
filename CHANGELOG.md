@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.1.1](https://github.com/klappy/translation-helps-mcp/compare/v7.1.0...v7.1.1) (2025-08-15)
+
+### Bug Fixes
+
+- Use async unzip for extractFileFromZip method ([1f3583e](https://github.com/klappy/translation-helps-mcp/commit/1f3583e2fbb443d8cb4bb709dd9c3cadc067da2a))
+
 ## [7.1.0](https://github.com/klappy/translation-helps-mcp/compare/v7.0.0...v7.1.0) (2025-08-15)
 
 ### Features
