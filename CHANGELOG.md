@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.1.2](https://github.com/klappy/translation-helps-mcp/compare/v7.1.1...v7.1.2) (2025-08-15)
+
+### Features
+
+- Add automatic endpoint testing with visual status indicators\n\n- Add Test All Endpoints button to test all endpoints at once\n- Show colored dots (green/yellow/red) for endpoint status\n- Green = working, Yellow = returns empty/warning, Red = error\n- Display error messages on hover for failed endpoints\n- Automatically tests with default parameters\n- Small delay between tests to avoid overwhelming server ([8cc37f5](https://github.com/klappy/translation-helps-mcp/commit/8cc37f5585d777938a59c5c070a8bf7cec1b48a4))
+- Add enhanced error tracing and copy buttons to MCP tools ([c46ff10](https://github.com/klappy/translation-helps-mcp/commit/c46ff1084bc684446200d49dd9ceb19b609795a3))
+- Reimplement get-translation-word endpoint with proper RC link support ([238ddff](https://github.com/klappy/translation-helps-mcp/commit/238ddffe969cccbb1531eae2f42c464e8c0806aa))
+- Reimplement get-translation-word endpoint with RC link support ([a545ba8](https://github.com/klappy/translation-helps-mcp/commit/a545ba8ba3eefed846bf427a3e7290befa907dcf))
+- Reimplement get-translation-word endpoint with Table of Contents ([44f444d](https://github.com/klappy/translation-helps-mcp/commit/44f444dcbd1d876df080d67fd7510c8b340ac625))
+- Reorganize MCP tools into logical categories\n\n- Group endpoints by usage: Scripture, Verse Referenced, RC Linked, Browsing, Discovery\n- Add status indicators in category descriptions\n- Sort endpoints within each category by logical order\n- Note which endpoints are working vs broken ([8522814](https://github.com/klappy/translation-helps-mcp/commit/8522814a15a4bbf2e040d47bc8782fe9b2139f96))
+
+### Bug Fixes
+
+- Fix MCP tools page by removing non-existent endpoints ([89cd645](https://github.com/klappy/translation-helps-mcp/commit/89cd645ec64fee9d2a3cc4371db28ec73b536c54))
+- Update get-translation-word default test case to working example ([0437584](https://github.com/klappy/translation-helps-mcp/commit/04375845aeadbd67cdd1306f71a59850eddfdf4a))
+- Update MCP tools health checks with correct endpoint names and parameters\n\n- Fix endpoint names (translation-notes, translation-questions) in health checks\n- Add missing language/organization parameters for all endpoints\n- Add test parameters for resolve-rc-link endpoint\n- Translation notes now returns data successfully ([5c31bb3](https://github.com/klappy/translation-helps-mcp/commit/5c31bb351d05c38d870ae330e1604d23794721a1))
+- Use async gunzip instead of gunzipSync for Worker compatibility\n\n- Replace gunzipSync with async gunzip to fix Worker environment issues\n- Simplify translation notes fetching to remove problematic filtering\n- Add copy buttons to MCP tools for better UX\n- Fix MCP tools page by removing non-existent endpoints ([c491530](https://github.com/klappy/translation-helps-mcp/commit/c4915303ea49e75fa79d1fe2b5619a605b171c83))
+- **zip:** validate and purge corrupted ZIP and tar.gz from cache; add R2 deleteZip; improve tarball fallback and size/header guards ([382aac5](https://github.com/klappy/translation-helps-mcp/commit/382aac5ef4830fe8a349edbf8b6e1642c4f7b8cf))
+
+### Documentation
+
+- Add antifragile architecture documentation ([87c9eac](https://github.com/klappy/translation-helps-mcp/commit/87c9eacf8172e4126385f52aebe8b909c9d7c8c8))
+- Add R2 bucket setup guide for production ([ed27633](https://github.com/klappy/translation-helps-mcp/commit/ed27633bea14b7006d505c4f11d414e5b993f3ad))
+- Fix R2 setup guide to reflect automatic caching ([1a6da3a](https://github.com/klappy/translation-helps-mcp/commit/1a6da3a7ed379b95c7b8a05dc04def12a705d619))
+
+### Refactoring
+
+- Fix TW ZIP path construction and improve error handling ([6500e34](https://github.com/klappy/translation-helps-mcp/commit/6500e34e88e4be9c977b282f5831109456a4acbe))
+
 ### [7.1.1](https://github.com/klappy/translation-helps-mcp/compare/v7.1.0...v7.1.1) (2025-08-15)
 
 ### Bug Fixes
