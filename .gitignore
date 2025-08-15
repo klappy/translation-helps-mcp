@@ -47,3 +47,4 @@ coverage/
 netlify/functions/_shared/version.json
 .netlify/
 .DS_Store
+ui/.dev.vars
