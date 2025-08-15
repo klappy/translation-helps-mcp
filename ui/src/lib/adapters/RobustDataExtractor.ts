@@ -98,9 +98,9 @@ export class RobustDataExtractor {
 		// Pattern to match rc:// links in various formats
 		const patterns = [
 			/\[\[rc:\/\/\*?\/ta\/man\/([^\]]+)\]\]/g, // [[rc://*/ta/man/translate/figs-metaphor]]
-			/\(rc:\/\/\*?\/ta\/man\/([^\)]+)\)/g, // (rc://*/ta/man/translate/figs-metaphor)
+			/\(rc:\/\/\*?\/ta\/man\/([^)]+)\)/g, // (rc://*/ta/man/translate/figs-metaphor)
 			/rc:\/\/\*?\/ta\/man\/(\S+)/g, // rc://*/ta/man/translate/figs-metaphor
-			/\[([^\]]+)\]\(rc:\/\/[^\)]+\/([^\)]+)\)/g // [text](rc://*/ta/man/translate/figs-metaphor)
+			/\[([^\]]+)\]\(rc:\/\/[^)]+\/([^)]+)\)/g // [text](rc://*/ta/man/translate/figs-metaphor)
 		];
 
 		let processedContent = content;

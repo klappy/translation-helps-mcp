@@ -1,108 +1,62 @@
 /**
  * Fetch Translation Word Links Endpoint v2
  *
+ * ✅ PRODUCTION READY - Uses real DCS data via ZIP fetcher
+ *
  * Returns links between Bible text and translation word entries.
  * These help identify which words in a verse have dictionary entries.
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
-
-// Mock translation word links data
-const MOCK_WORD_LINKS = {
-	'Titus 1:1': [
-		{
-			id: 'twl001',
-			reference: 'Titus 1:1',
-			occurrence: 1,
-			quote: 'servant',
-			word: 'servant',
-			strongsId: 'G1401',
-			rcLink: 'rc://*/tw/dict/bible/other/servant',
-			position: { start: 7, end: 14 }
-		},
-		{
-			id: 'twl002',
-			reference: 'Titus 1:1',
-			occurrence: 1,
-			quote: 'apostle',
-			word: 'apostle',
-			strongsId: 'G652',
-			rcLink: 'rc://*/tw/dict/bible/kt/apostle',
-			position: { start: 30, end: 37 }
-		},
-		{
-			id: 'twl003',
-			reference: 'Titus 1:1',
-			occurrence: 1,
-			quote: 'faith',
-			word: 'faith',
-			strongsId: 'G4102',
-			rcLink: 'rc://*/tw/dict/bible/kt/faith',
-			position: { start: 75, end: 80 }
-		}
-	],
-	'John 3:16': [
-		{
-			id: 'twl004',
-			reference: 'John 3:16',
-			occurrence: 1,
-			quote: 'loved',
-			word: 'love',
-			strongsId: 'G25',
-			rcLink: 'rc://*/tw/dict/bible/kt/love',
-			position: { start: 11, end: 16 }
-		},
-		{
-			id: 'twl005',
-			reference: 'John 3:16',
-			occurrence: 1,
-			quote: 'world',
-			word: 'world',
-			strongsId: 'G2889',
-			rcLink: 'rc://*/tw/dict/bible/kt/world',
-			position: { start: 21, end: 26 }
-		},
-		{
-			id: 'twl006',
-			reference: 'John 3:16',
-			occurrence: 1,
-			quote: 'eternal life',
-			word: 'eternity',
-			strongsId: 'G166,G2222',
-			rcLink: 'rc://*/tw/dict/bible/kt/eternity',
-			position: { start: 108, end: 120 }
-		},
-		{
-			id: 'twl007',
-			reference: 'John 3:16',
-			occurrence: 1,
-			quote: 'perish',
-			word: 'perish',
-			strongsId: 'G622',
-			rcLink: 'rc://*/tw/dict/bible/kt/perish',
-			position: { start: 93, end: 99 }
-		}
-	]
-};
+import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
  * Fetch translation word links for a reference
+ * Uses real TSV data from DCS ZIP archives
  */
 async function fetchTranslationWordLinks(
 	params: Record<string, any>,
-	_request: Request
+	request: Request
 ): Promise<any> {
 	const { reference, language, organization } = params;
 
-	// In real implementation, this would fetch from ZIP cache
-	// For now, return mock data
-	const links = MOCK_WORD_LINKS[reference as keyof typeof MOCK_WORD_LINKS] || [];
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`twl-${Date.now()}`, 'fetch-translation-word-links');
 
-	// Return in standard format
-	return createTranslationHelpsResponse(links, reference, language, organization, 'twl');
+	// Initialize fetcher with request headers
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
+
+	// Fetch real TWL data from TSV
+	const tsvData = await fetcher.fetchTranslationWordLinks(reference, language, organization);
+
+	// Transform TSV rows to expected format
+	const links = tsvData.map((row, index) => ({
+		id: `twl${index + 1}`,
+		reference: row.Reference || reference,
+		occurrence: parseInt(row.Occurrence || '1', 10),
+		quote: row.Quote || '',
+		word: row.TWLink || '',
+		// TSV doesn't have Strong's IDs in standard format
+		strongsId: row.StrongsId || '',
+		// Build RC link from TWLink
+		rcLink: row.TWLink ? `rc://*/tw/dict/bible/${row.TWLink}` : '',
+		// TSV doesn't provide position data
+		position: null
+	}));
+
+	// Include trace data for debugging
+	const response = createTranslationHelpsResponse(links, reference, language, organization, 'twl');
+
+	// Add trace information
+	return {
+		...response,
+		_trace: tracer.getTrace()
+	};
 }
 
 // Create the endpoint
@@ -113,7 +67,10 @@ export const GET = createSimpleEndpoint({
 
 	fetch: fetchTranslationWordLinks,
 
-	onError: createStandardErrorHandler()
+	onError: createStandardErrorHandler(),
+
+	// Support passthrough for TSV and markdown for LLMs
+	supportsFormats: ['json', 'tsv', 'md', 'markdown']
 });
 
 // CORS handler

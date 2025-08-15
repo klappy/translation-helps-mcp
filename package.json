@@ -17,6 +17,8 @@
     "test": "vitest --no-watch",
     "test:watch": "vitest watch",
     "test:ci": "vitest run --reporter=dot",
+    "test:server": "./scripts/start-test-server.sh",
+    "test:with-server": "npm run test:server & sleep 10 && npm test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
