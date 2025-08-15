@@ -95,6 +95,7 @@ async function fetchAvailableBooks(params: Record<string, any>, request: Request
 
 		// Fetch catalog data
 		const catalogData = await circuitBreakers.dcs.execute(async () => {
+			// fetchCatalogMetadata expects (language, organization, subject)
 			return fetchCatalogMetadata(language, organization, subject);
 		});
 
