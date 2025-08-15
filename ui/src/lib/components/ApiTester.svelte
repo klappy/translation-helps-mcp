@@ -32,6 +32,8 @@
 
 	let formData: Record<string, any> = {};
 	let currentEndpointName: string | null = null;
+	let copiedResponse = false;
+	let copiedXRay = false;
 
 	// Initialize form data only when endpoint actually changes (not on every reactive cycle)
 	function initializeFormData() {
@@ -64,6 +66,32 @@
 
 	function handleSubmit() {
 		dispatch('test', { endpoint, formData });
+	}
+
+	async function copyResponse() {
+		try {
+			const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+			await navigator.clipboard.writeText(text);
+			copiedResponse = true;
+			setTimeout(() => {
+				copiedResponse = false;
+			}, 2000);
+		} catch (err) {
+			console.error('Failed to copy:', err);
+		}
+	}
+
+	async function copyXRayTrace() {
+		try {
+			const xrayTrace = result?._xrayTrace || result?._metadata?.xrayTrace || {};
+			await navigator.clipboard.writeText(JSON.stringify(xrayTrace, null, 2));
+			copiedXRay = true;
+			setTimeout(() => {
+				copiedXRay = false;
+			}, 2000);
+		} catch (err) {
+			console.error('Failed to copy X-Ray trace:', err);
+		}
 	}
 
 	function getResponseTimeColor(time: number) {
@@ -441,6 +469,13 @@
 				>
 					<span class="transform transition-transform group-open:rotate-90">▶</span>
 					Response Data
+					<button
+						type="button"
+						on:click|stopPropagation={() => copyResponse()}
+						class="ml-2 rounded bg-blue-600/20 px-2 py-1 text-xs font-medium text-blue-400 hover:bg-blue-600/30 hover:text-blue-300"
+					>
+						{copiedResponse ? '✓ Copied!' : 'Copy'}
+					</button>
 					<span class="ml-auto text-xs text-gray-500">
 						{(typeof result === 'string'
 							? result.length
@@ -642,8 +677,17 @@
 
 			<!-- Debug Information (Collapsible) -->
 			<details class="mt-4">
-				<summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-300">
+				<summary
+					class="flex cursor-pointer items-center gap-2 text-sm text-gray-400 hover:text-gray-300"
+				>
 					🔍 Debug Details
+					<button
+						type="button"
+						on:click|stopPropagation={() => copyXRayTrace()}
+						class="ml-2 rounded bg-gray-600/20 px-2 py-1 text-xs font-medium text-gray-400 hover:bg-gray-600/30 hover:text-gray-300"
+					>
+						{copiedXRay ? '✓ Copied!' : 'Copy'}
+					</button>
 				</summary>
 				<pre
 					class="mt-2 max-h-40 overflow-auto rounded bg-slate-900/50 p-3 text-xs text-gray-300">{JSON.stringify(

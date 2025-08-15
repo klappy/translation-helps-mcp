@@ -117,8 +117,25 @@ export class UnifiedResourceFetcher {
 			return /\d/.test(versePart);
 		});
 
+		// Add trace for debugging
+		this.tracer.addApiCall({
+			url: `internal://filter/translation-notes`,
+			duration: 1,
+			status: 200,
+			size: 0,
+			cached: false,
+			metadata: {
+				totalRows: data.length,
+				filteredRows: filteredData.length,
+				reference: reference,
+				sampleRows: data.slice(0, 3).map((r: any) => r.Reference)
+			}
+		});
+
 		if (filteredData.length === 0) {
-			throw new Error(`No verse-level translation notes found for ${reference}`);
+			throw new Error(
+				`No verse-level translation notes found for ${reference}. Total rows: ${data.length}, after filtering: ${filteredData.length}`
+			);
 		}
 
 		return filteredData as TSVRow[];

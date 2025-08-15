@@ -1516,6 +1516,21 @@ export class ZipResourceFetcher2 {
             decodedContent = await new Promise((resolve, _reject) => {
               unzip(zipData, (err, unzipped) => {
                 if (err) {
+                  // Log error details for debugging
+                  logger.error("ZIP extraction error:", err);
+                  this.tracer.addApiCall({
+                    url: `internal://error/zip-extraction`,
+                    duration: 1,
+                    status: 500,
+                    size: 0,
+                    cached: false,
+                    metadata: {
+                      error: err.message || String(err),
+                      code: (err as any).code,
+                      filePath: filePath,
+                      zipSize: zipData.length,
+                    },
+                  });
                   resolve(null);
                 } else {
                   // Find the matching file
@@ -1537,12 +1552,27 @@ export class ZipResourceFetcher2 {
                       return;
                     }
                   }
+
+                  // Track when file not found in ZIP
+                  this.tracer.addApiCall({
+                    url: `internal://error/file-not-found-in-zip`,
+                    duration: 1,
+                    status: 404,
+                    size: 0,
+                    cached: false,
+                    metadata: {
+                      requestedFile: filePath,
+                      triedPaths: possiblePaths,
+                      zipFiles: Object.keys(unzipped).slice(0, 10),
+                    },
+                  });
                   resolve(null);
                 }
               });
             });
           } catch (_zipErr) {
             // If it fails, try tar.gz path
+            logger.error("ZIP extraction exception:", _zipErr as Error);
           }
         }
 
