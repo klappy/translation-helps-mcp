@@ -59,9 +59,9 @@ async function fetchTranslationAcademy(
 			metadata: {
 				language,
 				organization,
-				resourceType: 'ta',
-				_trace: tracer.getTrace()
-			}
+				resourceType: 'ta'
+			},
+			_trace: fetcher.getTrace()
 		};
 	} else {
 		// No module found

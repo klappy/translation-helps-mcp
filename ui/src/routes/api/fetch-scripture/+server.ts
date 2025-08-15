@@ -5,12 +5,12 @@
  * Supports multiple translations and formats.
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { fetchScriptureFromZIP } from '$lib/edgeZipFetcher.js';
-import { parseReference } from '$lib/referenceParser.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createScriptureResponse } from '$lib/standardResponses.js';
+import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
  * Parse resource parameter
@@ -32,30 +32,39 @@ function parseResources(resourceParam: string | undefined): string[] {
 /**
  * Fetch scripture for a reference
  */
-async function fetchScripture(params: Record<string, any>, _request: Request): Promise<any> {
+async function fetchScripture(params: Record<string, any>, request: Request): Promise<any> {
 	const { reference, language, organization, resource: resourceParam } = params;
 
-	// Parse the reference
-	const parsedRef = parseReference(reference);
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`scripture-${Date.now()}`, 'fetch-scripture');
+
+	// Initialize fetcher with request headers
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
 	// Get requested resources
 	const requestedResources = parseResources(resourceParam);
 
-	// Fetch using ZIP-based approach
-	const result = await fetchScriptureFromZIP(parsedRef, language, organization, requestedResources);
+	// Fetch using unified fetcher
+	const results = await fetcher.fetchScripture(
+		reference,
+		language,
+		organization,
+		requestedResources
+	);
 
-	if (!result.data || result.data.length === 0) {
+	if (!results || results.length === 0) {
 		throw new Error(`Scripture not found for reference: ${reference}`);
 	}
 
 	// Return in standard format with trace data
 	return {
-		...createScriptureResponse(result.data, {
+		...createScriptureResponse(results, {
 			reference,
 			requestedResources,
-			foundResources: result.data.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase())
+			foundResources: results.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase())
 		}),
-		_trace: result.trace
+		_trace: fetcher.getTrace()
 	};
 }
 

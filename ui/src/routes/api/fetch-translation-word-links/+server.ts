@@ -49,13 +49,12 @@ async function fetchTranslationWordLinks(
 		position: null
 	}));
 
-	// Include trace data for debugging
+	// Return formatted response with trace data
+	// The simpleEndpoint will extract _trace and put it in X-ray headers
 	const response = createTranslationHelpsResponse(links, reference, language, organization, 'twl');
-
-	// Add trace information
 	return {
 		...response,
-		_trace: tracer.getTrace()
+		_trace: fetcher.getTrace()
 	};
 }
 

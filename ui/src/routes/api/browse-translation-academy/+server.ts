@@ -103,7 +103,7 @@ async function browseTranslationAcademy(
 		categoryBreakdown: categoryCounts,
 		...(category && category !== 'all' && { filteredBy: { category } }),
 		categories,
-		_trace: tracer.getTrace()
+		_trace: fetcher.getTrace()
 	});
 }
 
