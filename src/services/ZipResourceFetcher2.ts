@@ -1175,9 +1175,19 @@ export class ZipResourceFetcher2 {
    */
   private async listZipFiles(zipData: Uint8Array): Promise<string[]> {
     try {
-      const { unzipSync } = await import("fflate");
-      const unzipped = unzipSync(zipData);
-      return Object.keys(unzipped);
+      const { unzip } = await import("fflate");
+
+      // Use async unzip in Worker environment
+      return new Promise((resolve, _reject) => {
+        unzip(zipData, (err, unzipped) => {
+          if (err) {
+            logger.error("Error listing ZIP files:", err);
+            resolve([]);
+          } else {
+            resolve(Object.keys(unzipped));
+          }
+        });
+      });
     } catch (error) {
       logger.error("Error listing ZIP files:", error as Error);
       return [];
