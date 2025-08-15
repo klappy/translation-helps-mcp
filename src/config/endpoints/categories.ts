@@ -59,7 +59,7 @@ export const ENDPOINT_CLASSIFICATION = {
     "translation-notes",
     "translation-questions",
     "get-translation-word",
-    "get-languages",
+    "simple-languages",
     "get-available-books",
   ],
 
@@ -70,26 +70,13 @@ export const ENDPOINT_CLASSIFICATION = {
     "fetch-translation-word-links",
     "fetch-translation-words",
     "browse-translation-words",
-    "get-words-for-reference",
+    "get-context",
     "list-available-resources",
     "resource-catalog",
-    "language-coverage",
-    "get-context",
   ],
 
   // Experimental endpoints - Beta/testing
-  experimental: [
-    "resource-recommendations",
-    "extract-references",
-    "simple-languages",
-    "fetch-resources",
-    "benchmark-zip",
-    "test-zip-scripture",
-    "test-simple-zip",
-    "test-minimal-zip",
-    "test-inline-zip",
-    "test-direct-zip",
-  ],
+  experimental: ["extract-references", "resolve-rc-link"],
 };
 
 /**

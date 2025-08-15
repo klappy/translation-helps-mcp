@@ -12,8 +12,8 @@ import { LANGUAGES_SHAPE, RESOURCES_SHAPE } from "../ResponseShapes.js";
  * Get Languages - Discover available languages with resource metadata
  */
 export const GET_LANGUAGES_CONFIG: EndpointConfig = {
-  name: "get-languages",
-  path: "/get-languages",
+  name: "simple-languages",
+  path: "/simple-languages",
   title: "Get Languages",
   description:
     "Discover available languages with metadata about resource coverage and availability",
