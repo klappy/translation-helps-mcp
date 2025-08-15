@@ -97,6 +97,12 @@ DCS API → KV Cache (1hr TTL) → Catalog Metadata
     Cache API → Extracted Files
 ```
 
+## 🚨 Production Setup
+
+**⚠️ CRITICAL: R2 bucket must be populated with ZIP files for production to work!**
+
+See [R2 Setup Guide](docs/R2_SETUP_GUIDE.md) for instructions on populating the R2 bucket.
+
 ## 🧪 Testing with Wrangler
 
 **⚠️ IMPORTANT: All tests MUST use Wrangler for KV/R2 functionality**
