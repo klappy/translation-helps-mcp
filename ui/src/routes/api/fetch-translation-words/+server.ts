@@ -5,6 +5,7 @@
  * Uses all our consistency patterns and standard responses.
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { fetchTranslationWordsFromDCS } from '$lib/edgeTranslationWordsFetcher.js';
@@ -17,6 +18,9 @@ import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 async function fetchTranslationWords(params: Record<string, any>, _request: Request): Promise<any> {
 	const { reference, language, organization } = params;
 
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'fetch-translation-words');
+
 	// Fetch using DCS approach
 	const words = await fetchTranslationWordsFromDCS(reference, language, organization);
 
@@ -28,12 +32,16 @@ async function fetchTranslationWords(params: Record<string, any>, _request: Requ
 	const metadata = words[0]?.metadata || {};
 
 	// Return in standard format
-	// Note: fetchTranslationWordsFromDCS doesn't return trace data like the others
-	return createTranslationHelpsResponse(words, reference, language, organization, 'tw', {
+	const response = createTranslationHelpsResponse(words, reference, language, organization, 'tw', {
 		license: metadata.license || 'CC BY-SA 4.0',
 		copyright: metadata.copyright,
 		version: metadata.version
 	});
+
+	return {
+		...response,
+		_trace: tracer.getTrace()
+	};
 }
 
 // Create the endpoint with all our consistent utilities

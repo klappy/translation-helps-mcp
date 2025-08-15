@@ -5,12 +5,13 @@
  * Uses all our consistency patterns and DCS fetching utilities.
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { circuitBreakers } from '$lib/circuitBreaker.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { fetchBooksFromDCS } from '$lib/edgeBooksFetcher.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createListResponse } from '$lib/standardResponses.js';
+import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 // Bible book metadata
 const BOOK_INFO = {
@@ -54,7 +55,7 @@ const BOOK_INFO = {
 /**
  * Fetch available books for a language and resource
  */
-async function fetchAvailableBooks(params: Record<string, any>, _request: Request): Promise<any> {
+async function fetchAvailableBooks(params: Record<string, any>, request: Request): Promise<any> {
 	const {
 		language = 'en',
 		organization = 'unfoldingWord',
@@ -63,6 +64,13 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 		includeChapters = false,
 		includeCoverage = true
 	} = params;
+
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`books-${Date.now()}`, 'get-available-books');
+
+	// Initialize fetcher with request headers (for future use)
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
 	let books = [];
 
@@ -105,13 +113,17 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 
 		// Check if it's a 404 (repository not found)
 		if (error instanceof Error && error.message.includes('404')) {
-			return createListResponse([], {
+			const response = createListResponse([], {
 				language,
 				organization,
 				resource: resource || 'ult',
 				source: 'DCS API',
 				error: 'Repository not found'
 			});
+			return {
+				...response,
+				_trace: fetcher.getTrace()
+			};
 		}
 
 		// For other errors, throw them (no mock fallback)
@@ -120,13 +132,17 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 
 	// NO MOCK FALLBACK - If no books found, return empty list
 	if (books.length === 0) {
-		return createListResponse([], {
+		const response = createListResponse([], {
 			language,
 			organization,
 			resource: resource || 'ult',
 			source: 'DCS API',
 			message: 'No books available for the specified criteria'
 		});
+		return {
+			...response,
+			_trace: fetcher.getTrace()
+		};
 	}
 
 	// Sort books by canonical order
@@ -136,7 +152,7 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 		return aIndex - bIndex;
 	});
 
-	return createListResponse(books, {
+	const response = createListResponse(books, {
 		language,
 		organization,
 		resource: resource || 'ult',
@@ -144,6 +160,11 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 		circuitBreakerState: circuitBreakers.dcs.getState().state,
 		...(testament && { filteredBy: { testament } })
 	});
+
+	return {
+		...response,
+		_trace: fetcher.getTrace()
+	};
 }
 
 // Create the endpoint

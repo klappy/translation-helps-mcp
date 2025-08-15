@@ -5,6 +5,7 @@
  * This is mostly static data about what resources we support.
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createListResponse } from '$lib/standardResponses.js';
 
@@ -86,6 +87,9 @@ async function listAvailableResources(
 ): Promise<any> {
 	const { category, query } = params;
 
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`resources-${Date.now()}`, 'list-available-resources');
+
 	let resources = [...RESOURCE_TYPES];
 
 	// Filter by category if provided
@@ -104,11 +108,16 @@ async function listAvailableResources(
 		);
 	}
 
-	return createListResponse(resources, {
+	const response = createListResponse(resources, {
 		source: 'static',
 		...(category && { filteredBy: { category } }),
 		...(query && { searchQuery: query })
 	});
+
+	return {
+		...response,
+		_trace: tracer.getTrace()
+	};
 }
 
 // Create the endpoint
