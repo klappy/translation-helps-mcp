@@ -107,9 +107,11 @@ describe("Smoke Tests - Quick Health Check", () => {
     TIMEOUT,
   );
 
-  it(
-    "should return resources data",
+  it.skip(
+    "should return resources data - fetch-resources endpoint was removed in v7.0.0",
     async () => {
+      // This endpoint was removed as part of the v7.0.0 cleanup
+      // Use individual endpoints instead (fetch-scripture, translation-notes, etc.)
       const response = await makeRequest("fetch-resources", {
         reference: "John 3:16",
         language: "en",
