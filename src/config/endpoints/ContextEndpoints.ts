@@ -318,11 +318,154 @@ export const GET_WORDS_FOR_REFERENCE_CONFIG: EndpointConfig = {
 } as EndpointConfig;
 
 /**
+ * Resolve RC Link - Parse and fetch content from RC (Resource Container) links
+ */
+export const RESOLVE_RC_LINK_CONFIG: EndpointConfig = {
+  name: "resolve-rc-link",
+  path: "/resolve-rc-link",
+  title: "Resolve RC Link",
+  description:
+    "Resolve RC (Resource Container) links to their actual content across translation resources",
+  category: "extended",
+  responseShape: {
+    dataType: "context",
+    structure: {
+      required: [
+        "rcLink",
+        "language",
+        "resource",
+        "path",
+        "content",
+        "metadata",
+      ],
+      optional: ["_trace"],
+      fieldDescriptions: [
+        {
+          name: "rcLink",
+          type: "string",
+          description: "The original RC link that was resolved",
+          example: "rc://*/tw/dict/bible/kt/love",
+        },
+        {
+          name: "language",
+          type: "string",
+          description: "Language code extracted from the RC link",
+          example: "en",
+        },
+        {
+          name: "resource",
+          type: "string",
+          description: "Resource type (tw, ta, tn, ult, ust)",
+          example: "tw",
+        },
+        {
+          name: "path",
+          type: "string",
+          description: "Path component from the RC link",
+          example: "dict/bible/kt/love",
+        },
+        {
+          name: "content",
+          type: "object",
+          description: "The resolved content from the resource",
+          example: { term: "love", articles: [], totalArticles: 3 },
+        },
+      ],
+    },
+    performance: {
+      maxResponseTime: 2000,
+      cacheable: true,
+      expectedCacheHitRate: 0.8,
+    },
+  },
+
+  params: {
+    rcLink: {
+      type: "string" as const,
+      required: true,
+      description: 'RC link to resolve (e.g., "rc://*/tw/dict/bible/kt/love")',
+      example: "rc://*/tw/dict/bible/kt/love",
+      pattern: "^rc://",
+    },
+    organization: {
+      type: "string" as const,
+      required: false,
+      default: "unfoldingWord",
+      description: "Organization to use for resolving the link",
+      example: "unfoldingWord",
+      options: ["unfoldingWord", "Door43-Catalog"],
+    },
+  },
+
+  dataSource: {
+    type: "zip-cached",
+    cacheTtl: 10800, // 3 hours
+  },
+
+  enabled: true,
+  tags: ["rc-links", "cross-reference", "navigation", "extended"],
+
+  examples: [
+    {
+      name: "Translation Words Link",
+      description: "Resolve a Translation Words RC link",
+      params: {
+        rcLink: "rc://*/tw/dict/bible/kt/love",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["agape", "love", "God"],
+        minLength: 100,
+        fields: {
+          content: "object",
+          language: "string",
+          resource: "string",
+        },
+      },
+    },
+    {
+      name: "Translation Academy Link",
+      description: "Resolve a Translation Academy RC link",
+      params: {
+        rcLink: "rc://*/ta/man/translate/figs-metaphor",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["metaphor", "figure of speech"],
+        minLength: 100,
+        fields: {
+          content: "object",
+          language: "string",
+          resource: "string",
+        },
+      },
+    },
+    {
+      name: "Translation Notes Link",
+      description: "Resolve a Translation Notes RC link",
+      params: {
+        rcLink: "rc://*/tn/help/gen/01/02",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["Genesis", "notes"],
+        minLength: 50,
+        fields: {
+          content: "object",
+          reference: "string",
+        },
+      },
+    },
+  ],
+} as EndpointConfig;
+
+/**
  * All Context Endpoint Configurations (Extended Tier)
  */
 export const CONTEXT_ENDPOINTS = [
   GET_CONTEXT_CONFIG,
   GET_WORDS_FOR_REFERENCE_CONFIG,
+  RESOLVE_RC_LINK_CONFIG,
 ] as const;
 
 export default CONTEXT_ENDPOINTS;
