@@ -104,18 +104,61 @@
 	function groupCoreEndpoints(endpoints: any[]) {
 		const groups: Record<string, any[]> = {
 			scripture: [],
-			translationHelps: [],
+			verseReferenced: [],
+			rcLinked: [],
+			browsingHelpers: [],
 			discovery: []
 		};
 
 		endpoints.forEach((endpoint) => {
 			const name = endpoint.name.toLowerCase();
+
+			// Scripture Resources (separate category)
 			if (name.includes('scripture') || name.includes('ult') || name.includes('ust')) {
 				groups.scripture.push(endpoint);
-			} else if (name.includes('translation')) {
-				groups.translationHelps.push(endpoint);
-			} else {
+			}
+			// Verse Referenced Data
+			else if (
+				name === 'translation-notes' ||
+				name === 'translation-questions' ||
+				name === 'fetch-translation-word-links'
+			) {
+				groups.verseReferenced.push(endpoint);
+			}
+			// RC Linked Data
+			else if (name === 'get-translation-word' || name === 'fetch-translation-academy') {
+				groups.rcLinked.push(endpoint);
+			}
+			// Browsing Helpers
+			else if (name === 'browse-translation-words' || name === 'browse-translation-academy') {
+				groups.browsingHelpers.push(endpoint);
+			}
+			// Discovery
+			else {
 				groups.discovery.push(endpoint);
+			}
+		});
+
+		// Custom sort order for each group
+		const sortOrder = {
+			verseReferenced: [
+				'translation-notes',
+				'translation-questions',
+				'fetch-translation-word-links'
+			],
+			rcLinked: ['get-translation-word', 'fetch-translation-academy'],
+			browsingHelpers: ['browse-translation-words', 'browse-translation-academy'],
+			discovery: ['simple-languages', 'list-available-resources', 'get-available-books']
+		};
+
+		// Sort each group according to custom order
+		Object.keys(sortOrder).forEach((key) => {
+			if (groups[key]) {
+				groups[key].sort((a, b) => {
+					const aIndex = sortOrder[key].indexOf(a.name);
+					const bIndex = sortOrder[key].indexOf(b.name);
+					return aIndex - bIndex;
+				});
 			}
 		});
 
@@ -125,14 +168,26 @@
 				description: 'Access Bible texts in original and simplified languages',
 				endpoints: groups.scripture
 			},
-			'Translation Helps': {
+			'Verse Referenced Data': {
 				icon: '📚',
-				description: 'Questions, notes, word definitions, and study materials',
-				endpoints: groups.translationHelps
+				description:
+					'Translation helps organized by scripture reference (Notes ✅, Questions ✅, Word Links ✅)',
+				endpoints: groups.verseReferenced
 			},
-			'Discovery & Meta': {
+			'RC Linked Data': {
+				icon: '🔗',
+				description:
+					'Resources accessed via RC links (Words ❌, Academy ⚠️) - Note: RC Resolver is in Extended tab',
+				endpoints: groups.rcLinked
+			},
+			'Browsing Helpers': {
+				icon: '📂',
+				description: 'Browse available words and academy articles (Both not implemented yet)',
+				endpoints: groups.browsingHelpers
+			},
+			Discovery: {
 				icon: '🔍',
-				description: 'Explore available languages, books, and resources',
+				description: 'Find available languages ✅, resources ✅, and books ⚠️ (returns empty)',
 				endpoints: groups.discovery
 			}
 		};
