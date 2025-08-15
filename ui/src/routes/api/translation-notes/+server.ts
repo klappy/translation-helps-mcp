@@ -5,40 +5,44 @@
  * Same patterns, same utilities, predictable behavior!
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { fetchTSVFromZIP } from '$lib/edgeZipFetcher.js';
-import { parseReference } from '$lib/referenceParser.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
+import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
  * Fetch translation notes for a reference
  */
-async function fetchTranslationNotes(params: Record<string, any>, _request: Request): Promise<any> {
+async function fetchTranslationNotes(params: Record<string, any>, request: Request): Promise<any> {
 	const { reference, language, organization } = params;
 
-	// Parse the reference
-	const parsedRef = parseReference(reference);
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`tn-${Date.now()}`, 'translation-notes');
 
-	// Fetch using ZIP-based approach
-	const result = await fetchTSVFromZIP(parsedRef, language, organization, 'tn');
+	// Initialize fetcher with request headers
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
-	if (!result.data || result.data.length === 0) {
+	// Fetch using unified fetcher
+	const results = await fetcher.fetchTranslationNotes(reference, language, organization);
+
+	if (!results || results.length === 0) {
 		throw new Error(`No translation notes found for ${reference}`);
 	}
 
-	// Extract metadata from the result if available
-	const metadata = result.data[0]?.metadata || {};
+	// Extract metadata from the first result if available
+	const metadata = results[0]?.metadata || {};
 
 	// Return in standard format with trace data
 	return {
-		...createTranslationHelpsResponse(result.data, reference, language, organization, 'tn', {
+		...createTranslationHelpsResponse(results, reference, language, organization, 'tn', {
 			license: metadata.license || 'CC BY-SA 4.0',
 			copyright: metadata.copyright,
 			version: metadata.version
 		}),
-		_trace: result.trace
+		_trace: fetcher.getTrace()
 	};
 }
 

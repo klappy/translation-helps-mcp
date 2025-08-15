@@ -222,12 +222,20 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 
 			// 5. Extract trace data if present
 			let traceData: any = null;
-			if (data && typeof data === 'object' && '_trace' in data) {
-				traceData = data._trace;
-				// Remove _trace from the response data for clean output
-				delete data._trace;
-				if (formattedData && typeof formattedData === 'object' && '_trace' in formattedData) {
+			if (data && typeof data === 'object') {
+				// Check for both _trace and trace fields
+				if ('_trace' in data) {
+					traceData = data._trace;
+					delete data._trace;
+				} else if ('trace' in data) {
+					traceData = data.trace;
+					delete data.trace;
+				}
+
+				// Clean formatted data too
+				if (formattedData && typeof formattedData === 'object') {
 					delete formattedData._trace;
+					delete formattedData.trace;
 				}
 			}
 
