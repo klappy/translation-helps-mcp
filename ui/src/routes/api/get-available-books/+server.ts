@@ -8,10 +8,9 @@
 import { circuitBreakers } from '$lib/circuitBreaker.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
-import { fetchRepoContents, mockFetchers } from '$lib/dataFetchers.js';
+import { fetchBooksFromDCS } from '$lib/edgeBooksFetcher.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createListResponse } from '$lib/standardResponses.js';
-import { fetchBooksFromDCS } from '$lib/edgeBooksFetcher.js';
 
 // Bible book metadata
 const BOOK_INFO = {
@@ -62,31 +61,12 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 		resource,
 		testament,
 		includeChapters = false,
-		includeCoverage = true,
-		useMock = false // For testing
+		includeCoverage = true
 	} = params;
-
-	// Use mock data if requested (for development)
-	if (useMock) {
-		let mockBooks = await mockFetchers.getAvailableBooks(language, resource);
-
-		// Apply testament filter if requested
-		if (testament) {
-			mockBooks = mockBooks.filter((book: any) => book.testament === testament);
-		}
-
-		return createListResponse(mockBooks, {
-			language,
-			organization,
-			resource,
-			source: 'mock',
-			...(testament && { filteredBy: { testament } })
-		});
-	}
 
 	let books = [];
 
-	// Try to fetch real data first using the new fetcher
+	// Fetch real data from DCS
 	try {
 		books = await fetchBooksFromDCS(language, resource, testament, organization);
 
@@ -121,75 +101,32 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 			});
 		}
 	} catch (error) {
-		console.warn('[available-books] Failed to fetch real data:', error);
+		console.error('[available-books] Failed to fetch real data:', error);
 
-		// Try the old approach as fallback
-		const repoName = resource ? `${language}_${resource}` : `${language}_ult`;
-		try {
-			const contents = await fetchRepoContents(organization, repoName);
-			const bookDirs = contents.filter(
-				(item) => item.type === 'dir' && item.name.match(/^[0-9]{2,3}-?[A-Z1-3]{3}$/i)
-			);
-
-			books = bookDirs
-				.map((dir) => {
-					const bookCode = dir.name.replace(/^[0-9]+-?/, '').toLowerCase();
-					const bookInfo = BOOK_INFO[bookCode];
-
-					if (!bookInfo) return null;
-
-					const book: any = {
-						id: bookCode,
-						name: bookInfo.name,
-						testament: bookInfo.testament,
-						available: true,
-						path: dir.path
-					};
-
-					if (includeChapters) {
-						book.chapters = bookInfo.chapters;
-					}
-
-					if (includeCoverage) {
-						book.coverage = {
-							chapters: bookInfo.chapters,
-							completed: bookInfo.chapters,
-							percentage: 100
-						};
-					}
-
-					return book;
-				})
-				.filter(Boolean);
-
-			// Apply testament filter
-			if (testament) {
-				books = books.filter((book) => book.testament === testament);
-			}
-		} catch (fallbackError) {
-			console.warn('[available-books] Fallback also failed:', fallbackError);
-
-			// Last resort: use mock data
-			if (fallbackError instanceof Error && fallbackError.message.includes('404')) {
-				return createListResponse([], {
-					language,
-					organization,
-					resource: resource || 'ult',
-					source: 'DCS API',
-					error: 'Repository not found'
-				});
-			}
+		// Check if it's a 404 (repository not found)
+		if (error instanceof Error && error.message.includes('404')) {
+			return createListResponse([], {
+				language,
+				organization,
+				resource: resource || 'ult',
+				source: 'DCS API',
+				error: 'Repository not found'
+			});
 		}
+
+		// For other errors, throw them (no mock fallback)
+		throw error;
 	}
 
-	// If still no books, use mock data
+	// NO MOCK FALLBACK - If no books found, return empty list
 	if (books.length === 0) {
-		let mockBooks = await mockFetchers.getAvailableBooks(language, resource);
-		if (testament) {
-			mockBooks = mockBooks.filter((book: any) => book.testament === testament);
-		}
-		books = mockBooks;
-		console.log(`[available-books] Using ${books.length} mock books`);
+		return createListResponse([], {
+			language,
+			organization,
+			resource: resource || 'ult',
+			source: 'DCS API',
+			message: 'No books available for the specified criteria'
+		});
 	}
 
 	// Sort books by canonical order
@@ -203,7 +140,7 @@ async function fetchAvailableBooks(params: Record<string, any>, _request: Reques
 		language,
 		organization,
 		resource: resource || 'ult',
-		source: books.length > 0 && !books[0].mock ? 'DCS API' : 'mock',
+		source: 'DCS API',
 		circuitBreakerState: circuitBreakers.dcs.getState().state,
 		...(testament && { filteredBy: { testament } })
 	});
@@ -228,8 +165,7 @@ export const GET = createSimpleEndpoint({
 			}
 		},
 		{ name: 'includeChapters', type: 'boolean', default: false },
-		{ name: 'includeCoverage', type: 'boolean', default: true },
-		{ name: 'useMock', type: 'boolean', default: false } // For testing
+		{ name: 'includeCoverage', type: 'boolean', default: true }
 	],
 
 	fetch: fetchAvailableBooks,
@@ -239,7 +175,10 @@ export const GET = createSimpleEndpoint({
 			status: 404,
 			message: 'The requested resource or language is not available.'
 		}
-	})
+	}),
+
+	// Support JSON and markdown formats for LLMs
+	supportsFormats: ['json', 'md', 'markdown']
 });
 
 // CORS handler

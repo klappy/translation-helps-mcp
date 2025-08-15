@@ -1,469 +1,224 @@
-# Translation Helps MCP Server v4.5.0
+# Translation Helps MCP Server v6.6.3
 
-**🎉 NEW in v4.5.0: Major PRD Implementation Release**
+**🚨 MAJOR UPDATE: 100% Real Data - Zero Mock Fallbacks**
 
-- 6 of 21 PRD tasks completed (28.6% progress)
-- Advanced resource discovery systems with intelligent caching
-- Smart resource recommendations with AI-powered analysis
-- Complete Phase 3 (Resource Discovery) + Phase 4 (Performance) implementation
-- 95% PRD compliance confirmed through comprehensive codebase audit
+A comprehensive MCP (Model Context Protocol) server that provides AI agents with access to Bible translation resources from Door43's Content Service (DCS). This server enables AI assistants to fetch, process, and intelligently work with translation helps including scripture texts, translation notes, translation words, and translation questions.
 
-A comprehensive MCP (Model Context Protocol) server that provides AI agents with access to Bible translation resources from Door43's Content Service. This server enables AI assistants to fetch, process, and intelligently recommend translation helps including scripture texts, translation notes, translation words, and translation questions.
+## 🎉 What's New in v6.6.3
 
-## 🚀 **Key Features (v4.5.0)**
+### Complete Architecture Overhaul
 
-### **Advanced Resource Discovery (NEW)**
+- **✅ 100% Real Data** - All mock data removed, every endpoint fetches from DCS
+- **✅ Unified Architecture** - Single `UnifiedResourceFetcher` class handles all data
+- **✅ Markdown Support Everywhere** - All endpoints support `format=md` for LLMs
+- **✅ Wrangler-Only Testing** - Standardized on port 8787 with real KV/R2 bindings
+- **✅ No Mock Fallbacks** - Real errors instead of fake success
 
-- **Intelligent Resource Type Detection**: Automatic identification of resource types with confidence scoring
-- **Language Coverage Matrix**: Real-time availability tracking for Strategic Languages
-- **Smart Resource Recommendations**: AI-powered suggestions based on user roles and content analysis
+### Breaking Changes
 
-### **Performance Optimization (NEW)**
+**Removed Endpoints:**
 
-- **Intelligent Cache Warming**: Predictive caching based on access patterns
-- **Request Coalescing**: Automatic deduplication to prevent redundant API calls
-- **Response Compression**: Advanced payload optimization with Gzip/Brotli support
+- `/api/fetch-ult-scripture` → Use `fetch-scripture?resource=ult`
+- `/api/fetch-ust-scripture` → Use `fetch-scripture?resource=ust`
+- `/api/fetch-resources` → Use specific endpoints
+- `/api/resource-recommendations` → Removed completely
+- `/api/language-coverage` → Removed completely
+- `/api/get-words-for-reference` → Use `fetch-translation-words`
 
-### **Core Translation Helps**
+See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for detailed migration instructions.
 
-- **Scripture Texts**: ULT/GLT (literal) and UST/GST (simplified) with word alignment
-- **Translation Notes**: Verse-by-verse explanations for difficult passages
-- **Translation Words**: Biblical term definitions with comprehensive articles
-- **Translation Questions**: Comprehension and application questions
-- **Translation Academy**: Biblical translation principles and methods
+## 🚀 Key Features
 
-## 🌟 MCP via HTTP/Web API
+### Core Translation Resources
 
-Translation Helps MCP runs on **Cloudflare Pages** providing a modern HTTP-based MCP implementation that works perfectly without WebSockets or long-lived connections.
+- **Scripture Texts**: Multiple translations (ULT, UST, T4T, UEB) with real-time DCS fetching
+- **Translation Notes**: Verse-by-verse explanations from TSV data
+- **Translation Words**: Biblical term definitions from markdown files
+- **Translation Word Links**: Connections between scripture and word articles
+- **Translation Questions**: Comprehension questions from TSV data
+- **Translation Academy**: Training modules for translators
 
-### ⚡ Live Production Deployment
+### Technical Excellence
 
-- **HTTP MCP Endpoint**: `https://translation-helps-mcp.pages.dev/api/mcp`
-- **Complete Documentation**: `https://translation-helps-mcp.pages.dev/mcp-tools`
-- **Interactive Test UI**: `https://translation-helps-mcp.pages.dev/mcp-http-test`
+- **Real Data Only**: No mock data, no fake responses, no fallbacks
+- **Unified Fetcher**: Single class (`UnifiedResourceFetcher`) for all resources
+- **Smart Caching**: KV for catalogs, R2 for ZIPs, Cache API for extracted files
+- **Format Support**: JSON, Markdown, Text, and TSV (where applicable)
+- **Cloudflare Pages**: Global edge deployment with sub-100ms response times
 
-### 🔌 MCP Setup for AI Assistants
+## 🌟 Deployment
 
-Choose your preferred setup method:
+### Live Production
 
-#### Option 1: HTTP MCP (Recommended)
+- **API Base**: `https://api.translation.helps/api/`
+- **Documentation**: `https://api.translation.helps/`
+- **Health Check**: `https://api.translation.helps/api/health`
 
-No installation required! Use the live HTTP endpoint directly.
-
-**For Cursor AI (`.cursor/mcp.json`):**
-
-```json
-{
-  "mcpServers": {
-    "translation-helps": {
-      "command": "node",
-      "args": [
-        "-e",
-        "console.log('HTTP MCP: Use direct API calls to https://translation-helps-mcp.pages.dev/api/mcp')"
-      ]
-    }
-  }
-}
-```
-
-**For Claude Desktop:**
-
-- Use the web interface at `https://translation-helps-mcp.pages.dev/mcp-tools`
-- Or integrate via HTTP requests in your applications
-
-#### Option 2: Local MCP Server
-
-**For Cursor AI (`.cursor/mcp.json`):**
-
-```json
-{
-  "mcpServers": {
-    "translation-helps": {
-      "command": "node",
-      "args": ["src/index.ts"],
-      "cwd": "/absolute/path/to/translation-helps-mcp"
-    }
-  }
-}
-```
-
-**For Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):**
-
-```json
-{
-  "mcpServers": {
-    "translation-helps": {
-      "command": "node",
-      "args": ["src/index.ts"],
-      "cwd": "/absolute/path/to/translation-helps-mcp"
-    }
-  }
-}
-```
-
-### 🚀 Development Setup
-
-1. **Install dependencies:**
-
-   ```bash
-   npm install
-   ```
-
-2. **Start local MCP server:**
-
-   ```bash
-   npm start
-   ```
-
-3. **Start development web server:**
-
-   ```bash
-   netlify dev
-   ```
-
-4. **Test the API:**
-   ```bash
-   curl "http://localhost:8888/.netlify/functions/fetch-scripture?reference=John%203:16&language=en&organization=unfoldingWord"
-   ```
-
-### 🔗 HTTP MCP Usage
-
-**Direct HTTP Testing:**
+### Quick Start
 
 ```bash
-# Test any of the 14 available tools organized in 3 categories:
-# Core: Direct DCS/Door43 resource access (10 tools)
-# Linked: Combined endpoint functionality (2 tools)
-# Experimental: Value-added features (2 tools)
-curl -X POST https://translation-helps-mcp.pages.dev/api/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"method":"tools/call","params":{"name":"translation_helps_fetch_scripture","arguments":{"reference":"John 3:16"}}}'
+# Fetch scripture
+curl "https://api.translation.helps/api/fetch-scripture?reference=John%203:16"
+
+# Get translation notes in markdown (for LLMs)
+curl "https://api.translation.helps/api/translation-notes?reference=Genesis%201:1&format=md"
+
+# Fetch translation word links
+curl "https://api.translation.helps/api/fetch-translation-word-links?reference=Titus%201:1"
+
+# Browse translation academy modules
+curl "https://api.translation.helps/api/browse-translation-academy?language=en"
 ```
-
-**JavaScript Integration:**
-
-```javascript
-import { createMCPClient } from "$lib/mcp/http-client";
-const client = await createMCPClient("/api/mcp");
-const result = await client.callTool("translation_helps_fetch_scripture", {
-  reference: "John 3:16",
-});
-```
-
-## 🧪 Comprehensive Test Suite ⭐ NEW!
-
-Translation Helps MCP includes an **exhaustive test suite** that ensures stability and prevents regressions. This testing infrastructure was built to eliminate the bugs and regressions that were plaguing development:
-
-### Test Types
-
-- **🏥 Smoke Tests** - Quick health checks and basic functionality validation
-- **🔄 API/MCP Parity Tests** - Ensure identical responses between API and MCP endpoints
-- **🐛 Regression Tests** - Catch previously fixed bugs and prevent regressions
-- **⚡ Performance Tests** - Validate response times and concurrent request handling
-- **🛡️ Error Handling Tests** - Test edge cases and error conditions
-
-### Running Tests
-
-```bash
-# Run all tests with comprehensive reporting
-npm test
-
-# Quick smoke test (fastest - ~30 seconds)
-npm run test:smoke
-
-# Full parity validation (~5-10 minutes)
-npm run test:parity
-
-# Regression testing (~2-3 minutes)
-npm run test:regression
-
-# Unit tests (~1 minute)
-npm run test:unit
-
-# Watch mode for development
-npm run test:watch
-
-# Generate coverage report
-npm run test:coverage
-```
-
-### Test Coverage
-
-The test suite validates:
-
-✅ **Full API/MCP Parity** - All endpoints return identical responses  
-✅ **No Double JSON Wrapping** - Clean, structured responses  
-✅ **Actual Data Return** - Scripture, notes, questions, and words  
-✅ **Ingredient File Path Usage** - No hardcoded paths  
-✅ **Book Code Mapping** - Correct 3-letter book codes  
-✅ **Response Structure Validation** - Consistent formats  
-✅ **Error Handling** - Graceful failure modes  
-✅ **Performance Benchmarks** - Response time validation
-
-For detailed test documentation, see [`tests/README.md`](tests/README.md).
 
 ## 🛠️ Architecture
 
-Translation Helps MCP uses a **unified architecture** that eliminates code duplication:
+### Unified Data Fetching
 
-- **Single Implementation**: Each feature has one implementation in API functions
-- **MCP Wrappers**: All MCP endpoints are lightweight wrappers calling API functions
-- **Identical Responses**: Test page and chat responses are guaranteed identical
-- **Zero Maintenance Overhead**: All fixes happen in one place
+All endpoints use the same architecture:
 
-### API/MCP Endpoint Mapping
-
-| API Endpoint                   | MCP Endpoint                       | Purpose                            |
-| ------------------------------ | ---------------------------------- | ---------------------------------- |
-| `fetch-scripture`              | `mcp-fetch-scripture`              | Get Bible verses                   |
-| `fetch-translation-notes`      | `mcp-fetch-translation-notes`      | Get translator notes               |
-| `fetch-translation-questions`  | `mcp-fetch-translation-questions`  | Get comprehension questions        |
-| `fetch-translation-word-links` | `mcp-fetch-translation-word-links` | Get word connections               |
-| `fetch-translation-words`      | `mcp-fetch-translation-words`      | Get word definitions               |
-| `fetch-resources`              | `mcp-fetch-resources`              | Get all resources for reference    |
-| `get-languages`                | `mcp-get-languages`                | Get available languages            |
-| `extract-references`           | `mcp-extract-references`           | Extract Bible references from text |
-| `browse-translation-words`     | `mcp-browse-translation-words`     | Browse word categories             |
-
-## 🎯 MCP Tools (14 Total)
-
-### 🗂️ Core Endpoints (10 tools)
-
-_Direct mappings to DCS/Door43 resources_
-
-- **`translation_helps_fetch_scripture`** - Get Bible text in USFM or plain text format
-- **`translation_helps_fetch_translation_notes`** - Get detailed translation notes for Bible passages
-- **`translation_helps_fetch_translation_questions`** - Get comprehension questions for Bible passages
-- **`translation_helps_fetch_translation_words`** - Get specific translation word article content
-- **`translation_helps_browse_translation_words`** - Browse available translation word articles by category
-- **`translation_helps_fetch_translation_word_links`** - Get translation word links for specific Bible references
-- **`translation_helps_get_languages`** - List all available languages for translation resources
-- **`translation_helps_extract_references`** - Extract and parse Bible references from text
-- **`translation_helps_list_available_resources`** - Search and list available translation resources
-- **`translation_helps_get_available_books`** - List available Bible books for translation resources
-
-### 🔗 Linked Endpoints (2 tools)
-
-_Combine multiple endpoints for enhanced functionality_
-
-- **`translation_helps_get_words_for_reference`** - Get translation words that apply to specific Bible references
-- **`translation_helps_fetch_resources`** - Get comprehensive translation resources for a Bible reference
-
-### 🧪 Experimental Endpoints (2 tools)
-
-_Value-added endpoints that may change_
-
-- **`translation_helps_get_context`** - Get contextual information and cross-references for Bible passages
-- **`translation_helps_get_translation_word`** - Get detailed information about a specific translation word
-
-## 📝 Usage Examples
-
-### Basic Scripture Lookup
-
-```bash
-curl "http://localhost:8888/.netlify/functions/fetch-scripture?reference=John%203:16&language=en&organization=unfoldingWord"
+```
+API Endpoint → createSimpleEndpoint → UnifiedResourceFetcher → ZipResourceFetcher2 → DCS
 ```
 
-### Translation Notes
+**Key Components:**
 
-```bash
-curl "http://localhost:8888/.netlify/functions/fetch-translation-notes?reference=John%203:16&language=en&organization=unfoldingWord"
+1. **UnifiedResourceFetcher** - Single interface for all resource types
+2. **ZipResourceFetcher2** - Handles ZIP archives with intelligent caching
+3. **createSimpleEndpoint** - Standardized endpoint creation pattern
+4. **Real Error Handling** - No mock fallbacks, actual error messages
+
+### Caching Strategy
+
+```
+DCS API → KV Cache (1hr TTL) → Catalog Metadata
+        ↓
+     R2 Storage → ZIP Files
+        ↓
+    Cache API → Extracted Files
 ```
 
-### Translation Words
+## 🧪 Testing with Wrangler
+
+**⚠️ IMPORTANT: All tests MUST use Wrangler for KV/R2 functionality**
+
+### Setup
 
 ```bash
-curl "http://localhost:8888/.netlify/functions/fetch-translation-words?word=love&language=en&organization=unfoldingWord"
+# Start Wrangler (REQUIRED for tests)
+cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8787
+
+# In another terminal, run tests
+npm test
 ```
 
-## 🚀 UI Demos
+### Test Configuration
 
-The project includes interactive UI demos:
+- **Port**: Always 8787 (enforced by test setup)
+- **Bindings**: Real KV and R2 bindings
+- **No Mocks**: Tests use real Cloudflare services
 
-- **Scripture Lookup** - `/` - Search and display Bible verses
-- **Translation Tools** - Comprehensive translation resources
-- **API Testing** - `/api` - Test all endpoints
-- **Performance Dashboard** - `/performance` - Monitor API performance
+See [tests/TESTING_REQUIREMENTS.md](tests/TESTING_REQUIREMENTS.md) for details.
+
+## 📚 API Documentation
+
+### Scripture Endpoints
+
+```bash
+# Fetch multiple translations
+GET /api/fetch-scripture?reference=John%203:16&resource=ult,ust
+
+# Response format options
+GET /api/fetch-scripture?reference=John%203:16&format=md    # Markdown
+GET /api/fetch-scripture?reference=John%203:16&format=text  # Plain text
+```
+
+### Translation Helps
+
+```bash
+# Translation notes (from TSV)
+GET /api/translation-notes?reference=John%203:16
+
+# Translation questions (from TSV)
+GET /api/translation-questions?reference=John%203:16
+
+# Translation words (from markdown)
+GET /api/fetch-translation-words?reference=John%203:16
+
+# Translation word links (from TSV) - NEW!
+GET /api/fetch-translation-word-links?reference=John%203:16
+
+# Translation academy modules
+GET /api/fetch-translation-academy?moduleId=figs-metaphor
+
+# Browse academy modules
+GET /api/browse-translation-academy?language=en&category=translate
+```
+
+### Discovery Endpoints
+
+```bash
+# Available languages
+GET /api/simple-languages
+
+# Available books
+GET /api/get-available-books?language=en
+
+# Resource catalog
+GET /api/resource-catalog?language=en&subject=Bible
+```
+
+See [API_ENDPOINTS.md](docs/API_ENDPOINTS.md) for complete documentation.
 
 ## 🔧 Development
 
 ### Prerequisites
 
 - Node.js 18+
-- Netlify CLI
+- Wrangler CLI (`npm install -g wrangler`)
 
-### Development Workflow
+### Local Development
 
-1. **Start development server:**
+```bash
+# Install dependencies
+npm install
+cd ui && npm install
 
-   ```bash
-   netlify dev
-   ```
+# Start Wrangler dev server (REQUIRED)
+cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8787
 
-2. **Run tests during development:**
+# Run tests
+npm test
 
-   ```bash
-   npm run test:watch
-   ```
-
-3. **Check API health:**
-   ```bash
-   curl http://localhost:8888/.netlify/functions/health
-   ```
-
-### Testing Philosophy
-
-The test suite follows these principles:
-
-1. **Prevent Regressions** - Every fixed bug gets a test
-2. **Ensure Parity** - API and MCP must be identical
-3. **Fast Feedback** - Smoke tests run in ~30 seconds
-4. **Comprehensive Coverage** - All endpoints tested
-5. **Clear Reporting** - Failures are easy to understand
-6. **CI/CD Ready** - Tests work in automated environments
-
-## 📚 Resources
-
-- **Door43 Content Service** - [https://dcs.bible](https://dcs.bible)
-- **unfoldingWord** - [https://www.unfoldingword.org](https://www.unfoldingword.org)
-- **MCP Protocol** - [https://modelcontextprotocol.io](https://modelcontextprotocol.io)
-
-## 🔧 Development Environment Setup
-
-This project follows strict development standards to ensure UW (unfoldingWord) terminology compliance and code quality.
-
-### Prerequisites
-
-- **Node.js** 18+
-- **Git** with hooks support
-- **VS Code** (recommended) with workspace extensions
-
-### Initial Setup
-
-1. **Clone and Install**:
-
-   ```bash
-   git clone <repository-url>
-   cd translation-helps-mcp
-   npm install
-   ```
-
-2. **Install Pre-commit Hooks**:
-
-   ```bash
-   # Hooks are automatically installed via husky during npm install
-   # Test the setup:
-   npm run terminology:check
-   ```
-
-3. **VS Code Setup** (recommended):
-   - Install workspace recommended extensions
-   - Settings are pre-configured for UW development standards
-   - ESLint will automatically enforce terminology compliance
+# Build for production
+npm run build
+```
 
 ### Development Standards
 
-- **✅ Terminology Compliance**: Use "Strategic Language" not obsolete terms
-- **✅ UW Resource Types**: Use proper ULT/GLT, UST/GST terminology
-- **✅ Code Formatting**: Prettier + ESLint with custom UW rules
-- **✅ Pre-commit Validation**: Automatic terminology checking
-
-### Available Scripts
-
-```bash
-# Development and Testing
-npm run dev                    # Start development server
-npm test                      # Run all tests (non-watch mode)
-npm run test:watch            # Run tests in watch mode
-npm run test:coverage         # Run tests with coverage
-
-# Code Quality
-npm run lint                  # Check code style and terminology
-npm run lint:fix              # Auto-fix linting issues
-npm run format                # Format code with Prettier
-npm run terminology:check     # Validate UW terminology compliance
-npm run typecheck             # TypeScript type checking
-
-# Build and Deploy
-npm run build                 # Build for production (Cloudflare)
-npm run preview               # Preview production build locally
-npm run deploy                # Deploy to Cloudflare Pages
-```
-
-## 🚀 Deployment
-
-This project is deployed on **Cloudflare Pages** for optimal performance and global distribution.
-
-### Automatic Deployment
-
-Every push to the `main` branch automatically triggers deployment via GitHub Actions:
-
-1. **Fork this repository**
-2. **Set up Cloudflare Pages**:
-   - Connect your GitHub repository to Cloudflare Pages
-   - Set build command: `cd ui && npm install && npm run build`
-   - Set build output directory: `ui/.svelte-kit/cloudflare`
-   - Add compatibility flag: `nodejs_compat`
-   - Set compatibility date: `2024-09-23`
-
-3. **Configure GitHub Secrets** (for GitHub Actions):
-   - `CLOUDFLARE_API_TOKEN`: Your Cloudflare API token
-   - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
-
-4. **Push to main branch** - deployment happens automatically!
-
-### Manual Deployment
-
-```bash
-# Build the project
-npm run build
-
-# Deploy to Cloudflare Pages
-npm run deploy
-```
-
-### Pre-commit Hooks
-
-The repository includes automatic pre-commit validation:
-
-- **Terminology Check**: Prevents commits with outdated terminology
-- **Code Formatting**: Auto-formats code with Prettier
-- **Linting**: Enforces code quality and UW standards
-- **Type Checking**: Validates TypeScript types
-
-**Example pre-commit output**:
-
-```bash
-🔍 Running pre-commit checks...
-📝 Checking for UW terminology compliance...
-✅ Pre-commit checks passed!
-```
-
-### UW Terminology Guidelines
-
-When developing, always use:
-
-| ❌ Avoid             | ✅ Use Instead                               |
-| -------------------- | -------------------------------------------- |
-| Legacy terminology   | Strategic Language (current standard)        |
-| Bible texts          | ULT/GLT (Literal) or UST/GST (Simplified)    |
-| Translation          | Specific resource type (TN, TW, TWL, TQ, TA) |
-| Generic descriptions | UW-specific resource descriptions            |
-
-See `docs/UW_TRANSLATION_RESOURCES_GUIDE.md` for complete terminology and technical specifications.
+- **KISS**: Keep It Simple - no over-engineering
+- **DRY**: Don't Repeat Yourself - single source of truth
+- **Consistent**: Same patterns everywhere
+- **Antifragile**: Fail fast with real errors, no hiding issues
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. **Follow development standards** (terminology, formatting, testing)
-4. Add comprehensive tests for new functionality
-5. Ensure all tests pass: `npm test`
-6. Verify terminology compliance: `npm run terminology:check`
-7. Submit a pull request
+3. **Use Wrangler for all testing** (no exceptions!)
+4. Ensure all tests pass
+5. Submit a pull request
 
-**Remember: Good tests prevent bad deployments! And proper terminology ensures UW compliance!** 🛡️
+**Remember**:
+
+- No mock data
+- All endpoints must support markdown format
+- Use `UnifiedResourceFetcher` for new features
+- Test with real KV/R2 bindings
 
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+Built with ❤️ for Bible translators worldwide

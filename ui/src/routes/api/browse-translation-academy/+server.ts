@@ -1,234 +1,109 @@
 /**
  * Browse Translation Academy Endpoint v2
  *
- * Lists all available translation academy articles, optionally filtered by category.
+ * ✅ PRODUCTION READY - Uses real DCS data via ZIP fetcher
+ *
+ * Lists all available translation academy modules from the TOC.
  * Perfect for building topic indexes or browsing training materials.
  */
 
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
+import { COMMON_PARAMS } from '$lib/commonValidators.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createListResponse } from '$lib/standardResponses.js';
+import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
-// Academy article categories
+// Academy article categories - matches ZIP structure
 const ACADEMY_CATEGORIES = {
-	all: 'All Articles',
+	all: 'All Modules',
 	translate: 'Translation',
-	bible: 'Bible',
+	checking: 'Checking',
 	process: 'Process',
-	checking: 'Checking'
+	audio: 'Audio',
+	gateway: 'Strategic Language'
 };
 
-// Mock translation academy articles
-const MOCK_ACADEMY_DATABASE = [
-	// Translation Category
-	{
-		id: 'ta_translate_001',
-		title: 'Abstract Nouns',
-		category: 'translate',
-		path: 'translate/figs-abstractnouns',
-		description: 'How to translate abstract concepts that may not exist in your language.',
-		topics: ['grammar', 'nouns', 'translation-principles'],
-		difficulty: 'intermediate',
-		readTime: 5
-	},
-	{
-		id: 'ta_translate_002',
-		title: 'Metaphor',
-		category: 'translate',
-		path: 'translate/figs-metaphor',
-		description:
-			'Understanding and translating figurative language where one thing represents another.',
-		topics: ['figures-of-speech', 'meaning', 'interpretation'],
-		difficulty: 'intermediate',
-		readTime: 8
-	},
-	{
-		id: 'ta_translate_003',
-		title: 'Active or Passive',
-		category: 'translate',
-		path: 'translate/figs-activepassive',
-		description: 'How to handle active and passive voice in translation.',
-		topics: ['grammar', 'voice', 'sentence-structure'],
-		difficulty: 'beginner',
-		readTime: 6
-	},
-	{
-		id: 'ta_translate_004',
-		title: 'Idiom',
-		category: 'translate',
-		path: 'translate/figs-idiom',
-		description: 'Translating expressions that mean something different than their literal words.',
-		topics: ['figures-of-speech', 'culture', 'meaning'],
-		difficulty: 'intermediate',
-		readTime: 7
-	},
-	// Bible Category
-	{
-		id: 'ta_bible_001',
-		title: 'The Bible',
-		category: 'bible',
-		path: 'bible/bible',
-		description: 'An introduction to what the Bible is and how it is organized.',
-		topics: ['scripture', 'canon', 'inspiration'],
-		difficulty: 'beginner',
-		readTime: 10
-	},
-	{
-		id: 'ta_bible_002',
-		title: 'Chapter and Verse Numbers',
-		category: 'bible',
-		path: 'bible/chapter-verses',
-		description: 'Understanding the chapter and verse system in the Bible.',
-		topics: ['reference-system', 'navigation', 'history'],
-		difficulty: 'beginner',
-		readTime: 4
-	},
-	{
-		id: 'ta_bible_003',
-		title: 'Biblical Weights and Measures',
-		category: 'bible',
-		path: 'bible/weights-measures',
-		description: 'Converting ancient measurements to modern equivalents.',
-		topics: ['culture', 'history', 'conversion'],
-		difficulty: 'intermediate',
-		readTime: 12
-	},
-	// Process Category
-	{
-		id: 'ta_process_001',
-		title: 'Getting Started',
-		category: 'process',
-		path: 'process/getting-started',
-		description: 'How to begin your Bible translation project.',
-		topics: ['planning', 'preparation', 'team-building'],
-		difficulty: 'beginner',
-		readTime: 15
-	},
-	{
-		id: 'ta_process_002',
-		title: 'Translation Team',
-		category: 'process',
-		path: 'process/translation-team',
-		description: 'Building and organizing an effective translation team.',
-		topics: ['teamwork', 'roles', 'collaboration'],
-		difficulty: 'beginner',
-		readTime: 8
-	},
-	{
-		id: 'ta_process_003',
-		title: 'Source Text Selection',
-		category: 'process',
-		path: 'process/source-text',
-		description: 'Choosing the best source text for your translation.',
-		topics: ['resources', 'decision-making', 'quality'],
-		difficulty: 'intermediate',
-		readTime: 10
-	},
-	// Checking Category
-	{
-		id: 'ta_checking_001',
-		title: 'Checking Overview',
-		category: 'checking',
-		path: 'checking/checking-overview',
-		description: 'Introduction to the translation checking process.',
-		topics: ['quality-assurance', 'accuracy', 'review'],
-		difficulty: 'beginner',
-		readTime: 6
-	},
-	{
-		id: 'ta_checking_002',
-		title: 'Self Check',
-		category: 'checking',
-		path: 'checking/self-check',
-		description: 'How translators can check their own work.',
-		topics: ['self-review', 'accuracy', 'methodology'],
-		difficulty: 'beginner',
-		readTime: 5
-	},
-	{
-		id: 'ta_checking_003',
-		title: 'Peer Check',
-		category: 'checking',
-		path: 'checking/peer-check',
-		description: 'Having other translators review your work.',
-		topics: ['collaboration', 'feedback', 'improvement'],
-		difficulty: 'intermediate',
-		readTime: 7
-	}
-];
-
 /**
- * Browse translation academy articles
+ * Browse translation academy modules
+ * Uses real TOC data from DCS ZIP archives
  */
 async function browseTranslationAcademy(
 	params: Record<string, any>,
-	_request: Request
+	request: Request
 ): Promise<any> {
-	const { language, organization, category, search, difficulty } = params;
+	const { language, organization, category } = params;
 
-	// Filter articles
-	let articles = [...MOCK_ACADEMY_DATABASE];
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`ta-browse-${Date.now()}`, 'browse-translation-academy');
 
-	// Filter by category
-	if (category && category !== 'all') {
-		articles = articles.filter((a) => a.category === category);
-	}
+	// Initialize fetcher with request headers
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
-	// Filter by difficulty
-	if (difficulty) {
-		articles = articles.filter((a) => a.difficulty === difficulty);
-	}
+	// Fetch TOC from Translation Academy
+	const result = await fetcher.browseTranslationAcademy(
+		language,
+		organization,
+		category !== 'all' ? category : undefined
+	);
 
-	// Filter by search term
-	if (search) {
-		const searchTerm = search.toLowerCase();
-		articles = articles.filter(
-			(a) =>
-				a.title.toLowerCase().includes(searchTerm) ||
-				a.description.toLowerCase().includes(searchTerm) ||
-				a.topics.some((t) => t.toLowerCase().includes(searchTerm))
-		);
-	}
+	// Transform modules to consistent format
+	const modules = (result.modules || []).map((module) => {
+		// Extract category from path
+		const categoryMatch = module.path.match(/\/(translate|checking|process|audio|gateway)\//);
+		const moduleCategory = categoryMatch ? categoryMatch[1] : 'unknown';
 
-	// Sort by title
-	articles.sort((a, b) => a.title.localeCompare(b.title));
+		// Extract human-readable title from ID
+		const title = module.id
+			.split('-')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
 
-	// Add category names
-	const articlesWithCategoryNames = articles.map((a) => ({
-		...a,
-		categoryName: ACADEMY_CATEGORIES[a.category as keyof typeof ACADEMY_CATEGORIES] || 'Unknown'
-	}));
+		return {
+			id: module.id,
+			title,
+			category: moduleCategory,
+			path: module.path,
+			categoryName:
+				ACADEMY_CATEGORIES[moduleCategory as keyof typeof ACADEMY_CATEGORIES] || 'Unknown',
+			supportReference: `rc://*/ta/man/${moduleCategory}/${module.id}`
+		};
+	});
 
-	// Calculate statistics
-	const totalReadTime = articles.reduce((sum, a) => sum + a.readTime, 0);
-	const difficultyCount = articles.reduce(
-		(acc, a) => {
-			acc[a.difficulty] = (acc[a.difficulty] || 0) + 1;
+	// Sort by category then title
+	modules.sort((a, b) => {
+		const catCompare = a.category.localeCompare(b.category);
+		if (catCompare !== 0) return catCompare;
+		return a.title.localeCompare(b.title);
+	});
+
+	// Calculate category counts
+	const categoryCounts = modules.reduce(
+		(acc, module) => {
+			acc[module.category] = (acc[module.category] || 0) + 1;
 			return acc;
 		},
 		{} as Record<string, number>
 	);
 
-	return createListResponse(articlesWithCategoryNames, {
+	// Build category list with counts
+	const categories = Object.entries(ACADEMY_CATEGORIES).map(([key, name]) => ({
+		id: key,
+		name,
+		count: key === 'all' ? modules.length : categoryCounts[key] || 0
+	}));
+
+	return createListResponse(modules, {
 		language,
 		organization,
-		source: 'TA',
-		totalReadTime: `${totalReadTime} minutes`,
-		difficultyBreakdown: difficultyCount,
+		source: 'Translation Academy',
+		totalModules: modules.length,
+		availableCategories: result.categories || [],
+		categoryBreakdown: categoryCounts,
 		...(category && category !== 'all' && { filteredBy: { category } }),
-		...(difficulty && {
-			filteredBy: { ...(category && category !== 'all' ? { category } : {}), difficulty }
-		}),
-		...(search && { searchQuery: search }),
-		categories: Object.entries(ACADEMY_CATEGORIES).map(([key, name]) => ({
-			id: key,
-			name,
-			count:
-				key === 'all'
-					? MOCK_ACADEMY_DATABASE.length
-					: MOCK_ACADEMY_DATABASE.filter((a) => a.category === key).length
-		}))
+		categories,
+		_trace: tracer.getTrace()
 	});
 }
 
@@ -241,30 +116,23 @@ export const GET = createSimpleEndpoint({
 		COMMON_PARAMS.organization,
 		{
 			name: 'category',
+			type: 'string',
+			required: false,
+			default: 'all',
+			description: 'Filter by category (all, translate, checking, process, audio, gateway)',
 			validate: (value) => {
 				if (!value) return true;
 				return Object.keys(ACADEMY_CATEGORIES).includes(value);
-			}
-		},
-		{
-			name: 'difficulty',
-			validate: (value) => {
-				if (!value) return true;
-				return ['beginner', 'intermediate', 'advanced'].includes(value);
-			}
-		},
-		{
-			name: 'search',
-			validate: (value) => {
-				if (!value) return true;
-				return value.length >= 2; // Minimum 2 characters
 			}
 		}
 	],
 
 	fetch: browseTranslationAcademy,
 
-	onError: createStandardErrorHandler()
+	onError: createStandardErrorHandler(),
+
+	// Support passthrough for JSON listing and markdown for LLMs
+	supportsFormats: ['json', 'md', 'markdown']
 });
 
 // CORS handler
