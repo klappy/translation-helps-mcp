@@ -1030,24 +1030,13 @@ export class ZipResourceFetcher2 {
             for (const category of categories) {
               const tryPath = `${cleanBase}/${category}/${term}.md`;
 
-              // Always try with repository prefix first for directory-based ingredients
-              const repoPrefixed = `${resource.name}/${tryPath}`;
+              // For TW, the paths in the ZIP already include the repository name
               content = await this.extractFileFromZip(
                 zipData,
-                repoPrefixed,
+                tryPath,
                 resource.name,
                 `zip:${resource.owner}/${resource.name}:${refTag}`,
               );
-
-              // If that didn't work, try without repo prefix (rare case)
-              if (!content) {
-                content = await this.extractFileFromZip(
-                  zipData,
-                  tryPath,
-                  resource.name,
-                  `zip:${resource.owner}/${resource.name}:${refTag}`,
-                );
-              }
 
               if (content) {
                 targetPath = tryPath; // Update targetPath to reflect successful path
@@ -1063,16 +1052,7 @@ export class ZipResourceFetcher2 {
             resource.name,
             `zip:${resource.owner}/${resource.name}:${refTag}`,
           );
-          if (!content) {
-            // Try with repository prefix
-            const repoPrefixed = `${resource.name}/${targetPath.replace(/^\.\//, "")}`;
-            content = await this.extractFileFromZip(
-              zipData,
-              repoPrefixed,
-              resource.name,
-              `zip:${resource.owner}/${resource.name}:${refTag}`,
-            );
-          }
+          // No need to try with prefix - extractFileFromZip already handles that
         }
 
         if (!content) {
