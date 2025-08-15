@@ -123,10 +123,18 @@ export class ZipResourceFetcher2 {
     // Check if the fields are directly on the resource first
     const res = resource as Record<string, unknown>;
     if (res.zipball_url || res.branch_or_tag_name) {
-      return {
-        refTag: (res.branch_or_tag_name as string) || null,
-        zipballUrl: (res.zipball_url as string) || null,
-      };
+      let refTag = (res.branch_or_tag_name as string) || null;
+      const zipballUrl = (res.zipball_url as string) || null;
+
+      // If no refTag but we have a zipball URL, extract tag from it
+      if (!refTag && zipballUrl) {
+        const match = zipballUrl.match(/\/archive\/([^/]+)\.zip$/);
+        if (match) {
+          refTag = match[1];
+        }
+      }
+
+      return { refTag, zipballUrl };
     }
 
     // Then check nested paths for backward compatibility
@@ -141,10 +149,18 @@ export class ZipResourceFetcher2 {
           | { branch_or_tag_name?: string; zipball_url?: string }
           | undefined;
         if (prod && (prod.branch_or_tag_name || prod.zipball_url)) {
-          return {
-            refTag: prod.branch_or_tag_name || null,
-            zipballUrl: prod.zipball_url || null,
-          };
+          let refTag = prod.branch_or_tag_name || null;
+          const zipballUrl = prod.zipball_url || null;
+
+          // If no refTag but we have a zipball URL, extract tag from it
+          if (!refTag && zipballUrl) {
+            const match = zipballUrl.match(/\/archive\/([^/]+)\.zip$/);
+            if (match) {
+              refTag = match[1];
+            }
+          }
+
+          return { refTag, zipballUrl };
         }
       } catch {
         // eslint-disable-next-line no-empty -- quiet fallback when property path fails
@@ -1719,11 +1735,12 @@ export class ZipResourceFetcher2 {
                       return;
                     }
                   }
-                  // Check for partial matches
+                  // Check for partial matches - look for files ending with just the filename
+                  const filename = cleanPath.split("/").pop() || cleanPath;
                   for (const [key, data] of Object.entries(unzipped)) {
                     if (
-                      key.endsWith(cleanPath) ||
-                      key.endsWith(`/${cleanPath}`)
+                      key.endsWith(`/${filename}`) ||
+                      key.endsWith(filename)
                     ) {
                       const decoder = new TextDecoder("utf-8");
                       resolve(decoder.decode(data));
