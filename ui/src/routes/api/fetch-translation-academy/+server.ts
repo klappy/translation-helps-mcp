@@ -33,6 +33,26 @@ async function fetchTranslationAcademy(
 	// Fetch real TA module from markdown
 	const result = await fetcher.fetchTranslationAcademy(language, organization, moduleId);
 
+	// If no moduleId provided, return the table of contents
+	if (!moduleId) {
+		return {
+			type: 'toc',
+			categories: result.categories || [],
+			modules: (result.modules || []).map((m: any) => ({
+				id: m.id,
+				path: m.path,
+				category: m.path.match(/\/(translate|checking|process|audio|gateway)\//)?.[1] || 'translate'
+			})),
+			metadata: {
+				language,
+				organization,
+				resourceType: 'ta',
+				description: 'Translation Academy Table of Contents'
+			},
+			_trace: fetcher.getTrace()
+		};
+	}
+
 	// Check if we got a specific module or TOC
 	if (result.modules && result.modules.length > 0) {
 		// Got specific module(s)
@@ -48,6 +68,7 @@ async function fetchTranslationAcademy(
 		const title = titleMatch ? titleMatch[1] : id;
 
 		return {
+			type: 'module',
 			module: {
 				id,
 				title,
@@ -78,9 +99,9 @@ export const GET = createSimpleEndpoint({
 		{
 			name: 'moduleId',
 			type: 'string',
-			required: true,
+			required: false,
 			description:
-				'Translation Academy module ID (e.g., "figs-metaphor", "translate/figs-metaphor")'
+				'Translation Academy module ID (e.g., "figs-metaphor", "translate/figs-metaphor"). If not provided, returns the table of contents.'
 		},
 		COMMON_PARAMS.language,
 		COMMON_PARAMS.organization

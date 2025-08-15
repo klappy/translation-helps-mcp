@@ -158,11 +158,26 @@ export class UnifiedResourceFetcher {
 			identifier
 		);
 
-		if (!result || !(result as TWResult).articles || (result as TWResult).articles.length === 0) {
+		if (!result || typeof result !== 'object') {
 			throw new Error(`Translation word not found: ${term}`);
 		}
 
-		return result as TWResult;
+		// getMarkdownContent returns { articles: [{ term, markdown, path }] }
+		const twResult = result as {
+			articles: Array<{ term: string; markdown: string; path: string }>;
+		};
+
+		if (!twResult.articles || twResult.articles.length === 0) {
+			throw new Error(`Translation word not found: ${term}`);
+		}
+
+		// Return the first article's content
+		const article = twResult.articles[0];
+		return {
+			content: article.markdown,
+			path: article.path,
+			term: article.term
+		};
 	}
 
 	/**
@@ -179,6 +194,9 @@ export class UnifiedResourceFetcher {
 			throw new Error('Translation Academy not found');
 		}
 
+		// getMarkdownContent returns different structures for TOC vs specific module
+		// TOC: { modules: [{ id, path }], categories: string[] }
+		// Module: { modules: [{ id, markdown, path }] }
 		return result as TAResult;
 	}
 
