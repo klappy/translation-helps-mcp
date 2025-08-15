@@ -38,7 +38,7 @@ export function parseRCLink(rcLink: string, defaultLanguage = 'en'): ParsedRCLin
 	const cleanLink = rcLink.startsWith('rc://') ? rcLink : `rc://${rcLink}`;
 
 	// Pattern to match: rc://[language]/tw/dict/bible/[category]/[term]
-	const twPattern = /^rc:\/\/([^\/]+)\/tw\/dict\/bible\/([^\/]+)\/([^\/\s]+)$/i;
+	const twPattern = /^rc:\/\/([^/]+)\/tw\/dict\/bible\/([^/]+)\/([^/\s]+)$/i;
 	const match = cleanLink.match(twPattern);
 
 	if (!match) {
@@ -67,7 +67,7 @@ export function isRCLink(input: string): boolean {
 
 	// Check for rc:// prefix or rc-like pattern
 	return (
-		input.includes('rc://') || input.match(/^[^\/]+\/tw\/dict\/bible\/[^\/]+\/[^\/\s]+$/i) !== null
+		input.includes('rc://') || input.match(/^[^/]+\/tw\/dict\/bible\/[^/]+\/[^/\s]+$/i) !== null
 	);
 }
 
@@ -101,7 +101,7 @@ export function extractTerm(
 	}
 
 	// Try path format: bible/kt/love.md
-	const pathMatch = input.match(/bible\/([^\/]+)\/([^\/]+)\.md$/i);
+	const pathMatch = input.match(/bible\/([^/]+)\/([^/]+)\.md$/i);
 	if (pathMatch) {
 		const [, category, term] = pathMatch;
 		return {
