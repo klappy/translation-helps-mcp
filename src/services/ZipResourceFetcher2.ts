@@ -1493,7 +1493,7 @@ export class ZipResourceFetcher2 {
           }
         }
 
-        const { unzip, gunzipSync } = await import("fflate");
+        const { unzip, gunzip } = await import("fflate");
         // Remove leading ./ if present
         const cleanPath = filePath.replace(/^\.\//, "");
         const possiblePaths = [
@@ -1579,7 +1579,19 @@ export class ZipResourceFetcher2 {
         if (!decodedContent) {
           try {
             // Attempt tar.gz flow (gunzip + TAR walk)
-            const tarBytes = gunzipSync(zipData);
+            const tarBytes = await new Promise<Uint8Array>(
+              (resolve, reject) => {
+                gunzip(zipData, (err, decompressed) => {
+                  if (err) {
+                    logger.error("TAR.GZ extraction error:", err);
+                    reject(err);
+                  } else {
+                    resolve(decompressed);
+                  }
+                });
+              },
+            );
+
             const decoder = new TextDecoder("utf-8");
             const matches = (name: string) => {
               if (possiblePaths.includes(name)) return true;

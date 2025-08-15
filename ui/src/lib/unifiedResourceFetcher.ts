@@ -102,43 +102,8 @@ export class UnifiedResourceFetcher {
 			throw new Error(`No translation notes found for ${reference}`);
 		}
 
-		// Filter out book/chapter level notes (those without verse numbers)
-		// Keep only notes that have both chapter AND verse
-		const filteredData = data.filter((row: any) => {
-			// Skip if no reference
-			if (!row.Reference) return false;
-
-			// Parse the reference to check if it has a verse
-			const refParts = row.Reference.split(':');
-			if (refParts.length < 2) return false; // No verse separator
-
-			const versePart = refParts[1];
-			// Check if verse part contains a number (not just "intro" or empty)
-			return /\d/.test(versePart);
-		});
-
-		// Add trace for debugging
-		this.tracer.addApiCall({
-			url: `internal://filter/translation-notes`,
-			duration: 1,
-			status: 200,
-			size: 0,
-			cached: false,
-			metadata: {
-				totalRows: data.length,
-				filteredRows: filteredData.length,
-				reference: reference,
-				sampleRows: data.slice(0, 3).map((r: any) => r.Reference)
-			}
-		});
-
-		if (filteredData.length === 0) {
-			throw new Error(
-				`No verse-level translation notes found for ${reference}. Total rows: ${data.length}, after filtering: ${filteredData.length}`
-			);
-		}
-
-		return filteredData as TSVRow[];
+		// Return data as-is for now - the TSV parser should handle filtering
+		return data as TSVRow[];
 	}
 
 	/**
