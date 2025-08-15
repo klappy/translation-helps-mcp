@@ -7,6 +7,7 @@
     "prebuild": "node scripts/sync-version.js",
     "dev": "cd ui && npm run dev",
     "dev:workspace": "cd ui && npm run dev",
+    "dev:cf": "concurrently -k -s first -n BUILD,WRANGLER -c green,blue \"cd /Volumes/GithubProjects/translation-helps-mcp/ui && vite build --watch\" \"npx wrangler pages dev /Volumes/GithubProjects/translation-helps-mcp/ui/.svelte-kit/cloudflare --ip=127.0.0.1 --port 8787 --config /Volumes/GithubProjects/translation-helps-mcp/wrangler.toml\"",
     "build": "cd ui && npm install && npm run build:cloudflare",
     "prebuild:cloudflare": "node scripts/sync-version.js",
     "build:cloudflare": "cd ui && npm install && npm run build:cloudflare",

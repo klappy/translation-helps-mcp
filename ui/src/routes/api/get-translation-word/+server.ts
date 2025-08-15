@@ -1,8 +1,11 @@
 /**
  * Get Translation Word Endpoint v2
  *
+ * ✅ PRODUCTION READY - Uses real DCS data via ZIP fetcher
+ *
  * Retrieves detailed information about a specific translation word/term.
- * Can look up by term name or direct path.
+ * Supports RC links from TWL, direct terms, and paths.
+ * Provides Table of Contents when no specific term is requested.
  */
 
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
@@ -10,73 +13,192 @@ import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
-import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
+import { UnifiedResourceFetcher, type TWArticleResult } from '$lib/unifiedResourceFetcher.js';
+import { parseRCLink, extractTerm, isRCLink } from '$lib/rcLinkParser.js';
+
+/**
+ * Generate Table of Contents when no specific term is requested
+ */
+function generateTableOfContents(language: string, organization: string) {
+	return {
+		type: 'table-of-contents',
+		title: 'Translation Words',
+		description: 'Biblical terms and concepts with detailed explanations',
+		categories: [
+			{
+				id: 'kt',
+				name: 'Key Terms',
+				description: 'Central theological concepts (God, salvation, covenant, righteousness)',
+				exampleTerms: ['love', 'grace', 'faith', 'covenant', 'salvation'],
+				exampleRCLink: `rc://${language}/tw/dict/bible/kt/love`
+			},
+			{
+				id: 'names',
+				name: 'Names',
+				description: 'People, places, and proper nouns (Abraham, Jerusalem, Pharaoh)',
+				exampleTerms: ['abraham', 'david', 'jerusalem', 'egypt', 'israel'],
+				exampleRCLink: `rc://${language}/tw/dict/bible/names/abraham`
+			},
+			{
+				id: 'other',
+				name: 'Other Terms',
+				description: 'Cultural, historical, and general concepts (Sabbath, temple, sacrifice)',
+				exampleTerms: ['sabbath', 'temple', 'sacrifice', 'priest', 'altar'],
+				exampleRCLink: `rc://${language}/tw/dict/bible/other/sabbath`
+			}
+		],
+		usage: {
+			byRCLink: `?rcLink=rc://${language}/tw/dict/bible/kt/love`,
+			byTerm: '?term=love',
+			byPath: '?path=bible/kt/love.md'
+		},
+		language,
+		organization
+	};
+}
 
 async function getTranslationWord(params: Record<string, any>, request: Request): Promise<any> {
-	const { term, path, language, organization } = params;
-
-	let wordKey = term?.toLowerCase()?.replace(/\s+/g, '');
-	if (!wordKey && path) {
-		const match = path.match(/\/([^/]+)\.md$/);
-		if (match) {
-			wordKey = match[1].toLowerCase();
-		}
-	}
-
-	if (!wordKey) {
-		throw new Error('Either term or path parameter is required');
-	}
+	const { term, path, rcLink, language = 'en', organization = 'unfoldingWord' } = params;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'get-translation-word');
+
+	// If no parameters provided, return Table of Contents
+	if (!term && !path && !rcLink) {
+		const toc = generateTableOfContents(language, organization);
+		return createTranslationHelpsResponse([toc], 'Table of Contents', language, organization, 'tw');
+	}
 
 	// Initialize fetcher with request headers
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
-	const lang = language || 'en';
-	const org = organization || 'unfoldingWord';
+	// Determine what we're looking for using our parser
+	let wordKey: string;
+	let targetPath: string | undefined;
+	let searchCategory: string | undefined;
 
-	// Fetch using unified fetcher
-	const result = await fetcher.fetchTranslationWord(wordKey, lang, org, path);
+	// Priority: rcLink > term (if it's an RC link) > path > term
+	if (rcLink || isRCLink(term)) {
+		const linkToParse = rcLink || term;
+		const parsed = parseRCLink(linkToParse, language);
 
-	if (!result || !result.content) {
-		throw new Error(`Translation word not found: ${wordKey}`);
+		if (!parsed.isValid) {
+			throw new Error(
+				`Invalid RC link format: ${linkToParse}. Expected format: rc://en/tw/dict/bible/kt/love`
+			);
+		}
+
+		wordKey = parsed.term;
+		targetPath = parsed.path;
+		searchCategory = parsed.category;
+	} else if (path) {
+		const extracted = extractTerm(path, language);
+		wordKey = extracted.term;
+		targetPath = extracted.path;
+		searchCategory = extracted.category;
+	} else if (term) {
+		const extracted = extractTerm(term, language);
+		wordKey = extracted.term;
+		searchCategory = extracted.category;
+	} else {
+		throw new Error('Either term, path, or rcLink parameter is required');
 	}
 
-	// Parse minimal fields from markdown content
-	const mdContent = result.content;
-	const titleMatch = mdContent.match(/^#\s+(.+)$/m);
-	const termTitle = titleMatch ? titleMatch[1].trim() : wordKey;
-	const defMatch = mdContent.match(/##\s*Definition:?\s*\n\n([\s\S]+?)(?=\n##|$)/i);
-	const definition = defMatch ? defMatch[1].trim().replace(/\n+/g, ' ').replace(/\s+/g, ' ') : '';
+	if (!wordKey) {
+		throw new Error('Could not determine term to look up');
+	}
 
-	// Extract category from path
-	const categoryMatch = result.path?.match(/bible\/(kt|names|other)\//);
-	const categoryKey = categoryMatch ? categoryMatch[1] : 'other';
-	const categoryNames = {
-		kt: 'Key Terms',
-		names: 'Names',
-		other: 'Other'
-	};
+	try {
+		// Use the existing fetchTranslationWord method from UnifiedResourceFetcher
+		let result: TWArticleResult;
 
-	const item = {
-		id: `${categoryKey}:${wordKey}`,
-		word: termTitle,
-		category: categoryKey,
-		categoryName: categoryNames[categoryKey] || 'Other',
-		definition,
-		language: lang,
-		organization: org,
-		source: 'TW',
-		content: mdContent
-	};
+		try {
+			result = await fetcher.fetchTranslationWord(wordKey, language, organization, targetPath);
+		} catch (error) {
+			// If we have a specific path and it failed, try without the path (search by term)
+			if (targetPath) {
+				result = await fetcher.fetchTranslationWord(wordKey, language, organization);
+			} else {
+				throw error;
+			}
+		}
 
-	const wrapped = createTranslationHelpsResponse([item], termTitle, lang, org, 'tw', {
-		source: 'TW',
-		_trace: fetcher.getTrace()
-	});
-	return wrapped;
+		if (!result || !result.content) {
+			throw new Error(`Translation word not found: ${wordKey}`);
+		}
+
+		// Parse markdown content for better structure
+		const mdContent = result.content;
+		const titleMatch = mdContent.match(/^#\s+(.+)$/m);
+		const termTitle = titleMatch ? titleMatch[1].trim() : wordKey;
+
+		// Extract definition from markdown - look for Definition section or first paragraph
+		let definition = '';
+		const defMatch = mdContent.match(/##\s*Definition:?\s*\n\n([\s\S]+?)(?=\n##|$)/i);
+		if (defMatch) {
+			definition = defMatch[1].trim().replace(/\n+/g, ' ').replace(/\s+/g, ' ');
+		} else {
+			// Fallback: extract first paragraph after title
+			const lines = mdContent.split('\n');
+			let foundTitle = false;
+			for (const line of lines) {
+				if (line.startsWith('#') && !foundTitle) {
+					foundTitle = true;
+					continue;
+				}
+				if (foundTitle && line.trim() && !line.startsWith('#')) {
+					definition = line.trim();
+					break;
+				}
+			}
+		}
+
+		// Extract category from path or use search category
+		const categoryMatch = result.path?.match(/bible\/(kt|names|other)\//);
+		const categoryKey = categoryMatch ? categoryMatch[1] : searchCategory || 'other';
+		const categoryNames: Record<string, string> = {
+			kt: 'Key Terms',
+			names: 'Names',
+			other: 'Other'
+		};
+
+		const item = {
+			id: `${categoryKey}:${wordKey}`,
+			term: wordKey,
+			title: termTitle,
+			category: categoryKey,
+			categoryName: categoryNames[categoryKey] || 'Other',
+			definition,
+			content: mdContent,
+			path: result.path,
+			language,
+			organization,
+			source: 'TW',
+			rcLink: `rc://${language}/tw/dict/bible/${categoryKey}/${wordKey}`
+		};
+
+		const wrapped = createTranslationHelpsResponse(
+			[item],
+			termTitle,
+			language,
+			organization,
+			'tw',
+			{
+				source: 'TW'
+			}
+		);
+
+		// Add trace information for debugging
+		(wrapped as any)._trace = fetcher.getTrace();
+
+		return wrapped;
+	} catch (error) {
+		// Add trace information to error context
+		const trace = fetcher.getTrace();
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new Error(`${errorMessage} (Trace: ${JSON.stringify(trace)})`);
+	}
 }
 
 export const GET = createSimpleEndpoint({
@@ -97,6 +219,13 @@ export const GET = createSimpleEndpoint({
 				return value.endsWith('.md');
 			}
 		},
+		{
+			name: 'rcLink',
+			validate: (value) => {
+				if (!value) return true;
+				return isRCLink(value);
+			}
+		},
 		COMMON_PARAMS.language,
 		COMMON_PARAMS.organization
 	],
@@ -104,13 +233,18 @@ export const GET = createSimpleEndpoint({
 	fetch: getTranslationWord,
 
 	onError: createStandardErrorHandler({
-		'Either term or path parameter is required': {
+		'Either term, path, or rcLink parameter is required': {
 			status: 400,
-			message: 'Please provide either a term (e.g., "faith") or path (e.g., "bible/kt/faith.md")'
+			message:
+				'Please provide either a term (e.g., "faith"), path (e.g., "bible/kt/faith.md"), or RC link (e.g., "rc://en/tw/dict/bible/kt/faith")'
 		},
 		'Translation word not found': {
 			status: 404,
 			message: 'The requested translation word was not found in the source repository.'
+		},
+		'Invalid RC link format': {
+			status: 400,
+			message: 'Invalid RC link format. Expected: rc://[language]/tw/dict/bible/[category]/[term]'
 		},
 		'No translation words catalog found': {
 			status: 404,

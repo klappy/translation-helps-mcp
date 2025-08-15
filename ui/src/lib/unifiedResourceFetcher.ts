@@ -8,9 +8,9 @@
  */
 
 import { EdgeXRayTracer } from '../../../src/functions/edge-xray.js';
+import { parseReference } from '../../../src/parsers/referenceParser.js';
 import { ZipResourceFetcher2 } from '../../../src/services/ZipResourceFetcher2.js';
 import { edgeLogger as logger } from './edgeLogger.js';
-import { parseReference } from './referenceParser.js';
 
 export interface ScriptureResult {
 	text: string;
@@ -28,6 +28,12 @@ export interface TWResult {
 		path: string;
 		markdown: string;
 	}>;
+}
+
+export interface TWArticleResult {
+	content: string;
+	path: string;
+	term: string;
 }
 
 export interface TAResult {
@@ -69,6 +75,10 @@ export class UnifiedResourceFetcher {
 		const parsed = parseReference(reference);
 		const results: ScriptureResult[] = [];
 
+		if (!parsed) {
+			throw new Error(`Invalid reference format: ${reference}`);
+		}
+
 		// Fetch all requested resources
 		for (const resource of resources) {
 			try {
@@ -96,6 +106,11 @@ export class UnifiedResourceFetcher {
 		organization: string
 	): Promise<TSVRow[]> {
 		const parsed = parseReference(reference);
+
+		if (!parsed) {
+			throw new Error(`Invalid reference format: ${reference}`);
+		}
+
 		const data = await this.zipFetcher.getTSVData(parsed, language, organization, 'tn');
 
 		if (!data || data.length === 0) {
@@ -115,6 +130,11 @@ export class UnifiedResourceFetcher {
 		organization: string
 	): Promise<TSVRow[]> {
 		const parsed = parseReference(reference);
+
+		if (!parsed) {
+			throw new Error(`Invalid reference format: ${reference}`);
+		}
+
 		const data = await this.zipFetcher.getTSVData(parsed, language, organization, 'tq');
 
 		if (!data || data.length === 0) {
@@ -133,6 +153,11 @@ export class UnifiedResourceFetcher {
 		organization: string
 	): Promise<TSVRow[]> {
 		const parsed = parseReference(reference);
+
+		if (!parsed) {
+			throw new Error(`Invalid reference format: ${reference}`);
+		}
+
 		const data = await this.zipFetcher.getTSVData(parsed, language, organization, 'twl');
 
 		if (!data || data.length === 0) {
@@ -150,7 +175,7 @@ export class UnifiedResourceFetcher {
 		language: string,
 		organization: string,
 		path?: string
-	): Promise<TWResult> {
+	): Promise<TWArticleResult> {
 		const identifier = path || term;
 		const result = await this.zipFetcher.getMarkdownContent(
 			language,

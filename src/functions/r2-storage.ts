@@ -256,4 +256,24 @@ export class R2Storage {
       );
     }
   }
+
+  async deleteZip(key: string) {
+    // Delete from cache
+    const c = this.defaultCache;
+    if (c) {
+      try {
+        await c.delete(new Request(`https://r2.local/${key}`));
+      } catch {
+        // ignore cache delete errors
+      }
+    }
+    // Delete from R2
+    if (this.bucket) {
+      try {
+        await this.bucket.delete(key);
+      } catch {
+        // ignore R2 delete errors
+      }
+    }
+  }
 }

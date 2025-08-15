@@ -916,11 +916,36 @@ export class ZipResourceFetcher2 {
           // If a path is explicitly provided, trust it and skip discovery
           targetPath = id;
         } else {
-          // Prefer ingredients mapping when identifier is a term
+          // First try to find exact file match in ingredients
           targetPath =
             ingredients.find((ing) =>
               (ing.path || "").toLowerCase().endsWith(`/${term}.md`),
             )?.path || null;
+
+          // If no exact match, try to construct path from directory-based ingredients
+          if (!targetPath) {
+            const baseDir = ingredients.find((ing) => {
+              const path = (ing.path || "").toLowerCase();
+              return (
+                path === "./bible" ||
+                path === "bible" ||
+                path.endsWith("/bible")
+              );
+            })?.path;
+
+            if (baseDir) {
+              // Try common TW path patterns: kt/term.md, names/term.md, other/term.md
+              const cleanBase = baseDir.replace(/^\.\//, "");
+              const possiblePaths = [
+                `${cleanBase}/kt/${term}.md`,
+                `${cleanBase}/names/${term}.md`,
+                `${cleanBase}/other/${term}.md`,
+              ];
+
+              // For now, default to kt category (most common)
+              targetPath = possiblePaths[0];
+            }
+          }
 
           // Check KV term index as a secondary source
           if (!targetPath) {
@@ -943,25 +968,89 @@ export class ZipResourceFetcher2 {
           }
         }
 
-        if (!targetPath) return { articles: [] };
+        if (!targetPath) {
+          console.log(`[TW] No target path found for term: ${term}`);
+          return { articles: [] };
+        }
 
-        // Try extraction, and if not found, retry with repository-prefixed path
-        let content = await this.extractFileFromZip(
-          zipData,
-          targetPath,
-          resource.name,
-          `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
-        );
-        if (!content) {
-          const repoPrefixed = `${resource.name.replace(/\/$/, "")}/${targetPath.replace(/^\//, "")}`;
+        console.log(`[TW] Looking for file at path: ${targetPath}`);
+
+        // If the target path was constructed (not a direct match), try all categories
+        let content: string | null = null;
+        const isConstructedPath =
+          !looksLikePath &&
+          !ingredients.find((ing) =>
+            (ing.path || "").toLowerCase().endsWith(`/${term}.md`),
+          );
+
+        if (isConstructedPath) {
+          // Try all category patterns for constructed paths
+          const baseDir = ingredients.find((ing) => {
+            const path = (ing.path || "").toLowerCase();
+            return (
+              path === "./bible" || path === "bible" || path.endsWith("/bible")
+            );
+          })?.path;
+
+          if (baseDir) {
+            const cleanBase = baseDir.replace(/^\.\//, "");
+            const categories = ["kt", "names", "other"];
+
+            for (const category of categories) {
+              const tryPath = `${cleanBase}/${category}/${term}.md`;
+              console.log(`[TW] Trying category ${category}: ${tryPath}`);
+
+              content = await this.extractFileFromZip(
+                zipData,
+                tryPath,
+                resource.name,
+                `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+              );
+
+              if (!content) {
+                const repoPrefixed = `${resource.name.replace(/\/$/, "")}/${tryPath.replace(/^\//, "")}`;
+                console.log(`[TW] Trying repo-prefixed: ${repoPrefixed}`);
+                content = await this.extractFileFromZip(
+                  zipData,
+                  repoPrefixed,
+                  resource.name,
+                  `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+                );
+              }
+
+              if (content) {
+                console.log(`[TW] Found content in category: ${category}`);
+                targetPath = tryPath; // Update targetPath to reflect successful path
+                break;
+              }
+            }
+          }
+        } else {
+          // Try extraction for exact paths
           content = await this.extractFileFromZip(
             zipData,
-            repoPrefixed,
+            targetPath,
             resource.name,
             `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
           );
+          if (!content) {
+            const repoPrefixed = `${resource.name.replace(/\/$/, "")}/${targetPath.replace(/^\//, "")}`;
+            console.log(
+              `[TW] First attempt failed, trying repo-prefixed path: ${repoPrefixed}`,
+            );
+            content = await this.extractFileFromZip(
+              zipData,
+              repoPrefixed,
+              resource.name,
+              `zip:${resource.owner}/${resource.name}:${refTag || "master"}`,
+            );
+          }
         }
-        if (!content) return { articles: [] };
+
+        if (!content) {
+          console.log(`[TW] Failed to extract content for: ${targetPath}`);
+          return { articles: [] };
+        }
 
         return {
           articles: [
@@ -1225,18 +1314,35 @@ export class ZipResourceFetcher2 {
           const { data, source, durationMs, size } =
             await r2.getZipWithInfo(zipKey);
           if (data) {
-            try {
-              this.tracer.addApiCall({
-                url: `internal://${source}/zip-url/${organization}/${repository}:${ref || "master"}`,
-                duration: durationMs,
-                status: 200,
-                size,
-                cached: source === "cache",
-              });
-            } catch {
-              // ignore trace add errors
+            // Validate cached ZIP before returning
+            const isValidZip =
+              data.length >= 1024 && data[0] === 0x50 && data[1] === 0x4b; // PK header
+
+            if (!isValidZip) {
+              console.log(
+                `[ZIP] Cached ZIP is corrupted (${data.length} bytes), deleting and re-downloading`,
+              );
+              // Delete corrupted cache entry
+              try {
+                await r2.deleteZip(zipKey);
+              } catch (e) {
+                console.error(`[ZIP] Failed to delete corrupted cache: ${e}`);
+              }
+              // Fall through to download fresh copy
+            } else {
+              try {
+                this.tracer.addApiCall({
+                  url: `internal://${source}/zip-url/${organization}/${repository}:${ref || "master"}`,
+                  duration: durationMs,
+                  status: 200,
+                  size,
+                  cached: source === "cache",
+                });
+              } catch {
+                // ignore trace add errors
+              }
+              return data;
             }
-            return data;
           }
         }
 
@@ -1245,18 +1351,35 @@ export class ZipResourceFetcher2 {
           const { data, source, durationMs, size } =
             await r2.getZipWithInfo(tarKey);
           if (data) {
-            try {
-              this.tracer.addApiCall({
-                url: `internal://${source}/tar-url/${organization}/${repository}:${ref || "master"}`,
-                duration: durationMs,
-                status: 200,
-                size,
-                cached: source === "cache",
-              });
-            } catch {
-              // ignore trace add errors
+            // Validate cached TAR.GZ before returning
+            const isValidGzip =
+              data.length >= 1024 && data[0] === 0x1f && data[1] === 0x8b; // GZIP header
+
+            if (!isValidGzip) {
+              console.log(
+                `[ZIP] Cached TAR.GZ is corrupted (${data.length} bytes), deleting and re-downloading`,
+              );
+              // Delete corrupted cache entry
+              try {
+                await r2.deleteZip(tarKey);
+              } catch (e) {
+                console.error(`[ZIP] Failed to delete corrupted cache: ${e}`);
+              }
+              // Fall through to download fresh copy
+            } else {
+              try {
+                this.tracer.addApiCall({
+                  url: `internal://${source}/tar-url/${organization}/${repository}:${ref || "master"}`,
+                  duration: durationMs,
+                  status: 200,
+                  size,
+                  cached: source === "cache",
+                });
+              } catch {
+                // ignore trace add errors
+              }
+              return data;
             }
-            return data;
           }
         }
 
@@ -1266,30 +1389,62 @@ export class ZipResourceFetcher2 {
         });
 
         if (!response.ok) {
+          console.log(
+            `[ZIP] Initial ZIP fetch failed: ${response.status} ${response.statusText}`,
+          );
           // Prefer plain tag tar.gz first
           let tarResp = await trackedFetch(this.tracer, tarUrl, {
             headers: this.getClientHeaders(),
           });
           if (!tarResp.ok) {
+            console.log(
+              `[ZIP] TAR.GZ fetch also failed: ${tarResp.status} ${tarResp.statusText}`,
+            );
             // Then try immutable Link header (often commit tarball) if available
             const linkHeader =
               response.headers.get("link") || response.headers.get("Link");
             const match = linkHeader?.match(/<([^>]+)>\s*;\s*rel="immutable"/i);
             if (match?.[1]) {
               const altUrl = match[1];
+              console.log(`[ZIP] Trying immutable link: ${altUrl}`);
               tarResp = await trackedFetch(this.tracer, altUrl, {
                 headers: this.getClientHeaders(),
               });
-              if (!tarResp.ok) return null;
+              if (!tarResp.ok) {
+                console.log(
+                  `[ZIP] Immutable link also failed: ${tarResp.status}`,
+                );
+                return null;
+              }
             } else {
+              console.log(`[ZIP] No immutable link found, giving up`);
               return null;
             }
+          } else {
+            console.log(`[ZIP] Successfully fetched TAR.GZ from: ${tarUrl}`);
           }
           response = tarResp;
         }
 
         const buffer = await response.arrayBuffer();
-        if (buffer.byteLength < 1024) return null;
+        if (buffer.byteLength < 1024) {
+          console.log(
+            `[ZIP] Downloaded file too small (${buffer.byteLength} bytes), not caching`,
+          );
+          return null;
+        }
+
+        // Validate ZIP/TAR.GZ structure before caching
+        const uint8Array = new Uint8Array(buffer);
+        const isValidZip = uint8Array[0] === 0x50 && uint8Array[1] === 0x4b; // PK header
+        const isValidGzip = uint8Array[0] === 0x1f && uint8Array[1] === 0x8b; // GZIP header
+
+        if (!isValidZip && !isValidGzip) {
+          console.log(
+            `[ZIP] Downloaded file has invalid header, not caching. First bytes: ${uint8Array[0]},${uint8Array[1]}`,
+          );
+          return null;
+        }
 
         // Store under the final URL-derived key
         const finalUrl = (response as any).url || zipUrl;
@@ -1307,7 +1462,7 @@ export class ZipResourceFetcher2 {
           // best-effort secondary write
         }
 
-        return new Uint8Array(buffer);
+        return uint8Array;
       } catch (error) {
         logger.error("Error downloading ZIP:", error as Error);
         return null;
@@ -1524,12 +1679,6 @@ export class ZipResourceFetcher2 {
                     status: 500,
                     size: 0,
                     cached: false,
-                    metadata: {
-                      error: err.message || String(err),
-                      code: (err as any).code,
-                      filePath: filePath,
-                      zipSize: zipData.length,
-                    },
                   });
                   resolve(null);
                 } else {
@@ -1560,11 +1709,6 @@ export class ZipResourceFetcher2 {
                     status: 404,
                     size: 0,
                     cached: false,
-                    metadata: {
-                      requestedFile: filePath,
-                      triedPaths: possiblePaths,
-                      zipFiles: Object.keys(unzipped).slice(0, 10),
-                    },
                   });
                   resolve(null);
                 }
