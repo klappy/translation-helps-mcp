@@ -43,8 +43,8 @@ async function fetchTranslationWordLinks(
 		word: row.TWLink || '',
 		// TSV doesn't have Strong's IDs in standard format
 		strongsId: row.StrongsId || '',
-		// Build RC link from TWLink
-		rcLink: row.TWLink ? `rc://*/tw/dict/bible/${row.TWLink}` : '',
+		// TWLink already contains the full RC link like "rc://*/tw/dict/bible/kt/love"
+		rcLink: row.TWLink || '',
 		// TSV doesn't provide position data
 		position: null
 	}));

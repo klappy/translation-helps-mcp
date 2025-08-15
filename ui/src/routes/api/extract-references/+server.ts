@@ -6,8 +6,8 @@
  */
 
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 
 // Bible book names and their abbreviations
 const BOOK_PATTERNS = {
