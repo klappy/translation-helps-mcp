@@ -175,13 +175,21 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
 
 /**
  * Get Translation Word (tW) - Individual word articles
+ *
+ * CURRENT STATUS: BROKEN
+ * - Table of Contents works (no term param)
+ * - Article fetching returns 404 for ALL terms
+ * - ZIP extraction cannot find files despite them existing at en_tw/bible/kt/love.md
+ * - Path construction issues between expected paths and actual ZIP structure
+ *
+ * TODO: Fix ZipResourceFetcher2 to properly extract TW articles from ZIP files
  */
 export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
   name: "get-translation-word",
   path: "/get-translation-word",
-  title: "Get Translation Word",
+  title: "Get Translation Word (BROKEN - Only ToC Works)",
   description:
-    "Retrieve detailed explanation of a specific biblical term or concept",
+    "SUPPOSED to retrieve biblical terms but ZIP extraction is BROKEN. Only Table of Contents works.",
   category: "core",
   responseShape: TRANSLATION_WORDS_SHAPE,
 
@@ -198,8 +206,9 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
 
   examples: [
     {
-      name: "Table of Contents",
-      description: "Get all available translation word categories and examples",
+      name: "Table of Contents (ONLY WORKING FEATURE)",
+      description:
+        "Shows categories but CANNOT fetch actual articles - content extraction is BROKEN",
       params: {
         language: "en",
         organization: "unfoldingWord",
@@ -216,20 +225,34 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
       },
     },
     {
-      name: "RC Link Lookup",
-      description:
-        "Look up a term using RC link format (currently returns 404)",
+      name: "Term Lookup (BROKEN - Returns 404)",
+      description: "DOES NOT WORK - ZIP extraction cannot find article files",
       params: {
-        rcLink: "rc://en/tw/dict/bible/kt/love",
+        term: "love",
         language: "en",
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["love"],
-        minLength: 200,
+        contains: ["404", "not found"],
+        minLength: 50,
         fields: {
-          term: "love",
-          definition: "string",
+          error: "string",
+        },
+      },
+    },
+    {
+      name: "Path Lookup (BROKEN - Returns 404)",
+      description: "DOES NOT WORK - Even with exact path from ZIP",
+      params: {
+        path: "bible/kt/love.md",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["404", "not found"],
+        minLength: 50,
+        fields: {
+          error: "string",
         },
       },
     },
