@@ -74,51 +74,37 @@ async function fetchAvailableBooks(params: Record<string, any>, request: Request
 
 	let books = [];
 
-	// Fetch real data from DCS
+	// Fetch catalog metadata to get ingredients
 	try {
-		books = await fetchBooksFromDCS(language, resource, testament, organization);
+		// Import required functions
+		const { fetchCatalogMetadata } = await import('$lib/edgeMetadataFetcher.js');
 
-		if (books.length > 0) {
-			console.log(
-				`[available-books] Fetched ${books.length} real books from DCS for ${language}/${resource || 'all'}`
-			);
+		// Determine subject based on resource type
+		const subjectMap: Record<string, string> = {
+			ult: 'Bible',
+			ust: 'Bible',
+			tn: 'TSV Translation Notes',
+			tw: 'Translation Words',
+			tq: 'TSV Translation Questions',
+			ta: 'Translation Academy'
+		};
 
-			// Transform to match expected format with all options
-			books = books.map((book) => {
-				const bookInfo = BOOK_INFO[book.id];
-				const result: any = {
-					id: book.id,
-					name: book.name,
-					testament: book.testament,
-					available: true
-				};
+		const subject = resource
+			? subjectMap[resource.toLowerCase()] || 'Bible'
+			: 'Bible,Aligned Bible,TSV Translation Notes,Translation Words,TSV Translation Questions,Translation Academy';
 
-				if (includeChapters && bookInfo) {
-					result.chapters = bookInfo.chapters;
-				}
+		// Fetch catalog data
+		const catalogData = await circuitBreakers.dcs.execute(async () => {
+			return fetchCatalogMetadata(language, organization, subject);
+		});
 
-				if (includeCoverage && bookInfo) {
-					result.coverage = {
-						chapters: bookInfo.chapters,
-						completed: bookInfo.chapters, // Assume complete for now
-						percentage: 100
-					};
-				}
-
-				return result;
-			});
-		}
-	} catch (error) {
-		console.error('[available-books] Failed to fetch real data:', error);
-
-		// Check if it's a 404 (repository not found)
-		if (error instanceof Error && error.message.includes('404')) {
+		if (!catalogData || catalogData.length === 0) {
 			const response = createListResponse([], {
 				language,
 				organization,
-				resource: resource || 'ult',
-				source: 'DCS API',
-				error: 'Repository not found'
+				resource: resource || 'all',
+				source: 'DCS Catalog',
+				error: 'No resources found'
 			});
 			return {
 				...response,
@@ -126,8 +112,86 @@ async function fetchAvailableBooks(params: Record<string, any>, request: Request
 			};
 		}
 
-		// For other errors, throw them (no mock fallback)
-		throw error;
+		// Extract books from ingredients of all matching resources
+		const bookSet = new Set<string>();
+		const allBooks: any[] = [];
+
+		for (const catalog of catalogData) {
+			// Filter by specific resource if requested
+			if (
+				resource &&
+				catalog.abbreviation !== resource &&
+				!catalog.title?.toLowerCase().includes(resource)
+			) {
+				continue;
+			}
+
+			if (catalog.ingredients && Array.isArray(catalog.ingredients)) {
+				for (const ingredient of catalog.ingredients) {
+					const bookId = ingredient.identifier;
+
+					// Skip if not a valid book or already added
+					if (!bookId || !BOOK_INFO[bookId] || bookSet.has(bookId)) {
+						continue;
+					}
+
+					// Filter by testament if specified
+					if (testament && testament !== 'both' && BOOK_INFO[bookId].testament !== testament) {
+						continue;
+					}
+
+					bookSet.add(bookId);
+					const bookInfo = BOOK_INFO[bookId];
+
+					const book: any = {
+						id: bookId,
+						name: bookInfo.name,
+						testament: bookInfo.testament,
+						available: true
+					};
+
+					if (includeChapters) {
+						book.chapters = bookInfo.chapters;
+					}
+
+					if (includeCoverage) {
+						book.coverage = {
+							chapters: bookInfo.chapters,
+							completed: bookInfo.chapters, // Assume complete
+							percentage: 100
+						};
+					}
+
+					allBooks.push(book);
+				}
+			}
+		}
+
+		// Sort books by biblical order (could use a proper ordering)
+		books = allBooks.sort((a, b) => {
+			const aIndex = Object.keys(BOOK_INFO).indexOf(a.id);
+			const bIndex = Object.keys(BOOK_INFO).indexOf(b.id);
+			return aIndex - bIndex;
+		});
+
+		console.log(
+			`[available-books] Found ${books.length} books from catalog ingredients for ${language}/${resource || 'all'}`
+		);
+	} catch (error) {
+		console.error('[available-books] Failed to fetch catalog data:', error);
+
+		// For any errors, return empty list with error message
+		const response = createListResponse([], {
+			language,
+			organization,
+			resource: resource || 'all',
+			source: 'DCS Catalog',
+			error: error instanceof Error ? error.message : 'Failed to fetch catalog data'
+		});
+		return {
+			...response,
+			_trace: fetcher.getTrace()
+		};
 	}
 
 	// NO MOCK FALLBACK - If no books found, return empty list
@@ -155,8 +219,8 @@ async function fetchAvailableBooks(params: Record<string, any>, request: Request
 	const response = createListResponse(books, {
 		language,
 		organization,
-		resource: resource || 'ult',
-		source: 'DCS API',
+		resource: resource || 'all',
+		source: 'DCS Catalog Ingredients',
 		circuitBreakerState: circuitBreakers.dcs.getState().state,
 		...(testament && { filteredBy: { testament } })
 	});
