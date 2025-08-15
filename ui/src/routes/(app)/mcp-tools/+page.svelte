@@ -33,6 +33,11 @@
 	> = {};
 	let isCheckingHealth = false;
 	let isInitialized = false;
+	let endpointTestResults: Record<
+		string,
+		{ status: 'pending' | 'success' | 'warning' | 'error'; message?: string }
+	> = {};
+	let isTestingAll = false;
 
 	// Load endpoints from configuration
 	onMount(async () => {
@@ -204,6 +209,127 @@
 		} catch (err) {
 			console.error('Failed to copy:', err);
 		}
+	}
+
+	// Test a single endpoint with its default parameters
+	async function testEndpoint(endpoint: any) {
+		const testParams: Record<string, any> = {};
+
+		// Build default test parameters based on endpoint name
+		if (endpoint.name === 'fetch-scripture') {
+			testParams.reference = 'John 3:16';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'translation-notes') {
+			testParams.reference = 'John 3:16';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'translation-questions') {
+			testParams.reference = 'John 3:16';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'get-translation-word') {
+			testParams.term = 'faith';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'fetch-translation-word-links') {
+			testParams.reference = 'John 3:16';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'get-context') {
+			testParams.reference = 'John 3:16';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'browse-translation-academy') {
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'get-available-books') {
+			testParams.resource = 'tn';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'resolve-rc-link') {
+			testParams.rcLink = 'rc://*/tw/dict/bible/kt/love';
+		} else if (endpoint.name === 'fetch-translation-academy') {
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'simple-languages') {
+			// No params needed
+		} else if (endpoint.name === 'list-available-resources') {
+			// No params needed
+		} else if (endpoint.name === 'browse-translation-words') {
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		}
+
+		// Build query string
+		const params = new URLSearchParams();
+		Object.entries(testParams).forEach(([key, value]) => {
+			if (value !== null && value !== undefined && value !== '') {
+				params.append(key, String(value));
+			}
+		});
+
+		const queryString = params.toString();
+		const url = `/api${endpoint.path}${queryString ? '?' + queryString : ''}`;
+
+		try {
+			endpointTestResults[endpoint.name] = { status: 'pending' };
+
+			const response = await fetch(url);
+			const data = await response.json();
+
+			if (!response.ok) {
+				endpointTestResults[endpoint.name] = {
+					status: 'error',
+					message: `HTTP ${response.status}: ${data.error || data.message || 'Unknown error'}`
+				};
+			} else if (data.error) {
+				endpointTestResults[endpoint.name] = {
+					status: 'error',
+					message: data.error
+				};
+			} else if (data.items && Array.isArray(data.items) && data.items.length === 0) {
+				endpointTestResults[endpoint.name] = {
+					status: 'warning',
+					message: 'Returns empty results'
+				};
+			} else if (data.metadata?.error) {
+				endpointTestResults[endpoint.name] = {
+					status: 'warning',
+					message: data.metadata.error
+				};
+			} else {
+				endpointTestResults[endpoint.name] = { status: 'success' };
+			}
+		} catch (err) {
+			endpointTestResults[endpoint.name] = {
+				status: 'error',
+				message: err instanceof Error ? err.message : 'Unknown error'
+			};
+		}
+
+		// Force UI update
+		endpointTestResults = endpointTestResults;
+	}
+
+	// Test all endpoints
+	async function testAllEndpoints() {
+		isTestingAll = true;
+
+		// Clear previous results
+		endpointTestResults = {};
+
+		// Get all endpoints
+		const allEndpoints = [...coreEndpoints, ...extendedEndpoints];
+
+		// Test each endpoint
+		for (const endpoint of allEndpoints) {
+			await testEndpoint(endpoint);
+			// Small delay to avoid overwhelming the server
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
+		isTestingAll = false;
 	}
 
 	// Handle endpoint selection
@@ -801,6 +927,28 @@
 		</button>
 	</div>
 
+	<!-- Test All Endpoints Button -->
+	{#if selectedCategory === 'core' || selectedCategory === 'extended'}
+		<div class="mb-4 flex justify-end">
+			<button
+				class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+				on:click={testAllEndpoints}
+				disabled={isTestingAll}
+			>
+				{#if isTestingAll}
+					<span class="flex items-center gap-2">
+						<span
+							class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+						></span>
+						Testing Endpoints...
+					</span>
+				{:else}
+					Test All Endpoints
+				{/if}
+			</button>
+		</div>
+	{/if}
+
 	<!-- Error Display -->
 	{#if loadingError}
 		<div class="mb-6 rounded-lg border border-red-500/30 bg-red-900/10 p-4">
@@ -856,10 +1004,39 @@
 														: 'border-gray-700/50 bg-gray-900/30'}"
 													on:click={() => selectEndpoint(endpoint)}
 												>
-													<div class="font-medium text-white">
-														{endpoint.title || endpoint.name}
+													<div class="flex items-start justify-between gap-2">
+														<div>
+															<div class="font-medium text-white">
+																{endpoint.title || endpoint.name}
+															</div>
+															<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
+														</div>
+														{#if endpointTestResults[endpoint.name]}
+															<div class="mt-1 flex-shrink-0">
+																{#if endpointTestResults[endpoint.name].status === 'pending'}
+																	<span
+																		class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
+																		title="Testing..."
+																	></span>
+																{:else if endpointTestResults[endpoint.name].status === 'success'}
+																	<span
+																		class="block h-2 w-2 rounded-full bg-green-500"
+																		title="Working"
+																	></span>
+																{:else if endpointTestResults[endpoint.name].status === 'warning'}
+																	<span
+																		class="block h-2 w-2 rounded-full bg-yellow-500"
+																		title={endpointTestResults[endpoint.name].message || 'Warning'}
+																	></span>
+																{:else if endpointTestResults[endpoint.name].status === 'error'}
+																	<span
+																		class="block h-2 w-2 rounded-full bg-red-500"
+																		title={endpointTestResults[endpoint.name].message || 'Error'}
+																	></span>
+																{/if}
+															</div>
+														{/if}
 													</div>
-													<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
 												</button>
 											{/each}
 										</div>
@@ -1194,10 +1371,39 @@
 													}`}
 													on:click={() => selectEndpoint(endpoint)}
 												>
-													<div class="font-medium text-white">
-														{endpoint.title || endpoint.name}
+													<div class="flex items-start justify-between gap-2">
+														<div>
+															<div class="font-medium text-white">
+																{endpoint.title || endpoint.name}
+															</div>
+															<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
+														</div>
+														{#if endpointTestResults[endpoint.name]}
+															<div class="mt-1 flex-shrink-0">
+																{#if endpointTestResults[endpoint.name].status === 'pending'}
+																	<span
+																		class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
+																		title="Testing..."
+																	></span>
+																{:else if endpointTestResults[endpoint.name].status === 'success'}
+																	<span
+																		class="block h-2 w-2 rounded-full bg-green-500"
+																		title="Working"
+																	></span>
+																{:else if endpointTestResults[endpoint.name].status === 'warning'}
+																	<span
+																		class="block h-2 w-2 rounded-full bg-yellow-500"
+																		title={endpointTestResults[endpoint.name].message || 'Warning'}
+																	></span>
+																{:else if endpointTestResults[endpoint.name].status === 'error'}
+																	<span
+																		class="block h-2 w-2 rounded-full bg-red-500"
+																		title={endpointTestResults[endpoint.name].message || 'Error'}
+																	></span>
+																{/if}
+															</div>
+														{/if}
 													</div>
-													<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
 												</button>
 											{/each}
 										</div>
@@ -1285,8 +1491,35 @@
 									}`}
 									on:click={() => selectEndpoint(endpoint)}
 								>
-									<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
-									<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
+									<div class="flex items-start justify-between gap-2">
+										<div>
+											<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
+											<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
+										</div>
+										{#if endpointTestResults[endpoint.name]}
+											<div class="mt-1 flex-shrink-0">
+												{#if endpointTestResults[endpoint.name].status === 'pending'}
+													<span
+														class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
+														title="Testing..."
+													></span>
+												{:else if endpointTestResults[endpoint.name].status === 'success'}
+													<span class="block h-2 w-2 rounded-full bg-green-500" title="Working"
+													></span>
+												{:else if endpointTestResults[endpoint.name].status === 'warning'}
+													<span
+														class="block h-2 w-2 rounded-full bg-yellow-500"
+														title={endpointTestResults[endpoint.name].message || 'Warning'}
+													></span>
+												{:else if endpointTestResults[endpoint.name].status === 'error'}
+													<span
+														class="block h-2 w-2 rounded-full bg-red-500"
+														title={endpointTestResults[endpoint.name].message || 'Error'}
+													></span>
+												{/if}
+											</div>
+										{/if}
+									</div>
 								</button>
 							{/each}
 						</div>
