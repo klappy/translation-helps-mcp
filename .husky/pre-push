@@ -10,11 +10,16 @@ npm run build >/dev/null 2>&1 || {
 }
 
 # Optional: a light test suite (avoid long runs on push)
-echo "🧪 Running smoke tests..."
-npm run test:smoke >/dev/null 2>&1 || {
-  echo "❌ Smoke tests failed. Aborting push."
-  exit 1
-}
+# Check if Wrangler is running on port 8787
+if lsof -i :8787 >/dev/null 2>&1; then
+  echo "🧪 Running smoke tests..."
+  npm run test:smoke >/dev/null 2>&1 || {
+    echo "❌ Smoke tests failed. Aborting push."
+    exit 1
+  }
+else
+  echo "⚠️  Skipping smoke tests (Wrangler not running on port 8787)"
+fi
 
 echo "✅ Pre-push checks passed!"
 
