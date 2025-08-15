@@ -5,6 +5,7 @@
  * Useful for finding and linking scripture citations in documents.
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 
@@ -132,6 +133,9 @@ function normalizeBookName(bookName: string): string {
 async function extractReferences(params: Record<string, any>, _request: Request): Promise<any> {
 	const { text, includeContext = true, contextWords = 10 } = params;
 
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`extract-${Date.now()}`, 'extract-references');
+
 	if (!text) {
 		throw new Error('Text parameter is required');
 	}
@@ -216,7 +220,8 @@ async function extractReferences(params: Record<string, any>, _request: Request)
 			contextWords,
 			textLength: text.length,
 			uniqueBooks: [...new Set(uniqueReferences.map((r) => r.book))].length
-		}
+		},
+		_trace: tracer.getTrace()
 	};
 }
 

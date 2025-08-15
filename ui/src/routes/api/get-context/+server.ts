@@ -5,16 +5,25 @@
  * This is the "kitchen sink" endpoint - get everything we have for a verse.
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import type { StandardMetadata } from '$lib/standardResponses.js';
+import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
  * Get aggregated context for a Bible reference
  */
 async function getContext(params: Record<string, any>, request: Request): Promise<any> {
 	const { reference, language, organization, includeEmpty = true } = params;
+
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`context-${Date.now()}`, 'get-context');
+
+	// Initialize fetcher with request headers
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
 	// Helper: chapters covered by reference (supports 2, 2:3-5, 1-3, 1:15-2:3)
 	const getCoveredChapters = (refStr: string): number[] => {
@@ -48,78 +57,73 @@ async function getContext(params: Record<string, any>, request: Request): Promis
 
 	// Try to fetch real TN data and extract only book/chapter intros
 	try {
-		const origin = new URL(request.url).origin;
-		const url = new URL('/api/translation-notes', origin);
-		url.searchParams.set('reference', String(reference || ''));
-		url.searchParams.set('language', String(language || 'en'));
-		url.searchParams.set('organization', String(organization || 'unfoldingWord'));
-		url.searchParams.set('format', 'json');
+		// Use UnifiedResourceFetcher instead of direct fetch()
+		const notes = await fetcher.fetchTranslationNotes(
+			reference,
+			language || 'en',
+			organization || 'unfoldingWord'
+		);
+		const items: Array<Record<string, any>> = Array.isArray(notes) ? notes : [];
+		const chapters = getCoveredChapters(String(reference || ''));
 
-		const res = await fetch(url.toString());
-		if (res.ok) {
-			const tn = await res.json();
-			const items: Array<Record<string, any>> = Array.isArray(tn?.items) ? tn.items : [];
-			const chapters = getCoveredChapters(String(reference || ''));
+		const isIntroRef = (ref: string): boolean => ref === 'front:intro' || /^(\d+):intro$/.test(ref);
+		const allowedChapter = (ref: string): boolean => {
+			const m = ref.match(/^(\d+):intro$/);
+			return m ? chapters.includes(parseInt(m[1])) : ref === 'front:intro';
+		};
 
-			const isIntroRef = (ref: string): boolean =>
-				ref === 'front:intro' || /^(\d+):intro$/.test(ref);
-			const allowedChapter = (ref: string): boolean => {
-				const m = ref.match(/^(\d+):intro$/);
-				return m ? chapters.includes(parseInt(m[1])) : ref === 'front:intro';
-			};
+		const introNotes = items.filter((it) => {
+			const ref = String(it.Reference || it.reference || '').trim();
+			if (!ref) return false;
+			if (!isIntroRef(ref)) return false; // exclude verse notes entirely
+			return allowedChapter(ref);
+		});
 
-			const introNotes = items.filter((it) => {
-				const ref = String(it.Reference || it.reference || '').trim();
-				if (!ref) return false;
-				if (!isIntroRef(ref)) return false; // exclude verse notes entirely
-				return allowedChapter(ref);
-			});
+		const contextData = {
+			scripture: null,
+			translationNotes: introNotes,
+			translationWords: [],
+			translationQuestions: [],
+			translationAcademy: [],
+			crossReferences: []
+		};
 
-			const contextData = {
-				scripture: null,
-				translationNotes: introNotes,
-				translationWords: [],
-				translationQuestions: [],
-				translationAcademy: [],
-				crossReferences: []
-			};
+		const resourcesFound = {
+			scripture: false,
+			notes: introNotes.length,
+			words: 0,
+			questions: 0,
+			academy: 0,
+			crossReferences: 0
+		};
 
-			const resourcesFound = {
-				scripture: false,
-				notes: introNotes.length,
-				words: 0,
-				questions: 0,
-				academy: 0,
-				crossReferences: 0
-			};
+		const totalResources = resourcesFound.notes;
 
-			const totalResources = resourcesFound.notes;
-
-			return {
+		return {
+			reference,
+			language,
+			organization,
+			...contextData,
+			metadata: {
 				reference,
 				language,
 				organization,
-				...contextData,
-				metadata: {
-					reference,
-					language,
-					organization,
-					source: 'aggregated-context',
-					timestamp: new Date().toISOString(),
-					aggregationTime: Math.floor(Math.random() * 50) + 100,
-					resourcesFound,
-					totalResources,
-					coverage: {
-						hasScripture: false,
-						hasNotes: resourcesFound.notes > 0,
-						hasWords: false,
-						hasQuestions: false,
-						hasAcademy: false,
-						hasCrossReferences: false
-					}
-				} as StandardMetadata
-			};
-		}
+				source: 'aggregated-context',
+				timestamp: new Date().toISOString(),
+				aggregationTime: Math.floor(Math.random() * 50) + 100,
+				resourcesFound,
+				totalResources,
+				coverage: {
+					hasScripture: false,
+					hasNotes: resourcesFound.notes > 0,
+					hasWords: false,
+					hasQuestions: false,
+					hasAcademy: false,
+					hasCrossReferences: false
+				}
+			} as StandardMetadata,
+			_trace: fetcher.getTrace()
+		};
 	} catch {
 		// Fall through to mock/empty behavior below
 	}
@@ -152,7 +156,8 @@ async function getContext(params: Record<string, any>, request: Request): Promis
 					crossReferences: 0
 				},
 				totalResources: 0
-			} as StandardMetadata
+			} as StandardMetadata,
+			_trace: fetcher.getTrace()
 		};
 	}
 

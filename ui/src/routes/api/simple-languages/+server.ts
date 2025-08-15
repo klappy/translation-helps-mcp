@@ -7,6 +7,7 @@
  * Returns items array for consistency with other list endpoints.
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { fetchLanguagesFromDCS } from '$lib/edgeLanguagesFetcher.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 
@@ -19,6 +20,9 @@ export const config = {
  */
 async function fetchLanguages(params: Record<string, any>, _request: Request) {
 	const { resource, includeMetadata = true, includeStats = false } = params;
+
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`languages-${Date.now()}`, 'simple-languages');
 
 	let languages = [];
 
@@ -46,7 +50,8 @@ async function fetchLanguages(params: Record<string, any>, _request: Request) {
 			totalCount: languages.length,
 			hasMore: false,
 			...(resource && { filteredBy: resource })
-		}
+		},
+		_trace: tracer.getTrace()
 	};
 }
 

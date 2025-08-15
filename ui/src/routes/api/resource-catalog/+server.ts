@@ -5,8 +5,9 @@
  * Fetches available resources from DCS with automatic failure protection.
  */
 
-import { createSimpleEndpoint, createCORSHandler } from '$lib/simpleEndpoint.js';
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { circuitBreakers } from '$lib/circuitBreaker.js';
+import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 
 interface CatalogParams {
 	organization: string;
@@ -17,8 +18,11 @@ interface CatalogParams {
 /**
  * Fetch resource catalog from DCS with circuit breaker protection
  */
-async function fetchResourceCatalog(params: CatalogParams): Promise<any> {
+async function fetchResourceCatalog(params: CatalogParams, _request?: Request): Promise<any> {
 	const { organization, language, subject } = params;
+
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`catalog-${Date.now()}`, 'resource-catalog');
 
 	// Build DCS API URL
 	const baseUrl = 'https://git.door43.org/api/v1/catalog/search';
@@ -59,7 +63,8 @@ async function fetchResourceCatalog(params: CatalogParams): Promise<any> {
 				subject,
 				source: 'DCS API',
 				circuitBreakerState: circuitBreakers.dcs.getState().state
-			}
+			},
+			_trace: tracer.getTrace()
 		};
 	});
 }
