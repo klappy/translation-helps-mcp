@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.0.0](https://github.com/klappy/translation-helps-mcp/compare/v6.6.3...v7.0.0) (2025-08-15)
+
+### Features
+
+- Complete architecture overhaul - 100% real data, zero mocks ([9f8eed7](https://github.com/klappy/translation-helps-mcp/commit/9f8eed76bf7a293d15b78f7f530071d6ef110271))
+
 ### [6.6.3](https://github.com/klappy/translation-helps-mcp/compare/v6.6.2...v6.6.3) (2025-08-14)
 
 ### Features

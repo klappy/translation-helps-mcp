@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [6.6.3](https://github.com/klappy/translation-helps-mcp/compare/v6.6.2...v6.6.3) (2025-08-14)
+
+### Features
+
+- **tw:** add KV caching to getMarkdownContent catalog lookup; align with unified cache + X-Ray ([47403bc](https://github.com/klappy/translation-helps-mcp/commit/47403bc49ebafefddd3f1130803db807f1bdf7e8))
+
 ### [6.6.2](https://github.com/klappy/translation-helps-mcp/compare/v6.6.1...v6.6.2) (2025-08-14)
 
 ### Bug Fixes
