@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.1.0](https://github.com/klappy/translation-helps-mcp/compare/v7.0.0...v7.1.0) (2025-08-15)
+
+### Features
+
+- Add RC link resolver endpoint ([3cccb45](https://github.com/klappy/translation-helps-mcp/commit/3cccb458a52d4e737f36ec4d8a55d72f0f75b1d4))
+
+### Bug Fixes
+
+- Correct parameter order for get-available-books ([9b5cad9](https://github.com/klappy/translation-helps-mcp/commit/9b5cad99b019ef7660d750f3623e445ef094402e))
+- Filter out book/chapter level notes from translation-notes ([cb58583](https://github.com/klappy/translation-helps-mcp/commit/cb58583293053a6616f0be6ae47af8604db69dca))
+- Major functionality improvements for broken endpoints ([58ed23f](https://github.com/klappy/translation-helps-mcp/commit/58ed23f85f31188d06de6ae13cd82bd895c9c5bd))
+- Make pre-push hook check for Wrangler before running smoke tests ([e13a665](https://github.com/klappy/translation-helps-mcp/commit/e13a6657adb637b1265b5132b65d43da6424bfb7))
+- Standardize ALL endpoints to use UnifiedResourceFetcher ([9767dd7](https://github.com/klappy/translation-helps-mcp/commit/9767dd7f416b6a3ccdad34da262f4397438ce71d))
+- Standardize ALL remaining endpoints with tracer support ([385b9fc](https://github.com/klappy/translation-helps-mcp/commit/385b9fcc907bb03c1323d3ca32b513e7c5e2a696))
+- Update endpoint examples to match actual response data ([6c71117](https://github.com/klappy/translation-helps-mcp/commit/6c71117da83744cbc54907faece30321956b85bc))
+- Update get-available-books to use catalog ingredients ([382ddf3](https://github.com/klappy/translation-helps-mcp/commit/382ddf3a8ec6d740930cbe99742eeb785c95049a))
+- Use async unzip in Worker environment ([f5a7c84](https://github.com/klappy/translation-helps-mcp/commit/f5a7c8439405d3e5159588602418dbd699b67054))
+
+### Tests
+
+- Skip removed fetch-resources endpoint in smoke tests ([26d9aef](https://github.com/klappy/translation-helps-mcp/commit/26d9aefc1bf480706d8dcbd130fbb3f77487f64d))
+
 ## [7.0.0](https://github.com/klappy/translation-helps-mcp/compare/v6.6.3...v7.0.0) (2025-08-15)
 
 ### Features
