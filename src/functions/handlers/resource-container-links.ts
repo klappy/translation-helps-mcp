@@ -169,7 +169,7 @@ export const resourceContainerLinksHandler: PlatformHandler = async (
       statusCode: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "max-age=3600",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
       body: JSON.stringify(response),
     };

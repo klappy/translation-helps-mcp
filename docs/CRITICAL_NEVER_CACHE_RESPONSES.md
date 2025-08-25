@@ -50,7 +50,8 @@ grep -r "Cache-Control" src/ | grep -v "no-cache\|no-store"
 1. **RouteGenerator**: MUST set `Cache-Control: no-store, no-cache, must-revalidate`
 2. **Platform Adapter**: MUST NOT cache response bodies
 3. **Service Functions**: Cache data sources ONLY, return fresh responses
-4. **Error Handlers**: MUST mark all errors as non-cacheable
+4. **Cache Keys**: All KV and R2 keys MUST be the exact fetched URL string (no synthetic keys)
+5. **Error Handlers**: MUST mark all errors as non-cacheable
 
 ## Code Review Checklist
 

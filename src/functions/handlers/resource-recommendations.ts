@@ -8,7 +8,6 @@
  */
 
 import { logger } from "../../utils/logger.js";
-import { cache } from "../cache.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import {
   recommendResources,
@@ -90,26 +89,8 @@ export const resourceRecommendationsHandler: PlatformHandler = async (
     // Generate cache key
     const cacheKey = `recommendations:${JSON.stringify(context)}`;
 
-    // Check cache first
-    const cached = await cache.get(cacheKey);
-    if (cached) {
-      logger.debug("Resource recommendations served from cache");
-
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          ...cached,
-          metadata: {
-            ...cached.metadata,
-            cacheHit: true,
-          },
-        }),
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=1800",
-        },
-      };
-    }
+    // Response caching disabled per CRITICAL_NEVER_CACHE_RESPONSES.md
+    // If desired, cache only source data below, not assembled responses
 
     logger.debug("Generating fresh resource recommendations");
 
@@ -146,7 +127,7 @@ export const resourceRecommendationsHandler: PlatformHandler = async (
       body: JSON.stringify(responseData),
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=1800",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
         "X-Response-Time": `${duration}ms`,
       },
     };

@@ -6,9 +6,8 @@
 import { DCSApiClient } from "../../services/DCSApiClient.js";
 import type { XRayTrace } from "../../types/dcs.js";
 import { Errors } from "../../utils/errorEnvelope.js";
-import { logger } from "../../utils/logger.js";
 import { proxyFetch } from "../../utils/httpClient.js";
-import { sanitizeResponseBody } from "../../utils/responseSanitizer.js";
+import { logger } from "../../utils/logger.js";
 import type {
   PlatformHandler,
   PlatformRequest,
@@ -306,14 +305,14 @@ export const getContextHandler: PlatformHandler = async (
 
     // Generate cache key for consistency (subject-specific caching now handled per resource type)
     const cacheKey = `context:${language}:${organization}:${reference}`;
-    const cached = false; // Individual catalog responses are cached per subject type
+    const cached = false; // Response caching disabled by policy
 
     return {
       statusCode: 200,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Cache-Control": cached ? "public, max-age=1800" : "no-cache",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
         "X-Cache": cached ? "HIT" : "MISS",
         "X-Cache-Key": cacheKey,
         "X-Response-Time": `${duration}ms`,

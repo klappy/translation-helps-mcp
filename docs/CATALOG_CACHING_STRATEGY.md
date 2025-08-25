@@ -1,8 +1,8 @@
 # Catalog Caching Strategy
 
-## Decision: Subject-Specific Cache Keys
+## Decision: URL-only cache keys (authoritative)
 
-We use subject-specific catalog cache keys rather than broad organizational caches to optimize performance across all endpoint types.
+All KV and R2 keys MUST be the exact fetched URL string. No synthetic keys, no subject-derived keys. This ensures correctness, eliminates staleness from key drift, and keeps behavior antifragile and DRY. [[memory:6894460]]
 
 ## Background
 
@@ -12,15 +12,13 @@ The DCS catalog API supports filtering by subject (e.g., "Bible", "Translation N
 
 ### Cache Key Format
 
-```
-catalog:{language}:{organization}:prod:rc:{subject}
-```
+- KV key = full request URL (string)
+- R2 key = derived from full request URL via `r2KeyFromUrl(url)`
 
-Examples:
+Examples (KV keys are the literal URLs):
 
-- `catalog:en:unfoldingWord:prod:rc:Bible,Aligned Bible`
-- `catalog:en:unfoldingWord:prod:rc:TSV Translation Notes`
-- `catalog:en:unfoldingWord:prod:rc:Translation Words`
+- `https://git.door43.org/api/v1/catalog3/search?owner=unfoldingWord&lang=en&metadataType=rc&subject=Bible%2CAligned%20Bible`
+- `https://git.door43.org/api/v1/catalog3/search?owner=unfoldingWord&lang=en&metadataType=rc&subject=Translation%20Words`
 
 ### Performance Goals
 
@@ -50,10 +48,16 @@ params.set("subject", "Bible,Aligned Bible");
 
 ### Cache Keys
 
-Cache keys include the subject for specificity:
+Cache keys are the exact request URL:
 
 ```typescript
-const catalogCacheKey = `catalog:${language}:${organization}:prod:rc:${subject}`;
+const catalogUrl = new URL("https://git.door43.org/api/v1/catalog3/search");
+catalogUrl.searchParams.set("owner", organization);
+catalogUrl.searchParams.set("lang", language);
+catalogUrl.searchParams.set("metadataType", "rc");
+catalogUrl.searchParams.set("subject", subject);
+
+const catalogCacheKey = catalogUrl.toString(); // KV key is the URL
 ```
 
 ### No Client-Side Filtering
@@ -62,34 +66,26 @@ We rely on API-side subject filtering and avoid post-processing that could miss 
 
 ## Trade-offs
 
-### Chosen Approach: Subject-Specific Caching
+### Chosen Approach: URL-only keys
 
-- ✅ Fast subsequent calls (sub-2s for each endpoint type)
-- ✅ Consistent performance across all resource types
-- ✅ No capitalization issues with client-side filtering
-- ❌ Multiple cache entries per organization (one per subject type)
-
-### Alternative Considered: Shared Organizational Cache
-
-- ✅ Single cache entry per organization
-- ✅ Cross-endpoint cache reuse
-- ❌ Slower initial calls (2s+) for broad catalog fetches
-- ❌ Potential client-side filtering issues
+- ✅ Correctness: keys change automatically when URLs change
+- ✅ Simplicity: one rule for all caches (KV + R2)
+- ✅ Antifragile: code changes don’t require manual invalidation
+- ✅ DRY: no duplicate key builders or formats
 
 ## Rationale
 
-The subject-specific approach was chosen because:
+URL-only keys are chosen because:
 
-1. **Performance Priority**: Sub-2s response times are critical for user experience
-2. **Consistency**: Every endpoint type gets optimized performance, not just the first one called
-3. **Reliability**: API-side filtering avoids client-side capitalization issues
-4. **Cache Efficiency**: While we have more cache entries, each is smaller and more targeted
+1. **Reliability**: Prevents stale data from synthetic key drift
+2. **Consistency**: Keys align 1:1 with requests
+3. **Simplicity**: No special cases per resource type
+4. **Safety**: Changing query params or selection logic produces a new key automatically
 
-## Files Updated
+## Implementation Touchpoints
 
-- `src/services/ZipResourceFetcher2.ts` - Scripture, TSV, and markdown content methods
-- `src/functions/handlers/get-context-catalog.ts` - Multi-resource context endpoint
-- `src/config/functionalDataFetchers.ts` - Organization tracking for proper attribution
+- `src/services/ZipResourceFetcher2.ts` – Uses `catalogUrl.toString()` for KV keys and `r2KeyFromUrl(url)` for R2
+- Any future callers must pass the exact URL as the cache key
 
 ## Monitoring
 

@@ -197,7 +197,7 @@ export const getTranslationWordHandler: PlatformHandler = async (
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=7200", // Cache for 2 hours
+        "Cache-Control": "no-store, no-cache, must-revalidate",
         "X-Response-Time": `${duration}ms`,
       },
       body: JSON.stringify({

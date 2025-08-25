@@ -174,7 +174,7 @@ export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
             body: JSON.stringify(response),
             headers: {
               "Content-Type": "application/json",
-              "Cache-Control": "public, max-age=300",
+              "Cache-Control": "no-store, no-cache, must-revalidate",
             },
           };
         }
@@ -289,7 +289,7 @@ export const fetchUSTScriptureHandler: PlatformHandler = async (request) => {
       body: JSON.stringify(response),
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=300",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     };
   } catch (error) {

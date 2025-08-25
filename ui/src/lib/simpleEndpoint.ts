@@ -304,6 +304,11 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 				timestamp: new Date().toISOString()
 			};
 
+			// Include debug info if present on the error
+			if ((error as any)?.debug) {
+				errorDetails.debug = (error as any).debug;
+			}
+
 			// Include stack trace in development
 			if (import.meta.env.DEV && error instanceof Error) {
 				errorDetails.stack = error.stack?.split('\n').slice(0, 5);

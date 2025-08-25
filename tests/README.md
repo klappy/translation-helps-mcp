@@ -65,7 +65,7 @@ import { makeRequest } from "../test-utils";
 
 describe("Scripture Endpoint", () => {
   it("returns scripture for valid reference", async () => {
-    const response = await makeRequest("/api/v2/fetch-scripture", {
+    const response = await makeRequest("/api/fetch-scripture", {
       reference: "John 3:16",
     });
 

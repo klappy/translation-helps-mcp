@@ -196,7 +196,7 @@ export const fetchTranslationAcademyHandler: PlatformHandler = async (
     // Build headers with X-ray trace (diagnostic data goes in headers only)
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "Cache-Control": "max-age=3600",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
     };
 
     // Add X-ray trace to headers (NOT response body)

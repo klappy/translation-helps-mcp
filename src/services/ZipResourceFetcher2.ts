@@ -203,7 +203,7 @@ export class ZipResourceFetcher2 {
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
       // KV+memory cached catalog per (lang, org, stage=prod, subject)
-      const catalogCacheKey = `catalog:${language}:${organization}:prod:rc:Bible,Aligned Bible`;
+      const catalogCacheKey = catalogUrl; // Use exact URL as KV key
       let catalogData: { data?: CatalogResource[] } | null = null;
       const kvCatalogStart =
         typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -493,7 +493,7 @@ export class ZipResourceFetcher2 {
         const t = targets[i];
         const zipUrl =
           t.zipballUrl ||
-          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(t.refTag)}.zip`;
+          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(t.refTag || "master")}.zip`;
         const { key: r2Key } = r2KeyFromUrl(zipUrl);
         const cleanInner = t.ingredientPath.replace(/^(\.\/|\/)+/, "");
         const fileKey = `${r2Key}/files/${cleanInner}`;
@@ -595,7 +595,7 @@ export class ZipResourceFetcher2 {
 
         const zipUrl =
           t.zipballUrl ||
-          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(t.refTag)}.zip`;
+          `https://git.door43.org/${t.owner}/${t.name}/archive/${encodeURIComponent(t.refTag || "master")}.zip`;
         const { key: r2Key } = r2KeyFromUrl(zipUrl);
         const fileContent = await this.extractFileFromZip(
           zipData,
@@ -683,7 +683,7 @@ export class ZipResourceFetcher2 {
       params.set("includeMetadata", "true");
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
-      const catalogCacheKey = `catalog:${language}:${organization}:prod:rc:${subject}`;
+      const catalogCacheKey = catalogUrl; // Use exact URL as KV key
       let resources: CatalogResource[] = [];
       const kvStart =
         typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -833,7 +833,7 @@ export class ZipResourceFetcher2 {
       const catalogUrl = `${baseCatalog}?${params.toString()}`;
 
       // KV-backed cache key aligned with other helpers
-      const catalogCacheKey = `catalog:${language}:${organization}:prod:rc:${subject}`;
+      const catalogCacheKey = catalogUrl; // Use exact URL as KV key
 
       let catalogData: { data?: CatalogResource[] } | null = null;
       const kvStart =
@@ -935,6 +935,11 @@ export class ZipResourceFetcher2 {
 
       // 3) Resolve by ingredients
       const ingredients = resource.ingredients || [];
+      // Derive URL-based key for extracted files
+      const zipUrlForKey =
+        (zipballUrl as string | null) ||
+        `https://git.door43.org/${resource.owner}/${resource.name}/archive/${encodeURIComponent(refTag as string)}.zip`;
+      const { key: zipKeyForFiles } = r2KeyFromUrl(zipUrlForKey);
 
       if (resourceType === "tw") {
         if (!identifier) return { articles: [] };
@@ -949,56 +954,85 @@ export class ZipResourceFetcher2 {
           // If a path is explicitly provided, trust it and skip discovery
           targetPath = id;
         } else {
+          // INDEX-FIRST: scan archive file list for best matching path
+          try {
+            const allPaths = await this.listZipFiles(zipData);
+            if (allPaths && allPaths.length > 0) {
+              const lower = allPaths.map((p) => p.toLowerCase());
+              const tf = `${term}.md`;
+              const predicates: Array<(p: string) => boolean> = [
+                (p) => p.endsWith(`/content/bible/kt/${tf}`),
+                (p) => p.endsWith(`/content/bible/names/${tf}`),
+                (p) => p.endsWith(`/content/bible/other/${tf}`),
+                (p) => p.endsWith(`/bible/kt/${tf}`),
+                (p) => p.endsWith(`/bible/names/${tf}`),
+                (p) => p.endsWith(`/bible/other/${tf}`),
+                (p) => p.endsWith(`/kt/${tf}`),
+                (p) => p.endsWith(`/names/${tf}`),
+                (p) => p.endsWith(`/other/${tf}`),
+                (p) => p.endsWith(`/${tf}`),
+              ];
+              let idx = -1;
+              for (const pred of predicates) {
+                idx = lower.findIndex(pred);
+                if (idx >= 0) break;
+              }
+              if (idx >= 0) {
+                targetPath = allPaths[idx];
+              }
+            }
+          } catch {
+            // Ignore index scan errors and continue with ingredient-based hints
+          }
+
           // First try to find exact file match in ingredients
-          targetPath =
-            ingredients.find((ing) =>
-              (ing.path || "").toLowerCase().endsWith(`/${term}.md`),
-            )?.path || null;
+          if (!targetPath) {
+            targetPath =
+              ingredients.find((ing) =>
+                (ing.path || "").toLowerCase().endsWith(`/${term}.md`),
+              )?.path || null;
+          }
 
           // If no exact match, try to construct path from directory-based ingredients
           if (!targetPath) {
-            const baseDir = ingredients.find((ing) => {
-              const path = (ing.path || "").toLowerCase();
-              return (
-                path === "./bible" ||
-                path === "bible" ||
-                path.endsWith("/bible")
-              );
-            })?.path;
+            // Collect candidate base directories from ingredients
+            const baseCandidates: string[] = [];
+            for (const ing of ingredients) {
+              const p = String(ing.path || "")
+                .replace(/^\.\//, "")
+                .toLowerCase();
+              if (p === "bible" || p.endsWith("/bible"))
+                baseCandidates.push(p.replace(/\/bible$/, "bible"));
+              if (p === "content" || p.endsWith("/content"))
+                baseCandidates.push(p.replace(/\/content$/, "content"));
+              if (p === "pages" || p.endsWith("/pages"))
+                baseCandidates.push(p.replace(/\/pages$/, "pages"));
+            }
+            // Ensure default order preference and uniqueness
+            const orderedBases = [
+              "content",
+              "bible",
+              "pages",
+              ...baseCandidates,
+            ]
+              .map((v) => v.replace(/^\.\//, ""))
+              .filter((v, i, a) => a.indexOf(v) === i);
 
-            if (baseDir) {
-              // Try common TW path patterns: kt/term.md, names/term.md, other/term.md
-              const cleanBase = baseDir.replace(/^\.\//, "");
+            if (orderedBases.length > 0) {
+              const cleanBase = orderedBases[0];
+              const prefix = /^(content|pages)$/i.test(cleanBase)
+                ? `${cleanBase}/bible`
+                : cleanBase;
               const possiblePaths = [
-                `${cleanBase}/kt/${term}.md`,
-                `${cleanBase}/names/${term}.md`,
-                `${cleanBase}/other/${term}.md`,
+                `${prefix}/kt/${term}.md`,
+                `${prefix}/names/${term}.md`,
+                `${prefix}/other/${term}.md`,
               ];
-
-              // For now, default to kt category (most common)
               targetPath = possiblePaths[0];
             }
           }
 
-          // Check KV term index as a secondary source
-          if (!targetPath) {
-            const indexKey = `tw-index:${language}:${organization}:${term}`;
-            const cached = await this.kvCache.get(indexKey);
-            if (cached) {
-              try {
-                const decoded =
-                  cached instanceof ArrayBuffer
-                    ? new TextDecoder().decode(cached)
-                    : (cached as unknown as string);
-                const parsed = JSON.parse(decoded) as { path?: string };
-                if (parsed?.path) {
-                  targetPath = parsed.path;
-                }
-              } catch {
-                // ignore corrupt cache
-              }
-            }
-          }
+          // No term-index KV lookups; index-first scan is authoritative
         }
 
         if (!targetPath) {
@@ -1015,34 +1049,41 @@ export class ZipResourceFetcher2 {
 
         if (isConstructedPath) {
           // Try all category patterns for constructed paths
+          const baseCandidates: string[] = [];
+          for (const ing of ingredients) {
+            const p = String(ing.path || "")
+              .replace(/^\.\//, "")
+              .toLowerCase();
+            if (p === "content" || p.endsWith("/content"))
+              baseCandidates.push(p.replace(/\/content$/, "content"));
+            if (p === "bible" || p.endsWith("/bible"))
+              baseCandidates.push(p.replace(/\/bible$/, "bible"));
+            if (p === "pages" || p.endsWith("/pages"))
+              baseCandidates.push(p.replace(/\/pages$/, "pages"));
+          }
+          const bases = ["content", "bible", "pages", ...baseCandidates]
+            .map((v) => v.replace(/^\.\//, ""))
+            .filter((v, i, a) => a.indexOf(v) === i);
 
-          const baseDir = ingredients.find((ing) => {
-            const path = (ing.path || "").toLowerCase();
-            return (
-              path === "./bible" || path === "bible" || path.endsWith("/bible")
-            );
-          })?.path;
-
-          if (baseDir) {
-            const cleanBase = baseDir.replace(/^\.\//, "");
-            const categories = ["kt", "names", "other"];
-
+          const categories = ["kt", "names", "other"];
+          for (const base of bases) {
             for (const category of categories) {
-              const tryPath = `${cleanBase}/${category}/${term}.md`;
-
-              // For TW, the paths in the ZIP already include the repository name
+              const prefix = /^(content|pages)$/i.test(base)
+                ? `${base}/bible`
+                : base;
+              const tryPath = `${prefix}/${category}/${term}.md`;
               content = await this.extractFileFromZip(
                 zipData,
                 tryPath,
                 resource.name,
-                `zip:${resource.owner}/${resource.name}:${refTag}`,
+                zipKeyForFiles,
               );
-
               if (content) {
-                targetPath = tryPath; // Update targetPath to reflect successful path
+                targetPath = tryPath;
                 break;
               }
             }
+            if (content) break;
           }
         } else {
           // Try extraction for exact paths
@@ -1050,13 +1091,120 @@ export class ZipResourceFetcher2 {
             zipData,
             targetPath,
             resource.name,
-            `zip:${resource.owner}/${resource.name}:${refTag}`,
+            zipKeyForFiles,
           );
-          // No need to try with prefix - extractFileFromZip already handles that
+          // If exact path failed (e.g., bible vs content), try alternate base directories
+          if (!content) {
+            const baseSwapMatch = targetPath.match(
+              /^(.*?)(\b(?:bible|content|pages)\b)(\/.*)$/i,
+            );
+            if (baseSwapMatch) {
+              const [, prefix, base, rest] = baseSwapMatch;
+              const alts = ["content", "bible", "pages"]; // preference order
+              for (const alt of alts) {
+                if (alt.toLowerCase() === base.toLowerCase()) continue;
+                let newRest = rest;
+                if (
+                  /^(\/)(kt|names|other)\//i.test(rest) &&
+                  /^(content|pages)$/i.test(alt)
+                ) {
+                  newRest = `/bible${rest}`;
+                }
+                if (/^\/bible\//i.test(rest) && alt === "bible") {
+                  newRest = rest;
+                }
+                const altPath = `${prefix}${alt}${newRest}`.replace(/^\/+/, "");
+                const tryContent = await this.extractFileFromZip(
+                  zipData,
+                  altPath,
+                  resource.name,
+                  `zip:${resource.owner}/${resource.name}:${refTag}`,
+                );
+                if (tryContent) {
+                  content = tryContent;
+                  targetPath = altPath;
+                  break;
+                }
+              }
+            }
+          }
         }
 
         if (!content) {
-          return { articles: [] };
+          // Last-resort fallback: scan ZIP index for any matching path
+          try {
+            const allPaths = await this.listZipFiles(zipData);
+            const lower = allPaths.map((p) => p.toLowerCase());
+            const termFile = `${term}.md`;
+
+            const prefers = [
+              (p: string) => p.endsWith(`/bible/kt/${termFile}`),
+              (p: string) => p.endsWith(`/bible/names/${termFile}`),
+              (p: string) => p.endsWith(`/bible/other/${termFile}`),
+              (p: string) => p.endsWith(`/kt/${termFile}`),
+              (p: string) => p.endsWith(`/names/${termFile}`),
+              (p: string) => p.endsWith(`/other/${termFile}`),
+              (p: string) =>
+                (p.includes("/content/") ||
+                  p.includes("/bible/") ||
+                  p.includes("/pages/")) &&
+                p.endsWith(`/${termFile}`),
+              (p: string) => p.endsWith(`/${termFile}`),
+            ];
+
+            let foundIdx = -1;
+            for (const pred of prefers) {
+              foundIdx = lower.findIndex(pred);
+              if (foundIdx >= 0) break;
+            }
+
+            if (foundIdx >= 0) {
+              const foundPath = allPaths[foundIdx];
+              const scanned = await this.extractFileFromZip(
+                zipData,
+                foundPath,
+                resource.name,
+                zipKeyForFiles,
+              );
+              if (scanned) {
+                content = scanned;
+                targetPath = foundPath;
+              }
+            }
+          } catch {
+            // ignore scan errors and fall through to debug response
+          }
+        }
+
+        if (!content) {
+          // Add debug info to the response
+          return {
+            articles: [],
+            debug: {
+              term,
+              targetPath,
+              isConstructedPath,
+              triedCategories: isConstructedPath
+                ? ["kt", "names", "other"]
+                : [],
+              repository: resource.name,
+              refTag,
+              attemptedPaths: isConstructedPath
+                ? [
+                    "content/kt/" + term + ".md",
+                    "content/names/" + term + ".md",
+                    "content/other/" + term + ".md",
+                    "bible/kt/" + term + ".md",
+                    "bible/names/" + term + ".md",
+                    "bible/other/" + term + ".md",
+                    "pages/kt/" + term + ".md",
+                    "pages/names/" + term + ".md",
+                    "pages/other/" + term + ".md",
+                  ]
+                : [targetPath],
+              errorMessage: "Failed to extract content from ZIP",
+            },
+          };
         }
 
         return {
@@ -1271,19 +1419,74 @@ export class ZipResourceFetcher2 {
    */
   private async listZipFiles(zipData: Uint8Array): Promise<string[]> {
     try {
-      const { unzip } = await import("fflate");
+      const { unzipSync, gunzip } = await import("fflate");
 
-      // Use async unzip in Worker environment
-      return new Promise((resolve, _reject) => {
-        unzip(zipData, (err, unzipped) => {
-          if (err) {
-            logger.error("Error listing ZIP files:", err);
-            resolve([]);
-          } else {
-            resolve(Object.keys(unzipped));
-          }
+      // Fast header check: ZIP or GZIP (tar.gz)
+      const isZip =
+        zipData.length >= 2 && zipData[0] === 0x50 && zipData[1] === 0x4b; // PK
+      const isGzip =
+        zipData.length >= 2 && zipData[0] === 0x1f && zipData[1] === 0x8b; // GZ
+
+      if (isZip) {
+        // Lazy mode lists entries via central directory without inflating file contents
+        const unzipped = unzipSync(zipData, { lazy: true } as any);
+        return Object.keys(unzipped);
+      }
+
+      if (isGzip) {
+        // List TAR entries without decoding file contents
+        const tarBytes = await new Promise<Uint8Array>((resolve, reject) => {
+          gunzip(zipData, (err, decompressed) =>
+            err ? reject(err) : resolve(decompressed),
+          );
         });
-      });
+
+        const names: string[] = [];
+        const decoder = new TextDecoder("utf-8");
+
+        const readOct = (
+          arr: Uint8Array,
+          start: number,
+          len: number,
+        ): number => {
+          let s = "";
+          for (let i = start; i < start + len; i++) {
+            const c = arr[i];
+            if (c === 0 || c === 32) continue;
+            s += String.fromCharCode(c);
+          }
+          const trimmed = s.replace(/\0+$/, "").trim();
+          return trimmed ? parseInt(trimmed, 8) : 0;
+        };
+
+        let offset = 0;
+        while (offset + 512 <= tarBytes.length) {
+          const block = tarBytes.subarray(offset, offset + 512);
+          const zero = block.every((b) => b === 0);
+          if (zero) break;
+          const nameRaw = block.subarray(0, 100);
+          let name = decoder.decode(nameRaw).replace(/\0+$/, "");
+          // Handle USTAR prefix if present
+          const ustar = decoder.decode(block.subarray(257, 263));
+          if (ustar.startsWith("ustar")) {
+            const prefix = decoder
+              .decode(block.subarray(345, 500))
+              .replace(/\0+$/, "")
+              .trim();
+            if (prefix) name = `${prefix}/${name}`;
+          }
+          const size = readOct(block, 124, 12);
+          const dataStart = offset + 512;
+          const dataEnd = dataStart + size;
+          if (name) names.push(name);
+          const pad = (512 - (size % 512)) % 512;
+          offset = dataEnd + pad;
+        }
+        return names;
+      }
+
+      // Unknown archive type
+      return [];
     } catch (error) {
       logger.error("Error listing ZIP files:", error as Error);
       return [];
@@ -1664,7 +1867,7 @@ export class ZipResourceFetcher2 {
           }
         }
 
-        const { unzip, gunzip } = await import("fflate");
+        const { unzipSync, gunzip } = await import("fflate");
         // Remove leading ./ if present
         const cleanPath = filePath.replace(/^\.\//, "");
 
@@ -1692,57 +1895,46 @@ export class ZipResourceFetcher2 {
 
         if (!looksLikeTarGz) {
           try {
-            // Use async unzip in Worker environment
-            decodedContent = await new Promise((resolve, _reject) => {
-              unzip(zipData, (err, unzipped) => {
-                if (err) {
-                  // Log error details for debugging
-                  logger.error("ZIP extraction error:", err);
-                  this.tracer.addApiCall({
-                    url: `internal://error/zip-extraction`,
-                    duration: 1,
-                    status: 500,
-                    size: 0,
-                    cached: false,
-                  });
-                  resolve(null);
-                } else {
-                  // Find the matching file
-                  for (const path of possiblePaths) {
-                    if (unzipped[path]) {
-                      const decoder = new TextDecoder("utf-8");
-                      resolve(decoder.decode(unzipped[path]));
-                      return;
-                    }
-                  }
-                  // Check for partial matches - look for files ending with just the filename
-                  const filename = cleanPath.split("/").pop() || cleanPath;
-                  for (const [key, data] of Object.entries(unzipped)) {
-                    if (
-                      key.endsWith(`/${filename}`) ||
-                      key.endsWith(filename)
-                    ) {
-                      const decoder = new TextDecoder("utf-8");
-                      resolve(decoder.decode(data));
-                      return;
-                    }
-                  }
+            // Use synchronous unzip in Worker environment for reliability
+            const unzipped = unzipSync(zipData);
 
-                  // Track when file not found in ZIP
-                  this.tracer.addApiCall({
-                    url: `internal://error/file-not-found-in-zip`,
-                    duration: 1,
-                    status: 404,
-                    size: 0,
-                    cached: false,
-                  });
-                  resolve(null);
+            if (unzipped) {
+              decodedContent = await new Promise((resolve, _reject) => {
+                // Find the matching file
+                for (const path of possiblePaths) {
+                  if (unzipped[path]) {
+                    const decoder = new TextDecoder("utf-8");
+                    resolve(decoder.decode(unzipped[path]));
+                    return;
+                  }
                 }
+                // Check for partial matches - look for files ending with just the filename
+                const filename = cleanPath.split("/").pop() || cleanPath;
+                for (const [key, data] of Object.entries(unzipped)) {
+                  if (key.endsWith(`/${filename}`) || key.endsWith(filename)) {
+                    const decoder = new TextDecoder("utf-8");
+                    resolve(decoder.decode(data));
+                    return;
+                  }
+                }
+
+                // Track when file not found in ZIP
+                this.tracer.addApiCall({
+                  url: `internal://error/file-not-found-in-zip`,
+                  duration: 1,
+                  status: 404,
+                  size: 0,
+                  cached: false,
+                });
+                resolve(null);
               });
-            });
+            } else {
+              decodedContent = null;
+            }
           } catch (_zipErr) {
             // If it fails, try tar.gz path
             logger.error("ZIP extraction exception:", _zipErr as Error);
+            decodedContent = null;
           }
         }
 

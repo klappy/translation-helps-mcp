@@ -103,7 +103,7 @@ export const getWordsForReferenceHandler: PlatformHandler = async (
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
         "X-Response-Time": `${duration}ms`,
       },
       body: JSON.stringify({

@@ -71,15 +71,17 @@ npx wrangler kv key list --binding TRANSLATION_HELPS_CACHE --preview
 npx wrangler kv key list --binding TRANSLATION_HELPS_CACHE
 ```
 
-### Get Specific Key
+### Get Specific Key (URL-only)
 
 ```bash
-# Preview
-npx wrangler kv key get "catalog:en:unfoldingWord:prod:rc:Bible,Aligned Bible" \
+# Preview (KV key is the exact URL)
+npx wrangler kv key get \
+  "https://git.door43.org/api/v1/catalog3/search?owner=unfoldingWord&lang=en&metadataType=rc&subject=Bible%2CAligned%20Bible" \
   --binding TRANSLATION_HELPS_CACHE --preview
 
-# Production
-npx wrangler kv key get "catalog:en:unfoldingWord:prod:rc:Bible,Aligned Bible" \
+# Production (KV key is the exact URL)
+npx wrangler kv key get \
+  "https://git.door43.org/api/v1/catalog3/search?owner=unfoldingWord&lang=en&metadataType=rc&subject=Bible%2CAligned%20Bible" \
   --binding TRANSLATION_HELPS_CACHE
 ```
 

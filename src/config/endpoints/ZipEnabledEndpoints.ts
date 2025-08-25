@@ -58,7 +58,7 @@ export const FETCH_SCRIPTURE_ZIP_CONFIG: EndpointConfig = {
   dataSource: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     type: "zip-cached" as any, // Using 'any' until types are updated
-    cacheTtl: 3600, // 1 hour API response cache
+    cacheTtl: 0, // Response caching disabled per CRITICAL_NEVER_CACHE_RESPONSES.md
     zipConfig: {
       fetchMethod: "getScripture",
       resourceType: "ult", // Default, overridden by params.resource
@@ -120,7 +120,7 @@ export const FETCH_TRANSLATION_QUESTIONS_ZIP_CONFIG: EndpointConfig = {
 
   dataSource: {
     type: "zip-cached" as any,
-    cacheTtl: 7200, // 2 hour API response cache
+    cacheTtl: 0, // Response caching disabled per CRITICAL_NEVER_CACHE_RESPONSES.md
     zipConfig: {
       fetchMethod: "getTSVData",
       resourceType: "tq",
@@ -166,7 +166,7 @@ export const FETCH_TRANSLATION_NOTES_ZIP_CONFIG: EndpointConfig = {
 
   dataSource: {
     type: "zip-cached" as any,
-    cacheTtl: 7200,
+    cacheTtl: 0, // Response caching disabled per CRITICAL_NEVER_CACHE_RESPONSES.md
     zipConfig: {
       fetchMethod: "getTSVData",
       resourceType: "tn",

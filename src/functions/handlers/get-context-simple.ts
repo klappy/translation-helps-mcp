@@ -172,7 +172,7 @@ export const getContextHandler: PlatformHandler = async (
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=1800", // Cache for 30 minutes
+        "Cache-Control": "no-store, no-cache, must-revalidate",
         "X-Response-Time": `${duration}ms`,
       },
       body: JSON.stringify({

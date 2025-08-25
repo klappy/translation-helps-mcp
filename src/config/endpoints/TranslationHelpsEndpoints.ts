@@ -175,21 +175,13 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
 
 /**
  * Get Translation Word (tW) - Individual word articles
- *
- * CURRENT STATUS: BROKEN
- * - Table of Contents works (no term param)
- * - Article fetching returns 404 for ALL terms
- * - ZIP extraction cannot find files despite them existing at en_tw/bible/kt/love.md
- * - Path construction issues between expected paths and actual ZIP structure
- *
- * TODO: Fix ZipResourceFetcher2 to properly extract TW articles from ZIP files
  */
 export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
   name: "get-translation-word",
   path: "/get-translation-word",
-  title: "Get Translation Word (BROKEN - Only ToC Works)",
+  title: "Get Translation Word",
   description:
-    "SUPPOSED to retrieve biblical terms but ZIP extraction is BROKEN. Only Table of Contents works.",
+    "Retrieve biblical terms and definitions from Translation Words (TW) or get a Table of Contents.",
   category: "core",
   responseShape: TRANSLATION_WORDS_SHAPE,
 
@@ -206,9 +198,8 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
 
   examples: [
     {
-      name: "Table of Contents (ONLY WORKING FEATURE)",
-      description:
-        "Shows categories but CANNOT fetch actual articles - content extraction is BROKEN",
+      name: "Table of Contents",
+      description: "Get a structured Table of Contents for all available terms",
       params: {
         language: "en",
         organization: "unfoldingWord",
@@ -225,34 +216,41 @@ export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
       },
     },
     {
-      name: "Term Lookup (BROKEN - Returns 404)",
-      description: "DOES NOT WORK - ZIP extraction cannot find article files",
+      name: "Term Lookup",
+      description: "Fetch a specific biblical term by name",
       params: {
         term: "love",
         language: "en",
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["404", "not found"],
-        minLength: 50,
+        contains: [
+          "Definition:",
+          "Translation Suggestions:",
+          "Bible References:",
+        ],
+        minLength: 1000,
         fields: {
-          error: "string",
+          items: "array",
+          "items[0].content": "string",
+          "items[0].definition": "string",
         },
       },
     },
     {
-      name: "Path Lookup (BROKEN - Returns 404)",
-      description: "DOES NOT WORK - Even with exact path from ZIP",
+      name: "Path Lookup",
+      description: "Fetch a term by its exact file path",
       params: {
         path: "bible/kt/love.md",
         language: "en",
         organization: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["404", "not found"],
-        minLength: 50,
+        contains: ["Definition:", "love", "God"],
+        minLength: 1000,
         fields: {
-          error: "string",
+          items: "array",
+          "items[0].content": "string",
         },
       },
     },
@@ -623,6 +621,55 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
 } as EndpointConfig;
 
 /**
+ * TW Articles Composer - Convenience endpoint: verse -> full TW articles
+ */
+export const TW_ARTICLES_CONFIG: EndpointConfig = {
+  name: "tw-articles",
+  path: "/tw-articles",
+  title: "Translation Word Articles (by reference)",
+  description:
+    "Given a scripture reference, fetch Translation Word Links and resolve each link to a full TW article.",
+  category: "extended",
+  responseShape: TRANSLATION_WORDS_SHAPE,
+
+  params: REFERENCE_PARAMS,
+
+  dataSource: {
+    type: "computed",
+  },
+
+  enabled: true,
+  tags: ["translation", "words", "compose", "extended"],
+
+  examples: [
+    {
+      name: "John 3:16 Articles",
+      description: "All Translation Word articles referenced in John 3:16",
+      params: {
+        reference: "John 3:16",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["love, beloved", "# God", "world, worldly"],
+        fields: {
+          items: "array",
+        },
+      },
+    },
+    {
+      name: "Titus 1:1 Articles",
+      description: "Articles for the key terms in Titus 1:1",
+      params: {
+        reference: "Titus 1:1",
+        language: "en",
+        organization: "unfoldingWord",
+      },
+    },
+  ],
+} as EndpointConfig;
+
+/**
  * All Translation Helps Endpoint Configurations
  */
 export const TRANSLATION_HELPS_ENDPOINTS = [
@@ -632,6 +679,7 @@ export const TRANSLATION_HELPS_ENDPOINTS = [
   BROWSE_TRANSLATION_ACADEMY_CONFIG,
   FETCH_TRANSLATION_WORD_LINKS_CONFIG,
   FETCH_TRANSLATION_NOTES_CONFIG,
+  TW_ARTICLES_CONFIG,
 ] as const;
 
 export default TRANSLATION_HELPS_ENDPOINTS;

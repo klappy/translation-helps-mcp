@@ -60,8 +60,53 @@ function generateTableOfContents(language: string, organization: string) {
 async function getTranslationWord(params: Record<string, any>, request: Request): Promise<any> {
 	const { term, path, rcLink, language = 'en', organization = 'unfoldingWord' } = params;
 
-	// Create tracer for this request
+	// Create tracer for this request (moved up for debug use)
 	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'get-translation-word');
+
+	// TEMPORARY DEBUG - show what's happening
+	if (term === 'debug-info') {
+		return {
+			debug: true,
+			message: 'Debug mode active - returning diagnostic info',
+			params: { term, path, rcLink, language, organization },
+			timestamp: new Date().toISOString()
+		};
+	}
+
+	// SUPER DEBUG MODE - trace the entire flow
+	if (term === 'love-debug') {
+		const debugTrace: any[] = [];
+		debugTrace.push({ step: 1, message: 'Starting debug trace for love term' });
+
+		try {
+			debugTrace.push({ step: 2, message: 'Creating fetcher' });
+			const fetcher = new UnifiedResourceFetcher(tracer);
+
+			debugTrace.push({
+				step: 3,
+				message: 'Calling fetchTranslationWord',
+				params: { term: 'love', language, organization }
+			});
+			const result = await fetcher.fetchTranslationWord('love', language, organization);
+
+			debugTrace.push({ step: 4, message: 'Success!', result });
+			return {
+				debug: true,
+				success: true,
+				trace: debugTrace,
+				result
+			};
+		} catch (error: any) {
+			debugTrace.push({ step: 'error', message: error.message, debug: error.debug });
+			return {
+				debug: true,
+				success: false,
+				trace: debugTrace,
+				error: error.message,
+				errorDebug: error.debug
+			};
+		}
+	}
 
 	// If no parameters provided, return Table of Contents
 	if (!term && !path && !rcLink) {
@@ -116,9 +161,24 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		try {
 			result = await fetcher.fetchTranslationWord(wordKey, language, organization, targetPath);
 		} catch (error) {
+			// TEMPORARY DEBUG - capture error details
+			const errorWithDebug = error as any;
+			if (errorWithDebug.debug) {
+				console.log('[DEBUG] Error has debug info:', errorWithDebug.debug);
+			}
+
 			// If we have a specific path and it failed, try without the path (search by term)
 			if (targetPath) {
-				result = await fetcher.fetchTranslationWord(wordKey, language, organization);
+				try {
+					result = await fetcher.fetchTranslationWord(wordKey, language, organization);
+				} catch (fallbackError) {
+					// Also check fallback error for debug info
+					const fallbackWithDebug = fallbackError as any;
+					if (fallbackWithDebug.debug) {
+						console.log('[DEBUG] Fallback error has debug info:', fallbackWithDebug.debug);
+					}
+					throw fallbackError;
+				}
 			} else {
 				throw error;
 			}
@@ -197,7 +257,12 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		// Add trace information to error context
 		const trace = fetcher.getTrace();
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		throw new Error(`${errorMessage} (Trace: ${JSON.stringify(trace)})`);
+		const debugInfo = (error as any)?.debug;
+		const enhancedError = new Error(`${errorMessage} (Trace: ${JSON.stringify(trace)})`);
+		if (debugInfo) {
+			(enhancedError as any).debug = debugInfo;
+		}
+		throw enhancedError;
 	}
 }
 

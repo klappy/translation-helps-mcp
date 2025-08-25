@@ -177,22 +177,12 @@ export class UnifiedResourceFetcher {
 		path?: string
 	): Promise<TWArticleResult> {
 		const identifier = path || term;
-		console.log(`[UnifiedResourceFetcher] fetchTranslationWord called with:`, {
-			term,
-			language,
-			organization,
-			path,
-			identifier
-		});
-
 		const result = await this.zipFetcher.getMarkdownContent(
 			language,
 			organization,
 			'tw',
 			identifier
 		);
-
-		console.log(`[UnifiedResourceFetcher] getMarkdownContent returned:`, result);
 
 		if (!result || typeof result !== 'object') {
 			throw new Error(`Translation word not found: ${term}`);
@@ -201,9 +191,16 @@ export class UnifiedResourceFetcher {
 		// getMarkdownContent returns { articles: [{ term, markdown, path }] }
 		const twResult = result as {
 			articles: Array<{ term: string; markdown: string; path: string }>;
+			debug?: any;
 		};
 
 		if (!twResult.articles || twResult.articles.length === 0) {
+			// If we have debug info, include it in the error
+			if (twResult.debug) {
+				const error = new Error(`Translation word not found: ${term}`);
+				(error as any).debug = twResult.debug;
+				throw error;
+			}
 			throw new Error(`Translation word not found: ${term}`);
 		}
 

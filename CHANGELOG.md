@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.1.3](https://github.com/klappy/translation-helps-mcp/compare/v7.1.2...v7.1.3) (2025-08-25)
+
+### Documentation
+
+- Update get-translation-word examples to be HONEST about broken state ([574d157](https://github.com/klappy/translation-helps-mcp/commit/574d15700d4ac24f844fc9165cbc6e59421e9201))
+
+### Chores
+
+- **security:** remove secrets file ui/.dev.vars from repo and ignore via .gitignore ([97c998d](https://github.com/klappy/translation-helps-mcp/commit/97c998d0f0f781bb282affbd9fda7d887a0da6ac))
+
 ### [7.1.2](https://github.com/klappy/translation-helps-mcp/compare/v7.1.1...v7.1.2) (2025-08-15)
 
 ### Features

@@ -9,9 +9,9 @@ import { describe, expect, it } from "vitest";
 import { makeRequest } from "../../test-utils";
 
 describe("Health Endpoints", () => {
-  describe("GET /api/v2/health", () => {
+  describe("GET /api/health", () => {
     it("returns healthy status", async () => {
-      const response = await makeRequest("/api/v2/health");
+      const response = await makeRequest("/api/health");
 
       expect(response.status).toBe(200);
       expect(response.data.status).toBe("healthy");
@@ -20,9 +20,9 @@ describe("Health Endpoints", () => {
     });
   });
 
-  describe("GET /api/v2/health-dcs", () => {
+  describe("GET /api/health-dcs", () => {
     it("checks DCS connectivity", async () => {
-      const response = await makeRequest("/api/v2/health-dcs");
+      const response = await makeRequest("/api/health-dcs");
 
       expect(response.status).toBe(200);
       expect(response.data.status).toMatch(/healthy|degraded/);
