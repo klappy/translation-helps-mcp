@@ -336,12 +336,13 @@ async function executeTranslationHelpsPrompt(
 }
 
 async function executeWordsPrompt(reference: string, language: string, fetch: typeof global.fetch) {
-	console.log('[executeWordsPrompt] Starting word links fetch...');
+	console.log('[executeWordsPrompt] Reusing translation-helps logic for word links and articles');
+	
 	const results: any = {
 		words: []
 	};
 
-	// Step 1: Fetch word links
+	// Step 1: Fetch word links (same as main prompt)
 	let wordLinks: any[] = [];
 	try {
 		const linksRes = await fetch(
@@ -349,25 +350,32 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 		);
 		if (linksRes.ok) {
 			const linksData = await linksRes.json();
-			wordLinks = linksData.translationWordLinks || [];
+			wordLinks = linksData.translationWordLinks || linksData.items || [];
+			console.log(`Found ${wordLinks.length} word links for ${reference}`);
 		}
 	} catch (e) {
 		console.error('Failed to fetch word links:', e);
 	}
 
-	// Step 2: Fetch word articles for each term (extract titles)
-	for (const link of wordLinks) {
+	// Step 2: Fetch word articles (same logic as main prompt)
+	console.log(`Fetching word articles for ${wordLinks.length} terms (limiting to 10)`);
+	for (const link of wordLinks.slice(0, 10)) {
 		try {
-			// Use the path parameter from the link (it has category and .md extension)
-			const wordRes = await fetch(
-				`/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`
-			);
+			console.log(`Word link for ${link.term}:`, {
+				term: link.term,
+				path: link.path,
+				rcLink: link.rcLink,
+				category: link.category
+			});
+			
+			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`;
+			console.log(`Fetching word article: ${url}`);
+			const wordRes = await fetch(url);
 			if (wordRes.ok) {
 				const wordData = await wordRes.json();
 
-				// Check if it's an error response
 				if (wordData.error) {
-					// Try fetching using rcLink instead as fallback
+					console.error(`Word fetch with path returned error for ${link.term}. Trying rcLink fallback...`);
 					try {
 						const fallbackRes = await fetch(
 							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}`
@@ -377,6 +385,7 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 							if (!fallbackData.error && fallbackData.content) {
 								const titleMatch = fallbackData.content.match(/^#\s+(.+)$/m);
 								const title = titleMatch ? titleMatch[1].trim() : link.term;
+								console.log(`✅ rcLink fallback succeeded: ${link.term} → "${title}"`);
 								results.words.push({
 									term: link.term,
 									title: title,
@@ -389,10 +398,9 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 							}
 						}
 					} catch (fallbackError) {
-						// Fallback failed
+						console.error(`rcLink fallback also failed for ${link.term}`);
 					}
 					
-					// Both failed - add with term as title
 					results.words.push({
 						term: link.term,
 						title: link.term,
@@ -405,19 +413,19 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 					continue;
 				}
 
-				// API now returns direct article format with title field
 				let title = link.term;
-				
 				if (wordData.title) {
 					title = wordData.title;
+					console.log(`✅ Extracted title from wordData.title: "${title}"`);
 				} else if (wordData.content) {
-					// Fallback to extracting from content
 					const titleMatch = wordData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
+						console.log(`✅ Extracted title from H1: "${title}"`);
 					}
 				}
 
+				console.log(`Fetched word: ${link.term} → title: "${title}"`);
 				results.words.push({
 					term: link.term,
 					title: title,
@@ -427,7 +435,6 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 					rcLink: link.rcLink
 				});
 			} else {
-				// HTTP error - still add term
 				results.words.push({
 					term: link.term,
 					title: link.term,
@@ -442,8 +449,8 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 			console.error(`Failed to fetch word article for ${link.term}:`, e);
 		}
 	}
+	console.log(`Total words fetched: ${results.words.length}`);
 
-	console.log(`[executeWordsPrompt] Complete! Returning ${results.words.length} words`);
 	return json(results);
 }
 
@@ -452,13 +459,14 @@ async function executeAcademyPrompt(
 	language: string,
 	fetch: typeof global.fetch
 ) {
-	console.log('[executeAcademyPrompt] Starting notes fetch...');
+	console.log('[executeAcademyPrompt] Reusing translation-helps logic for notes and academy articles');
+	
 	const results: any = {
 		notes: null,
 		academyArticles: []
 	};
 
-	// Step 1: Fetch notes
+	// Step 1: Fetch notes (same as main prompt)
 	try {
 		const notesRes = await fetch(
 			`/api/translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
@@ -470,9 +478,10 @@ async function executeAcademyPrompt(
 		console.error('Failed to fetch notes:', e);
 	}
 
-	// Step 2: Fetch academy articles from supportReferences
+	// Step 2: Fetch academy articles from supportReferences (same logic as main prompt)
 	const supportRefs = extractSupportReferences(results.notes);
-	for (const ref of supportRefs) {
+	console.log(`Found ${supportRefs.length} support references (limiting to 5)`);
+	for (const ref of supportRefs.slice(0, 5)) {
 		try {
 			const academyRes = await fetch(
 				`/api/fetch-translation-academy?rcLink=${encodeURIComponent(ref)}&language=${language}`
@@ -480,9 +489,8 @@ async function executeAcademyPrompt(
 			if (academyRes.ok) {
 				const academyData = await academyRes.json();
 
-				// Check if it's an error response
 				if (academyData.error) {
-					// Try fetching using just the moduleId as fallback
+					console.error(`Academy fetch with rcLink returned error for ${ref}. Trying moduleId fallback...`);
 					const moduleId = ref.split('/').pop() || '';
 					if (moduleId) {
 						try {
@@ -494,6 +502,7 @@ async function executeAcademyPrompt(
 								if (!fallbackData.error && fallbackData.content) {
 									const titleMatch = fallbackData.content.match(/^#\s+(.+)$/m);
 									const title = titleMatch ? titleMatch[1].trim() : moduleId;
+									console.log(`✅ moduleId fallback succeeded: ${moduleId} → "${title}"`);
 									results.academyArticles.push({
 										moduleId: moduleId,
 										title: title,
@@ -506,11 +515,10 @@ async function executeAcademyPrompt(
 								}
 							}
 						} catch (fallbackError) {
-							// Fallback failed
+							console.error(`moduleId fallback also failed for ${moduleId}`);
 						}
 					}
 					
-					// Both failed - add with error flag
 					results.academyArticles.push({
 						moduleId: moduleId,
 						title: moduleId,
@@ -523,20 +531,21 @@ async function executeAcademyPrompt(
 					continue;
 				}
 
-				// API now returns direct article format with title field
 				const moduleId = academyData.moduleId || ref.split('/').pop() || ref;
 				let title = moduleId;
 				
 				if (academyData.title) {
 					title = academyData.title;
+					console.log(`✅ Extracted title from academyData.title: "${title}"`);
 				} else if (academyData.content) {
-					// Fallback to extracting from content
 					const titleMatch = academyData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
+						console.log(`✅ Extracted title from H1: "${title}"`);
 					}
 				}
 
+				console.log(`Fetched academy article: ${ref} → title: "${title}"`);
 				results.academyArticles.push({
 					moduleId: moduleId,
 					title: title,
@@ -546,7 +555,6 @@ async function executeAcademyPrompt(
 					category: academyData.category || ''
 				});
 			} else {
-				// HTTP error - still add with moduleId
 				const moduleId = ref.split('/').pop() || ref;
 				results.academyArticles.push({
 					moduleId: moduleId,
@@ -562,8 +570,8 @@ async function executeAcademyPrompt(
 			console.error(`Failed to fetch academy article for ${ref}:`, e);
 		}
 	}
+	console.log(`Total academy articles fetched: ${results.academyArticles.length}`);
 
-	console.log(`[executeAcademyPrompt] Complete! Returning ${results.academyArticles.length} articles`);
 	return json(results);
 }
 
