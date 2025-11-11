@@ -8,14 +8,15 @@ The chat feature uses **OpenAI GPT-4o-mini** to provide intelligent Bible study 
 
 ### Local Development
 
-You need to create **TWO files** depending on which dev server you use:
+The chat endpoint uses **SvelteKit's built-in environment variable system** which automatically loads from `ui/.env`:
 
-#### **For Vite Dev Server** (`npm run dev` - port 8174)
+#### **Setup (Works for Both Dev Servers)**
 
 1. **Create `ui/.env` file:**
    ```bash
    # Create the file in the ui directory
-   touch ui/.env
+   cd ui
+   echo "OPENAI_API_KEY=your-key-here" > .env
    ```
 
 2. **Add your OpenAI API key to `ui/.env`:**
@@ -23,47 +24,29 @@ You need to create **TWO files** depending on which dev server you use:
    OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```
 
-#### **For Wrangler Dev Server** (`npm run dev:cf` - port 8787)
+**This works for:**
+- ✅ `npm run dev` (Vite on port 8174)
+- ✅ `npm run dev:cf` (Wrangler on port 8787)
+- ✅ Both read `ui/.env` automatically
+- ✅ File is gitignored and safe
 
-1. **Use `ui/.dev.vars` file** (already created)
+**Get an OpenAI API key:**
 
-2. **Add your OpenAI API key to `ui/.dev.vars`:**
-   ```env
-   OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   ```
+If you don't have one:
+- Visit: https://platform.openai.com/api-keys
+- Sign in or create an account
+- Click "Create new secret key"
+- Copy the key immediately (you won't see it again!)
+- Paste it into `ui/.env`
 
-**Summary:**
-- `ui/.env` → for Vite (`npm run dev` on port 8174) ✅
-- `ui/.dev.vars` → for Wrangler (`npm run dev:cf` on port 8787) ✅
-- Both files are gitignored and safe ✅
-
-3. **Get an OpenAI API key:**
-   
-   If you don't have one:
-   - Visit: https://platform.openai.com/api-keys
-   - Sign in or create an account
-   - Click "Create new secret key"
-   - Copy the key immediately (you won't see it again!)
-   - Paste it into `ui/.dev.vars`
-
-4. **Start the Wrangler development server:**
-   
-   ⚠️ **IMPORTANT:** The chat feature requires Wrangler (not Vite) to read `.dev.vars`
-   
+3. **Restart your development server:**
    ```bash
    # Stop the current server (Ctrl+C)
-   
-   # Use dev:cf to start Wrangler (port 8787)
-   npm run dev:cf
+   npm run dev
    ```
-   
-   **Why Wrangler?**
-   - `npm run dev` uses Vite (can't read `.dev.vars`)
-   - `npm run dev:cf` uses Wrangler (reads `.dev.vars` ✅)
-   - Wrangler also provides KV/R2 bindings needed for production parity
 
-5. **Test the chat:**
-   - Visit: http://localhost:8787/chat (Wrangler uses port 8787)
+4. **Test the chat:**
+   - Visit: http://localhost:8174/chat
    - Try asking: "Show me John 3:16 in ULT"
    - The AI should respond with scripture and citations
 
