@@ -14,8 +14,20 @@
 	let copiedConfig = false;
 	let copiedCurl = false;
 
+	interface MCPConfig {
+		name: string;
+		file: string;
+		location: {
+			windows: string;
+			mac: string;
+			linux: string;
+		};
+		config: any;
+		note?: string;
+	}
+
 	// MCP Configuration examples
-	const mcpConfigs = {
+	const mcpConfigs: Record<MCPClientType, MCPConfig> = {
 		claude: {
 			name: 'Claude Desktop',
 			file: 'claude_desktop_config.json',
@@ -28,10 +40,14 @@
 				mcpServers: {
 					'translation-helps': {
 						command: 'npx',
-						args: ['-y', 'translation-helps-mcp']
+						args: ['tsx', 'C:/path/to/translation-helps-mcp-2/src/index.ts'],
+						env: {
+							NODE_ENV: 'production'
+						}
 					}
 				}
-			}
+			},
+			note: 'Replace C:/path/to/translation-helps-mcp-2 with your actual clone path'
 		},
 		cursor: {
 			name: 'Cursor',
@@ -45,10 +61,13 @@
 				mcpServers: {
 					'translation-helps': {
 						command: 'npx',
-						args: ['-y', 'translation-helps-mcp']
+						args: ['tsx', 'src/index.ts'],
+						cwd: 'C:/path/to/translation-helps-mcp-2',
+						env: {}
 					}
 				}
-			}
+			},
+			note: 'Replace C:/path/to/translation-helps-mcp-2 with your actual clone path'
 		},
 		cline: {
 			name: 'Cline',
@@ -62,10 +81,12 @@
 				mcpServers: {
 					'translation-helps': {
 						command: 'npx',
-						args: ['-y', 'translation-helps-mcp']
+						args: ['tsx', 'src/index.ts'],
+						cwd: 'C:/path/to/translation-helps-mcp-2'
 					}
 				}
-			}
+			},
+			note: 'Replace C:/path/to/translation-helps-mcp-2 with your actual clone path'
 		},
 		generic: {
 			name: 'Generic MCP Client',
@@ -79,10 +100,11 @@
 				mcpServers: {
 					'translation-helps': {
 						command: 'npx',
-						args: ['-y', 'translation-helps-mcp']
+						args: ['tsx', '/path/to/translation-helps-mcp-2/src/index.ts']
 					}
 				}
-			}
+			},
+			note: 'Replace /path/to/translation-helps-mcp-2 with your actual clone path'
 		}
 	};
 
@@ -435,6 +457,18 @@ data = response.json()`
 									class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-300"
 									>1</span
 								>
+								<div class="flex-1">
+									<span class="block mb-2">Clone the repository and install dependencies:</span>
+									<pre class="rounded bg-gray-950 p-2 text-xs text-gray-300 overflow-x-auto"><code>git clone https://github.com/klappy/translation-helps-mcp.git
+cd translation-helps-mcp-2
+npm install</code></pre>
+								</div>
+							</li>
+							<li class="flex gap-3">
+								<span
+									class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-300"
+									>2</span
+								>
 								<span>
 									Create or edit <code class="rounded bg-gray-800 px-2 py-0.5 text-cyan-300"
 										>{currentConfig.file}</code
@@ -444,21 +478,28 @@ data = response.json()`
 							<li class="flex gap-3">
 								<span
 									class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-300"
-									>2</span
+									>3</span
 								>
-								<span>Paste the configuration JSON shown above</span>
+								<div class="flex-1">
+									<span class="block mb-2">Paste the configuration JSON and update the path:</span>
+									{#if currentConfig.note}
+										<div class="rounded bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs text-yellow-300">
+											⚠️ {currentConfig.note}
+										</div>
+									{/if}
+								</div>
 							</li>
 							<li class="flex gap-3">
 								<span
 									class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-300"
-									>3</span
+									>4</span
 								>
 								<span>Restart {currentConfig.name}</span>
 							</li>
 							<li class="flex gap-3">
 								<span
 									class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-300"
-									>4</span
+									>5</span
 								>
 								<span
 									>Start using tools like <code class="rounded bg-gray-800 px-2 py-0.5 text-cyan-300"
