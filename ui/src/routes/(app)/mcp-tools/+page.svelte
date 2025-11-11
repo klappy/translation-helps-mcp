@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { Activity, Beaker, Check, Copy, Database, Link } from 'lucide-svelte';
+	import { Activity, Beaker, Check, Copy, Database, Link, Workflow } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import ApiTester from '../../../lib/components/ApiTester.svelte';
 	import PerformanceMetrics from '../../../lib/components/PerformanceMetrics.svelte';
 	import XRayTraceView from '../../../lib/components/XRayTraceView.svelte';
 
-	// Two main categories - Core tools and Health status
-	type MainCategory = 'core' | 'health';
+	// Three main categories - Core tools, MCP Prompts, and Health status
+	type MainCategory = 'core' | 'prompts' | 'health';
 	const categoryConfig = {
 		core: { name: 'Core Tools', icon: Database },
+		prompts: { name: 'MCP Prompts', icon: Workflow },
 		health: { name: 'Health Status', icon: Activity }
 	} as const;
 
@@ -34,6 +35,116 @@
 		{ status: 'pending' | 'success' | 'warning' | 'error'; message?: string }
 	> = {};
 	let isTestingAll = false;
+
+	// MCP Prompts state
+	let selectedPrompt: any = null;
+	let promptParameters: Record<string, any> = {};
+	let isExecutingPrompt = false;
+	let promptWorkflowSteps: Array<{
+		step: number;
+		description: string;
+		status: 'pending' | 'running' | 'complete' | 'error';
+		duration?: number;
+		data?: any;
+	}> = [];
+	let promptResults: any = null;
+	let showRawResponse = false;
+
+	// MCP Prompts definitions
+	const mcpPrompts = [
+		{
+			id: 'translation-helps-for-passage',
+			title: 'Complete Translation Help',
+			icon: '📖',
+			description:
+				'Get comprehensive help: scripture, notes, questions, word articles (with titles), and training resources',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'text',
+					required: true,
+					placeholder: 'e.g., John 3:16',
+					description: 'Bible reference to get help for'
+				},
+				{
+					name: 'language',
+					type: 'text',
+					required: false,
+					default: 'en',
+					placeholder: 'Language code (default: en)',
+					description: 'Language for the resources'
+				}
+			],
+			workflow: [
+				{ step: 1, tool: 'fetch_scripture', description: 'Fetch scripture text' },
+				{ step: 2, tool: 'fetch_translation_questions', description: 'Get translation questions' },
+				{ step: 3, tool: 'fetch_translation_word_links', description: 'Get word links' },
+				{
+					step: 4,
+					tool: 'fetch_translation_word',
+					description: 'Fetch word articles (multiple calls)',
+					multiple: true
+				},
+				{ step: 5, tool: 'fetch_translation_notes', description: 'Get translation notes' },
+				{
+					step: 6,
+					tool: 'fetch_translation_academy',
+					description: 'Get academy articles (multiple calls)',
+					multiple: true
+				}
+			]
+		},
+		{
+			id: 'get-translation-words-for-passage',
+			title: 'Dictionary Entries',
+			icon: '📚',
+			description: 'Get translation word definitions with human-readable titles (not technical IDs)',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'text',
+					required: true,
+					placeholder: 'e.g., Romans 1:1',
+					description: 'Bible reference'
+				},
+				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' }
+			],
+			workflow: [
+				{ step: 1, tool: 'fetch_translation_word_links', description: 'Get word links' },
+				{
+					step: 2,
+					tool: 'fetch_translation_word',
+					description: 'Fetch word articles and extract titles',
+					multiple: true
+				}
+			]
+		},
+		{
+			id: 'get-translation-academy-for-passage',
+			title: 'Training Articles',
+			icon: '🎓',
+			description: 'Find Translation Academy articles referenced in translation notes',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'text',
+					required: true,
+					placeholder: 'e.g., Matthew 5:13',
+					description: 'Bible reference'
+				},
+				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' }
+			],
+			workflow: [
+				{ step: 1, tool: 'fetch_translation_notes', description: 'Get translation notes' },
+				{
+					step: 2,
+					tool: 'fetch_translation_academy',
+					description: 'Fetch academy articles from supportReferences',
+					multiple: true
+				}
+			]
+		}
+	];
 
 	// Load endpoints from configuration
 	onMount(async () => {
@@ -83,7 +194,73 @@
 		if (category === 'core') {
 			return coreEndpoints;
 		}
+		if (category === 'prompts') {
+			return mcpPrompts;
+		}
 		return [];
+	}
+
+	// Select a prompt
+	function selectPrompt(prompt: any) {
+		selectedPrompt = prompt;
+		selectedCategory = 'prompts';
+		promptParameters = {};
+		// Set default values
+		prompt.parameters.forEach((param: any) => {
+			if (param.default) {
+				promptParameters[param.name] = param.default;
+			}
+		});
+		promptWorkflowSteps = [];
+		promptResults = null;
+	}
+
+	// Execute prompt workflow
+	async function executePrompt() {
+		if (!selectedPrompt) return;
+
+		isExecutingPrompt = true;
+		promptResults = null;
+		
+		// Initialize workflow steps
+		promptWorkflowSteps = selectedPrompt.workflow.map((w: any) => ({
+			step: w.step,
+			description: w.description,
+			status: 'pending' as const
+		}));
+
+		try {
+			const response = await fetch('/api/execute-prompt', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					promptName: selectedPrompt.id,
+					parameters: promptParameters
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const data = await response.json();
+			promptResults = data;
+
+			// Mark all steps as complete
+			promptWorkflowSteps = promptWorkflowSteps.map((step) => ({
+				...step,
+				status: 'complete' as const
+			}));
+		} catch (error) {
+			console.error('Prompt execution failed:', error);
+			// Mark the last step as error
+			if (promptWorkflowSteps.length > 0) {
+				const lastIndex = promptWorkflowSteps.length - 1;
+				promptWorkflowSteps[lastIndex].status = 'error';
+			}
+		} finally {
+			isExecutingPrompt = false;
+		}
 	}
 
 	// Group core endpoints by subcategory
@@ -818,9 +995,21 @@
 			on:click={() => {
 				selectedCategory = 'core';
 				selectedEndpoint = null;
+				selectedPrompt = null;
 			}}
 		>
 			Core Tools
+		</button>
+		<button
+			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
+			class:active={selectedCategory === 'prompts'}
+			on:click={() => {
+				selectedCategory = 'prompts';
+				selectedEndpoint = null;
+				selectedPrompt = null;
+			}}
+		>
+			✨ MCP Prompts
 		</button>
 		<button
 			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
@@ -828,6 +1017,7 @@
 			on:click={() => {
 				selectedCategory = 'health';
 				selectedEndpoint = null;
+				selectedPrompt = null;
 			}}
 		>
 			💪 Health Status
@@ -1357,6 +1547,281 @@
 					<!-- Loading state for core -->
 					<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
 						<p class="text-gray-400">Loading core endpoints...</p>
+					</div>
+				{/if}
+			{:else if selectedCategory === 'prompts'}
+				<!-- MCP Prompts View -->
+				{#if !selectedPrompt}
+					<!-- Prompts List -->
+					<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
+						<h2 class="mb-4 text-2xl font-bold text-white">✨ MCP Prompts</h2>
+						<p class="mb-6 text-gray-300">
+							Guided workflows that chain multiple tools together for comprehensive translation help
+						</p>
+
+						<div class="grid gap-4 md:grid-cols-3">
+							{#each mcpPrompts as prompt}
+								<button
+									class="group rounded-lg border border-gray-700 bg-gray-900/50 p-6 text-left transition-all hover:border-blue-500/50 hover:bg-gray-900"
+									on:click={() => selectPrompt(prompt)}
+								>
+									<div class="mb-3 flex items-center gap-3">
+										<span class="text-3xl">{prompt.icon}</span>
+										<div>
+											<h3 class="text-lg font-semibold text-white group-hover:text-blue-400">
+												{prompt.title}
+											</h3>
+										</div>
+									</div>
+									<p class="mb-4 text-sm text-gray-400">{prompt.description}</p>
+									<div class="text-xs text-gray-500">
+										{prompt.workflow.length} steps • {prompt.parameters.length} parameters
+									</div>
+								</button>
+							{/each}
+						</div>
+
+						<div class="mt-6 rounded-lg border border-blue-500/30 bg-blue-900/10 p-4">
+							<h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-400">
+								<span>ℹ️</span>
+								About MCP Prompts
+							</h3>
+							<p class="text-sm text-gray-300">
+								Prompts are guided workflows that help AI assistants chain multiple tool calls
+								together intelligently. Click any prompt above to try it out!
+							</p>
+						</div>
+					</div>
+				{:else}
+					<!-- Prompt Executor -->
+					<div class="lg:col-span-3">
+						<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+							<!-- Header -->
+							<div class="mb-6 flex items-start justify-between">
+								<div>
+									<div class="mb-2 flex items-center gap-3">
+										<span class="text-3xl">{selectedPrompt.icon}</span>
+										<h2 class="text-2xl font-bold text-white">{selectedPrompt.title}</h2>
+									</div>
+									<p class="text-gray-300">{selectedPrompt.description}</p>
+								</div>
+								<button
+									class="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-600"
+									on:click={() => {
+										selectedPrompt = null;
+										promptResults = null;
+										promptWorkflowSteps = [];
+									}}
+								>
+									← Back to Prompts
+								</button>
+							</div>
+
+							<!-- Parameter Form -->
+							<div class="mb-6 rounded-lg border border-gray-700 bg-gray-900/50 p-4">
+								<h3 class="mb-4 text-lg font-semibold text-white">Parameters</h3>
+								<form on:submit|preventDefault={executePrompt} class="space-y-4">
+									{#each selectedPrompt.parameters as param}
+										<div>
+											<label class="mb-1 block text-sm font-medium text-gray-300">
+												{param.name}
+												{#if param.required}
+													<span class="text-red-400">*</span>
+												{/if}
+											</label>
+											<input
+												type={param.type}
+												bind:value={promptParameters[param.name]}
+												placeholder={param.placeholder}
+												required={param.required}
+												class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+											/>
+											{#if param.description}
+												<p class="mt-1 text-xs text-gray-500">{param.description}</p>
+											{/if}
+										</div>
+									{/each}
+									<button
+										type="submit"
+										disabled={isExecutingPrompt}
+										class="rounded-lg bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+									>
+										{#if isExecutingPrompt}
+											<span class="flex items-center gap-2">
+												<span
+													class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+												></span>
+												Executing Workflow...
+											</span>
+										{:else}
+											Execute Prompt
+										{/if}
+									</button>
+								</form>
+							</div>
+
+							<!-- Workflow Progress -->
+							{#if promptWorkflowSteps.length > 0}
+								<div class="mb-6 rounded-lg border border-gray-700 bg-gray-900/50 p-4">
+									<h3 class="mb-4 text-lg font-semibold text-white">Workflow Progress</h3>
+									<div class="space-y-2">
+										{#each promptWorkflowSteps as step}
+											<div
+												class="flex items-center gap-3 rounded-lg p-3 {step.status === 'complete'
+													? 'bg-green-900/20'
+													: step.status === 'running'
+														? 'bg-blue-900/20'
+														: step.status === 'error'
+															? 'bg-red-900/20'
+															: 'bg-gray-800/50'}"
+											>
+												<div class="flex-shrink-0">
+													{#if step.status === 'complete'}
+														<span class="text-green-400">✅</span>
+													{:else if step.status === 'running'}
+														<span
+															class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
+														></span>
+													{:else if step.status === 'error'}
+														<span class="text-red-400">❌</span>
+													{:else}
+														<span class="text-gray-500">⏹️</span>
+													{/if}
+												</div>
+												<div class="flex-1">
+													<div class="text-sm font-medium text-gray-200">
+														Step {step.step}: {step.description}
+													</div>
+													{#if step.duration}
+														<div class="text-xs text-gray-500">({step.duration}ms)</div>
+													{/if}
+												</div>
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							<!-- Results -->
+							{#if promptResults}
+								<div class="rounded-lg border border-gray-700 bg-gray-900/50 p-4">
+									<div class="mb-4 flex items-center justify-between">
+										<h3 class="text-lg font-semibold text-white">Results</h3>
+										<button
+											on:click={() => (showRawResponse = !showRawResponse)}
+											class="rounded-lg border border-gray-600 bg-gray-700 px-3 py-1 text-sm text-gray-300 hover:bg-gray-600"
+										>
+											{showRawResponse ? '✨ Show Formatted' : '📋 Show Raw JSON'}
+										</button>
+									</div>
+									<div class="space-y-4">
+										{#if showRawResponse}
+											<!-- Raw JSON Response -->
+											<pre
+												class="overflow-x-auto rounded-lg bg-gray-800 p-4 text-xs text-gray-300">{JSON.stringify(promptResults, null, 2)}</pre>
+										{:else if selectedPrompt.id === 'translation-helps-for-passage' && promptResults.words}
+											<!-- Comprehensive Results -->
+											<div class="space-y-4">
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">📖 Scripture Text</h4>
+													<div class="rounded-lg bg-gray-800 p-3 text-sm text-gray-300">
+														{promptResults.scripture?.text || 'No scripture found'}
+													</div>
+												</div>
+
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														📚 Key Terms ({promptResults.words?.length || 0})
+													</h4>
+													<div class="grid gap-2 sm:grid-cols-2">
+														{#each promptResults.words || [] as word}
+															<div class="rounded-lg bg-gray-800 p-3">
+																<div class="font-medium text-white">{word.title}</div>
+																<div class="text-xs text-gray-500">
+																	{word.term} • {word.category}
+																</div>
+															</div>
+														{/each}
+													</div>
+												</div>
+
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														❓ Translation Questions ({promptResults.questions?.count || 0})
+													</h4>
+													<div class="space-y-2">
+														{#each promptResults.questions?.items || [] as question}
+															<div class="rounded-lg bg-gray-800 p-3">
+																<div class="mb-1 text-sm font-medium text-white">
+																	{question.Question}
+																</div>
+																<div class="text-xs text-gray-400">{question.Response}</div>
+															</div>
+														{/each}
+													</div>
+												</div>
+
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														📝 Translation Notes ({promptResults.notes?.notes?.length ||
+															promptResults.notes?.items?.length ||
+															0})
+													</h4>
+													<div class="space-y-2">
+														{#each promptResults.notes?.notes || promptResults.notes?.items || [] as note}
+															<div class="rounded-lg bg-gray-800 p-3">
+																<div class="mb-1 flex items-start justify-between gap-2">
+																	<div class="text-sm font-medium text-white">
+																		{note.Quote || 'General note'}
+																	</div>
+																	{#if note.SupportReference}
+																		<div class="flex-shrink-0 text-xs text-blue-400">
+																			{note.SupportReference.split('/').pop()}
+																		</div>
+																	{/if}
+																</div>
+																<div class="text-xs text-gray-400">
+																	{note.Note?.substring(0, 200)}{note.Note?.length > 200
+																		? '...'
+																		: ''}
+																</div>
+															</div>
+														{/each}
+													</div>
+												</div>
+
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														🎓 Academy Articles ({promptResults.academyArticles?.length || 0})
+													</h4>
+													<div class="space-y-2">
+														{#each promptResults.academyArticles || [] as article}
+															<div
+																class="rounded-lg bg-gray-800 p-3 {article.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
+																<div class="font-medium text-white">{article.title}</div>
+																<div class="text-xs text-gray-500">
+																	{article.moduleId}
+																	{#if article.error}
+																		<span class="text-red-400">• Error loading</span>
+																	{/if}
+																</div>
+															</div>
+														{/each}
+													</div>
+												</div>
+											</div>
+										{:else}
+											<!-- Generic JSON Results -->
+											<pre
+												class="overflow-x-auto rounded-lg bg-gray-800 p-4 text-xs text-gray-300">{JSON.stringify(promptResults, null, 2)}</pre>
+										{/if}
+									</div>
+								</div>
+							{/if}
+						</div>
 					</div>
 				{/if}
 			{:else if selectedCategory === 'health'}
