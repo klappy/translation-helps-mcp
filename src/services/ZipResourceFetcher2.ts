@@ -927,6 +927,27 @@ export class ZipResourceFetcher2 {
         resourceName: resource?.name,
       });
 
+      // If cache yielded zero resources, delete the bad cache and retry fresh
+      if (!resource && catalogData?.data?.length === 0 && cachedCatalog) {
+        logger.warn(
+          `[getMarkdownContent] Got empty catalog from cache, invalidating and retrying fresh`,
+          { key: catalogCacheKey },
+        );
+        // Delete the corrupted/empty cache
+        try {
+          await this.kvCache.delete(catalogCacheKey);
+        } catch (err) {
+          logger.warn(`Failed to delete corrupt catalog cache: ${err}`);
+        }
+        // Retry with fresh fetch (recursion with no cache)
+        return this.getMarkdownContent(
+          language,
+          organization,
+          resourceType,
+          identifier,
+        );
+      }
+
       if (!resource) {
         logger.warn(
           `[getMarkdownContent] No resource found in catalog for ${resourceType}`,
