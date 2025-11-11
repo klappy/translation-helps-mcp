@@ -113,10 +113,18 @@ async function executeTranslationHelpsPrompt(
 	for (const link of wordLinks.slice(0, 10)) {
 		// Limit to first 10
 		try {
+			// Log the word link structure
+			console.log(`Word link for ${link.term}:`, {
+				term: link.term,
+				path: link.path,
+				rcLink: link.rcLink,
+				category: link.category
+			});
+			
 			// Use the path parameter from the link (it has category and .md extension)
-			const wordRes = await fetch(
-				`/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`
-			);
+			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`;
+			console.log(`Fetching word article: ${url}`);
+			const wordRes = await fetch(url);
 			if (wordRes.ok) {
 				const wordData = await wordRes.json();
 
@@ -137,7 +145,10 @@ async function executeTranslationHelpsPrompt(
 								results.words.push({
 									term: link.term,
 									title: title,
-									category: link.category
+									category: link.category,
+									content: fallbackData.content || '',
+									path: link.path,
+									rcLink: link.rcLink
 								});
 								continue;
 							}
@@ -150,7 +161,11 @@ async function executeTranslationHelpsPrompt(
 					results.words.push({
 						term: link.term,
 						title: link.term,
-						category: link.category
+						category: link.category,
+						content: '',
+						path: link.path,
+						rcLink: link.rcLink,
+						error: true
 					});
 					continue;
 				}
@@ -175,14 +190,21 @@ async function executeTranslationHelpsPrompt(
 				results.words.push({
 					term: link.term,
 					title: title,
-					category: link.category
+					category: link.category,
+					content: wordData.content || '',
+					path: link.path,
+					rcLink: link.rcLink
 				});
 			} else {
 				// HTTP error - still add term
 				results.words.push({
 					term: link.term,
 					title: link.term,
-					category: link.category
+					category: link.category,
+					content: '',
+					path: link.path,
+					rcLink: link.rcLink,
+					error: true
 				});
 			}
 		} catch (e) {
@@ -234,7 +256,10 @@ async function executeTranslationHelpsPrompt(
 									results.academyArticles.push({
 										moduleId: moduleId,
 										title: title,
-										rcLink: ref
+										rcLink: ref,
+										content: fallbackData.content || '',
+										path: fallbackData.path || '',
+										category: fallbackData.category || ''
 									});
 									continue;
 								}
@@ -249,6 +274,9 @@ async function executeTranslationHelpsPrompt(
 						moduleId: moduleId,
 						title: moduleId,
 						rcLink: ref,
+						content: '',
+						path: '',
+						category: '',
 						error: true
 					});
 					continue;
@@ -274,7 +302,10 @@ async function executeTranslationHelpsPrompt(
 				results.academyArticles.push({
 					moduleId: moduleId,
 					title: title,
-					rcLink: ref
+					rcLink: ref,
+					content: academyData.content || '',
+					path: academyData.path || '',
+					category: academyData.category || ''
 				});
 			} else {
 				// HTTP error - still add with moduleId from RC link
@@ -283,6 +314,9 @@ async function executeTranslationHelpsPrompt(
 					moduleId: moduleId,
 					title: moduleId,
 					rcLink: ref,
+					content: '',
+					path: '',
+					category: '',
 					error: true
 				});
 			}
@@ -339,7 +373,10 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 								results.words.push({
 									term: link.term,
 									title: title,
-									category: link.category
+									category: link.category,
+									content: fallbackData.content || '',
+									path: link.path,
+									rcLink: link.rcLink
 								});
 								continue;
 							}
@@ -352,7 +389,11 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 					results.words.push({
 						term: link.term,
 						title: link.term,
-						category: link.category
+						category: link.category,
+						content: '',
+						path: link.path,
+						rcLink: link.rcLink,
+						error: true
 					});
 					continue;
 				}
@@ -373,14 +414,21 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 				results.words.push({
 					term: link.term,
 					title: title,
-					category: link.category
+					category: link.category,
+					content: wordData.content || '',
+					path: link.path,
+					rcLink: link.rcLink
 				});
 			} else {
 				// HTTP error - still add term
 				results.words.push({
 					term: link.term,
 					title: link.term,
-					category: link.category
+					category: link.category,
+					content: '',
+					path: link.path,
+					rcLink: link.rcLink,
+					error: true
 				});
 			}
 		} catch (e) {
@@ -440,7 +488,10 @@ async function executeAcademyPrompt(
 									results.academyArticles.push({
 										moduleId: moduleId,
 										title: title,
-										rcLink: ref
+										rcLink: ref,
+										content: fallbackData.content || '',
+										path: fallbackData.path || '',
+										category: fallbackData.category || ''
 									});
 									continue;
 								}
@@ -455,6 +506,9 @@ async function executeAcademyPrompt(
 						moduleId: moduleId,
 						title: moduleId,
 						rcLink: ref,
+						content: '',
+						path: '',
+						category: '',
 						error: true
 					});
 					continue;
@@ -477,7 +531,10 @@ async function executeAcademyPrompt(
 				results.academyArticles.push({
 					moduleId: moduleId,
 					title: title,
-					rcLink: ref
+					rcLink: ref,
+					content: academyData.content || '',
+					path: academyData.path || '',
+					category: academyData.category || ''
 				});
 			} else {
 				// HTTP error - still add with moduleId
@@ -486,6 +543,9 @@ async function executeAcademyPrompt(
 					moduleId: moduleId,
 					title: moduleId,
 					rcLink: ref,
+					content: '',
+					path: '',
+					category: '',
 					error: true
 				});
 			}
