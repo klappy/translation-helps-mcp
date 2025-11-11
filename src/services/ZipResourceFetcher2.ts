@@ -937,7 +937,7 @@ export class ZipResourceFetcher2 {
       });
 
       // If cache yielded zero resources, delete the bad cache and retry fresh
-      if (!resource && catalogData?.data?.length === 0 && !forceRefresh) {
+      if (!resource && (!catalogData?.data || catalogData.data.length === 0) && !forceRefresh) {
         logger.warn(
           `[getMarkdownContent] Got empty catalog from cache, invalidating and retrying with force refresh`,
           { key: catalogCacheKey },

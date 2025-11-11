@@ -234,8 +234,9 @@ data = response.json()`
 		}
 	}
 
-	const currentConfig = $derived(mcpConfigs[activeMCPClient]);
-	const currentExample = $derived(restExamples[activeRESTExample]);
+	// Reactive statements for current selections
+	$: currentConfig = mcpConfigs[activeMCPClient];
+	$: currentExample = restExamples[activeRESTExample];
 </script>
 
 <svelte:head>
