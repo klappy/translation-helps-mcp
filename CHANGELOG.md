@@ -2,180 +2,180 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### [7.1.3](https://github.com/klappy/translation-helps-mcp/compare/v7.1.2...v7.1.3) (2025-08-25)
+### [7.1.3](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.1.2...v7.1.3) (2025-08-25)
 
 ### Documentation
 
-- Update get-translation-word examples to be HONEST about broken state ([574d157](https://github.com/klappy/translation-helps-mcp/commit/574d15700d4ac24f844fc9165cbc6e59421e9201))
+- Update get-translation-word examples to be HONEST about broken state ([574d157](https://github.com/unfoldingWord/translation-helps-mcp/commit/574d15700d4ac24f844fc9165cbc6e59421e9201))
 
 ### Chores
 
-- **security:** remove secrets file ui/.dev.vars from repo and ignore via .gitignore ([97c998d](https://github.com/klappy/translation-helps-mcp/commit/97c998d0f0f781bb282affbd9fda7d887a0da6ac))
+- **security:** remove secrets file ui/.dev.vars from repo and ignore via .gitignore ([97c998d](https://github.com/unfoldingWord/translation-helps-mcp/commit/97c998d0f0f781bb282affbd9fda7d887a0da6ac))
 
-### [7.1.2](https://github.com/klappy/translation-helps-mcp/compare/v7.1.1...v7.1.2) (2025-08-15)
+### [7.1.2](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.1.1...v7.1.2) (2025-08-15)
 
 ### Features
 
-- Add automatic endpoint testing with visual status indicators\n\n- Add Test All Endpoints button to test all endpoints at once\n- Show colored dots (green/yellow/red) for endpoint status\n- Green = working, Yellow = returns empty/warning, Red = error\n- Display error messages on hover for failed endpoints\n- Automatically tests with default parameters\n- Small delay between tests to avoid overwhelming server ([8cc37f5](https://github.com/klappy/translation-helps-mcp/commit/8cc37f5585d777938a59c5c070a8bf7cec1b48a4))
-- Add enhanced error tracing and copy buttons to MCP tools ([c46ff10](https://github.com/klappy/translation-helps-mcp/commit/c46ff1084bc684446200d49dd9ceb19b609795a3))
-- Reimplement get-translation-word endpoint with proper RC link support ([238ddff](https://github.com/klappy/translation-helps-mcp/commit/238ddffe969cccbb1531eae2f42c464e8c0806aa))
-- Reimplement get-translation-word endpoint with RC link support ([a545ba8](https://github.com/klappy/translation-helps-mcp/commit/a545ba8ba3eefed846bf427a3e7290befa907dcf))
-- Reimplement get-translation-word endpoint with Table of Contents ([44f444d](https://github.com/klappy/translation-helps-mcp/commit/44f444dcbd1d876df080d67fd7510c8b340ac625))
-- Reorganize MCP tools into logical categories\n\n- Group endpoints by usage: Scripture, Verse Referenced, RC Linked, Browsing, Discovery\n- Add status indicators in category descriptions\n- Sort endpoints within each category by logical order\n- Note which endpoints are working vs broken ([8522814](https://github.com/klappy/translation-helps-mcp/commit/8522814a15a4bbf2e040d47bc8782fe9b2139f96))
+- Add automatic endpoint testing with visual status indicators\n\n- Add Test All Endpoints button to test all endpoints at once\n- Show colored dots (green/yellow/red) for endpoint status\n- Green = working, Yellow = returns empty/warning, Red = error\n- Display error messages on hover for failed endpoints\n- Automatically tests with default parameters\n- Small delay between tests to avoid overwhelming server ([8cc37f5](https://github.com/unfoldingWord/translation-helps-mcp/commit/8cc37f5585d777938a59c5c070a8bf7cec1b48a4))
+- Add enhanced error tracing and copy buttons to MCP tools ([c46ff10](https://github.com/unfoldingWord/translation-helps-mcp/commit/c46ff1084bc684446200d49dd9ceb19b609795a3))
+- Reimplement get-translation-word endpoint with proper RC link support ([238ddff](https://github.com/unfoldingWord/translation-helps-mcp/commit/238ddffe969cccbb1531eae2f42c464e8c0806aa))
+- Reimplement get-translation-word endpoint with RC link support ([a545ba8](https://github.com/unfoldingWord/translation-helps-mcp/commit/a545ba8ba3eefed846bf427a3e7290befa907dcf))
+- Reimplement get-translation-word endpoint with Table of Contents ([44f444d](https://github.com/unfoldingWord/translation-helps-mcp/commit/44f444dcbd1d876df080d67fd7510c8b340ac625))
+- Reorganize MCP tools into logical categories\n\n- Group endpoints by usage: Scripture, Verse Referenced, RC Linked, Browsing, Discovery\n- Add status indicators in category descriptions\n- Sort endpoints within each category by logical order\n- Note which endpoints are working vs broken ([8522814](https://github.com/unfoldingWord/translation-helps-mcp/commit/8522814a15a4bbf2e040d47bc8782fe9b2139f96))
 
 ### Bug Fixes
 
-- Fix MCP tools page by removing non-existent endpoints ([89cd645](https://github.com/klappy/translation-helps-mcp/commit/89cd645ec64fee9d2a3cc4371db28ec73b536c54))
-- Update get-translation-word default test case to working example ([0437584](https://github.com/klappy/translation-helps-mcp/commit/04375845aeadbd67cdd1306f71a59850eddfdf4a))
-- Update MCP tools health checks with correct endpoint names and parameters\n\n- Fix endpoint names (translation-notes, translation-questions) in health checks\n- Add missing language/organization parameters for all endpoints\n- Add test parameters for resolve-rc-link endpoint\n- Translation notes now returns data successfully ([5c31bb3](https://github.com/klappy/translation-helps-mcp/commit/5c31bb351d05c38d870ae330e1604d23794721a1))
-- Use async gunzip instead of gunzipSync for Worker compatibility\n\n- Replace gunzipSync with async gunzip to fix Worker environment issues\n- Simplify translation notes fetching to remove problematic filtering\n- Add copy buttons to MCP tools for better UX\n- Fix MCP tools page by removing non-existent endpoints ([c491530](https://github.com/klappy/translation-helps-mcp/commit/c4915303ea49e75fa79d1fe2b5619a605b171c83))
-- **zip:** validate and purge corrupted ZIP and tar.gz from cache; add R2 deleteZip; improve tarball fallback and size/header guards ([382aac5](https://github.com/klappy/translation-helps-mcp/commit/382aac5ef4830fe8a349edbf8b6e1642c4f7b8cf))
+- Fix MCP tools page by removing non-existent endpoints ([89cd645](https://github.com/unfoldingWord/translation-helps-mcp/commit/89cd645ec64fee9d2a3cc4371db28ec73b536c54))
+- Update get-translation-word default test case to working example ([0437584](https://github.com/unfoldingWord/translation-helps-mcp/commit/04375845aeadbd67cdd1306f71a59850eddfdf4a))
+- Update MCP tools health checks with correct endpoint names and parameters\n\n- Fix endpoint names (translation-notes, translation-questions) in health checks\n- Add missing language/organization parameters for all endpoints\n- Add test parameters for resolve-rc-link endpoint\n- Translation notes now returns data successfully ([5c31bb3](https://github.com/unfoldingWord/translation-helps-mcp/commit/5c31bb351d05c38d870ae330e1604d23794721a1))
+- Use async gunzip instead of gunzipSync for Worker compatibility\n\n- Replace gunzipSync with async gunzip to fix Worker environment issues\n- Simplify translation notes fetching to remove problematic filtering\n- Add copy buttons to MCP tools for better UX\n- Fix MCP tools page by removing non-existent endpoints ([c491530](https://github.com/unfoldingWord/translation-helps-mcp/commit/c4915303ea49e75fa79d1fe2b5619a605b171c83))
+- **zip:** validate and purge corrupted ZIP and tar.gz from cache; add R2 deleteZip; improve tarball fallback and size/header guards ([382aac5](https://github.com/unfoldingWord/translation-helps-mcp/commit/382aac5ef4830fe8a349edbf8b6e1642c4f7b8cf))
 
 ### Documentation
 
-- Add antifragile architecture documentation ([87c9eac](https://github.com/klappy/translation-helps-mcp/commit/87c9eacf8172e4126385f52aebe8b909c9d7c8c8))
-- Add R2 bucket setup guide for production ([ed27633](https://github.com/klappy/translation-helps-mcp/commit/ed27633bea14b7006d505c4f11d414e5b993f3ad))
-- Fix R2 setup guide to reflect automatic caching ([1a6da3a](https://github.com/klappy/translation-helps-mcp/commit/1a6da3a7ed379b95c7b8a05dc04def12a705d619))
+- Add antifragile architecture documentation ([87c9eac](https://github.com/unfoldingWord/translation-helps-mcp/commit/87c9eacf8172e4126385f52aebe8b909c9d7c8c8))
+- Add R2 bucket setup guide for production ([ed27633](https://github.com/unfoldingWord/translation-helps-mcp/commit/ed27633bea14b7006d505c4f11d414e5b993f3ad))
+- Fix R2 setup guide to reflect automatic caching ([1a6da3a](https://github.com/unfoldingWord/translation-helps-mcp/commit/1a6da3a7ed379b95c7b8a05dc04def12a705d619))
 
 ### Refactoring
 
-- Fix TW ZIP path construction and improve error handling ([6500e34](https://github.com/klappy/translation-helps-mcp/commit/6500e34e88e4be9c977b282f5831109456a4acbe))
+- Fix TW ZIP path construction and improve error handling ([6500e34](https://github.com/unfoldingWord/translation-helps-mcp/commit/6500e34e88e4be9c977b282f5831109456a4acbe))
 
-### [7.1.1](https://github.com/klappy/translation-helps-mcp/compare/v7.1.0...v7.1.1) (2025-08-15)
+### [7.1.1](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.1.0...v7.1.1) (2025-08-15)
 
 ### Bug Fixes
 
-- Use async unzip for extractFileFromZip method ([1f3583e](https://github.com/klappy/translation-helps-mcp/commit/1f3583e2fbb443d8cb4bb709dd9c3cadc067da2a))
+- Use async unzip for extractFileFromZip method ([1f3583e](https://github.com/unfoldingWord/translation-helps-mcp/commit/1f3583e2fbb443d8cb4bb709dd9c3cadc067da2a))
 
-## [7.1.0](https://github.com/klappy/translation-helps-mcp/compare/v7.0.0...v7.1.0) (2025-08-15)
+## [7.1.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.0.0...v7.1.0) (2025-08-15)
 
 ### Features
 
-- Add RC link resolver endpoint ([3cccb45](https://github.com/klappy/translation-helps-mcp/commit/3cccb458a52d4e737f36ec4d8a55d72f0f75b1d4))
+- Add RC link resolver endpoint ([3cccb45](https://github.com/unfoldingWord/translation-helps-mcp/commit/3cccb458a52d4e737f36ec4d8a55d72f0f75b1d4))
 
 ### Bug Fixes
 
-- Correct parameter order for get-available-books ([9b5cad9](https://github.com/klappy/translation-helps-mcp/commit/9b5cad99b019ef7660d750f3623e445ef094402e))
-- Filter out book/chapter level notes from translation-notes ([cb58583](https://github.com/klappy/translation-helps-mcp/commit/cb58583293053a6616f0be6ae47af8604db69dca))
-- Major functionality improvements for broken endpoints ([58ed23f](https://github.com/klappy/translation-helps-mcp/commit/58ed23f85f31188d06de6ae13cd82bd895c9c5bd))
-- Make pre-push hook check for Wrangler before running smoke tests ([e13a665](https://github.com/klappy/translation-helps-mcp/commit/e13a6657adb637b1265b5132b65d43da6424bfb7))
-- Standardize ALL endpoints to use UnifiedResourceFetcher ([9767dd7](https://github.com/klappy/translation-helps-mcp/commit/9767dd7f416b6a3ccdad34da262f4397438ce71d))
-- Standardize ALL remaining endpoints with tracer support ([385b9fc](https://github.com/klappy/translation-helps-mcp/commit/385b9fcc907bb03c1323d3ca32b513e7c5e2a696))
-- Update endpoint examples to match actual response data ([6c71117](https://github.com/klappy/translation-helps-mcp/commit/6c71117da83744cbc54907faece30321956b85bc))
-- Update get-available-books to use catalog ingredients ([382ddf3](https://github.com/klappy/translation-helps-mcp/commit/382ddf3a8ec6d740930cbe99742eeb785c95049a))
-- Use async unzip in Worker environment ([f5a7c84](https://github.com/klappy/translation-helps-mcp/commit/f5a7c8439405d3e5159588602418dbd699b67054))
+- Correct parameter order for get-available-books ([9b5cad9](https://github.com/unfoldingWord/translation-helps-mcp/commit/9b5cad99b019ef7660d750f3623e445ef094402e))
+- Filter out book/chapter level notes from translation-notes ([cb58583](https://github.com/unfoldingWord/translation-helps-mcp/commit/cb58583293053a6616f0be6ae47af8604db69dca))
+- Major functionality improvements for broken endpoints ([58ed23f](https://github.com/unfoldingWord/translation-helps-mcp/commit/58ed23f85f31188d06de6ae13cd82bd895c9c5bd))
+- Make pre-push hook check for Wrangler before running smoke tests ([e13a665](https://github.com/unfoldingWord/translation-helps-mcp/commit/e13a6657adb637b1265b5132b65d43da6424bfb7))
+- Standardize ALL endpoints to use UnifiedResourceFetcher ([9767dd7](https://github.com/unfoldingWord/translation-helps-mcp/commit/9767dd7f416b6a3ccdad34da262f4397438ce71d))
+- Standardize ALL remaining endpoints with tracer support ([385b9fc](https://github.com/unfoldingWord/translation-helps-mcp/commit/385b9fcc907bb03c1323d3ca32b513e7c5e2a696))
+- Update endpoint examples to match actual response data ([6c71117](https://github.com/unfoldingWord/translation-helps-mcp/commit/6c71117da83744cbc54907faece30321956b85bc))
+- Update get-available-books to use catalog ingredients ([382ddf3](https://github.com/unfoldingWord/translation-helps-mcp/commit/382ddf3a8ec6d740930cbe99742eeb785c95049a))
+- Use async unzip in Worker environment ([f5a7c84](https://github.com/unfoldingWord/translation-helps-mcp/commit/f5a7c8439405d3e5159588602418dbd699b67054))
 
 ### Tests
 
-- Skip removed fetch-resources endpoint in smoke tests ([26d9aef](https://github.com/klappy/translation-helps-mcp/commit/26d9aefc1bf480706d8dcbd130fbb3f77487f64d))
+- Skip removed fetch-resources endpoint in smoke tests ([26d9aef](https://github.com/unfoldingWord/translation-helps-mcp/commit/26d9aefc1bf480706d8dcbd130fbb3f77487f64d))
 
-## [7.0.0](https://github.com/klappy/translation-helps-mcp/compare/v6.6.3...v7.0.0) (2025-08-15)
-
-### Features
-
-- Complete architecture overhaul - 100% real data, zero mocks ([9f8eed7](https://github.com/klappy/translation-helps-mcp/commit/9f8eed76bf7a293d15b78f7f530071d6ef110271))
-
-### [6.6.3](https://github.com/klappy/translation-helps-mcp/compare/v6.6.2...v6.6.3) (2025-08-14)
+## [7.0.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.6.3...v7.0.0) (2025-08-15)
 
 ### Features
 
-- **tw:** add KV caching to getMarkdownContent catalog lookup; align with unified cache + X-Ray ([47403bc](https://github.com/klappy/translation-helps-mcp/commit/47403bc49ebafefddd3f1130803db807f1bdf7e8))
+- Complete architecture overhaul - 100% real data, zero mocks ([9f8eed7](https://github.com/unfoldingWord/translation-helps-mcp/commit/9f8eed76bf7a293d15b78f7f530071d6ef110271))
 
-### [6.6.2](https://github.com/klappy/translation-helps-mcp/compare/v6.6.1...v6.6.2) (2025-08-14)
+### [6.6.3](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.6.2...v6.6.3) (2025-08-14)
+
+### Features
+
+- **tw:** add KV caching to getMarkdownContent catalog lookup; align with unified cache + X-Ray ([47403bc](https://github.com/unfoldingWord/translation-helps-mcp/commit/47403bc49ebafefddd3f1130803db807f1bdf7e8))
+
+### [6.6.2](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.6.1...v6.6.2) (2025-08-14)
 
 ### Bug Fixes
 
-- **api:** replace mock get-translation-word with real DCS-backed fetch; keep /mcp-tools self-discovery intact ([daa39ea](https://github.com/klappy/translation-helps-mcp/commit/daa39ea95fd2929f03d826339dee619f17026a0c))
+- **api:** replace mock get-translation-word with real DCS-backed fetch; keep /mcp-tools self-discovery intact ([daa39ea](https://github.com/unfoldingWord/translation-helps-mcp/commit/daa39ea95fd2929f03d826339dee619f17026a0c))
 
-### [6.6.1](https://github.com/klappy/translation-helps-mcp/compare/v6.6.0...v6.6.1) (2025-08-14)
+### [6.6.1](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.6.0...v6.6.1) (2025-08-14)
 
 ### Features
 
-- **archives:** fallback to Link header (tar.gz) when zipball fetch fails; store under alt URL key; keep R2/Cache x-ray events ([f64cbb7](https://github.com/klappy/translation-helps-mcp/commit/f64cbb7ac0442daffab84dc355b6d7c4bf1f0ba0))
-- **archives:** prefer tag tar.gz before immutable Link when ZIP fails; keep dual-write to ref tar key for cache hits ([1df4489](https://github.com/klappy/translation-helps-mcp/commit/1df448920f2db3f281fcbb6c6e1a1a89b8055d06))
-- **cache,r2:** ZIP-first R2 lookup with tar.gz fallback; correct content-type; add health R2 diagnostics and ZIP-first proof ([ad317c5](https://github.com/klappy/translation-helps-mcp/commit/ad317c5b8f2f487a16e1f2c0da83593a0415a428))
-- **cache:** add R2 + Cache API support for zip and tar.gz archives; improve X-Ray tracing and disable response caching\n\n- Add tar.gz extraction (gunzip + TAR walk) in ZipResourceFetcher2\n- Use URL-derived R2 keys and store extracted files under /files/<path>\n- Initialize R2 env per request and always include trace on errors\n- Mark endpoint responses as no-store; only R2/Cache used for files\n- Normalize inner paths to avoid double slashes in file keys ([7801f59](https://github.com/klappy/translation-helps-mcp/commit/7801f59c9f08ced1641e3c32e39d4730908d2603))
-- **storage:** use R2 + Cache API for ZIPs and extracted files; add ZIP_FILES binding and helpers; bucket name set to translation-helps-mcp-zip-persistance ([48f1fe1](https://github.com/klappy/translation-helps-mcp/commit/48f1fe15dda3ed42c916e0dc328c0dd5ac778ff2))
-- **tracing:** always record attempted archive URLs (primary and Link fallback) so X-Ray never shows empty apiCalls array; expose getLastTrace helper ([2f46864](https://github.com/klappy/translation-helps-mcp/commit/2f468642a70b1eaa0a563ad059a91b39ec43e0ff))
+- **archives:** fallback to Link header (tar.gz) when zipball fetch fails; store under alt URL key; keep R2/Cache x-ray events ([f64cbb7](https://github.com/unfoldingWord/translation-helps-mcp/commit/f64cbb7ac0442daffab84dc355b6d7c4bf1f0ba0))
+- **archives:** prefer tag tar.gz before immutable Link when ZIP fails; keep dual-write to ref tar key for cache hits ([1df4489](https://github.com/unfoldingWord/translation-helps-mcp/commit/1df448920f2db3f281fcbb6c6e1a1a89b8055d06))
+- **cache,r2:** ZIP-first R2 lookup with tar.gz fallback; correct content-type; add health R2 diagnostics and ZIP-first proof ([ad317c5](https://github.com/unfoldingWord/translation-helps-mcp/commit/ad317c5b8f2f487a16e1f2c0da83593a0415a428))
+- **cache:** add R2 + Cache API support for zip and tar.gz archives; improve X-Ray tracing and disable response caching\n\n- Add tar.gz extraction (gunzip + TAR walk) in ZipResourceFetcher2\n- Use URL-derived R2 keys and store extracted files under /files/<path>\n- Initialize R2 env per request and always include trace on errors\n- Mark endpoint responses as no-store; only R2/Cache used for files\n- Normalize inner paths to avoid double slashes in file keys ([7801f59](https://github.com/unfoldingWord/translation-helps-mcp/commit/7801f59c9f08ced1641e3c32e39d4730908d2603))
+- **storage:** use R2 + Cache API for ZIPs and extracted files; add ZIP_FILES binding and helpers; bucket name set to translation-helps-mcp-zip-persistance ([48f1fe1](https://github.com/unfoldingWord/translation-helps-mcp/commit/48f1fe15dda3ed42c916e0dc328c0dd5ac778ff2))
+- **tracing:** always record attempted archive URLs (primary and Link fallback) so X-Ray never shows empty apiCalls array; expose getLastTrace helper ([2f46864](https://github.com/unfoldingWord/translation-helps-mcp/commit/2f468642a70b1eaa0a563ad059a91b39ec43e0ff))
 
 ### Bug Fixes
 
-- **fetch:** use whitelisted USER_AGENT for DCS in trackedFetch to avoid 500; fully remove KV lookups for file paths in ZipResourceFetcher2 and trace R2/cache events ([75b9b6e](https://github.com/klappy/translation-helps-mcp/commit/75b9b6e8b169e14146aebbc475b0a2b5a614204e))
-- restore Cloudflare Workers ~1ms cold start platform claim ([55c5484](https://github.com/klappy/translation-helps-mcp/commit/55c5484792c1d03595c449cb41ca9d11feaa1348))
-- update outdated website claims and performance assertions ([95203c9](https://github.com/klappy/translation-helps-mcp/commit/95203c96620b8b569d5531d99f985c81fdf5a9c8))
+- **fetch:** use whitelisted USER_AGENT for DCS in trackedFetch to avoid 500; fully remove KV lookups for file paths in ZipResourceFetcher2 and trace R2/cache events ([75b9b6e](https://github.com/unfoldingWord/translation-helps-mcp/commit/75b9b6e8b169e14146aebbc475b0a2b5a614204e))
+- restore Cloudflare Workers ~1ms cold start platform claim ([55c5484](https://github.com/unfoldingWord/translation-helps-mcp/commit/55c5484792c1d03595c449cb41ca9d11feaa1348))
+- update outdated website claims and performance assertions ([95203c9](https://github.com/unfoldingWord/translation-helps-mcp/commit/95203c96620b8b569d5531d99f985c81fdf5a9c8))
 
 ### Chores
 
-- **cf:** add KV and R2 bindings under env.production for Pages Functions ([5791ad1](https://github.com/klappy/translation-helps-mcp/commit/5791ad1ab85bab869fbf1d48b0e91bd90d4da748))
-- **lint:** exclude eslint.config.js from lint scope to avoid self-referential terminology rule ([22ed4e8](https://github.com/klappy/translation-helps-mcp/commit/22ed4e8ed5e6551bee40eb9a00b7bf403dbef5fe))
+- **cf:** add KV and R2 bindings under env.production for Pages Functions ([5791ad1](https://github.com/unfoldingWord/translation-helps-mcp/commit/5791ad1ab85bab869fbf1d48b0e91bd90d4da748))
+- **lint:** exclude eslint.config.js from lint scope to avoid self-referential terminology rule ([22ed4e8](https://github.com/unfoldingWord/translation-helps-mcp/commit/22ed4e8ed5e6551bee40eb9a00b7bf403dbef5fe))
 
-## [6.6.0](https://github.com/klappy/translation-helps-mcp/compare/v6.5.0...v6.6.0) (2025-08-14)
+## [6.6.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.5.0...v6.6.0) (2025-08-14)
 
 ### Features
 
-- **chat:** better self-discovery and tool usage\n\n- Add fieldDescriptions across resources (TW, TQ, scripture alignment)\n- Expose flattened selfDiscovery in /api/mcp-config\n- Improve endpoint descriptions with detailed params and examples\n- Normalize endpoint names and alias params (word->term)\n- Default md for get-translation-word; drop bad path/reference\n- Pretty-print TW article content into model context\n\nBuilds clean; tests require dev server routing which we skip pre-release ([9a44327](https://github.com/klappy/translation-helps-mcp/commit/9a443279be159333578e1e71212c82f7742fee85))
+- **chat:** better self-discovery and tool usage\n\n- Add fieldDescriptions across resources (TW, TQ, scripture alignment)\n- Expose flattened selfDiscovery in /api/mcp-config\n- Improve endpoint descriptions with detailed params and examples\n- Normalize endpoint names and alias params (word->term)\n- Default md for get-translation-word; drop bad path/reference\n- Pretty-print TW article content into model context\n\nBuilds clean; tests require dev server routing which we skip pre-release ([9a44327](https://github.com/unfoldingWord/translation-helps-mcp/commit/9a443279be159333578e1e71212c82f7742fee85))
 
 ### Tests
 
-- update smoke test to expect version 6.5.0 ([4bae7e8](https://github.com/klappy/translation-helps-mcp/commit/4bae7e886a08e221f23e4d8eeec4e124ea593736))
+- update smoke test to expect version 6.5.0 ([4bae7e8](https://github.com/unfoldingWord/translation-helps-mcp/commit/4bae7e886a08e221f23e4d8eeec4e124ea593736))
 
 ### Chores
 
-- **changelog:** sync UI changelog to 6.5.0 from root ([4273821](https://github.com/klappy/translation-helps-mcp/commit/42738214ad9da02a4269b9ccecc65c9c26513c0b))
-- **release:** ensure UI changelog copy is staged and fix posttag message quoting ([6be7c0e](https://github.com/klappy/translation-helps-mcp/commit/6be7c0e088211b48377bd52c11929edbe230e2cd))
+- **changelog:** sync UI changelog to 6.5.0 from root ([4273821](https://github.com/unfoldingWord/translation-helps-mcp/commit/42738214ad9da02a4269b9ccecc65c9c26513c0b))
+- **release:** ensure UI changelog copy is staged and fix posttag message quoting ([6be7c0e](https://github.com/unfoldingWord/translation-helps-mcp/commit/6be7c0e088211b48377bd52c11929edbe230e2cd))
 
-## [6.5.0](https://github.com/klappy/translation-helps-mcp/compare/v6.4.0...v6.5.0) (2025-08-14)
+## [6.5.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.4.0...v6.5.0) (2025-08-14)
 
 ### Features
 
-- **ui/chat:** pin composer to bottom, make conversation the only scroller, and add rich starter suggestions; mobile svh + safe-area padding; hide footer on chat route ([06d5311](https://github.com/klappy/translation-helps-mcp/commit/06d5311a1899b409e992740fd21520836d828fef))
+- **ui/chat:** pin composer to bottom, make conversation the only scroller, and add rich starter suggestions; mobile svh + safe-area padding; hide footer on chat route ([06d5311](https://github.com/unfoldingWord/translation-helps-mcp/commit/06d5311a1899b409e992740fd21520836d828fef))
 
 ### Chores
 
-- apply prettier formatting to version bump files ([4edcc46](https://github.com/klappy/translation-helps-mcp/commit/4edcc4685f14213837fa514c592f543036d0fc52))
+- apply prettier formatting to version bump files ([4edcc46](https://github.com/unfoldingWord/translation-helps-mcp/commit/4edcc4685f14213837fa514c592f543036d0fc52))
 
-## [6.4.0](https://github.com/klappy/translation-helps-mcp/compare/v6.3.0...v6.4.0) (2025-08-14)
+## [6.4.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.3.0...v6.4.0) (2025-08-14)
 
 ### Features
 
-- **chat:** restore X-ray in streaming mode\n\n- Emit xray and xray:final SSE events with tools and timings\n- Client listens and attaches xrayData to streaming assistant message\n- Fix eslint issues in streaming loop and try/catch ([d4b17ff](https://github.com/klappy/translation-helps-mcp/commit/d4b17ff937f8618eff2f9eafc9619bdc75e85331))
-- enhance MCP self-discovery with field descriptions for translation notes ([5366dd9](https://github.com/klappy/translation-helps-mcp/commit/5366dd943e817f19652cf478033002c85b8440ea))
+- **chat:** restore X-ray in streaming mode\n\n- Emit xray and xray:final SSE events with tools and timings\n- Client listens and attaches xrayData to streaming assistant message\n- Fix eslint issues in streaming loop and try/catch ([d4b17ff](https://github.com/unfoldingWord/translation-helps-mcp/commit/d4b17ff937f8618eff2f9eafc9619bdc75e85331))
+- enhance MCP self-discovery with field descriptions for translation notes ([5366dd9](https://github.com/unfoldingWord/translation-helps-mcp/commit/5366dd943e817f19652cf478033002c85b8440ea))
 
 ### Bug Fixes
 
-- **chat:** add safe defaults for tool-call params (language, organization, format)\n\n- language=en, organization=unfoldingWord when omitted\n- default format=md for human-facing endpoints\n- stabilizes context answers and X-ray tool details ([750fc06](https://github.com/klappy/translation-helps-mcp/commit/750fc06952d62b8259c37b63dfeaeced3d4eb065))
+- **chat:** add safe defaults for tool-call params (language, organization, format)\n\n- language=en, organization=unfoldingWord when omitted\n- default format=md for human-facing endpoints\n- stabilizes context answers and X-ray tool details ([750fc06](https://github.com/unfoldingWord/translation-helps-mcp/commit/750fc06952d62b8259c37b63dfeaeced3d4eb065))
 
 ### Chores
 
-- **release:** 6.3.0 context aggregation via TN intros; add SSE streaming server support\n\n- get-context now aggregates front:intro and {chapter}:intro only\n- exclude verse-level notes to avoid overlap with notes endpoint\n- support ranges (book/chapter) for intros\n- chat endpoint: add edge-safe SSE streaming (server side)\n- prep for client streaming UI\n- bump tests to 6.3.0 ([6657db0](https://github.com/klappy/translation-helps-mcp/commit/6657db068aefa96349f21dbb0637d93ea9791180))
+- **release:** 6.3.0 context aggregation via TN intros; add SSE streaming server support\n\n- get-context now aggregates front:intro and {chapter}:intro only\n- exclude verse-level notes to avoid overlap with notes endpoint\n- support ranges (book/chapter) for intros\n- chat endpoint: add edge-safe SSE streaming (server side)\n- prep for client streaming UI\n- bump tests to 6.3.0 ([6657db0](https://github.com/unfoldingWord/translation-helps-mcp/commit/6657db068aefa96349f21dbb0637d93ea9791180))
 
-## [6.3.0](https://github.com/klappy/translation-helps-mcp/compare/v6.2.2...v6.3.0) (2025-08-14)
+## [6.3.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.2.2...v6.3.0) (2025-08-14)
 
 ### Tests
 
-- update smoke test expected version to 6.2.2 ([305a12c](https://github.com/klappy/translation-helps-mcp/commit/305a12cb79b47a23f44e37a5665cc1e674909b67))
+- update smoke test expected version to 6.2.2 ([305a12c](https://github.com/unfoldingWord/translation-helps-mcp/commit/305a12cb79b47a23f44e37a5665cc1e674909b67))
 
-### [6.2.2](https://github.com/klappy/translation-helps-mcp/compare/v6.2.1...v6.2.2) (2025-08-14)
+### [6.2.2](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.2.1...v6.2.2) (2025-08-14)
 
 ### Features
 
-- add KV debugging features ([c8e0ba9](https://github.com/klappy/translation-helps-mcp/commit/c8e0ba95909cde222f8d44c06881eae47edc20c5))
-- add KV status diagnostic endpoint ([82896d5](https://github.com/klappy/translation-helps-mcp/commit/82896d576641f72b14d3802e9ff0715010c4d930))
+- add KV debugging features ([c8e0ba9](https://github.com/unfoldingWord/translation-helps-mcp/commit/c8e0ba95909cde222f8d44c06881eae47edc20c5))
+- add KV status diagnostic endpoint ([82896d5](https://github.com/unfoldingWord/translation-helps-mcp/commit/82896d576641f72b14d3802e9ff0715010c4d930))
 
 ### Bug Fixes
 
-- **chat:** surface tool errors to LLM context and X-ray ([7798f1a](https://github.com/klappy/translation-helps-mcp/commit/7798f1a141726bd4ca63a6bacaf20691dadef579))
-- correct import path for KV cache in chat-stream endpoint ([6d3aabb](https://github.com/klappy/translation-helps-mcp/commit/6d3aabbab584243ab598ec1d8428b78a3acd023b))
-- initialize KV cache on every request ([aa2d4ed](https://github.com/klappy/translation-helps-mcp/commit/aa2d4ed04433485992f94267f7722a1ae18b4779))
+- **chat:** surface tool errors to LLM context and X-ray ([7798f1a](https://github.com/unfoldingWord/translation-helps-mcp/commit/7798f1a141726bd4ca63a6bacaf20691dadef579))
+- correct import path for KV cache in chat-stream endpoint ([6d3aabb](https://github.com/unfoldingWord/translation-helps-mcp/commit/6d3aabbab584243ab598ec1d8428b78a3acd023b))
+- initialize KV cache on every request ([aa2d4ed](https://github.com/unfoldingWord/translation-helps-mcp/commit/aa2d4ed04433485992f94267f7722a1ae18b4779))
 
 ### Chores
 
-- bump version to 6.2.1 and update changelog ([a50e780](https://github.com/klappy/translation-helps-mcp/commit/a50e7808c9c87604133318a76029ef0358ccffc8))
+- bump version to 6.2.1 and update changelog ([a50e780](https://github.com/unfoldingWord/translation-helps-mcp/commit/a50e7808c9c87604133318a76029ef0358ccffc8))
 
 ### Documentation
 
-- add AI Chat implementation summary ([6257c31](https://github.com/klappy/translation-helps-mcp/commit/6257c3132cdf8bda5e34b3510d0be178edb9c3ae))
-- add Cloudflare Pages KV binding guide ([4e88351](https://github.com/klappy/translation-helps-mcp/commit/4e88351a1747abb020dfab160215a48f3076024a))
+- add AI Chat implementation summary ([6257c31](https://github.com/unfoldingWord/translation-helps-mcp/commit/6257c3132cdf8bda5e34b3510d0be178edb9c3ae))
+- add Cloudflare Pages KV binding guide ([4e88351](https://github.com/unfoldingWord/translation-helps-mcp/commit/4e88351a1747abb020dfab160215a48f3076024a))
 
 ## [6.2.1] - 2025-01-13
 
@@ -215,7 +215,7 @@ All notable changes to this project will be documented in this file. See [standa
   - XRayPanel only shows expandable content when actual data exists
   - Fixed duplicate event listeners causing href.replace errors See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## [6.1.0](https://github.com/klappy/translation-helps-mcp/compare/v6.0.0...v6.1.0) (2025-08-13)
+## [6.1.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v6.0.0...v6.1.0) (2025-08-13)
 
 ### 🚀 New Features
 
@@ -249,7 +249,7 @@ All notable changes to this project will be documented in this file. See [standa
 - Created visual diagrams for chat data flow
 - Updated API examples with verse range usage
 
-## [6.0.0](https://github.com/klappy/translation-helps-mcp/compare/v5.7.0...v6.0.0) (2025-01-10)
+## [6.0.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v5.7.0...v6.0.0) (2025-01-10)
 
 ### 🚨 BREAKING CHANGES
 
@@ -293,7 +293,7 @@ Since the API is self-discoverable, migration is straightforward:
 
 See `/api/mcp-config` for the complete, up-to-date endpoint registry with parameters and examples.
 
-## [5.7.0](https://github.com/klappy/translation-helps-mcp/compare/v5.6.0...v5.7.0) (2025-09-17)
+## [5.7.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v5.6.0...v5.7.0) (2025-09-17)
 
 ### 🚀 ZIP-Based Architecture Revolution
 
@@ -342,7 +342,7 @@ This release introduces a revolutionary ZIP-based data architecture that dramati
 - Dramatically reduced DCS API load
 - Better reliability during DCS outages
 
-## [5.6.0](https://github.com/klappy/translation-helps-mcp/compare/v5.5.0...v5.6.0) (2025-08-13)
+## [5.6.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v5.5.0...v5.6.0) (2025-08-13)
 
 ### 🎯 Real Data Integration
 
@@ -387,7 +387,7 @@ This release connects all major v2 endpoints to real Bible translation data from
 - Centralized response formatting utility
 - Real metadata extraction from DCS catalog and repositories
 
-## [5.5.0](https://github.com/klappy/translation-helps-mcp/compare/v5.4.0...v5.5.0) (2025-08-12)
+## [5.5.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v5.4.0...v5.5.0) (2025-08-12)
 
 ### 🚀 Developer Experience Revolution
 
@@ -428,7 +428,7 @@ This release transforms the developer experience with powerful new tools and a s
 Following the 80/20 rule: Test the 20% of scenarios that cover 80% of real usage.
 No edge cases, no over-engineering, just practical tests that ensure our API works.
 
-## [5.4.0](https://github.com/klappy/translation-helps-mcp/compare/v5.3.0...v5.4.0) (2025-08-12)
+## [5.4.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v5.3.0...v5.4.0) (2025-08-12)
 
 ### 🎉 100% API Consistency Achieved!
 
@@ -589,4 +589,4 @@ All v1 endpoints remain functional. The v2 endpoints provide the same functional
 
 ---
 
-For a complete list of all changes and commits, see the [GitHub releases page](https://github.com/klappy/translation-helps-mcp/releases).
+For a complete list of all changes and commits, see the [GitHub releases page](https://github.com/unfoldingWord/translation-helps-mcp/releases).

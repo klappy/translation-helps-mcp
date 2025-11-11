@@ -40,14 +40,14 @@
 				mcpServers: {
 					'translation-helps': {
 						command: 'npx',
-						args: ['tsx', 'C:/path/to/translation-helps-mcp-2/src/index.ts'],
+						args: ['tsx', 'C:/path/to/translation-helps-mcp/src/index.ts'],
 						env: {
 							NODE_ENV: 'production'
 						}
 					}
 				}
 			},
-			note: 'Replace C:/path/to/translation-helps-mcp-2 with your actual clone path'
+			note: 'Replace C:/path/to/translation-helps-mcp with your actual clone path'
 		},
 		cursor: {
 			name: 'Cursor',
@@ -62,12 +62,12 @@
 					'translation-helps': {
 						command: 'npx',
 						args: ['tsx', 'src/index.ts'],
-						cwd: 'C:/path/to/translation-helps-mcp-2',
+						cwd: 'C:/path/to/translation-helps-mcp',
 						env: {}
 					}
 				}
 			},
-			note: 'Replace C:/path/to/translation-helps-mcp-2 with your actual clone path'
+			note: 'Replace C:/path/to/translation-helps-mcp with your actual clone path'
 		},
 		cline: {
 			name: 'Cline',
@@ -82,11 +82,11 @@
 					'translation-helps': {
 						command: 'npx',
 						args: ['tsx', 'src/index.ts'],
-						cwd: 'C:/path/to/translation-helps-mcp-2'
+						cwd: 'C:/path/to/translation-helps-mcp'
 					}
 				}
 			},
-			note: 'Replace C:/path/to/translation-helps-mcp-2 with your actual clone path'
+			note: 'Replace C:/path/to/translation-helps-mcp with your actual clone path'
 		},
 		generic: {
 			name: 'Generic MCP Client',
@@ -100,11 +100,11 @@
 				mcpServers: {
 					'translation-helps': {
 						command: 'npx',
-						args: ['tsx', '/path/to/translation-helps-mcp-2/src/index.ts']
+						args: ['tsx', '/path/to/translation-helps-mcp/src/index.ts']
 					}
 				}
 			},
-			note: 'Replace /path/to/translation-helps-mcp-2 with your actual clone path'
+			note: 'Replace /path/to/translation-helps-mcp with your actual clone path'
 		}
 	};
 
@@ -113,9 +113,9 @@
 		scripture: {
 			title: 'Fetch Scripture',
 			description: 'Get Bible text in multiple translations',
-			curl: `curl "https://translation-helps-mcp.pages.dev/api/fetch-scripture?reference=John+3:16&language=en"`,
+			curl: `curl "https://translation-helps-mcp-945.pages.dev/api/fetch-scripture?reference=John+3:16&language=en"`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp.pages.dev/api/fetch-scripture?' +
+  'https://translation-helps-mcp-945.pages.dev/api/fetch-scripture?' +
   new URLSearchParams({
     reference: 'John 3:16',
     language: 'en'
@@ -125,7 +125,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.get(
-    'https://translation-helps-mcp.pages.dev/api/fetch-scripture',
+    'https://translation-helps-mcp-945.pages.dev/api/fetch-scripture',
     params={
         'reference': 'John 3:16',
         'language': 'en'
@@ -136,9 +136,9 @@ data = response.json()`
 		questions: {
 			title: 'Translation Questions',
 			description: 'Get comprehension questions for a passage',
-			curl: `curl "https://translation-helps-mcp.pages.dev/api/translation-questions?reference=John+3:16&language=en"`,
+			curl: `curl "https://translation-helps-mcp-945.pages.dev/api/translation-questions?reference=John+3:16&language=en"`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp.pages.dev/api/translation-questions?' +
+  'https://translation-helps-mcp-945.pages.dev/api/translation-questions?' +
   new URLSearchParams({
     reference: 'John 3:16',
     language: 'en'
@@ -148,7 +148,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.get(
-    'https://translation-helps-mcp.pages.dev/api/translation-questions',
+    'https://translation-helps-mcp-945.pages.dev/api/translation-questions',
     params={
         'reference': 'John 3:16',
         'language': 'en'
@@ -159,9 +159,9 @@ data = response.json()`
 		words: {
 			title: 'Translation Words',
 			description: 'Get word definitions and links for a passage',
-			curl: `curl "https://translation-helps-mcp.pages.dev/api/fetch-translation-word-links?reference=John+3:16&language=en"`,
+			curl: `curl "https://translation-helps-mcp-945.pages.dev/api/fetch-translation-word-links?reference=John+3:16&language=en"`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp.pages.dev/api/fetch-translation-word-links?' +
+  'https://translation-helps-mcp-945.pages.dev/api/fetch-translation-word-links?' +
   new URLSearchParams({
     reference: 'John 3:16',
     language: 'en'
@@ -171,7 +171,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.get(
-    'https://translation-helps-mcp.pages.dev/api/fetch-translation-word-links',
+    'https://translation-helps-mcp-945.pages.dev/api/fetch-translation-word-links',
     params={
         'reference': 'John 3:16',
         'language': 'en'
@@ -182,9 +182,9 @@ data = response.json()`
 		notes: {
 			title: 'Translation Notes',
 			description: 'Get translation notes for a passage',
-			curl: `curl "https://translation-helps-mcp.pages.dev/api/translation-notes?reference=John+3:16&language=en"`,
+			curl: `curl "https://translation-helps-mcp-945.pages.dev/api/translation-notes?reference=John+3:16&language=en"`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp.pages.dev/api/translation-notes?' +
+  'https://translation-helps-mcp-945.pages.dev/api/translation-notes?' +
   new URLSearchParams({
     reference: 'John 3:16',
     language: 'en'
@@ -194,7 +194,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.get(
-    'https://translation-helps-mcp.pages.dev/api/translation-notes',
+    'https://translation-helps-mcp-945.pages.dev/api/translation-notes',
     params={
         'reference': 'John 3:16',
         'language': 'en'
@@ -205,7 +205,7 @@ data = response.json()`
 		prompts: {
 			title: 'MCP Prompts (HTTP)',
 			description: 'Execute multi-step prompts via REST API',
-			curl: `curl -X POST "https://translation-helps-mcp.pages.dev/api/execute-prompt" \\
+			curl: `curl -X POST "https://translation-helps-mcp-945.pages.dev/api/execute-prompt" \\
   -H "Content-Type: application/json" \\
   -d '{
     "promptName": "translation-helps-for-passage",
@@ -215,7 +215,7 @@ data = response.json()`
     }
   }'`,
 			typescript: `const response = await fetch(
-  'https://translation-helps-mcp.pages.dev/api/execute-prompt',
+  'https://translation-helps-mcp-945.pages.dev/api/execute-prompt',
   {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -232,7 +232,7 @@ const data = await response.json();`,
 			python: `import requests
 
 response = requests.post(
-    'https://translation-helps-mcp.pages.dev/api/execute-prompt',
+    'https://translation-helps-mcp-945.pages.dev/api/execute-prompt',
     json={
         'promptName': 'translation-helps-for-passage',
         'parameters': {
@@ -459,8 +459,8 @@ data = response.json()`
 								>
 								<div class="flex-1">
 									<span class="block mb-2">Clone the repository and install dependencies:</span>
-									<pre class="rounded bg-gray-950 p-2 text-xs text-gray-300 overflow-x-auto"><code>git clone https://github.com/klappy/translation-helps-mcp.git
-cd translation-helps-mcp-2
+									<pre class="rounded bg-gray-950 p-2 text-xs text-gray-300 overflow-x-auto"><code>git clone https://github.com/unfoldingWord/translation-helps-mcp.git
+cd translation-helps-mcp
 npm install</code></pre>
 								</div>
 							</li>
@@ -587,6 +587,14 @@ npm install</code></pre>
 					<Globe class="h-6 w-6 text-cyan-400" />
 					REST API Access
 				</h2>
+				<div class="mb-4 rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+					<p class="text-sm text-blue-300">
+						<strong>🌐 Production API:</strong>
+						<code class="ml-2 rounded bg-gray-900 px-2 py-1 text-cyan-300"
+							>https://translation-helps-mcp-945.pages.dev</code
+						>
+					</p>
+				</div>
 				<p class="mb-4 text-lg text-gray-300">
 					Access our translation resources through standard <strong class="text-cyan-300"
 						>HTTP REST API</strong
