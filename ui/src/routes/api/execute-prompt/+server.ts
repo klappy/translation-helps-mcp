@@ -462,24 +462,26 @@ async function executeAcademyPrompt(
 	console.log('[executeAcademyPrompt] Reusing translation-helps logic for notes and academy articles');
 	
 	const results: any = {
-		notes: null,
 		academyArticles: []
 	};
+	
+	// Internal variable for fetching notes (not included in results)
+	let notesData: any = null;
 
-	// Step 1: Fetch notes (same as main prompt)
+	// Step 1: Fetch notes (same as main prompt, but not included in results)
 	try {
 		const notesRes = await fetch(
 			`/api/translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (notesRes.ok) {
-			results.notes = await notesRes.json();
+			notesData = await notesRes.json();
 		}
 	} catch (e) {
 		console.error('Failed to fetch notes:', e);
 	}
 
 	// Step 2: Fetch academy articles from supportReferences (same logic as main prompt)
-	const supportRefs = extractSupportReferences(results.notes);
+	const supportRefs = extractSupportReferences(notesData);
 	console.log(`Found ${supportRefs.length} support references (limiting to 5)`);
 	for (const ref of supportRefs.slice(0, 5)) {
 		try {

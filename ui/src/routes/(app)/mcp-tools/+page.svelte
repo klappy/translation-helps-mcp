@@ -1740,13 +1740,36 @@
 													<h4 class="mb-2 text-sm font-semibold text-blue-400">
 														📚 Key Terms ({promptResults.words?.length || 0})
 													</h4>
-													<div class="grid gap-2 sm:grid-cols-2">
+													<div class="space-y-3">
 														{#each promptResults.words || [] as word}
-															<div class="rounded-lg bg-gray-800 p-3">
-																<div class="font-medium text-white">{word.title}</div>
-																<div class="text-xs text-gray-500">
-																	{word.term} • {word.category}
+															<div class="rounded-lg bg-gray-800 p-4 {word.error ? 'border border-red-500/30' : ''}">
+																<div class="mb-2 flex items-start justify-between">
+																	<div>
+																		<div class="font-medium text-white">{word.title}</div>
+																		<div class="text-xs text-gray-500">
+																			{word.term} • {word.category}
+																			{#if word.error}
+																				<span class="text-red-400">• Error loading</span>
+																			{/if}
+																		</div>
+																	</div>
 																</div>
+																{#if word.content}
+																	<details class="mt-2">
+																		<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+																			Show content
+																		</summary>
+																		<div class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs">
+																			{@html word.content
+																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+																				.replace(/\n\n/g, '</p><p>')
+																				.replace(/^(.+)$/gm, '<p>$1</p>')
+																			}
+																		</div>
+																	</details>
+																{/if}
 															</div>
 														{/each}
 													</div>
@@ -1801,20 +1824,122 @@
 													<h4 class="mb-2 text-sm font-semibold text-blue-400">
 														🎓 Academy Articles ({promptResults.academyArticles?.length || 0})
 													</h4>
-													<div class="space-y-2">
+													<div class="space-y-3">
 														{#each promptResults.academyArticles || [] as article}
-															<div
-																class="rounded-lg bg-gray-800 p-3 {article.error
-																	? 'border border-red-500/30'
-																	: ''}"
-															>
-																<div class="font-medium text-white">{article.title}</div>
-																<div class="text-xs text-gray-500">
-																	{article.moduleId}
-																	{#if article.error}
-																		<span class="text-red-400">• Error loading</span>
-																	{/if}
+															<div class="rounded-lg bg-gray-800 p-4 {article.error ? 'border border-red-500/30' : ''}">
+																<div class="mb-2 flex items-start justify-between">
+																	<div>
+																		<div class="font-medium text-white">{article.title}</div>
+																		<div class="text-xs text-gray-500">
+																			{article.moduleId} 
+																			{#if article.category}• {article.category}{/if}
+																			{#if article.error}
+																				<span class="text-red-400">• Error loading</span>
+																			{/if}
+																		</div>
+																	</div>
 																</div>
+																{#if article.content}
+																	<details class="mt-2">
+																		<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+																			Show content
+																		</summary>
+																		<div class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs">
+																			{@html article.content
+																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+																				.replace(/\n\n/g, '</p><p>')
+																				.replace(/^(.+)$/gm, '<p>$1</p>')
+																			}
+																		</div>
+																	</details>
+																{/if}
+															</div>
+														{/each}
+													</div>
+												</div>
+											</div>
+										{:else if selectedPrompt.id === 'get-translation-words-for-passage' && promptResults.words}
+											<!-- Translation Words Only Results -->
+											<div class="space-y-4">
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														📚 Key Terms ({promptResults.words?.length || 0})
+													</h4>
+													<div class="space-y-3">
+														{#each promptResults.words || [] as word}
+															<div class="rounded-lg bg-gray-800 p-4 {word.error ? 'border border-red-500/30' : ''}">
+																<div class="mb-2 flex items-start justify-between">
+																	<div>
+																		<div class="font-medium text-white">{word.title}</div>
+																		<div class="text-xs text-gray-500">
+																			{word.term} • {word.category}
+																			{#if word.error}
+																				<span class="text-red-400">• Error loading</span>
+																			{/if}
+																		</div>
+																	</div>
+																</div>
+																{#if word.content}
+																	<details class="mt-2">
+																		<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+																			Show content
+																		</summary>
+																		<div class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs">
+																			{@html word.content
+																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+																				.replace(/\n\n/g, '</p><p>')
+																				.replace(/^(.+)$/gm, '<p>$1</p>')
+																			}
+																		</div>
+																	</details>
+																{/if}
+															</div>
+														{/each}
+													</div>
+												</div>
+											</div>
+										{:else if selectedPrompt.id === 'get-translation-academy-for-passage' && promptResults.academyArticles}
+											<!-- Translation Academy Only Results -->
+											<div class="space-y-4">
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														🎓 Academy Articles ({promptResults.academyArticles?.length || 0})
+													</h4>
+													<div class="space-y-3">
+														{#each promptResults.academyArticles || [] as article}
+															<div class="rounded-lg bg-gray-800 p-4 {article.error ? 'border border-red-500/30' : ''}">
+																<div class="mb-2 flex items-start justify-between">
+																	<div>
+																		<div class="font-medium text-white">{article.title}</div>
+																		<div class="text-xs text-gray-500">
+																			{article.moduleId} 
+																			{#if article.category}• {article.category}{/if}
+																			{#if article.error}
+																				<span class="text-red-400">• Error loading</span>
+																			{/if}
+																		</div>
+																	</div>
+																</div>
+																{#if article.content}
+																	<details class="mt-2">
+																		<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+																			Show content
+																		</summary>
+																		<div class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs">
+																			{@html article.content
+																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+																				.replace(/\n\n/g, '</p><p>')
+																				.replace(/^(.+)$/gm, '<p>$1</p>')
+																			}
+																		</div>
+																	</details>
+																{/if}
 															</div>
 														{/each}
 													</div>

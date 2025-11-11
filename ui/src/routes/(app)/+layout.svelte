@@ -28,6 +28,12 @@
 			description: 'Overview and features'
 		},
 		{
+			href: '/getting-started',
+			label: 'Get Started',
+			icon: BookOpen,
+			description: 'Quick start guide and examples'
+		},
+		{
 			href: '/chat',
 			label: 'Chat',
 			icon: MessageSquare,
