@@ -33,14 +33,24 @@ The chat feature uses **OpenAI GPT-4o-mini** to provide intelligent Bible study 
    - Copy the key immediately (you won't see it again!)
    - Paste it into `ui/.dev.vars`
 
-4. **Restart the development server:**
+4. **Start the Wrangler development server:**
+   
+   ⚠️ **IMPORTANT:** The chat feature requires Wrangler (not Vite) to read `.dev.vars`
+   
    ```bash
    # Stop the current server (Ctrl+C)
-   npm run dev
+   
+   # Use dev:cf to start Wrangler (port 8787)
+   npm run dev:cf
    ```
+   
+   **Why Wrangler?**
+   - `npm run dev` uses Vite (can't read `.dev.vars`)
+   - `npm run dev:cf` uses Wrangler (reads `.dev.vars` ✅)
+   - Wrangler also provides KV/R2 bindings needed for production parity
 
 5. **Test the chat:**
-   - Visit: http://localhost:8174/chat
+   - Visit: http://localhost:8787/chat (Wrangler uses port 8787)
    - Try asking: "Show me John 3:16 in ULT"
    - The AI should respond with scripture and citations
 
