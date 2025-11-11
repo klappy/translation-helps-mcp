@@ -8,21 +8,34 @@ The chat feature uses **OpenAI GPT-4o-mini** to provide intelligent Bible study 
 
 ### Local Development
 
-1. **Create the environment file:**
+You need to create **TWO files** depending on which dev server you use:
+
+#### **For Vite Dev Server** (`npm run dev` - port 8174)
+
+1. **Create `ui/.env` file:**
    ```bash
-   # Navigate to the ui directory
-   cd ui
-   
-   # Create .dev.vars file (already created for you)
+   # Create the file in the ui directory
+   touch ui/.env
    ```
 
-2. **Add your OpenAI API key:**
-   
-   Edit `ui/.dev.vars` and replace `your-openai-api-key-here` with your actual OpenAI API key:
-   
+2. **Add your OpenAI API key to `ui/.env`:**
    ```env
    OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```
+
+#### **For Wrangler Dev Server** (`npm run dev:cf` - port 8787)
+
+1. **Use `ui/.dev.vars` file** (already created)
+
+2. **Add your OpenAI API key to `ui/.dev.vars`:**
+   ```env
+   OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+
+**Summary:**
+- `ui/.env` → for Vite (`npm run dev` on port 8174) ✅
+- `ui/.dev.vars` → for Wrangler (`npm run dev:cf` on port 8787) ✅
+- Both files are gitignored and safe ✅
 
 3. **Get an OpenAI API key:**
    

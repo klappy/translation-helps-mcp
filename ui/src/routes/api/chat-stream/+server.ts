@@ -15,6 +15,17 @@
  * 4. When answering questions, cite all sources used
  */
 
+// Load environment variables from .env file for local development
+import { config } from 'dotenv';
+
+// Try to load .env from ui directory (for local dev with Vite)
+// In production (Cloudflare), this will be ignored and platform.env is used
+try {
+	config({ path: '.env' }); // Looks in current working directory (ui/)
+} catch (e) {
+	// Ignore errors - .env might not exist in production
+}
+
 import { initializeKVCache } from '$lib/../../../src/functions/kv-cache.js';
 import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
