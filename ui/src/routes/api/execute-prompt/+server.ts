@@ -122,8 +122,31 @@ async function executeTranslationHelpsPrompt(
 
 				// Check if it's an error response
 				if (wordData.error) {
-					console.error(`Word fetch returned error for ${link.term}:`, wordData.error);
-					// Still add it with term as title
+					console.error(`Word fetch with path returned error for ${link.term}. Trying rcLink fallback...`);
+					// Try fetching using rcLink instead as fallback
+					try {
+						const fallbackRes = await fetch(
+							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}`
+						);
+						if (fallbackRes.ok) {
+							const fallbackData = await fallbackRes.json();
+							if (!fallbackData.error && fallbackData.content) {
+								const titleMatch = fallbackData.content.match(/^#\s+(.+)$/m);
+								const title = titleMatch ? titleMatch[1].trim() : link.term;
+								console.log(`✅ rcLink fallback succeeded: ${link.term} → "${title}"`);
+								results.words.push({
+									term: link.term,
+									title: title,
+									category: link.category
+								});
+								continue;
+							}
+						}
+					} catch (fallbackError) {
+						console.error(`rcLink fallback also failed for ${link.term}`);
+					}
+					
+					// Both failed - add with term as title
 					results.words.push({
 						term: link.term,
 						title: link.term,
@@ -199,9 +222,34 @@ async function executeTranslationHelpsPrompt(
 
 				// Check if it's an error response
 				if (academyData.error) {
-					console.error(`Academy article fetch returned error for ${ref}:`, academyData.error);
-					// Extract moduleId from RC link for fallback
-					const moduleId = ref.split('/').pop() || ref;
+					console.error(`Academy fetch with rcLink returned error for ${ref}. Trying moduleId fallback...`);
+					// Try fetching using just the moduleId as fallback
+					const moduleId = ref.split('/').pop() || '';
+					if (moduleId) {
+						try {
+							const fallbackRes = await fetch(
+								`/api/fetch-translation-academy?moduleId=${encodeURIComponent(moduleId)}&language=${language}`
+							);
+							if (fallbackRes.ok) {
+								const fallbackData = await fallbackRes.json();
+								if (!fallbackData.error && fallbackData.content) {
+									const titleMatch = fallbackData.content.match(/^#\s+(.+)$/m);
+									const title = titleMatch ? titleMatch[1].trim() : moduleId;
+									console.log(`✅ moduleId fallback succeeded: ${moduleId} → "${title}"`);
+									results.academyArticles.push({
+										moduleId: moduleId,
+										title: title,
+										rcLink: ref
+									});
+									continue;
+								}
+							}
+						} catch (fallbackError) {
+							console.error(`moduleId fallback also failed for ${moduleId}`);
+						}
+					}
+					
+					// Both failed - add with error flag
 					results.academyArticles.push({
 						moduleId: moduleId,
 						title: moduleId,
@@ -276,6 +324,29 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 
 				// Check if it's an error response
 				if (wordData.error) {
+					// Try fetching using rcLink instead as fallback
+					try {
+						const fallbackRes = await fetch(
+							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}`
+						);
+						if (fallbackRes.ok) {
+							const fallbackData = await fallbackRes.json();
+							if (!fallbackData.error && fallbackData.content) {
+								const titleMatch = fallbackData.content.match(/^#\s+(.+)$/m);
+								const title = titleMatch ? titleMatch[1].trim() : link.term;
+								results.words.push({
+									term: link.term,
+									title: title,
+									category: link.category
+								});
+								continue;
+							}
+						}
+					} catch (fallbackError) {
+						// Fallback failed
+					}
+					
+					// Both failed - add with term as title
 					results.words.push({
 						term: link.term,
 						title: link.term,
@@ -348,7 +419,32 @@ async function executeAcademyPrompt(
 
 				// Check if it's an error response
 				if (academyData.error) {
-					const moduleId = ref.split('/').pop() || ref;
+					// Try fetching using just the moduleId as fallback
+					const moduleId = ref.split('/').pop() || '';
+					if (moduleId) {
+						try {
+							const fallbackRes = await fetch(
+								`/api/fetch-translation-academy?moduleId=${encodeURIComponent(moduleId)}&language=${language}`
+							);
+							if (fallbackRes.ok) {
+								const fallbackData = await fallbackRes.json();
+								if (!fallbackData.error && fallbackData.content) {
+									const titleMatch = fallbackData.content.match(/^#\s+(.+)$/m);
+									const title = titleMatch ? titleMatch[1].trim() : moduleId;
+									results.academyArticles.push({
+										moduleId: moduleId,
+										title: title,
+										rcLink: ref
+									});
+									continue;
+								}
+							}
+						} catch (fallbackError) {
+							// Fallback failed
+						}
+					}
+					
+					// Both failed - add with error flag
 					results.academyArticles.push({
 						moduleId: moduleId,
 						title: moduleId,
