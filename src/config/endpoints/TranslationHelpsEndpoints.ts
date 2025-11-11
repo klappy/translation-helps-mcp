@@ -76,6 +76,16 @@ const TERM_PARAMS = {
     min: 5,
     max: 200,
   },
+  rcLink: {
+    type: "string" as const,
+    required: false,
+    description:
+      'RC link to the translation word (e.g., "rc://*/tw/dict/bible/kt/love")',
+    example: "rc://*/tw/dict/bible/kt/love",
+    pattern: "^rc://.*",
+    min: 10,
+    max: 200,
+  },
   language: REFERENCE_PARAMS.language,
   organization: REFERENCE_PARAMS.organization,
   format: REFERENCE_PARAMS.format,
@@ -174,12 +184,12 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
 } as EndpointConfig;
 
 /**
- * Get Translation Word (tW) - Individual word articles
+ * Fetch Translation Word (tW) - Individual word articles
  */
-export const GET_TRANSLATION_WORD_CONFIG: EndpointConfig = {
-  name: "get-translation-word",
-  path: "/get-translation-word",
-  title: "Get Translation Word",
+export const FETCH_TRANSLATION_WORD_CONFIG: EndpointConfig = {
+  name: "fetch-translation-word",
+  path: "/fetch-translation-word",
+  title: "Fetch Translation Word",
   description:
     "Retrieve biblical terms and definitions from Translation Words (TW) or get a Table of Contents.",
   category: "core",
@@ -265,51 +275,47 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
   path: "/fetch-translation-academy",
   title: "Fetch Translation Academy",
   description:
-    "Retrieve translation training modules and principles organized by category and difficulty",
+    "Retrieve translation training modules with support for moduleId, directory path, or RC link. Returns all markdown files in directory concatenated.",
   category: "core",
   responseShape: TRANSLATION_ACADEMY_SHAPE,
 
   params: {
-    language: REFERENCE_PARAMS.language,
-    organization: REFERENCE_PARAMS.organization,
-    path: {
-      type: "string" as const,
-      required: false,
-      description:
-        "Explicit path to a tA module markdown in the repo (e.g., translate/figs-metaphor/01.md)",
-      example: "translate/figs-metaphor/01.md",
-      min: 5,
-      max: 200,
-    },
-    category: {
-      type: "string" as const,
-      required: false,
-      description: "Module category (process, translate, checking)",
-      example: "translate",
-      options: ["process", "translate", "checking", "audio", "gateway"],
-    },
-    difficulty: {
-      type: "string" as const,
-      required: false,
-      description: "Difficulty level for filtering modules",
-      example: "beginner",
-      options: ["beginner", "intermediate", "advanced"],
-    },
     moduleId: {
       type: "string" as const,
       required: false,
-      description: "Specific module ID or topic to retrieve",
+      description:
+        "Translation Academy module ID (e.g., 'figs-metaphor'). Searches in order: translate/{moduleId}, process/{moduleId}, checking/{moduleId}, intro/{moduleId}",
       example: "figs-metaphor",
       min: 3,
       max: 50,
     },
-    format: {
+    path: {
       type: "string" as const,
       required: false,
       description:
-        "Response format - markdown for LLM-friendly output, json for structured data",
-      example: "markdown",
-      options: ["markdown", "json"],
+        "Path to TA module. Can be directory (e.g., 'translate/figs-metaphor') for all .md files concatenated, or file path (e.g., 'translate/figs-metaphor/01.md') for single file.",
+      example: "translate/figs-metaphor",
+      min: 5,
+      max: 200,
+    },
+    rcLink: {
+      type: "string" as const,
+      required: false,
+      description:
+        'RC link to TA module (e.g., "rc://*/ta/man/translate/figs-metaphor"). Supports wildcards (*) for any segment.',
+      example: "rc://*/ta/man/translate/figs-metaphor",
+      pattern: "^rc://.*",
+      min: 10,
+      max: 200,
+    },
+    language: REFERENCE_PARAMS.language,
+    organization: REFERENCE_PARAMS.organization,
+    format: {
+      type: "string" as const,
+      required: false,
+      description: "Response format",
+      example: "json",
+      options: ["json", "md", "markdown"],
       default: "json",
     },
   },
@@ -397,7 +403,7 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
   title: "Browse Translation Academy",
   description:
     "Browse available Translation Academy modules and categories (Table of Contents)",
-  category: "core",
+  category: "extended",
   responseShape: TRANSLATION_ACADEMY_SHAPE,
 
   params: {
@@ -674,12 +680,10 @@ export const TW_ARTICLES_CONFIG: EndpointConfig = {
  */
 export const TRANSLATION_HELPS_ENDPOINTS = [
   FETCH_TRANSLATION_QUESTIONS_CONFIG,
-  GET_TRANSLATION_WORD_CONFIG,
+  FETCH_TRANSLATION_WORD_CONFIG,
   FETCH_TRANSLATION_ACADEMY_CONFIG,
-  BROWSE_TRANSLATION_ACADEMY_CONFIG,
   FETCH_TRANSLATION_WORD_LINKS_CONFIG,
   FETCH_TRANSLATION_NOTES_CONFIG,
-  TW_ARTICLES_CONFIG,
 ] as const;
 
 export default TRANSLATION_HELPS_ENDPOINTS;

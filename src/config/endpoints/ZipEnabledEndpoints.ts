@@ -183,9 +183,9 @@ export const FETCH_TRANSLATION_NOTES_ZIP_CONFIG: EndpointConfig = {
 /**
  * Example: Translation Word using ZIP-cached markdown
  */
-export const GET_TRANSLATION_WORD_ZIP_CONFIG: EndpointConfig = {
-  name: "get-translation-word",
-  path: "/get-translation-word",
+export const FETCH_TRANSLATION_WORD_ZIP_CONFIG: EndpointConfig = {
+  name: "fetch-translation-word",
+  path: "/fetch-translation-word",
   title: "Get Translation Word (ZIP Cached)",
   description: "Retrieve translation word articles from cached ZIP files",
   category: "core",
@@ -294,7 +294,7 @@ export const HYBRID_SCRIPTURE_CONFIG: EndpointConfig = {
  */
 
 export const ZIP_MIGRATION_PRIORITY = {
-  immediate: ["fetch-scripture", "get-translation-word"],
+  immediate: ["fetch-scripture", "fetch-translation-word"],
 
   phase2: [
     "fetch-translation-notes",

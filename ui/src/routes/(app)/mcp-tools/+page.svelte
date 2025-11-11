@@ -7,12 +7,10 @@
 	import PerformanceMetrics from '../../../lib/components/PerformanceMetrics.svelte';
 	import XRayTraceView from '../../../lib/components/XRayTraceView.svelte';
 
-	// Three main categories
-	type MainCategory = 'core' | 'extended' | 'experimental' | 'health';
+	// Two main categories - Core tools and Health status
+	type MainCategory = 'core' | 'health';
 	const categoryConfig = {
 		core: { name: 'Core Tools', icon: Database },
-		extended: { name: 'Extended Features', icon: Link },
-		experimental: { name: 'Experimental Lab', icon: Beaker },
 		health: { name: 'Health Status', icon: Activity }
 	} as const;
 
@@ -20,8 +18,6 @@
 	let selectedCategory: MainCategory = 'core';
 	let selectedEndpoint: any = null;
 	let coreEndpoints: any[] = [];
-	let extendedEndpoints: any[] = [];
-	let experimentalEndpoints: any[] = [];
 	let loadingError: string | null = null;
 	let isLoading = false;
 	let apiResult: any = null;
@@ -56,14 +52,6 @@
 			coreEndpoints = configData.data.core || [];
 			console.log(`✅ Loaded ${coreEndpoints.length} core endpoints`);
 
-			// Load extended endpoints (category: 'extended')
-			extendedEndpoints = configData.data.extended || [];
-			console.log(`✅ Loaded ${extendedEndpoints.length} extended endpoints`);
-
-			// Load experimental endpoints (category: 'experimental')
-			experimentalEndpoints = configData.data.experimental || [];
-			console.log(`✅ Loaded ${experimentalEndpoints.length} experimental endpoints`);
-
 			console.log('🎉 MCP Tools successfully connected to configuration system!');
 			isInitialized = true;
 
@@ -72,14 +60,13 @@
 			const toolParam = urlParams.get('tool');
 			const categoryParam = $page.url.hash.replace('#', '') || 'core';
 
-			if (categoryParam && ['core', 'extended', 'experimental'].includes(categoryParam)) {
-				selectedCategory = categoryParam as MainCategory;
+			if (categoryParam && categoryParam === 'core') {
+				selectedCategory = 'core';
 			}
 
 			if (toolParam) {
 				// Find the endpoint and focus it
-				const allEndpoints = [...coreEndpoints, ...extendedEndpoints, ...experimentalEndpoints];
-				const endpoint = allEndpoints.find((e) => e.name === toolParam);
+				const endpoint = coreEndpoints.find((e) => e.name === toolParam);
 				if (endpoint) {
 					selectEndpoint(endpoint);
 				}
@@ -93,16 +80,10 @@
 
 	// Get endpoints by category from our loaded state
 	function getEndpointsByCategory(category: MainCategory) {
-		switch (category) {
-			case 'core':
-				return coreEndpoints;
-			case 'extended':
-				return extendedEndpoints;
-			case 'experimental':
-				return experimentalEndpoints;
-			default:
-				return [];
+		if (category === 'core') {
+			return coreEndpoints;
 		}
+		return [];
 	}
 
 	// Group core endpoints by subcategory
@@ -131,14 +112,10 @@
 				groups.verseReferenced.push(endpoint);
 			}
 			// RC Linked Data
-			else if (name === 'get-translation-word' || name === 'fetch-translation-academy') {
+			else if (name === 'fetch-translation-word' || name === 'fetch-translation-academy') {
 				groups.rcLinked.push(endpoint);
 			}
-			// Browsing Helpers
-			else if (name === 'browse-translation-words' || name === 'browse-translation-academy') {
-				groups.browsingHelpers.push(endpoint);
-			}
-			// Discovery
+			// Everything else goes to discovery (should be none for core)
 			else {
 				groups.discovery.push(endpoint);
 			}
@@ -151,9 +128,8 @@
 				'translation-questions',
 				'fetch-translation-word-links'
 			],
-			rcLinked: ['get-translation-word', 'fetch-translation-academy'],
-			browsingHelpers: ['browse-translation-words', 'browse-translation-academy'],
-			discovery: ['simple-languages', 'list-available-resources', 'get-available-books']
+			rcLinked: ['fetch-translation-word', 'fetch-translation-academy'],
+			discovery: [] // No discovery endpoints in core
 		};
 
 		// Sort each group according to custom order
@@ -176,24 +152,14 @@
 			'Verse Referenced Data': {
 				icon: '📚',
 				description:
-					'Translation helps organized by scripture reference (Notes ✅, Questions ✅, Word Links ✅)',
+					'Translation helps organized by scripture reference (Notes, Questions, Word Links)',
 				endpoints: groups.verseReferenced
 			},
 			'RC Linked Data': {
 				icon: '🔗',
 				description:
-					'Resources accessed via RC links (Words ❌, Academy ⚠️) - Note: RC Resolver is in Extended tab',
+					'Resources accessed via RC links (Translation Words, Translation Academy)',
 				endpoints: groups.rcLinked
-			},
-			'Browsing Helpers': {
-				icon: '📂',
-				description: 'Browse available words and academy articles (Both not implemented yet)',
-				endpoints: groups.browsingHelpers
-			},
-			Discovery: {
-				icon: '🔍',
-				description: 'Find available languages ✅, resources ✅, and books ⚠️ (returns empty)',
-				endpoints: groups.discovery
 			}
 		};
 	}
@@ -228,7 +194,7 @@
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'get-translation-word') {
+		} else if (endpoint.name === 'fetch-translation-word') {
 			testParams.term = 'faith';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
@@ -236,27 +202,7 @@
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'get-context') {
-			testParams.reference = 'John 3:16';
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'browse-translation-academy') {
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'get-available-books') {
-			testParams.resource = 'tn';
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'resolve-rc-link') {
-			testParams.rcLink = 'rc://*/tw/dict/bible/kt/love';
 		} else if (endpoint.name === 'fetch-translation-academy') {
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'simple-languages') {
-			// No params needed
-		} else if (endpoint.name === 'list-available-resources') {
-			// No params needed
-		} else if (endpoint.name === 'browse-translation-words') {
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
 		}
@@ -319,11 +265,8 @@
 		// Clear previous results
 		endpointTestResults = {};
 
-		// Get all endpoints
-		const allEndpoints = [...coreEndpoints, ...extendedEndpoints];
-
-		// Test each endpoint
-		for (const endpoint of allEndpoints) {
+		// Test each core endpoint
+		for (const endpoint of coreEndpoints) {
 			await testEndpoint(endpoint);
 			// Small delay to avoid overwhelming the server
 			await new Promise((resolve) => setTimeout(resolve, 100));
@@ -643,32 +586,18 @@
 				testParams.reference = 'John 3:16';
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'get-translation-word') {
-				testParams.term = 'faith';
-			} else if (endpoint.name === 'fetch-translation-word-links') {
-				testParams.reference = 'John 3:16';
-				testParams.language = 'en';
-				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'get-context') {
-				testParams.reference = 'John 3:16';
-				testParams.language = 'en';
-				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'get-words-for-reference') {
-				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'browse-translation-words') {
-				// No params needed
-			} else if (endpoint.name === 'browse-translation-academy') {
-				testParams.language = 'en';
-				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'extract-references') {
-				testParams.text = 'Check John 3:16';
-			} else if (endpoint.name === 'get-available-books') {
-				testParams.resource = 'tn';
-				testParams.language = 'en';
-				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'resolve-rc-link') {
-				testParams.rcLink = 'rc://*/tw/dict/bible/kt/love';
-			}
+		} else if (endpoint.name === 'fetch-translation-word') {
+			testParams.term = 'faith';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'fetch-translation-word-links') {
+			testParams.reference = 'John 3:16';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'fetch-translation-academy') {
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+		}
 
 			// Build query string
 			const params = new URLSearchParams();
@@ -853,10 +782,9 @@
 	// Check all endpoints health
 	async function checkAllEndpointsHealth() {
 		isCheckingHealth = true;
-		const allEndpoints = [...coreEndpoints, ...extendedEndpoints, ...experimentalEndpoints];
 
-		// Check all endpoints in parallel
-		await Promise.all(allEndpoints.map((endpoint) => checkEndpointHealth(endpoint)));
+		// Check all core endpoints in parallel
+		await Promise.all(coreEndpoints.map((endpoint) => checkEndpointHealth(endpoint)));
 
 		isCheckingHealth = false;
 	}
@@ -883,7 +811,7 @@
 		</p>
 	</div>
 
-	<!-- Three Main Tabs -->
+	<!-- Two Main Tabs -->
 	<div class="mb-6 flex space-x-1 rounded-lg bg-gray-800 p-1">
 		<button
 			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
@@ -894,26 +822,6 @@
 			}}
 		>
 			Core Tools
-		</button>
-		<button
-			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
-			class:active={selectedCategory === 'extended'}
-			on:click={() => {
-				selectedCategory = 'extended';
-				selectedEndpoint = null;
-			}}
-		>
-			Extended Features
-		</button>
-		<button
-			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
-			class:active={selectedCategory === 'experimental'}
-			on:click={() => {
-				selectedCategory = 'experimental';
-				selectedEndpoint = null;
-			}}
-		>
-			🧪 Experimental Lab
 		</button>
 		<button
 			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
@@ -928,7 +836,7 @@
 	</div>
 
 	<!-- Test All Endpoints Button -->
-	{#if selectedCategory === 'core' || selectedCategory === 'extended'}
+	{#if selectedCategory === 'core'}
 		<div class="mb-4 flex justify-end">
 			<button
 				class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
@@ -980,93 +888,70 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-			{#if selectedEndpoint && (selectedCategory === 'core' || selectedCategory === 'extended')}
+			{#if selectedEndpoint && selectedCategory === 'core'}
 				<!-- Persistent Sidebar + Endpoint Details View -->
-				{#if selectedCategory === 'core'}
-					{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
-					<!-- Left Sidebar -->
-					<div class="lg:col-span-1">
-						<div class="sticky top-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
-							<h3 class="mb-4 text-lg font-semibold text-white">Core Endpoints</h3>
-							<div class="space-y-3">
-								{#each Object.entries(groupedEndpoints) as [groupName, group]}
-									<div>
-										<h4 class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-400">
-											<span>{group.icon}</span>
-											{groupName}
-										</h4>
-										<div class="space-y-1">
-											{#each group.endpoints as endpoint}
-												<button
-													class="w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 {selectedEndpoint &&
-													selectedEndpoint.name === endpoint.name
-														? 'border-blue-500/50 bg-blue-900/30'
-														: 'border-gray-700/50 bg-gray-900/30'}"
-													on:click={() => selectEndpoint(endpoint)}
-												>
-													<div class="flex items-start justify-between gap-2">
-														<div>
-															<div class="font-medium text-white">
-																{endpoint.title || endpoint.name}
-															</div>
-															<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
+				{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
+				<!-- Left Sidebar -->
+				<div class="lg:col-span-1">
+					<div class="sticky top-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
+						<h3 class="mb-4 text-lg font-semibold text-white">Core Endpoints</h3>
+						<div class="space-y-3">
+							{#each Object.entries(groupedEndpoints) as [groupName, group]}
+								<div>
+									<h4 class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-400">
+										<span>{group.icon}</span>
+										{groupName}
+									</h4>
+									<div class="space-y-1">
+										{#each group.endpoints as endpoint}
+											<button
+												class="w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 {selectedEndpoint &&
+												selectedEndpoint.name === endpoint.name
+													? 'border-blue-500/50 bg-blue-900/30'
+													: 'border-gray-700/50 bg-gray-900/30'}"
+												on:click={() => selectEndpoint(endpoint)}
+											>
+												<div class="flex items-start justify-between gap-2">
+													<div>
+														<div class="font-medium text-white">
+															{endpoint.title || endpoint.name}
 														</div>
-														{#if endpointTestResults[endpoint.name]}
-															<div class="mt-1 flex-shrink-0">
-																{#if endpointTestResults[endpoint.name].status === 'pending'}
-																	<span
-																		class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
-																		title="Testing..."
-																	></span>
-																{:else if endpointTestResults[endpoint.name].status === 'success'}
-																	<span
-																		class="block h-2 w-2 rounded-full bg-green-500"
-																		title="Working"
-																	></span>
-																{:else if endpointTestResults[endpoint.name].status === 'warning'}
-																	<span
-																		class="block h-2 w-2 rounded-full bg-yellow-500"
-																		title={endpointTestResults[endpoint.name].message || 'Warning'}
-																	></span>
-																{:else if endpointTestResults[endpoint.name].status === 'error'}
-																	<span
-																		class="block h-2 w-2 rounded-full bg-red-500"
-																		title={endpointTestResults[endpoint.name].message || 'Error'}
-																	></span>
-																{/if}
-															</div>
-														{/if}
+														<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
 													</div>
-												</button>
-											{/each}
-										</div>
+													{#if endpointTestResults[endpoint.name]}
+														<div class="mt-1 flex-shrink-0">
+															{#if endpointTestResults[endpoint.name].status === 'pending'}
+																<span
+																	class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
+																	title="Testing..."
+																></span>
+															{:else if endpointTestResults[endpoint.name].status === 'success'}
+																<span
+																	class="block h-2 w-2 rounded-full bg-green-500"
+																	title="Working"
+																></span>
+															{:else if endpointTestResults[endpoint.name].status === 'warning'}
+																<span
+																	class="block h-2 w-2 rounded-full bg-yellow-500"
+																	title={endpointTestResults[endpoint.name].message || 'Warning'}
+																></span>
+															{:else if endpointTestResults[endpoint.name].status === 'error'}
+																<span
+																	class="block h-2 w-2 rounded-full bg-red-500"
+																	title={endpointTestResults[endpoint.name].message || 'Error'}
+																></span>
+															{/if}
+														</div>
+													{/if}
+												</div>
+											</button>
+										{/each}
 									</div>
-								{/each}
-							</div>
+								</div>
+							{/each}
 						</div>
 					</div>
-				{:else if selectedCategory === 'extended'}
-					<!-- Left Sidebar -->
-					<div class="lg:col-span-1">
-						<div class="sticky top-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
-							<h3 class="mb-4 text-lg font-semibold text-white">Extended Endpoints</h3>
-							<div class="space-y-1">
-								{#each extendedEndpoints as endpoint}
-									<button
-										class="w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 {selectedEndpoint &&
-										selectedEndpoint.name === endpoint.name
-											? 'border-blue-500/50 bg-blue-900/30'
-											: 'border-gray-700/50 bg-gray-900/30'}"
-										on:click={() => selectEndpoint(endpoint)}
-									>
-										<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
-										<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
-									</button>
-								{/each}
-							</div>
-						</div>
-					</div>
-				{/if}
+				</div>
 
 				<!-- Endpoint Testing Interface (Right Panel) -->
 				<div class="space-y-6 lg:col-span-2">
@@ -1475,153 +1360,6 @@
 						<p class="text-gray-400">Loading core endpoints...</p>
 					</div>
 				{/if}
-			{:else if selectedCategory === 'extended'}
-				<!-- Extended Endpoints with Sidebar -->
-				<!-- Left Sidebar -->
-				<div class="lg:col-span-1">
-					<div class="sticky top-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
-						<h3 class="mb-4 text-lg font-semibold text-white">Extended Endpoints</h3>
-						<div class="space-y-1">
-							{#each extendedEndpoints as endpoint}
-								<button
-									class={`w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 ${
-										selectedEndpoint?.name === endpoint.name
-											? 'border-blue-500/50 bg-blue-900/30'
-											: 'border-gray-700/50 bg-gray-900/30'
-									}`}
-									on:click={() => selectEndpoint(endpoint)}
-								>
-									<div class="flex items-start justify-between gap-2">
-										<div>
-											<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
-											<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
-										</div>
-										{#if endpointTestResults[endpoint.name]}
-											<div class="mt-1 flex-shrink-0">
-												{#if endpointTestResults[endpoint.name].status === 'pending'}
-													<span
-														class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
-														title="Testing..."
-													></span>
-												{:else if endpointTestResults[endpoint.name].status === 'success'}
-													<span class="block h-2 w-2 rounded-full bg-green-500" title="Working"
-													></span>
-												{:else if endpointTestResults[endpoint.name].status === 'warning'}
-													<span
-														class="block h-2 w-2 rounded-full bg-yellow-500"
-														title={endpointTestResults[endpoint.name].message || 'Warning'}
-													></span>
-												{:else if endpointTestResults[endpoint.name].status === 'error'}
-													<span
-														class="block h-2 w-2 rounded-full bg-red-500"
-														title={endpointTestResults[endpoint.name].message || 'Error'}
-													></span>
-												{/if}
-											</div>
-										{/if}
-									</div>
-								</button>
-							{/each}
-						</div>
-					</div>
-				</div>
-
-				<!-- Main Content -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-2">
-					<h2 class="mb-4 text-2xl font-bold text-white">Extended Features</h2>
-					<p class="mb-6 text-gray-300">
-						Intelligent features that combine resources for enhanced workflows
-					</p>
-
-					{#if extendedEndpoints.length > 0}
-						<div class="grid gap-4 sm:grid-cols-2">
-							{#each extendedEndpoints as endpoint}
-								<div
-									class="endpoint-card cursor-pointer transition-all"
-									on:click={() => selectEndpoint(endpoint)}
-									on:keydown={(e) => e.key === 'Enter' && selectEndpoint(endpoint)}
-									tabindex="0"
-									role="button"
-								>
-									<div class="mb-2 flex items-start justify-between">
-										<h3 class="font-semibold text-white">{endpoint.title || endpoint.name}</h3>
-										<span class="text-xs text-blue-400">{endpoint.path}</span>
-									</div>
-									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
-									<div class="flex items-center justify-between text-xs">
-										<span class="text-gray-500"
-											>{Object.keys(endpoint.params || {}).length} parameters</span
-										>
-										{#if endpoint.examples?.length > 0}
-											<span class="text-green-400"
-												>{endpoint.examples.length} example{endpoint.examples.length !== 1
-													? 's'
-													: ''}</span
-											>
-										{/if}
-									</div>
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-gray-400">Loading extended endpoints...</p>
-					{/if}
-				</div>
-			{:else if selectedCategory === 'experimental'}
-				<!-- Experimental Endpoints (Full Width for Safety) -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
-					<h2 class="mb-4 text-2xl font-bold text-white">🧪 Experimental Lab</h2>
-					<p class="mb-6 text-gray-300">
-						Test cutting-edge features in a separate, clearly marked section
-					</p>
-
-					{#if experimentalEndpoints.length > 0}
-						<div class="grid gap-4 sm:grid-cols-2">
-							{#each experimentalEndpoints as endpoint}
-								<div
-									class="endpoint-card cursor-pointer border-purple-500/30 transition-all"
-									on:click={() => selectEndpoint(endpoint)}
-									on:keydown={(e) => e.key === 'Enter' && selectEndpoint(endpoint)}
-									tabindex="0"
-									role="button"
-								>
-									<div class="mb-2 flex items-start justify-between">
-										<h3 class="font-semibold text-white">🧪 {endpoint.title || endpoint.name}</h3>
-										<span class="text-xs text-purple-400">{endpoint.path}</span>
-									</div>
-									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
-									{#if endpoint.experimental}
-										<div class="rounded bg-purple-900/20 p-2 text-xs text-purple-300">
-											⚠️ {endpoint.experimental.warning ||
-												'Experimental feature - use with caution'}
-										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							{#each experimentalEndpoints as endpoint}
-								<div
-									class="group rounded-lg border border-purple-700/30 bg-purple-900/10 p-4 transition-colors hover:bg-purple-900/20"
-								>
-									<h3 class="flex items-center gap-2 font-semibold text-purple-200">
-										<span class="text-lg">{endpoint.title}</span>
-										{#if !endpoint.enabled}
-											<span
-												class="rounded-full bg-purple-700/30 px-2 py-0.5 text-xs text-purple-300"
-											>
-												Coming Soon
-											</span>
-										{/if}
-									</h3>
-									<p class="mt-2 text-sm text-purple-400">{endpoint.description}</p>
-									<p class="mt-2 font-mono text-xs text-purple-500/70">{endpoint.path}</p>
-								</div>
-							{/each}
-						</div>
-					{/if}
-				</div>
 			{:else if selectedCategory === 'health'}
 				<!-- Health Status (Full Width) -->
 				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
@@ -1685,81 +1423,6 @@
 							</div>
 						</div>
 
-						<!-- Extended Endpoints Health -->
-						<div class="rounded-lg border border-gray-700 bg-gray-900/30 p-4">
-							<h3 class="mb-3 text-lg font-semibold text-white">Extended Endpoints</h3>
-							<div class="grid gap-2">
-								{#each extendedEndpoints as endpoint}
-									{@const health = healthStatus[endpoint.path] || { status: 'unknown' }}
-									<div class="flex items-center justify-between rounded-lg bg-gray-800/50 p-3">
-										<div class="flex items-center gap-2">
-											<span class="text-sm font-medium text-gray-300">{endpoint.name}</span>
-											<code class="text-xs text-gray-500">{endpoint.path}</code>
-										</div>
-										<div class="flex items-center gap-2">
-											{#if health.status === 'checking'}
-												<div
-													class="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
-												></div>
-												<span class="text-xs text-blue-400">Checking...</span>
-											{:else if health.status === 'healthy'}
-												<Check class="h-4 w-4 text-green-400" />
-												<span class="text-xs text-green-400">Healthy</span>
-											{:else if health.status === 'error'}
-												<span class="text-red-400">❌</span>
-												<span class="text-xs text-red-400">{health.message || 'Error'}</span>
-											{:else if health.status === 'warning'}
-												<span class="text-yellow-400">⚠️</span>
-												<span class="text-xs text-yellow-400">{health.message || 'Warning'}</span>
-											{:else}
-												<span class="text-gray-500">⚫</span>
-												<span class="text-xs text-gray-500">Not tested</span>
-											{/if}
-										</div>
-									</div>
-								{/each}
-							</div>
-						</div>
-
-						<!-- Experimental Endpoints Health -->
-						{#if experimentalEndpoints.length > 0}
-							<div class="rounded-lg border border-purple-700/30 bg-purple-900/10 p-4">
-								<h3 class="mb-3 text-lg font-semibold text-purple-300">
-									🧪 Experimental Endpoints
-								</h3>
-								<div class="grid gap-2">
-									{#each experimentalEndpoints as endpoint}
-										{@const health = healthStatus[endpoint.path] || { status: 'unknown' }}
-										<div class="flex items-center justify-between rounded-lg bg-purple-800/20 p-3">
-											<div class="flex items-center gap-2">
-												<span class="text-sm font-medium text-purple-300">{endpoint.name}</span>
-												<code class="text-xs text-purple-500">{endpoint.path}</code>
-											</div>
-											<div class="flex items-center gap-2">
-												{#if health.status === 'checking'}
-													<div
-														class="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent"
-													></div>
-													<span class="text-xs text-purple-400">Checking...</span>
-												{:else if health.status === 'healthy'}
-													<Check class="h-4 w-4 text-green-400" />
-													<span class="text-xs text-green-400">Healthy</span>
-												{:else if health.status === 'error'}
-													<span class="text-red-400">❌</span>
-													<span class="text-xs text-red-400">{health.message || 'Error'}</span>
-												{:else if health.status === 'warning'}
-													<span class="text-yellow-400">⚠️</span>
-													<span class="text-xs text-yellow-400">{health.message || 'Warning'}</span>
-												{:else}
-													<span class="text-gray-500">⚫</span>
-													<span class="text-xs text-gray-500">Not tested</span>
-												{/if}
-											</div>
-										</div>
-									{/each}
-								</div>
-							</div>
-						{/if}
 					</div>
 				</div>
 			{/if}

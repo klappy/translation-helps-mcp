@@ -215,21 +215,97 @@ export class UnifiedResourceFetcher {
 
 	/**
 	 * Fetch Translation Academy module (Markdown) - CRITICAL FUNCTIONALITY
+	 * 
+	 * @param path - Path to module. Can be:
+	 *               - Directory path (e.g., 'translate/figs-metaphor') - returns all .md files concatenated
+	 *               - File path (e.g., 'translate/figs-metaphor/01.md') - returns single file
+	 *               If not provided and moduleId is given, searches in order: 
+	 *               translate/{moduleId}, process/{moduleId}, checking/{moduleId}, intro/{moduleId}
 	 */
 	async fetchTranslationAcademy(
 		language: string,
 		organization: string,
-		moduleId?: string
+		moduleId?: string,
+		path?: string
 	): Promise<TAResult> {
-		const result = await this.zipFetcher.getMarkdownContent(language, organization, 'ta', moduleId);
+		// If path is provided (directory or file), use it directly
+		if (path) {
+			const result = await this.zipFetcher.getMarkdownContent(language, organization, 'ta', path);
+			if (!result) {
+				throw new Error(`Translation Academy module not found at path: ${path}`);
+			}
+			return result as TAResult;
+		}
 
+		// If only moduleId is provided, search with category fallback
+		if (moduleId) {
+			const categories = ['translate', 'process', 'checking', 'intro'];
+			const errors: string[] = [];
+
+			try {
+				logger.info(`Searching for TA module "${moduleId}" in categories: ${categories.join(', ')}`);
+			} catch {
+				// Ignore logger errors
+			}
+
+			for (const category of categories) {
+				const searchPath = `${category}/${moduleId}`;
+				try {
+					const result = await this.zipFetcher.getMarkdownContent(language, organization, 'ta', searchPath);
+					
+					try {
+						logger.debug(`Category "${category}" search result:`, {
+							hasResult: !!result,
+							hasModules: !!(result as any)?.modules,
+							moduleCount: (result as any)?.modules?.length || 0
+						});
+					} catch {
+						// Ignore logger errors
+					}
+
+					if (result && (result as any).modules && (result as any).modules.length > 0) {
+						try {
+							logger.info(`✓ Found TA module "${moduleId}" in category "${category}"`);
+						} catch {
+							// Ignore logger errors
+						}
+						return result as TAResult;
+					} else {
+						const detail = !result ? 'null result' : 
+							!(result as any).modules ? 'no modules property' :
+							'empty modules array';
+						errors.push(`${category}: ${detail}`);
+					}
+				} catch (error) {
+					// Try next category
+					const errorMsg = error instanceof Error ? error.message : String(error);
+					errors.push(`${category}: ${errorMsg}`);
+					try {
+						logger.debug(`✗ TA module "${moduleId}" not found in "${category}": ${errorMsg}`);
+					} catch {
+						// Ignore logger errors
+					}
+				}
+			}
+
+			// If we get here, module wasn't found in any category
+			const errorMessage = `Translation Academy module "${moduleId}" not found. Searched categories: ${categories.join(', ')}. Details: ${errors.join('; ')}`;
+			
+			try {
+				logger.error(`Category search exhausted for "${moduleId}":`, { errors });
+			} catch {
+				// Ignore logger errors
+			}
+
+			throw new Error(errorMessage);
+		}
+
+		// No moduleId or dirPath - return TOC
+		const result = await this.zipFetcher.getMarkdownContent(language, organization, 'ta');
 		if (!result) {
 			throw new Error('Translation Academy not found');
 		}
 
-		// getMarkdownContent returns different structures for TOC vs specific module
-		// TOC: { modules: [{ id, path }], categories: string[] }
-		// Module: { modules: [{ id, markdown, path }] }
 		return result as TAResult;
 	}
 

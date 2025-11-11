@@ -158,16 +158,12 @@ export function initializeAllEndpoints(): void {
   logger.info("Initializing all endpoint configurations...");
 
   try {
-    // Register Core tier endpoints
+    // Register Core tier endpoints ONLY
     registerScriptureEndpoints();
     registerTranslationHelpsEndpoints();
     registerDiscoveryEndpoints();
 
-    // Register Extended tier endpoints
-    registerContextEndpoints();
-
-    // Register Experimental endpoints
-    registerExperimentalEndpoints();
+    // Extended and Experimental endpoints removed - only core tools supported
 
     // Print registry stats
     const stats = endpointRegistry.getStats();

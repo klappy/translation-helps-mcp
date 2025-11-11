@@ -61,7 +61,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 	const { term, path, rcLink, language = 'en', organization = 'unfoldingWord' } = params;
 
 	// Create tracer for this request (moved up for debug use)
-	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'get-translation-word');
+	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'fetch-translation-word');
 
 	// TEMPORARY DEBUG - show what's happening
 	if (term === 'debug-info') {
@@ -123,11 +123,12 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 	let targetPath: string | undefined;
 	let searchCategory: string | undefined;
 
-	// Priority: rcLink > term (if it's an RC link) > path > term
+	// Priority: rcLink > path > term (if it's an RC link) > term
 	if (rcLink || isRCLink(term)) {
 		const linkToParse = rcLink || term;
+		
+		// Parse to get term and category
 		const parsed = parseRCLink(linkToParse, language);
-
 		if (!parsed.isValid) {
 			throw new Error(
 				`Invalid RC link format: ${linkToParse}. Expected format: rc://en/tw/dict/bible/kt/love`
@@ -135,8 +136,9 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		}
 
 		wordKey = parsed.term;
-		targetPath = parsed.path;
 		searchCategory = parsed.category;
+		// DON'T set targetPath - let smart search find the file
+		// The smart search is more reliable than exact path matching
 	} else if (path) {
 		const extracted = extractTerm(path, language);
 		wordKey = extracted.term;
@@ -267,7 +269,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 }
 
 export const GET = createSimpleEndpoint({
-	name: 'get-translation-word-v2',
+	name: 'fetch-translation-word-v2',
 
 	params: [
 		{

@@ -71,9 +71,9 @@ export const V1_DEPRECATIONS: Record<string, DeprecationConfig> = {
 	'/api/get-translation-word': {
 		version: '1.0',
 		sunsetDate: new Date('2025-03-01'),
-		successorPath: '/api/v2/get-translation-word',
+		successorPath: '/api/fetch-translation-word',
 		message:
-			'V1 get translation word endpoint is deprecated. V2 offers better performance and real metadata.'
+			'Endpoint renamed to /api/fetch-translation-word for consistency with other endpoints.'
 	},
 	'/api/fetch-translation-academy': {
 		version: '1.0',

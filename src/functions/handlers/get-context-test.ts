@@ -95,7 +95,7 @@ export const getContextHandler: PlatformHandler = async (
             { word: "eternal-life", occurrences: 1 },
           ],
           count: 2,
-          note: "Use /api/get-translation-word to fetch full articles",
+          note: "Use /api/fetch-translation-word to fetch full articles",
         },
       ],
       reference: referenceParam,

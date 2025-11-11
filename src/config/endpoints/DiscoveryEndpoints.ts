@@ -17,7 +17,7 @@ export const GET_LANGUAGES_CONFIG: EndpointConfig = {
   title: "Get Languages",
   description:
     "Discover available languages with metadata about resource coverage and availability",
-  category: "core",
+  category: "extended",
   responseShape: LANGUAGES_SHAPE,
 
   params: {
@@ -126,7 +126,7 @@ export const GET_AVAILABLE_BOOKS_CONFIG: EndpointConfig = {
   title: "Get Available Books",
   description:
     "Discover which Bible books are available for specific resources and languages, with coverage indicators",
-  category: "core",
+  category: "extended",
   responseShape: RESOURCES_SHAPE,
 
   params: {
@@ -272,7 +272,7 @@ export const LIST_AVAILABLE_RESOURCES_CONFIG: EndpointConfig = {
   title: "List Available Resources",
   description:
     "Discover what types of translation resources are available (Scripture, Notes, Words, etc.)",
-  category: "core",
+  category: "extended",
   responseShape: RESOURCES_SHAPE,
 
   params: {
@@ -359,10 +359,7 @@ export const LIST_AVAILABLE_RESOURCES_CONFIG: EndpointConfig = {
 /**
  * All Discovery Endpoint Configurations
  */
-export const DISCOVERY_ENDPOINTS = [
-  GET_LANGUAGES_CONFIG,
-  GET_AVAILABLE_BOOKS_CONFIG,
-  LIST_AVAILABLE_RESOURCES_CONFIG,
-] as const;
+// Discovery endpoints removed - not part of core 6 tools
+export const DISCOVERY_ENDPOINTS = [] as const;
 
 export default DISCOVERY_ENDPOINTS;

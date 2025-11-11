@@ -159,7 +159,7 @@ export const getContextHandler: PlatformHandler = async (
         type: "translation-words",
         data: Array.from(uniqueWords.values()),
         count: uniqueWords.size,
-        note: "Translation word links for the verse. Use /api/get-translation-word to fetch full articles",
+        note: "Translation word links for the verse. Use /api/fetch-translation-word to fetch full articles",
       });
     }
 

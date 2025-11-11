@@ -61,6 +61,48 @@ export async function handleFetchTranslationWordLinks(
     const aggregator = new ResourceAggregator();
     const resources = await aggregator.aggregateResources(reference, options);
 
+    // Transform links to extract category, wordId, and path from RC link
+    // Return ONLY the clean, transformed fields (not raw TSV data)
+    const transformedLinks = (resources.translationWordLinks || []).map((link: any, index: number) => {
+      // Try different field names (ResourceAggregator uses TWLink)
+      const rcLink = link.TWLink || link.twlid || link.rcLink || '';
+      
+      // Parse RC link to extract category, wordId, and path
+      // Format: rc://*/tw/dict/bible/{category}/{wordId}
+      let category = '';
+      let wordId = '';
+      let path = '';
+      
+      if (rcLink) {
+        // Extract everything after /dict/ and add .md extension
+        const pathMatch = rcLink.match(/rc:\/\/\*\/tw\/dict\/(.+)/);
+        if (pathMatch) {
+          path = pathMatch[1] + '.md'; // e.g., "bible/kt/love.md"
+        }
+        
+        // Extract category and wordId
+        const match = rcLink.match(/rc:\/\/\*\/tw\/dict\/bible\/([^/]+)\/([^/]+)/);
+        if (match) {
+          category = match[1]; // e.g., "kt", "names", "other"
+          wordId = match[2];   // e.g., "love", "grace", "abraham"
+        }
+      }
+      
+      // Return ONLY clean, transformed fields (no raw TSV columns)
+      return {
+        id: link.id || `twl${index + 1}`,
+        reference: link.Reference || link.reference || args.reference,
+        occurrence: parseInt(link.Occurrence || link.occurrence || '1', 10),
+        quote: link.Quote || link.quote || '',
+        category,
+        wordId,
+        path,
+        strongsId: link.StrongsId || link.strongsId || '',
+        rcLink,
+        position: link.position || null,
+      };
+    });
+
     // Build response
     const response = {
       reference: {
@@ -69,12 +111,12 @@ export async function handleFetchTranslationWordLinks(
         verse: reference.verse,
         verseEnd: reference.endVerse,
       },
-      translationWordLinks: resources.translationWordLinks || [],
+      translationWordLinks: transformedLinks,
       metadata: {
         language: args.language,
         organization: args.organization,
         timestamp: new Date().toISOString(),
-        linksCount: resources.translationWordLinks?.length || 0,
+        linksCount: transformedLinks.length,
         tokenEstimate: estimateTokens(JSON.stringify(resources)),
         responseTime: Date.now() - startTime,
       },

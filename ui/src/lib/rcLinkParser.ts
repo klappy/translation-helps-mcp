@@ -11,6 +11,7 @@ export interface ParsedRCLink {
 	category: string;
 	term: string;
 	path: string;
+	dirPath?: string; // For TA modules - directory path like 'translate/figs-metaphor'
 	isValid: boolean;
 }
 
@@ -118,4 +119,75 @@ export function extractTerm(
 		term: cleanTerm,
 		source: 'term'
 	};
+}
+
+/**
+ * Parse RC link for Translation Academy
+ * Supports formats:
+ * - rc://en/ta/man/translate/figs-metaphor
+ * - rc://STAR/ta/man/translate/figs-metaphor where STAR is wildcard
+ * - rc://STAR/STAR/STAR/translate/figs-metaphor with wildcards
+ */
+export function parseTranslationAcademyRCLink(rcLink: string, defaultLanguage = 'en'): ParsedRCLink {
+	const result: ParsedRCLink = {
+		language: defaultLanguage,
+		resource: 'ta',
+		category: '',
+		term: '',
+		path: '',
+		dirPath: '',
+		isValid: false
+	};
+
+	if (!rcLink || typeof rcLink !== 'string') {
+		return result;
+	}
+
+	// Handle both with and without rc:// prefix
+	const cleanLink = rcLink.startsWith('rc://') ? rcLink : `rc://${rcLink}`;
+
+	// Pattern to match: rc://[lang|*]/[resourceId|*]/[type|*]/[dirPath]
+	// Example: rc://*/ta/man/translate/figs-metaphor
+	const taPattern = /^rc:\/\/([^/]+|\*)\/([^/]+|\*)\/([^/]+|\*)\/(.+)$/i;
+	const match = cleanLink.match(taPattern);
+
+	if (!match) {
+		return result;
+	}
+
+	const [, language, resourceId, resourceType, dirPath] = match;
+
+	// Validate it's a TA link (resourceId should be 'ta' or wildcard)
+	if (resourceId !== '*' && resourceId.toLowerCase() !== 'ta') {
+		return result;
+	}
+
+	result.language = language === '*' ? defaultLanguage : language;
+	result.resource = 'ta';
+	result.dirPath = dirPath;
+	result.path = dirPath; // For TA, path is the directory path (no .md extension)
+	
+	// Extract category from dirPath (first segment)
+	const pathParts = dirPath.split('/');
+	result.category = pathParts[0] || '';
+	result.term = pathParts.slice(1).join('/') || ''; // Module ID is everything after category
+	
+	result.isValid = true;
+
+	return result;
+}
+
+/**
+ * Check if a string looks like a Translation Academy RC link
+ */
+export function isTranslationAcademyRCLink(input: string): boolean {
+	if (!input || typeof input !== 'string') {
+		return false;
+	}
+
+	// Check for TA-specific patterns
+	return (
+		input.includes('rc://') && 
+		(input.includes('/ta/') || input.match(/rc:\/\/[^/]+\/\*\//) !== null)
+	);
 }
