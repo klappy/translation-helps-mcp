@@ -30,6 +30,27 @@ interface ChatRequest {
 // System prompt that enforces our rules
 const SYSTEM_PROMPT = `You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
 
+AVAILABLE MCP PROMPTS (Use these for comprehensive data):
+
+1. **translation-helps-for-passage** - PREFERRED for comprehensive requests
+   - Use when user asks for "all translation helps", "everything", or comprehensive data
+   - Returns: scripture, translation questions, word articles WITH TITLES, translation notes, academy articles WITH TITLES
+   - Word articles include: term, title (actual name like "Love, Beloved"), category, full markdown content
+   - Academy articles include: moduleId, title (actual name like "Metaphor"), category, full markdown content
+   - Example: "Get all translation helps for John 3:16" → Use this prompt!
+
+2. **get-translation-words-for-passage** - For word articles only
+   - Returns word articles with titles and full content
+   
+3. **get-translation-academy-for-passage** - For academy articles only
+   - Returns academy articles with titles and full content
+
+WHEN TO USE PROMPTS vs INDIVIDUAL ENDPOINTS:
+- User asks for "all translation helps" → Use translation-helps-for-passage prompt
+- User asks for "everything for [reference]" → Use translation-helps-for-passage prompt
+- User asks only for scripture → Use fetch-scripture endpoint
+- User asks only for notes → Use translation-notes endpoint
+
 CRITICAL RULES YOU MUST FOLLOW:
 
 1. SCRIPTURE QUOTING:
@@ -44,7 +65,8 @@ CRITICAL RULES YOU MUST FOLLOW:
      * Scripture: [ULT v86 - John 3:16]
      * Notes: [TN v86 - John 3:16]
      * Questions: [TQ v86 - John 3:16]
-     * Words: [TW v86]
+     * Words: [TW v86 - love] (use the TITLE if available)
+     * Academy: [TA v86 - Metaphor] (use the TITLE if available)
    - When citing translation notes/questions, include the specific verse reference
    - NEVER present information without a citation
 
@@ -54,12 +76,12 @@ CRITICAL RULES YOU MUST FOLLOW:
    - NEVER add interpretations not found in the resources
    - If data isn't available, say so clearly
 
-4. ANSWERING QUESTIONS:
-   - You may reword translation notes/questions for clarity
-   - But ALWAYS cite the source of your answer
-   - When paraphrasing notes/questions, include citations after each point
-   - Example: "Paul emphasizes God's faithfulness [TN v86 - Titus 1:2]"
-   - List all resources used to formulate your response
+4. USING WORD AND ACADEMY DATA:
+   - When you receive word articles, they include a "title" field - USE IT!
+   - Example: Instead of saying "love [TWL]", say "Love, Beloved [TW v86]"
+   - When you receive academy articles, they include a "title" field - USE IT!
+   - Example: Instead of saying "figs-metaphor", say "Metaphor [TA v86]"
+   - Include the actual article titles to give users proper context
 
 5. TRANSLATION NOTES STRUCTURE:
    - Translation notes contain several fields for each entry:
@@ -74,14 +96,14 @@ CRITICAL RULES YOU MUST FOLLOW:
 When you receive MCP data, use it to provide accurate, helpful responses while maintaining these strict guidelines. Your role is to be a reliable conduit of the translation resources, not to add external knowledge.`;
 
 /**
- * Discover available MCP endpoints dynamically
+ * Discover available MCP endpoints and prompts dynamically
  */
-async function discoverMCPEndpoints(baseUrl: string): Promise<any[]> {
+async function discoverMCPEndpoints(baseUrl: string): Promise<{ endpoints: any[]; prompts: any[] }> {
 	try {
 		const response = await fetch(`${baseUrl}/api/mcp-config`);
 		if (!response.ok) {
-			logger.error('Failed to discover MCP endpoints', { status: response.status });
-			return [];
+			logger.error('Failed to discover MCP resources', { status: response.status });
+			return { endpoints: [], prompts: [] };
 		}
 
 		const config = await response.json();
@@ -105,23 +127,27 @@ async function discoverMCPEndpoints(baseUrl: string): Promise<any[]> {
 			logger.error('Invalid MCP config structure', { config });
 		}
 
-		logger.info('Discovered MCP endpoints', { count: endpoints.length });
-		return endpoints;
+		// Get prompts from config
+		const prompts = config.prompts || [];
+
+		logger.info('Discovered MCP resources', { endpoints: endpoints.length, prompts: prompts.length });
+		return { endpoints, prompts };
 	} catch (error) {
-		logger.error('Error discovering MCP endpoints', { error });
-		return [];
+		logger.error('Error discovering MCP resources', { error });
+		return { endpoints: [], prompts: [] };
 	}
 }
 
 /**
- * Ask the LLM which endpoints to call based on the user's query
+ * Ask the LLM which endpoints/prompts to call based on the user's query
  */
 async function determineMCPCalls(
 	message: string,
 	apiKey: string,
 	endpoints: any[],
+	prompts: any[],
 	chatHistory: Array<{ role: string; content: string }> = []
-): Promise<Array<{ endpoint: string; params: Record<string, string> }>> {
+): Promise<Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>> {
 	// Format endpoints for the LLM prompt
 	const endpointDescriptions = endpoints
 		.map((ep) => {
@@ -181,14 +207,48 @@ async function determineMCPCalls(
 		.map((msg) => `${msg.role}: ${msg.content.substring(0, 200)}...`) // Limit content length
 		.join('\n');
 
-	const prompt = `Based on the user's query and conversation context, determine which MCP endpoints to call. Return a JSON array of endpoint calls.
+	// Format prompts for the LLM
+	const promptDescriptions = prompts
+		.map((p) => {
+			const params = (p.parameters || [])
+				.map((param: any) => `  - ${param.name} (${param.required ? 'required' : 'optional'}, ${param.type}): ${param.description}`)
+				.join('\n');
+			const returns = Object.entries(p.returns || {})
+				.map(([key, desc]) => `  - ${key}: ${desc}`)
+				.join('\n');
+			return `- ${p.name}: ${p.description}\n  Parameters:\n${params}\n  Returns:\n${returns}`;
+		})
+		.join('\n\n');
 
-${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}Available endpoints:
+	const prompt = `Based on the user's query and conversation context, determine which MCP resources (prompts or endpoints) to call. Return a JSON array.
+
+${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}**AVAILABLE PROMPTS (Use these for comprehensive data):**
+${promptDescriptions}
+
+**Available endpoints:**
 ${endpointDescriptions}
 
 Current user query: "${message}"
 
+**DECISION RULES:**
+1. If user asks for "all translation helps", "everything", or comprehensive data → Use translation-helps-for-passage PROMPT
+2. If user asks only for specific resource type (e.g., just scripture, just notes) → Use individual endpoint
+3. Prompts return richer data (titles, full content) than individual endpoints
+
 Return ONLY a JSON array like this (no markdown, no explanation):
+
+For PROMPTS:
+[
+  {
+    "prompt": "translation-helps-for-passage",
+    "params": {
+      "reference": "John 3:16",
+      "language": "en"
+    }
+  }
+]
+
+For ENDPOINTS:
 [
   {
     "endpoint": "fetch-scripture",
@@ -202,16 +262,11 @@ Return ONLY a JSON array like this (no markdown, no explanation):
 ]
 
 Important:
-- The endpoint field should be the path without '/api/' prefix
+- Use "prompt" field for prompts, "endpoint" field for endpoints
 - All parameters should be strings
-- Include all required parameters based on the endpoint description
-- For endpoints that support formats, choose the most appropriate:
-  - "md" (Markdown) for human-readable content you'll quote
-  - "text" for simple plain text needs
-  - "json" only if you need structured data processing
-- Default to "md" format when available for better readability
-- If no endpoints are needed (e.g., for greetings, general questions, or non-biblical queries), return an empty array: []
-- Return an empty array if the query is asking about capabilities, help, or non-resource questions`;
+- Include all required parameters
+- For endpoints that support formats, default to "md" for better readability
+- If no resources are needed, return an empty array: []`;
 
 	// Add timeout
 	const controller = new AbortController();
@@ -271,10 +326,10 @@ Important:
 }
 
 /**
- * Execute the MCP calls determined by the LLM
+ * Execute the MCP calls determined by the LLM (handles both prompts and endpoints)
  */
 async function executeMCPCalls(
-	calls: Array<{ endpoint: string; params: Record<string, string> }>,
+	calls: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
 	baseUrl: string
 ): Promise<{ data: any[]; apiCalls: any[] }> {
 	const data: any[] = [];
@@ -283,7 +338,54 @@ async function executeMCPCalls(
 	for (const call of calls) {
 		const startTime = Date.now();
 		try {
-			// Normalize endpoint name: strip leading /api/ and leading /
+			// Check if this is a prompt or an endpoint
+			if (call.prompt) {
+				// Handle MCP Prompt (POST to /api/execute-prompt)
+				const promptName = call.prompt;
+				logger.info('Executing MCP prompt', { prompt: promptName, params: call.params });
+
+				const response = await fetch(`${baseUrl}/api/execute-prompt`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						promptName: promptName,
+						parameters: call.params
+					})
+				});
+
+				const duration = Date.now() - startTime;
+
+				if (response.ok) {
+					const result = await response.json();
+					data.push({
+						type: `prompt:${promptName}`,
+						params: call.params,
+						result
+					});
+					apiCalls.push({
+						endpoint: `execute-prompt (${promptName})`,
+						params: call.params,
+						duration: `${duration}ms`,
+						status: response.status,
+						cacheStatus: 'n/a'
+					});
+				} else {
+					logger.error('MCP prompt failed', {
+						prompt: promptName,
+						status: response.status
+					});
+					apiCalls.push({
+						endpoint: `execute-prompt (${promptName})`,
+						params: call.params,
+						duration: `${duration}ms`,
+						status: response.status,
+						error: await response.text()
+					});
+				}
+				continue;
+			}
+
+			// Handle individual endpoint
 			const endpointName = (call.endpoint || '')
 				.toString()
 				.replace(/^\/api\//, '')
@@ -773,12 +875,14 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			);
 		}
 
-		// Step 1: Discover available endpoints dynamically
+		// Step 1: Discover available endpoints and prompts dynamically
 		const discoveryStart = Date.now();
-		const endpoints = await discoverMCPEndpoints(baseUrl);
+		const { endpoints, prompts } = await discoverMCPEndpoints(baseUrl);
 		timings.endpointDiscovery = Date.now() - discoveryStart;
 
-		if (endpoints.length === 0) {
+		logger.info('Discovered resources for chat', { endpoints: endpoints.length, prompts: prompts.length });
+
+		if (endpoints.length === 0 && prompts.length === 0) {
 			return json(
 				{
 					success: false,
@@ -789,9 +893,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			);
 		}
 
-		// Step 2: Let the LLM decide which endpoints to call
+		// Step 2: Let the LLM decide which endpoints/prompts to call
 		const llmDecisionStart = Date.now();
-		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints, chatHistory);
+		const endpointCalls = await determineMCPCalls(message, apiKey, endpoints, prompts, chatHistory);
 		timings.llmDecision = Date.now() - llmDecisionStart;
 
 		// Log if no endpoints were selected
