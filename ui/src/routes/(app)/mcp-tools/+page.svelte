@@ -98,7 +98,8 @@
 			id: 'get-translation-words-for-passage',
 			title: 'Dictionary Entries',
 			icon: '📚',
-			description: 'Get translation word definitions with human-readable titles (not technical IDs)',
+			description:
+				'Get translation word definitions with human-readable titles (not technical IDs)',
 			parameters: [
 				{
 					name: 'reference',
@@ -221,7 +222,7 @@
 
 		isExecutingPrompt = true;
 		promptResults = null;
-		
+
 		// Initialize workflow steps
 		promptWorkflowSteps = selectedPrompt.workflow.map((w: any) => ({
 			step: w.step,
@@ -1634,7 +1635,7 @@
 												bind:value={promptParameters[param.name]}
 												placeholder={param.placeholder}
 												required={param.required}
-												class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+												class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 											/>
 											{#if param.description}
 												<p class="mt-1 text-xs text-gray-500">{param.description}</p>
@@ -1718,12 +1719,18 @@
 										{#if showRawResponse}
 											<!-- Raw JSON Response -->
 											<pre
-												class="overflow-x-auto rounded-lg bg-gray-800 p-4 text-xs text-gray-300">{JSON.stringify(promptResults, null, 2)}</pre>
+												class="overflow-x-auto rounded-lg bg-gray-800 p-4 text-xs text-gray-300">{JSON.stringify(
+													promptResults,
+													null,
+													2
+												)}</pre>
 										{:else if selectedPrompt.id === 'translation-helps-for-passage' && promptResults.words}
 											<!-- Comprehensive Results -->
 											<div class="space-y-4">
 												<div>
-													<h4 class="mb-2 text-sm font-semibold text-blue-400">📖 Scripture Text</h4>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														📖 Scripture Text
+													</h4>
 													<div class="rounded-lg bg-gray-800 p-3 text-sm text-gray-300">
 														{promptResults.scripture?.text || 'No scripture found'}
 													</div>
@@ -1816,7 +1823,11 @@
 										{:else}
 											<!-- Generic JSON Results -->
 											<pre
-												class="overflow-x-auto rounded-lg bg-gray-800 p-4 text-xs text-gray-300">{JSON.stringify(promptResults, null, 2)}</pre>
+												class="overflow-x-auto rounded-lg bg-gray-800 p-4 text-xs text-gray-300">{JSON.stringify(
+													promptResults,
+													null,
+													2
+												)}</pre>
 										{/if}
 									</div>
 								</div>

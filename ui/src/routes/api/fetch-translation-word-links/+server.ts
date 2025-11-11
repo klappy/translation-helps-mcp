@@ -60,16 +60,16 @@ async function fetchTranslationWordLinks(
 		}
 
 		return {
-		id: `twl${index + 1}`,
-		reference: row.Reference || reference,
-		occurrence: parseInt(row.Occurrence || '1', 10),
-		quote: row.Quote || '',
+			id: `twl${index + 1}`,
+			reference: row.Reference || reference,
+			occurrence: parseInt(row.Occurrence || '1', 10),
+			quote: row.Quote || '',
 			category, // Extracted: "kt", "names", "other"
 			term, // Extracted: "love", "grace", etc. - matches translation_word tool parameter
 			path, // Extracted: "bible/kt/love.md"
-		strongsId: row.StrongsId || '',
+			strongsId: row.StrongsId || '',
 			rcLink, // Full RC link
-		position: null
+			position: null
 		};
 	});
 

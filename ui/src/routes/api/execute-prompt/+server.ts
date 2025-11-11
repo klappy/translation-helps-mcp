@@ -52,7 +52,7 @@ async function executeTranslationHelpsPrompt(
 		if (scriptureRes.ok) {
 			const scriptureData = await scriptureRes.json();
 			console.log('Scripture response keys:', Object.keys(scriptureData));
-			
+
 			// Extract the actual verse text from the response
 			// Structure is: { scripture: [{text, translation}] }
 			let text = '';
@@ -134,16 +134,17 @@ async function executeTranslationHelpsPrompt(
 
 				// Extract title from markdown content (first H1)
 				let title = link.term;
-				
+
 				// Log the structure for debugging
 				console.log(`Word data keys for ${link.term}:`, Object.keys(wordData));
-				
+
 				if (wordData.content) {
 					// Try multiple H1 formats
-					let titleMatch = wordData.content.match(/^#\s+(.+)$/m) ||
-					                wordData.content.match(/^# (.+)$/m) ||
-					                wordData.content.match(/\n#\s+(.+)/);
-					
+					let titleMatch =
+						wordData.content.match(/^#\s+(.+)$/m) ||
+						wordData.content.match(/^# (.+)$/m) ||
+						wordData.content.match(/\n#\s+(.+)/);
+
 					if (titleMatch) {
 						title = titleMatch[1].trim();
 					} else {
@@ -419,4 +420,3 @@ function extractSupportReferences(notesData: any): string[] {
 	console.log(`Total support references found: ${refs.size}`);
 	return Array.from(refs);
 }
-
