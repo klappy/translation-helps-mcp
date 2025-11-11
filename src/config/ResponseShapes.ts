@@ -652,7 +652,7 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
     arrayItems: {
       dataType: "translation-word-links",
       structure: {
-        required: ["wordId", "category", "path", "rcLink", "reference"],
+        required: ["term", "category", "path", "rcLink", "reference"],
         optional: ["quote", "occurrence", "strongsId", "position"],
         fieldDescriptions: [
           {
@@ -662,10 +662,10 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
             example: "kt",
           },
           {
-            name: "wordId",
+            name: "term",
             type: "string",
             description:
-              "The translation word identifier (not the actual word)",
+              "Translation word term identifier. Use this with the translation_word tool's term parameter.",
             example: "love",
           },
           {

@@ -61,17 +61,17 @@ export async function handleFetchTranslationWordLinks(
     const aggregator = new ResourceAggregator();
     const resources = await aggregator.aggregateResources(reference, options);
 
-    // Transform links to extract category, wordId, and path from RC link
+    // Transform links to extract category, term, and path from RC link
     // Return ONLY the clean, transformed fields (not raw TSV data)
     const transformedLinks = (resources.translationWordLinks || []).map(
       (link: any, index: number) => {
         // Try different field names (ResourceAggregator uses TWLink)
         const rcLink = link.TWLink || link.twlid || link.rcLink || "";
 
-        // Parse RC link to extract category, wordId, and path
-        // Format: rc://*/tw/dict/bible/{category}/{wordId}
+        // Parse RC link to extract category, term, and path
+        // Format: rc://*/tw/dict/bible/{category}/{term}
         let category = "";
-        let wordId = "";
+        let term = "";
         let path = "";
 
         if (rcLink) {
@@ -81,13 +81,13 @@ export async function handleFetchTranslationWordLinks(
             path = pathMatch[1] + ".md"; // e.g., "bible/kt/love.md"
           }
 
-          // Extract category and wordId
+          // Extract category and term
           const match = rcLink.match(
             /rc:\/\/\*\/tw\/dict\/bible\/([^/]+)\/([^/]+)/,
           );
           if (match) {
             category = match[1]; // e.g., "kt", "names", "other"
-            wordId = match[2]; // e.g., "love", "grace", "abraham"
+            term = match[2]; // e.g., "love", "grace", "abraham"
           }
         }
 
@@ -98,7 +98,7 @@ export async function handleFetchTranslationWordLinks(
           occurrence: parseInt(link.Occurrence || link.occurrence || "1", 10),
           quote: link.Quote || link.quote || "",
           category,
-          wordId,
+          term,
           path,
           strongsId: link.StrongsId || link.strongsId || "",
           rcLink,
