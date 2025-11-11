@@ -2,6 +2,69 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [Unreleased]
+
+### Features
+
+- **prompts:** Add full article content to MCP prompt responses
+  - Translation Words now include complete markdown content, not just titles
+  - Translation Academy articles include complete markdown content
+  - All prompts support expandable content sections in UI
+  - Consistent data structure across all three prompts (translation-helps, words, academy)
+
+- **ui:** Add comprehensive Getting Started page at `/getting-started`
+  - Dual-tab interface for MCP Protocol vs REST API
+  - Platform-specific MCP configuration for Claude Desktop, Cursor, Cline
+  - Copy-paste ready JSON configurations with path instructions
+  - Code examples in cURL, TypeScript, and Python for all endpoints
+  - Links to official MCP documentation and interactive testing pages
+  - Added to main navigation menu as 2nd item
+
+- **ui:** Add formatted/raw view toggle for all MCP prompts
+  - Translation Words prompt now has formatted display
+  - Translation Academy prompt now has formatted display
+  - All prompts support "Show Formatted" / "Show Raw JSON" toggle
+  - Expandable `<details>` sections for article content
+
+- **prompts:** Improve prompt execution logging and error handling
+  - Added comprehensive logging to prompt executor
+  - Reused exact logic from main prompt for consistency
+  - Better error messages and fallback handling
+
+### Bug Fixes
+
+- **cache:** Fix empty catalog cache detection in ZipResourceFetcher2
+  - Bug: `catalogData?.data?.length === 0` failed when data was null/undefined
+  - Fix: Check `!catalogData?.data || catalogData.data.length === 0`
+  - Now properly detects and invalidates corrupt KV cache entries
+  - Triggers force refresh to bypass all caches when empty catalog detected
+
+- **prompts:** Fix Translation Words prompt missing items array fallback
+  - Added `linksData.items` fallback to match main prompt behavior
+  - Fixed 0 results issue in words-only prompt
+
+- **prompts:** Remove notes from Translation Academy prompt results
+  - Academy prompt now only returns academyArticles (cleaner response)
+  - Notes still fetched internally to extract supportReferences
+  - API response focused on what the prompt promises
+
+- **api:** Normalize API response shapes for single article fetches
+  - `fetch-translation-word` returns flat article object (not items array wrapper)
+  - `fetch-translation-academy` returns flat module object (not nested wrapper)
+  - Simplified title extraction and data consumption
+  - Consistent structure between TW and TA endpoints
+
+- **logging:** Fix MCP STDIO compliance - all logs to stderr
+  - Changed `logger.info()` to use `console.error()` instead of `console.info()`
+  - Ensures 100% MCP protocol compliance (stdout only for JSON-RPC)
+
+### Documentation
+
+- Update all GitHub URLs from klappy to unfoldingWord organization
+- Update REST API production URL to `https://translation-helps-mcp-945.pages.dev`
+- Update clone directory from `translation-helps-mcp-2` to `translation-helps-mcp`
+- Updated in: package.json, CHANGELOG.md, docs, UI navigation, footer
+
 ### [7.1.3](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.1.2...v7.1.3) (2025-08-25)
 
 ### Documentation

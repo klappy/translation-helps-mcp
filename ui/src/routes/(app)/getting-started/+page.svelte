@@ -284,9 +284,7 @@ data = response.json()`
 			</span>
 		</h1>
 		<p class="mx-auto mb-8 max-w-3xl text-xl text-gray-300">
-			Access Bible translation resources via <strong class="text-blue-300"
-				>MCP Protocol</strong
-			>
+			Access Bible translation resources via <strong class="text-blue-300">MCP Protocol</strong>
 			or <strong class="text-cyan-300">REST API</strong>. Choose your integration method below.
 		</p>
 	</section>
@@ -440,12 +438,9 @@ data = response.json()`
 								{/if}
 							</button>
 						</div>
-						<pre
-							class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code>{JSON.stringify(
-								currentConfig.config,
-								null,
-								2
-							)}</code></pre>
+						<pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code
+								>{JSON.stringify(currentConfig.config, null, 2)}</code
+							></pre>
 					</div>
 
 					<!-- Setup Steps -->
@@ -458,10 +453,12 @@ data = response.json()`
 									>1</span
 								>
 								<div class="flex-1">
-									<span class="block mb-2">Clone the repository and install dependencies:</span>
-									<pre class="rounded bg-gray-950 p-2 text-xs text-gray-300 overflow-x-auto"><code>git clone https://github.com/unfoldingWord/translation-helps-mcp.git
+									<span class="mb-2 block">Clone the repository and install dependencies:</span>
+									<pre class="overflow-x-auto rounded bg-gray-950 p-2 text-xs text-gray-300"><code
+											>git clone https://github.com/unfoldingWord/translation-helps-mcp.git
 cd translation-helps-mcp
-npm install</code></pre>
+npm install</code
+										></pre>
 								</div>
 							</li>
 							<li class="flex gap-3">
@@ -481,9 +478,11 @@ npm install</code></pre>
 									>3</span
 								>
 								<div class="flex-1">
-									<span class="block mb-2">Paste the configuration JSON and update the path:</span>
+									<span class="mb-2 block">Paste the configuration JSON and update the path:</span>
 									{#if currentConfig.note}
-										<div class="rounded bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs text-yellow-300">
+										<div
+											class="rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-300"
+										>
 											⚠️ {currentConfig.note}
 										</div>
 									{/if}
@@ -502,9 +501,10 @@ npm install</code></pre>
 									>5</span
 								>
 								<span
-									>Start using tools like <code class="rounded bg-gray-800 px-2 py-0.5 text-cyan-300"
-										>fetch_scripture</code
-									> and prompts like
+									>Start using tools like <code
+										class="rounded bg-gray-800 px-2 py-0.5 text-cyan-300">fetch_scripture</code
+									>
+									and prompts like
 									<code class="rounded bg-gray-800 px-2 py-0.5 text-cyan-300"
 										>translation-helps-for-passage</code
 									>
@@ -655,8 +655,9 @@ npm install</code></pre>
 								{/if}
 							</button>
 						</div>
-						<pre
-							class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code>{currentExample.curl}</code></pre>
+						<pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code
+								>{currentExample.curl}</code
+							></pre>
 					</div>
 
 					<!-- TypeScript Example -->
@@ -674,8 +675,9 @@ npm install</code></pre>
 								<span>Copy</span>
 							</button>
 						</div>
-						<pre
-							class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code>{currentExample.typescript}</code></pre>
+						<pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code
+								>{currentExample.typescript}</code
+							></pre>
 					</div>
 
 					<!-- Python Example -->
@@ -693,8 +695,9 @@ npm install</code></pre>
 								<span>Copy</span>
 							</button>
 						</div>
-						<pre
-							class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code>{currentExample.python}</code></pre>
+						<pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code
+								>{currentExample.python}</code
+							></pre>
 					</div>
 
 					<!-- API Reference Link -->
@@ -721,8 +724,7 @@ npm install</code></pre>
 					<div class="rounded-xl border border-gray-700 bg-gray-900/50 p-4">
 						<div class="mb-2 flex items-center gap-2">
 							<code class="text-cyan-300">reference</code>
-							<span class="rounded bg-blue-500/20 px-2 py-0.5 text-xs text-blue-300">Required</span
-							>
+							<span class="rounded bg-blue-500/20 px-2 py-0.5 text-xs text-blue-300">Required</span>
 						</div>
 						<p class="text-sm text-gray-400">
 							Bible reference (e.g., <code class="text-gray-300">John 3:16</code>,
@@ -764,10 +766,7 @@ npm install</code></pre>
 				<p class="mb-3 text-sm text-gray-300">
 					Try our tools and prompts in an interactive browser environment.
 				</p>
-				<a
-					href="/mcp-tools"
-					class="text-sm text-blue-400 hover:text-blue-300 hover:underline"
-				>
+				<a href="/mcp-tools" class="text-sm text-blue-400 hover:text-blue-300 hover:underline">
 					Open MCP Tools →
 				</a>
 			</div>
@@ -776,10 +775,7 @@ npm install</code></pre>
 				<p class="mb-3 text-sm text-gray-300">
 					Browse all endpoints with live testing and response previews.
 				</p>
-				<a
-					href="/api-explorer"
-					class="text-sm text-blue-400 hover:text-blue-300 hover:underline"
-				>
+				<a href="/api-explorer" class="text-sm text-blue-400 hover:text-blue-300 hover:underline">
 					Open API Explorer →
 				</a>
 			</div>
@@ -811,4 +807,3 @@ npm install</code></pre>
 		line-height: 1.6;
 	}
 </style>
-

@@ -5,7 +5,9 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 	const { promptName, parameters } = await request.json();
 	const { reference, language = 'en' } = parameters;
 
-	console.log(`[execute-prompt] Starting prompt execution: ${promptName} for ${reference} (${language})`);
+	console.log(
+		`[execute-prompt] Starting prompt execution: ${promptName} for ${reference} (${language})`
+	);
 
 	try {
 		switch (promptName) {
@@ -126,7 +128,7 @@ async function executeTranslationHelpsPrompt(
 				rcLink: link.rcLink,
 				category: link.category
 			});
-			
+
 			// Use the path parameter from the link (it has category and .md extension)
 			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`;
 			console.log(`Fetching word article: ${url}`);
@@ -136,7 +138,9 @@ async function executeTranslationHelpsPrompt(
 
 				// Check if it's an error response
 				if (wordData.error) {
-					console.error(`Word fetch with path returned error for ${link.term}. Trying rcLink fallback...`);
+					console.error(
+						`Word fetch with path returned error for ${link.term}. Trying rcLink fallback...`
+					);
 					// Try fetching using rcLink instead as fallback
 					try {
 						const fallbackRes = await fetch(
@@ -162,7 +166,7 @@ async function executeTranslationHelpsPrompt(
 					} catch (fallbackError) {
 						console.error(`rcLink fallback also failed for ${link.term}`);
 					}
-					
+
 					// Both failed - add with term as title
 					results.words.push({
 						term: link.term,
@@ -245,7 +249,9 @@ async function executeTranslationHelpsPrompt(
 
 				// Check if it's an error response
 				if (academyData.error) {
-					console.error(`Academy fetch with rcLink returned error for ${ref}. Trying moduleId fallback...`);
+					console.error(
+						`Academy fetch with rcLink returned error for ${ref}. Trying moduleId fallback...`
+					);
 					// Try fetching using just the moduleId as fallback
 					const moduleId = ref.split('/').pop() || '';
 					if (moduleId) {
@@ -274,7 +280,7 @@ async function executeTranslationHelpsPrompt(
 							console.error(`moduleId fallback also failed for ${moduleId}`);
 						}
 					}
-					
+
 					// Both failed - add with error flag
 					results.academyArticles.push({
 						moduleId: moduleId,
@@ -291,7 +297,7 @@ async function executeTranslationHelpsPrompt(
 				// API now returns direct article format with title field
 				const moduleId = academyData.moduleId || ref.split('/').pop() || ref;
 				let title = moduleId;
-				
+
 				if (academyData.title) {
 					title = academyData.title;
 					console.log(`✅ Extracted title from academyData.title: "${title}"`);
@@ -337,7 +343,7 @@ async function executeTranslationHelpsPrompt(
 
 async function executeWordsPrompt(reference: string, language: string, fetch: typeof global.fetch) {
 	console.log('[executeWordsPrompt] Reusing translation-helps logic for word links and articles');
-	
+
 	const results: any = {
 		words: []
 	};
@@ -367,7 +373,7 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 				rcLink: link.rcLink,
 				category: link.category
 			});
-			
+
 			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`;
 			console.log(`Fetching word article: ${url}`);
 			const wordRes = await fetch(url);
@@ -375,7 +381,9 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 				const wordData = await wordRes.json();
 
 				if (wordData.error) {
-					console.error(`Word fetch with path returned error for ${link.term}. Trying rcLink fallback...`);
+					console.error(
+						`Word fetch with path returned error for ${link.term}. Trying rcLink fallback...`
+					);
 					try {
 						const fallbackRes = await fetch(
 							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}`
@@ -400,7 +408,7 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 					} catch (fallbackError) {
 						console.error(`rcLink fallback also failed for ${link.term}`);
 					}
-					
+
 					results.words.push({
 						term: link.term,
 						title: link.term,
@@ -459,12 +467,14 @@ async function executeAcademyPrompt(
 	language: string,
 	fetch: typeof global.fetch
 ) {
-	console.log('[executeAcademyPrompt] Reusing translation-helps logic for notes and academy articles');
-	
+	console.log(
+		'[executeAcademyPrompt] Reusing translation-helps logic for notes and academy articles'
+	);
+
 	const results: any = {
 		academyArticles: []
 	};
-	
+
 	// Internal variable for fetching notes (not included in results)
 	let notesData: any = null;
 
@@ -492,7 +502,9 @@ async function executeAcademyPrompt(
 				const academyData = await academyRes.json();
 
 				if (academyData.error) {
-					console.error(`Academy fetch with rcLink returned error for ${ref}. Trying moduleId fallback...`);
+					console.error(
+						`Academy fetch with rcLink returned error for ${ref}. Trying moduleId fallback...`
+					);
 					const moduleId = ref.split('/').pop() || '';
 					if (moduleId) {
 						try {
@@ -520,7 +532,7 @@ async function executeAcademyPrompt(
 							console.error(`moduleId fallback also failed for ${moduleId}`);
 						}
 					}
-					
+
 					results.academyArticles.push({
 						moduleId: moduleId,
 						title: moduleId,
@@ -535,7 +547,7 @@ async function executeAcademyPrompt(
 
 				const moduleId = academyData.moduleId || ref.split('/').pop() || ref;
 				let title = moduleId;
-				
+
 				if (academyData.title) {
 					title = academyData.title;
 					console.log(`✅ Extracted title from academyData.title: "${title}"`);

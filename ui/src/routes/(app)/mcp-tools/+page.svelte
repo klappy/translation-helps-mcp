@@ -1742,7 +1742,11 @@
 													</h4>
 													<div class="space-y-3">
 														{#each promptResults.words || [] as word}
-															<div class="rounded-lg bg-gray-800 p-4 {word.error ? 'border border-red-500/30' : ''}">
+															<div
+																class="rounded-lg bg-gray-800 p-4 {word.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
 																<div class="mb-2 flex items-start justify-between">
 																	<div>
 																		<div class="font-medium text-white">{word.title}</div>
@@ -1756,17 +1760,20 @@
 																</div>
 																{#if word.content}
 																	<details class="mt-2">
-																		<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+																		<summary
+																			class="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
+																		>
 																			Show content
 																		</summary>
-																		<div class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs">
+																		<div
+																			class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs"
+																		>
 																			{@html word.content
 																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
 																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
 																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
 																				.replace(/\n\n/g, '</p><p>')
-																				.replace(/^(.+)$/gm, '<p>$1</p>')
-																			}
+																				.replace(/^(.+)$/gm, '<p>$1</p>')}
 																		</div>
 																	</details>
 																{/if}
@@ -1826,12 +1833,16 @@
 													</h4>
 													<div class="space-y-3">
 														{#each promptResults.academyArticles || [] as article}
-															<div class="rounded-lg bg-gray-800 p-4 {article.error ? 'border border-red-500/30' : ''}">
+															<div
+																class="rounded-lg bg-gray-800 p-4 {article.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
 																<div class="mb-2 flex items-start justify-between">
 																	<div>
 																		<div class="font-medium text-white">{article.title}</div>
 																		<div class="text-xs text-gray-500">
-																			{article.moduleId} 
+																			{article.moduleId}
 																			{#if article.category}• {article.category}{/if}
 																			{#if article.error}
 																				<span class="text-red-400">• Error loading</span>
@@ -1841,17 +1852,20 @@
 																</div>
 																{#if article.content}
 																	<details class="mt-2">
-																		<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+																		<summary
+																			class="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
+																		>
 																			Show content
 																		</summary>
-																		<div class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs">
+																		<div
+																			class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs"
+																		>
 																			{@html article.content
 																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
 																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
 																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
 																				.replace(/\n\n/g, '</p><p>')
-																				.replace(/^(.+)$/gm, '<p>$1</p>')
-																			}
+																				.replace(/^(.+)$/gm, '<p>$1</p>')}
 																		</div>
 																	</details>
 																{/if}
@@ -1869,7 +1883,11 @@
 													</h4>
 													<div class="space-y-3">
 														{#each promptResults.words || [] as word}
-															<div class="rounded-lg bg-gray-800 p-4 {word.error ? 'border border-red-500/30' : ''}">
+															<div
+																class="rounded-lg bg-gray-800 p-4 {word.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
 																<div class="mb-2 flex items-start justify-between">
 																	<div>
 																		<div class="font-medium text-white">{word.title}</div>
@@ -1883,17 +1901,20 @@
 																</div>
 																{#if word.content}
 																	<details class="mt-2">
-																		<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+																		<summary
+																			class="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
+																		>
 																			Show content
 																		</summary>
-																		<div class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs">
+																		<div
+																			class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs"
+																		>
 																			{@html word.content
 																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
 																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
 																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
 																				.replace(/\n\n/g, '</p><p>')
-																				.replace(/^(.+)$/gm, '<p>$1</p>')
-																			}
+																				.replace(/^(.+)$/gm, '<p>$1</p>')}
 																		</div>
 																	</details>
 																{/if}
@@ -1911,12 +1932,16 @@
 													</h4>
 													<div class="space-y-3">
 														{#each promptResults.academyArticles || [] as article}
-															<div class="rounded-lg bg-gray-800 p-4 {article.error ? 'border border-red-500/30' : ''}">
+															<div
+																class="rounded-lg bg-gray-800 p-4 {article.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
 																<div class="mb-2 flex items-start justify-between">
 																	<div>
 																		<div class="font-medium text-white">{article.title}</div>
 																		<div class="text-xs text-gray-500">
-																			{article.moduleId} 
+																			{article.moduleId}
 																			{#if article.category}• {article.category}{/if}
 																			{#if article.error}
 																				<span class="text-red-400">• Error loading</span>
@@ -1926,17 +1951,20 @@
 																</div>
 																{#if article.content}
 																	<details class="mt-2">
-																		<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+																		<summary
+																			class="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
+																		>
 																			Show content
 																		</summary>
-																		<div class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs">
+																		<div
+																			class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs"
+																		>
 																			{@html article.content
 																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
 																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
 																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
 																				.replace(/\n\n/g, '</p><p>')
-																				.replace(/^(.+)$/gm, '<p>$1</p>')
-																			}
+																				.replace(/^(.+)$/gm, '<p>$1</p>')}
 																		</div>
 																	</details>
 																{/if}

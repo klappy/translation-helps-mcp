@@ -854,7 +854,7 @@ export class ZipResourceFetcher2 {
 
       let catalogData: { data?: CatalogResource[] } | null = null;
       let cachedCatalog: string | ArrayBuffer | null = null;
-      
+
       // Skip cache if force refresh is requested
       if (!forceRefresh) {
         const kvStart =
@@ -887,7 +887,9 @@ export class ZipResourceFetcher2 {
           }
         }
       } else {
-        logger.info(`🚫 Force refresh requested - bypassing catalog cache for ${resourceType}`);
+        logger.info(
+          `🚫 Force refresh requested - bypassing catalog cache for ${resourceType}`,
+        );
       }
 
       if (!catalogData) {
@@ -937,7 +939,11 @@ export class ZipResourceFetcher2 {
       });
 
       // If cache yielded zero resources, delete the bad cache and retry fresh
-      if (!resource && (!catalogData?.data || catalogData.data.length === 0) && !forceRefresh) {
+      if (
+        !resource &&
+        (!catalogData?.data || catalogData.data.length === 0) &&
+        !forceRefresh
+      ) {
         logger.warn(
           `[getMarkdownContent] Got empty catalog from cache, invalidating and retrying with force refresh`,
           { key: catalogCacheKey },
