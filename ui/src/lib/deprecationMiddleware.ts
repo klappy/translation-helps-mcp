@@ -72,8 +72,7 @@ export const V1_DEPRECATIONS: Record<string, DeprecationConfig> = {
 		version: '1.0',
 		sunsetDate: new Date('2025-03-01'),
 		successorPath: '/api/fetch-translation-word',
-		message:
-			'Endpoint renamed to /api/fetch-translation-word for consistency with other endpoints.'
+		message: 'Endpoint renamed to /api/fetch-translation-word for consistency with other endpoints.'
 	},
 	'/api/fetch-translation-academy': {
 		version: '1.0',

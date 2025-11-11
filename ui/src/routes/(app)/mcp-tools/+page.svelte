@@ -157,8 +157,7 @@
 			},
 			'RC Linked Data': {
 				icon: '🔗',
-				description:
-					'Resources accessed via RC links (Translation Words, Translation Academy)',
+				description: 'Resources accessed via RC links (Translation Words, Translation Academy)',
 				endpoints: groups.rcLinked
 			}
 		};
@@ -586,18 +585,18 @@
 				testParams.reference = 'John 3:16';
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'fetch-translation-word') {
-			testParams.term = 'faith';
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'fetch-translation-word-links') {
-			testParams.reference = 'John 3:16';
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'fetch-translation-academy') {
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		}
+			} else if (endpoint.name === 'fetch-translation-word') {
+				testParams.term = 'faith';
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
+			} else if (endpoint.name === 'fetch-translation-word-links') {
+				testParams.reference = 'John 3:16';
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
+			} else if (endpoint.name === 'fetch-translation-academy') {
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
+			}
 
 			// Build query string
 			const params = new URLSearchParams();
@@ -1422,7 +1421,6 @@
 								{/each}
 							</div>
 						</div>
-
 					</div>
 				</div>
 			{/if}

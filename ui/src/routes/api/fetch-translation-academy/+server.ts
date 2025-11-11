@@ -118,7 +118,7 @@ async function fetchTranslationAcademy(
 		const identifier = moduleId || finalPath || rcLink || 'unknown';
 		throw new Error(
 			`Translation Academy module not found: ${identifier}. ` +
-			`The fetcher returned empty results. This may indicate the module doesn't exist in the DCS repository.`
+				`The fetcher returned empty results. This may indicate the module doesn't exist in the DCS repository.`
 		);
 	}
 }

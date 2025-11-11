@@ -83,14 +83,17 @@ const tools = [
   },
   {
     name: "fetch_translation_word_links",
-    description: "Fetch translation word links (TWL) for a specific Bible reference",
-    inputSchema: FetchTranslationWordLinksArgs.omit({ reference: true }).extend({
-      reference: z
-        .string()
-        .describe(
-          'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
-        ),
-    }),
+    description:
+      "Fetch translation word links (TWL) for a specific Bible reference",
+    inputSchema: FetchTranslationWordLinksArgs.omit({ reference: true }).extend(
+      {
+        reference: z
+          .string()
+          .describe(
+            'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+          ),
+      },
+    ),
   },
   {
     name: "fetch_translation_word",

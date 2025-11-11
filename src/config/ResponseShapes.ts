@@ -664,13 +664,15 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
           {
             name: "wordId",
             type: "string",
-            description: "The translation word identifier (not the actual word)",
+            description:
+              "The translation word identifier (not the actual word)",
             example: "love",
           },
           {
             name: "path",
             type: "string",
-            description: "Full repository path to the word article markdown file",
+            description:
+              "Full repository path to the word article markdown file",
             example: "bible/kt/love.md",
           },
           {

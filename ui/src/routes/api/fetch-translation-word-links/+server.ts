@@ -37,38 +37,38 @@ async function fetchTranslationWordLinks(
 	// Transform TSV rows to expected format
 	const links = tsvData.map((row, index) => {
 		const rcLink = row.TWLink || '';
-		
+
 		// Parse RC link to extract category, wordId, and path
 		// Format: rc://*/tw/dict/bible/{category}/{wordId}
 		let category = '';
 		let wordId = '';
 		let path = '';
-		
+
 		if (rcLink) {
 			// Extract everything after /dict/ and add .md extension
 			const pathMatch = rcLink.match(/rc:\/\/\*\/tw\/dict\/(.+)/);
 			if (pathMatch) {
 				path = pathMatch[1] + '.md'; // e.g., "bible/kt/love.md"
 			}
-			
+
 			// Extract category and wordId
 			const match = rcLink.match(/rc:\/\/\*\/tw\/dict\/bible\/([^/]+)\/([^/]+)/);
 			if (match) {
 				category = match[1]; // e.g., "kt", "names", "other"
-				wordId = match[2];   // e.g., "love", "grace", "abraham"
+				wordId = match[2]; // e.g., "love", "grace", "abraham"
 			}
 		}
-		
+
 		return {
 			id: `twl${index + 1}`,
 			reference: row.Reference || reference,
 			occurrence: parseInt(row.Occurrence || '1', 10),
 			quote: row.Quote || '',
-			category,                // Extracted: "kt", "names", "other"
-			wordId,                  // Extracted: "love", "grace", etc.
-			path,                    // Extracted: "bible/kt/love.md"
+			category, // Extracted: "kt", "names", "other"
+			wordId, // Extracted: "love", "grace", etc.
+			path, // Extracted: "bible/kt/love.md"
 			strongsId: row.StrongsId || '',
-			rcLink,                  // Full RC link
+			rcLink, // Full RC link
 			position: null
 		};
 	});

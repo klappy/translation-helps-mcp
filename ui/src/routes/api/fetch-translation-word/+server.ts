@@ -126,7 +126,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 	// Priority: rcLink > path > term (if it's an RC link) > term
 	if (rcLink || isRCLink(term)) {
 		const linkToParse = rcLink || term;
-		
+
 		// Parse to get term and category
 		const parsed = parseRCLink(linkToParse, language);
 		if (!parsed.isValid) {

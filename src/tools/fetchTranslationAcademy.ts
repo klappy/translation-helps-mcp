@@ -156,4 +156,3 @@ export async function handleFetchTranslationAcademy(
     };
   }
 }
-

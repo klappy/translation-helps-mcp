@@ -826,7 +826,7 @@ export class ZipResourceFetcher2 {
         ta: "Translation Academy",
       };
       const subject = subjectMap[resourceType];
-      
+
       logger.info(`[getMarkdownContent] Subject: ${subject}`);
 
       // 1) Catalog lookup with subject-specific filtering (KV + memory cached)
@@ -835,13 +835,13 @@ export class ZipResourceFetcher2 {
       params.set("lang", language);
       params.set("owner", organization);
       params.set("stage", "prod");
-      
+
       // Translation Academy uses flavor_type="gloss", not type="text"
       // So we don't set type filter for TA
       if (resourceType === "tw") {
         params.set("type", "text");
       }
-      
+
       params.set("subject", subject);
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
@@ -919,16 +919,18 @@ export class ZipResourceFetcher2 {
       }
 
       const resource = (catalogData?.data || [])[0]; // API filtering already applied
-      
+
       logger.info(`[getMarkdownContent] Catalog data:`, {
         hasData: !!catalogData,
         dataLength: catalogData?.data?.length || 0,
         hasResource: !!resource,
         resourceName: resource?.name,
       });
-      
+
       if (!resource) {
-        logger.warn(`[getMarkdownContent] No resource found in catalog for ${resourceType}`);
+        logger.warn(
+          `[getMarkdownContent] No resource found in catalog for ${resourceType}`,
+        );
         return resourceType === "tw"
           ? { articles: [] }
           : { modules: [], categories: [] };
@@ -936,7 +938,7 @@ export class ZipResourceFetcher2 {
 
       // 2) Download ZIP (prefer catalog-provided ref and zipball URL)
       const { refTag, zipballUrl } = this.resolveRefAndZip(resource as unknown);
-      
+
       logger.info(`[getMarkdownContent] Resource details:`, {
         name: resource.name,
         owner: resource.owner,
@@ -1255,17 +1257,19 @@ export class ZipResourceFetcher2 {
       // TA
       const rawId = identifier ? String(identifier) : undefined;
       const moduleId = rawId ? rawId.toLowerCase() : undefined;
-      
+
       logger.info(`[getMarkdownContent] TA section:`, {
         rawId,
         moduleId,
         hasModuleId: !!moduleId,
       });
-      
+
       if (moduleId) {
-        const looksLikeSingleFile = rawId?.includes("/") && moduleId.endsWith(".md");
-        const looksLikeDirPath = rawId?.includes("/") && !moduleId.endsWith(".md");
-        
+        const looksLikeSingleFile =
+          rawId?.includes("/") && moduleId.endsWith(".md");
+        const looksLikeDirPath =
+          rawId?.includes("/") && !moduleId.endsWith(".md");
+
         logger.info(`[getMarkdownContent] Path type:`, {
           looksLikeSingleFile,
           looksLikeDirPath,
@@ -1275,38 +1279,43 @@ export class ZipResourceFetcher2 {
         if (looksLikeDirPath) {
           const dirPath = rawId || "";
           const allPaths = await this.listZipFiles(zipData);
-          
+
           logger.info(`[TA DIR SEARCH] Looking for directory: "${dirPath}"`);
           logger.info(`[TA DIR SEARCH] Total files in ZIP: ${allPaths.length}`);
-          
+
           // Show sample paths to understand structure
           const samplePaths = allPaths
-            .filter(p => p.includes('translate') || p.includes('figs'))
+            .filter((p) => p.includes("translate") || p.includes("figs"))
             .slice(0, 10);
-          logger.info(`[TA DIR SEARCH] Sample paths containing 'translate' or 'figs':`, samplePaths);
-          
+          logger.info(
+            `[TA DIR SEARCH] Sample paths containing 'translate' or 'figs':`,
+            samplePaths,
+          );
+
           // Find all .md files in the specified directory
           const dirFiles = allPaths
             .filter((p) => {
               const pLower = p.toLowerCase();
               const dirPathLower = dirPath.toLowerCase();
-              
+
               // Try to match with or without repo prefix
-              const matchesDirect = pLower.startsWith(dirPathLower) && pLower.endsWith(".md");
-              const matchesWithPrefix = pLower.includes(`/${dirPathLower}`) && pLower.endsWith(".md");
+              const matchesDirect =
+                pLower.startsWith(dirPathLower) && pLower.endsWith(".md");
+              const matchesWithPrefix =
+                pLower.includes(`/${dirPathLower}`) && pLower.endsWith(".md");
               const matches = matchesDirect || matchesWithPrefix;
-              
+
               if (matches) {
                 // Ensure it's directly in the directory (count slashes after the dir path)
-                const afterDir = matchesDirect ? 
-                  p.substring(dirPath.length) : 
-                  p.substring(p.indexOf(dirPath) + dirPath.length);
+                const afterDir = matchesDirect
+                  ? p.substring(dirPath.length)
+                  : p.substring(p.indexOf(dirPath) + dirPath.length);
                 const isDirectChild = afterDir.split("/").length === 2; // /filename.md
-                
+
                 if (isDirectChild) {
                   logger.debug(`[TA DIR SEARCH] ✓ Matched file: ${p}`);
                 }
-                
+
                 return isDirectChild;
               }
               return false;
@@ -1315,7 +1324,7 @@ export class ZipResourceFetcher2 {
               // Sort order: title.md, sub-title.md, 01.md, then alphabetically
               const aName = a.substring(a.lastIndexOf("/") + 1).toLowerCase();
               const bName = b.substring(b.lastIndexOf("/") + 1).toLowerCase();
-              
+
               // Define priority order
               const getPriority = (name: string): number => {
                 if (name === "title.md") return 1;
@@ -1323,42 +1332,48 @@ export class ZipResourceFetcher2 {
                 if (name.startsWith("01.")) return 3;
                 return 4;
               };
-              
+
               const aPriority = getPriority(aName);
               const bPriority = getPriority(bName);
-              
+
               if (aPriority !== bPriority) {
                 return aPriority - bPriority;
               }
-              
+
               // Same priority - sort alphabetically
               return aName.localeCompare(bName);
             });
 
-          logger.info(`[TA DIR SEARCH] Found ${dirFiles.length} matching files`);
+          logger.info(
+            `[TA DIR SEARCH] Found ${dirFiles.length} matching files`,
+          );
 
           if (dirFiles.length === 0) {
-            logger.warn(`[TA DIR SEARCH] No files found for directory: "${dirPath}"`);
+            logger.warn(
+              `[TA DIR SEARCH] No files found for directory: "${dirPath}"`,
+            );
             return { modules: [] };
           }
 
           // Extract and concatenate all files with proper markdown headers
           const contentParts: string[] = [];
-          
+
           for (let i = 0; i < dirFiles.length; i++) {
             const filePath = dirFiles[i];
-            const fileName = filePath.substring(filePath.lastIndexOf("/") + 1).toLowerCase();
-            
+            const fileName = filePath
+              .substring(filePath.lastIndexOf("/") + 1)
+              .toLowerCase();
+
             const content = await this.extractFileFromZip(
               zipData,
               filePath,
               resource.name,
               zipKeyForFiles,
             );
-            
+
             if (content) {
               const trimmedContent = content.trim();
-              
+
               // Add markdown headers based on file name
               if (fileName === "title.md") {
                 // Title gets H1
@@ -1395,7 +1410,9 @@ export class ZipResourceFetcher2 {
         }
 
         // Handle single file path (.md extension)
-        let modulePath: string | null = looksLikeSingleFile ? rawId || null : null;
+        let modulePath: string | null = looksLikeSingleFile
+          ? rawId || null
+          : null;
 
         // Prefer common TA module layout: <category>/<moduleId>/01.md
         if (!modulePath) {

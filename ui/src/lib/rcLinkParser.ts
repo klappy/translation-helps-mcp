@@ -128,7 +128,10 @@ export function extractTerm(
  * - rc://STAR/ta/man/translate/figs-metaphor where STAR is wildcard
  * - rc://STAR/STAR/STAR/translate/figs-metaphor with wildcards
  */
-export function parseTranslationAcademyRCLink(rcLink: string, defaultLanguage = 'en'): ParsedRCLink {
+export function parseTranslationAcademyRCLink(
+	rcLink: string,
+	defaultLanguage = 'en'
+): ParsedRCLink {
 	const result: ParsedRCLink = {
 		language: defaultLanguage,
 		resource: 'ta',
@@ -166,12 +169,12 @@ export function parseTranslationAcademyRCLink(rcLink: string, defaultLanguage = 
 	result.resource = 'ta';
 	result.dirPath = dirPath;
 	result.path = dirPath; // For TA, path is the directory path (no .md extension)
-	
+
 	// Extract category from dirPath (first segment)
 	const pathParts = dirPath.split('/');
 	result.category = pathParts[0] || '';
 	result.term = pathParts.slice(1).join('/') || ''; // Module ID is everything after category
-	
+
 	result.isValid = true;
 
 	return result;
@@ -187,7 +190,7 @@ export function isTranslationAcademyRCLink(input: string): boolean {
 
 	// Check for TA-specific patterns
 	return (
-		input.includes('rc://') && 
+		input.includes('rc://') &&
 		(input.includes('/ta/') || input.match(/rc:\/\/[^/]+\/\*\//) !== null)
 	);
 }

@@ -215,11 +215,11 @@ export class UnifiedResourceFetcher {
 
 	/**
 	 * Fetch Translation Academy module (Markdown) - CRITICAL FUNCTIONALITY
-	 * 
+	 *
 	 * @param path - Path to module. Can be:
 	 *               - Directory path (e.g., 'translate/figs-metaphor') - returns all .md files concatenated
 	 *               - File path (e.g., 'translate/figs-metaphor/01.md') - returns single file
-	 *               If not provided and moduleId is given, searches in order: 
+	 *               If not provided and moduleId is given, searches in order:
 	 *               translate/{moduleId}, process/{moduleId}, checking/{moduleId}, intro/{moduleId}
 	 */
 	async fetchTranslationAcademy(
@@ -243,7 +243,9 @@ export class UnifiedResourceFetcher {
 			const errors: string[] = [];
 
 			try {
-				logger.info(`Searching for TA module "${moduleId}" in categories: ${categories.join(', ')}`);
+				logger.info(
+					`Searching for TA module "${moduleId}" in categories: ${categories.join(', ')}`
+				);
 			} catch {
 				// Ignore logger errors
 			}
@@ -251,8 +253,13 @@ export class UnifiedResourceFetcher {
 			for (const category of categories) {
 				const searchPath = `${category}/${moduleId}`;
 				try {
-					const result = await this.zipFetcher.getMarkdownContent(language, organization, 'ta', searchPath);
-					
+					const result = await this.zipFetcher.getMarkdownContent(
+						language,
+						organization,
+						'ta',
+						searchPath
+					);
+
 					try {
 						logger.debug(`Category "${category}" search result:`, {
 							hasResult: !!result,
@@ -271,9 +278,11 @@ export class UnifiedResourceFetcher {
 						}
 						return result as TAResult;
 					} else {
-						const detail = !result ? 'null result' : 
-							!(result as any).modules ? 'no modules property' :
-							'empty modules array';
+						const detail = !result
+							? 'null result'
+							: !(result as any).modules
+								? 'no modules property'
+								: 'empty modules array';
 						errors.push(`${category}: ${detail}`);
 					}
 				} catch (error) {
@@ -290,7 +299,7 @@ export class UnifiedResourceFetcher {
 
 			// If we get here, module wasn't found in any category
 			const errorMessage = `Translation Academy module "${moduleId}" not found. Searched categories: ${categories.join(', ')}. Details: ${errors.join('; ')}`;
-			
+
 			try {
 				logger.error(`Category search exhausted for "${moduleId}":`, { errors });
 			} catch {
