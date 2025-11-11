@@ -811,12 +811,14 @@ export class ZipResourceFetcher2 {
     organization: string,
     resourceType: "tw" | "ta",
     identifier?: string,
+    forceRefresh = false,
   ): Promise<unknown> {
     logger.info(`[getMarkdownContent] START`, {
       language,
       organization,
       resourceType,
       identifier,
+      forceRefresh,
     });
 
     try {
@@ -851,34 +853,41 @@ export class ZipResourceFetcher2 {
       const catalogCacheKey = catalogUrl; // Use exact URL as KV key
 
       let catalogData: { data?: CatalogResource[] } | null = null;
-      const kvStart =
-        typeof performance !== "undefined" ? performance.now() : Date.now();
-      const cachedCatalog = await this.kvCache.get(catalogCacheKey);
-      if (cachedCatalog) {
-        try {
-          const json =
-            typeof cachedCatalog === "string"
-              ? (cachedCatalog as string)
-              : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
-          catalogData = JSON.parse(json) as { data?: CatalogResource[] };
-          // Log synthetic cache hit for X-Ray
-          this.tracer.addApiCall({
-            url: `internal://kv/catalog/${language}/${organization}/${subject}`,
-            duration: Math.max(
-              1,
-              Math.round(
-                (typeof performance !== "undefined"
-                  ? performance.now()
-                  : Date.now()) - (kvStart as number),
+      let cachedCatalog: string | ArrayBuffer | null = null;
+      
+      // Skip cache if force refresh is requested
+      if (!forceRefresh) {
+        const kvStart =
+          typeof performance !== "undefined" ? performance.now() : Date.now();
+        cachedCatalog = await this.kvCache.get(catalogCacheKey);
+        if (cachedCatalog) {
+          try {
+            const json =
+              typeof cachedCatalog === "string"
+                ? (cachedCatalog as string)
+                : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
+            catalogData = JSON.parse(json) as { data?: CatalogResource[] };
+            // Log synthetic cache hit for X-Ray
+            this.tracer.addApiCall({
+              url: `internal://kv/catalog/${language}/${organization}/${subject}`,
+              duration: Math.max(
+                1,
+                Math.round(
+                  (typeof performance !== "undefined"
+                    ? performance.now()
+                    : Date.now()) - (kvStart as number),
+                ),
               ),
-            ),
-            status: 200,
-            size: json.length || 0,
-            cached: true,
-          });
-        } catch {
-          // fall through to network
+              status: 200,
+              size: json.length || 0,
+              cached: true,
+            });
+          } catch {
+            // fall through to network
+          }
         }
+      } else {
+        logger.info(`🚫 Force refresh requested - bypassing catalog cache for ${resourceType}`);
       }
 
       if (!catalogData) {
@@ -928,23 +937,25 @@ export class ZipResourceFetcher2 {
       });
 
       // If cache yielded zero resources, delete the bad cache and retry fresh
-      if (!resource && catalogData?.data?.length === 0 && cachedCatalog) {
+      if (!resource && catalogData?.data?.length === 0 && !forceRefresh) {
         logger.warn(
-          `[getMarkdownContent] Got empty catalog from cache, invalidating and retrying fresh`,
+          `[getMarkdownContent] Got empty catalog from cache, invalidating and retrying with force refresh`,
           { key: catalogCacheKey },
         );
-        // Delete the corrupted/empty cache
+        // Delete the corrupted/empty cache from KV
         try {
           await this.kvCache.delete(catalogCacheKey);
+          logger.info(`🗑️ Deleted corrupt catalog from KV cache`);
         } catch (err) {
           logger.warn(`Failed to delete corrupt catalog cache: ${err}`);
         }
-        // Retry with fresh fetch (recursion with no cache)
+        // Retry with fresh fetch (bypass ALL caches with forceRefresh=true)
         return this.getMarkdownContent(
           language,
           organization,
           resourceType,
           identifier,
+          true, // forceRefresh=true to bypass memory cache
         );
       }
 
