@@ -5,22 +5,28 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 	const { promptName, parameters } = await request.json();
 	const { reference, language = 'en' } = parameters;
 
+	console.log(`[execute-prompt] Starting prompt execution: ${promptName} for ${reference} (${language})`);
+
 	try {
 		switch (promptName) {
 			case 'translation-helps-for-passage':
+				console.log('[execute-prompt] Executing translation-helps-for-passage');
 				return await executeTranslationHelpsPrompt(reference, language, fetch);
 
 			case 'get-translation-words-for-passage':
+				console.log('[execute-prompt] Executing get-translation-words-for-passage');
 				return await executeWordsPrompt(reference, language, fetch);
 
 			case 'get-translation-academy-for-passage':
+				console.log('[execute-prompt] Executing get-translation-academy-for-passage');
 				return await executeAcademyPrompt(reference, language, fetch);
 
 			default:
+				console.error('[execute-prompt] Unknown prompt:', promptName);
 				return json({ error: 'Unknown prompt' }, { status: 400 });
 		}
 	} catch (error) {
-		console.error('Prompt execution error:', error);
+		console.error('[execute-prompt] Prompt execution error:', error);
 		return json(
 			{
 				error: 'Failed to execute prompt',
@@ -330,6 +336,7 @@ async function executeTranslationHelpsPrompt(
 }
 
 async function executeWordsPrompt(reference: string, language: string, fetch: typeof global.fetch) {
+	console.log('[executeWordsPrompt] Starting word links fetch...');
 	const results: any = {
 		words: []
 	};
@@ -436,6 +443,7 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 		}
 	}
 
+	console.log(`[executeWordsPrompt] Complete! Returning ${results.words.length} words`);
 	return json(results);
 }
 
@@ -444,6 +452,7 @@ async function executeAcademyPrompt(
 	language: string,
 	fetch: typeof global.fetch
 ) {
+	console.log('[executeAcademyPrompt] Starting notes fetch...');
 	const results: any = {
 		notes: null,
 		academyArticles: []
@@ -554,6 +563,7 @@ async function executeAcademyPrompt(
 		}
 	}
 
+	console.log(`[executeAcademyPrompt] Complete! Returning ${results.academyArticles.length} articles`);
 	return json(results);
 }
 
