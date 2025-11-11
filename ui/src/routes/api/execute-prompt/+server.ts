@@ -160,20 +160,28 @@ async function executeTranslationHelpsPrompt(
 
 				// Log the structure for debugging
 				console.log(`Word data keys for ${link.term}:`, Object.keys(wordData));
-
-				if (wordData.content) {
-					// Try multiple H1 formats
-					let titleMatch =
-						wordData.content.match(/^#\s+(.+)$/m) ||
-						wordData.content.match(/^# (.+)$/m) ||
-						wordData.content.match(/\n#\s+(.+)/);
-
+				
+				// Check if it's a TOC/list response with items array
+				if (wordData.items && Array.isArray(wordData.items) && wordData.items.length > 0) {
+					// Items array format - check first item for content
+					const firstItem = wordData.items[0];
+					console.log(`Word items[0] keys for ${link.term}:`, Object.keys(firstItem));
+					
+					if (firstItem.content) {
+						const titleMatch = firstItem.content.match(/^#\s+(.+)$/m);
+						if (titleMatch) {
+							title = titleMatch[1].trim();
+						}
+					}
+				} else if (wordData.content) {
+					// Direct content format
+					const titleMatch = wordData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
-					} else {
-						// Log first 200 chars to see format
-						console.log(`Content preview for ${link.term}:`, wordData.content.substring(0, 200));
 					}
+				} else {
+					// Log to see what we got
+					console.log(`Word data structure for ${link.term}:`, JSON.stringify(wordData).substring(0, 300));
 				}
 
 				console.log(`Fetched word: ${link.term} → title: "${title}"`);
@@ -261,7 +269,19 @@ async function executeTranslationHelpsPrompt(
 
 				// Extract title from content
 				let title = ref;
-				if (academyData.content) {
+				const moduleId = ref.split('/').pop() || ref;
+				
+				// Check if it's a list/items response
+				if (academyData.items && Array.isArray(academyData.items) && academyData.items.length > 0) {
+					const firstItem = academyData.items[0];
+					if (firstItem.content) {
+						const titleMatch = firstItem.content.match(/^#\s+(.+)$/m);
+						if (titleMatch) {
+							title = titleMatch[1].trim();
+						}
+					}
+				} else if (academyData.content) {
+					// Direct content format
 					const titleMatch = academyData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
@@ -270,7 +290,7 @@ async function executeTranslationHelpsPrompt(
 
 				console.log(`Fetched academy article: ${ref} → title: "${title}"`);
 				results.academyArticles.push({
-					moduleId: academyData.moduleId || ref,
+					moduleId: moduleId,
 					title: title,
 					rcLink: ref
 				});
@@ -357,7 +377,18 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 
 				// Extract title from markdown content (first H1)
 				let title = link.term;
-				if (wordData.content) {
+				
+				// Check if it's a TOC/list response with items array
+				if (wordData.items && Array.isArray(wordData.items) && wordData.items.length > 0) {
+					const firstItem = wordData.items[0];
+					if (firstItem.content) {
+						const titleMatch = firstItem.content.match(/^#\s+(.+)$/m);
+						if (titleMatch) {
+							title = titleMatch[1].trim();
+						}
+					}
+				} else if (wordData.content) {
+					// Direct content format
 					const titleMatch = wordData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
@@ -456,7 +487,19 @@ async function executeAcademyPrompt(
 
 				// Extract title from content
 				let title = ref;
-				if (academyData.content) {
+				const moduleId = ref.split('/').pop() || ref;
+				
+				// Check if it's a list/items response
+				if (academyData.items && Array.isArray(academyData.items) && academyData.items.length > 0) {
+					const firstItem = academyData.items[0];
+					if (firstItem.content) {
+						const titleMatch = firstItem.content.match(/^#\s+(.+)$/m);
+						if (titleMatch) {
+							title = titleMatch[1].trim();
+						}
+					}
+				} else if (academyData.content) {
+					// Direct content format
 					const titleMatch = academyData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
@@ -464,7 +507,7 @@ async function executeAcademyPrompt(
 				}
 
 				results.academyArticles.push({
-					moduleId: academyData.moduleId || ref,
+					moduleId: moduleId,
 					title: title,
 					rcLink: ref
 				});
