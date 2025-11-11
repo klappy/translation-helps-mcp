@@ -15,21 +15,11 @@
  * 4. When answering questions, cite all sources used
  */
 
-// Load environment variables from .env file for local development
-import { config } from 'dotenv';
-
-// Try to load .env from ui directory (for local dev with Vite)
-// In production (Cloudflare), this will be ignored and platform.env is used
-try {
-	config({ path: '.env' }); // Looks in current working directory (ui/)
-} catch (e) {
-	// Ignore errors - .env might not exist in production
-}
-
 import { initializeKVCache } from '$lib/../../../src/functions/kv-cache.js';
 import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { env } from '$env/dynamic/private';
 
 interface ChatRequest {
 	message: string;
@@ -752,12 +742,12 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Check for API key - try multiple sources
 		const apiKey =
-			// Cloudflare Workers env binding (properly typed now)
+			// Cloudflare Workers env binding (production)
 			platform?.env?.OPENAI_API_KEY ||
-			// Local development
-			process.env.OPENAI_API_KEY ||
-			// Vite client env (shouldn't be used but as fallback)
-			import.meta.env.VITE_OPENAI_API_KEY;
+			// SvelteKit env (local development with .env file)
+			env.OPENAI_API_KEY ||
+			// Fallback to process.env (for other environments)
+			process.env.OPENAI_API_KEY;
 
 		if (!apiKey) {
 			logger.error('OpenAI API key not found in any environment source', {
