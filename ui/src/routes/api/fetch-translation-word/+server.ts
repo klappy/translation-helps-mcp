@@ -225,8 +225,9 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 			other: 'Other'
 		};
 
-		const item = {
-			id: `${categoryKey}:${wordKey}`,
+		// Return single article directly (not wrapped in items array)
+		// This makes it consistent with translation-academy endpoint
+		const article = {
 			term: wordKey,
 			title: termTitle,
 			category: categoryKey,
@@ -234,27 +235,18 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 			definition,
 			content: mdContent,
 			path: result.path,
+			rcLink: `rc://${language}/tw/dict/bible/${categoryKey}/${wordKey}`,
+			reference: params.reference || null, // Include if provided
 			language,
 			organization,
-			source: 'TW',
-			rcLink: `rc://${language}/tw/dict/bible/${categoryKey}/${wordKey}`
+			metadata: {
+				source: 'TW',
+				resourceType: 'tw',
+				license: 'CC BY-SA 4.0'
+			}
 		};
 
-		const wrapped = createTranslationHelpsResponse(
-			[item],
-			termTitle,
-			language,
-			organization,
-			'tw',
-			{
-				source: 'TW'
-			}
-		);
-
-		// Add trace information for debugging
-		(wrapped as any)._trace = fetcher.getTrace();
-
-		return wrapped;
+		return article;
 	} catch (error) {
 		// Add trace information to error context
 		const trace = fetcher.getTrace();

@@ -96,22 +96,22 @@ async function fetchTranslationAcademy(
 			title = titleMatch[1].trim();
 		}
 
+		// Return article directly (not wrapped in type/module structure)
+		// This makes it consistent with fetch-translation-word endpoint
 		return {
-			type: 'module',
-			module: {
-				id,
-				title,
-				category,
-				path: module.path,
-				content: module.markdown || '',
-				supportReference: `rc://*/ta/man/${category}/${id}`
-			},
+			moduleId: id,
+			title,
+			category,
+			path: module.path,
+			content: module.markdown || '',
+			rcLink: `rc://*/ta/man/${category}/${id}`,
+			language,
+			organization,
 			metadata: {
-				language,
-				organization,
-				resourceType: 'ta'
-			},
-			_trace: fetcher.getTrace()
+				source: 'TA',
+				resourceType: 'ta',
+				license: 'CC BY-SA 4.0'
+			}
 		};
 	} else {
 		// We requested specific content but got empty results

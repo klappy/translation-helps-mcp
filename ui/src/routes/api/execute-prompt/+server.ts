@@ -158,30 +158,17 @@ async function executeTranslationHelpsPrompt(
 				// Extract title from markdown content (first H1)
 				let title = link.term;
 
-				// Log the structure for debugging
-				console.log(`Word data keys for ${link.term}:`, Object.keys(wordData));
-				
-				// Check if it's a TOC/list response with items array
-				if (wordData.items && Array.isArray(wordData.items) && wordData.items.length > 0) {
-					// Items array format - check first item for content
-					const firstItem = wordData.items[0];
-					console.log(`Word items[0] keys for ${link.term}:`, Object.keys(firstItem));
-					
-					if (firstItem.content) {
-						const titleMatch = firstItem.content.match(/^#\s+(.+)$/m);
-						if (titleMatch) {
-							title = titleMatch[1].trim();
-						}
-					}
+				// API now returns direct article format with title field
+				if (wordData.title) {
+					title = wordData.title;
+					console.log(`✅ Extracted title from wordData.title: "${title}"`);
 				} else if (wordData.content) {
-					// Direct content format
+					// Fallback to extracting from content
 					const titleMatch = wordData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
+						console.log(`✅ Extracted title from H1: "${title}"`);
 					}
-				} else {
-					// Log to see what we got
-					console.log(`Word data structure for ${link.term}:`, JSON.stringify(wordData).substring(0, 300));
 				}
 
 				console.log(`Fetched word: ${link.term} → title: "${title}"`);
@@ -267,24 +254,19 @@ async function executeTranslationHelpsPrompt(
 					continue;
 				}
 
-				// Extract title from content
-				let title = ref;
-				const moduleId = ref.split('/').pop() || ref;
+				// API now returns direct article format with title field
+				const moduleId = academyData.moduleId || ref.split('/').pop() || ref;
+				let title = moduleId;
 				
-				// Check if it's a list/items response
-				if (academyData.items && Array.isArray(academyData.items) && academyData.items.length > 0) {
-					const firstItem = academyData.items[0];
-					if (firstItem.content) {
-						const titleMatch = firstItem.content.match(/^#\s+(.+)$/m);
-						if (titleMatch) {
-							title = titleMatch[1].trim();
-						}
-					}
+				if (academyData.title) {
+					title = academyData.title;
+					console.log(`✅ Extracted title from academyData.title: "${title}"`);
 				} else if (academyData.content) {
-					// Direct content format
+					// Fallback to extracting from content
 					const titleMatch = academyData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
+						console.log(`✅ Extracted title from H1: "${title}"`);
 					}
 				}
 
@@ -375,20 +357,13 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 					continue;
 				}
 
-				// Extract title from markdown content (first H1)
+				// API now returns direct article format with title field
 				let title = link.term;
 				
-				// Check if it's a TOC/list response with items array
-				if (wordData.items && Array.isArray(wordData.items) && wordData.items.length > 0) {
-					const firstItem = wordData.items[0];
-					if (firstItem.content) {
-						const titleMatch = firstItem.content.match(/^#\s+(.+)$/m);
-						if (titleMatch) {
-							title = titleMatch[1].trim();
-						}
-					}
+				if (wordData.title) {
+					title = wordData.title;
 				} else if (wordData.content) {
-					// Direct content format
+					// Fallback to extracting from content
 					const titleMatch = wordData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
@@ -485,21 +460,14 @@ async function executeAcademyPrompt(
 					continue;
 				}
 
-				// Extract title from content
-				let title = ref;
-				const moduleId = ref.split('/').pop() || ref;
+				// API now returns direct article format with title field
+				const moduleId = academyData.moduleId || ref.split('/').pop() || ref;
+				let title = moduleId;
 				
-				// Check if it's a list/items response
-				if (academyData.items && Array.isArray(academyData.items) && academyData.items.length > 0) {
-					const firstItem = academyData.items[0];
-					if (firstItem.content) {
-						const titleMatch = firstItem.content.match(/^#\s+(.+)$/m);
-						if (titleMatch) {
-							title = titleMatch[1].trim();
-						}
-					}
+				if (academyData.title) {
+					title = academyData.title;
 				} else if (academyData.content) {
-					// Direct content format
+					// Fallback to extracting from content
 					const titleMatch = academyData.content.match(/^#\s+(.+)$/m);
 					if (titleMatch) {
 						title = titleMatch[1].trim();
