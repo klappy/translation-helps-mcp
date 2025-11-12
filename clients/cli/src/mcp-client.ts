@@ -7,7 +7,6 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { spawn } from "child_process";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
@@ -65,19 +64,15 @@ export class MCPClient {
 
       console.log(`🔌 Connecting to MCP server at: ${serverPath}`);
 
-      // Spawn the server process with tsx
-      const serverProcess = spawn("npx", ["tsx", serverPath], {
+      // Create transport - it will spawn the server process internally
+      this.transport = new StdioClientTransport({
+        command: "npx",
+        args: ["tsx", serverPath],
         env: {
           ...process.env,
           USE_FS_CACHE: "true", // Enable file system cache
           NODE_ENV: "development",
         },
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-
-      // Create transport
-      this.transport = new StdioClientTransport({
-        command: serverProcess as any, // Type workaround
       });
 
       // Create client
