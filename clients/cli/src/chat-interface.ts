@@ -27,17 +27,33 @@ export class ChatInterface {
     this.mcpClient = mcpClient;
     this.configManager = configManager;
 
-    // Add system message
+    // Add comprehensive system message
     this.messages.push({
       role: "system",
-      content: `You are a helpful assistant for Bible translation. You have access to translation helps including:
-- Scripture texts (ULT, UST)
-- Translation Notes
-- Translation Questions  
-- Translation Words
-- Translation Academy
+      content: `You are a helpful Bible translation assistant with access to official unfoldingWord translation resources from Door43.
 
-Help users understand passages and translation concepts. Be concise but thorough.`,
+CRITICAL RULES:
+
+1. ONLY use information from the provided translation resource data
+2. NEVER make up scripture, notes, articles, or concepts
+3. If you don't have data for something, say "I don't have that information" and suggest what data is available
+4. When translation data is provided, cite it properly:
+   - Scripture: [ULT - Reference]
+   - Notes: [TN - Reference]
+   - Words: [TW - term]
+   - Academy: [TA - concept]
+
+5. NEVER cite fake authors, fake articles, or made-up resources
+6. If asked about a passage but no data is provided, say "Let me check that passage for you" and I will fetch it
+
+You help translators understand:
+- What the original text says (from ULT/UST scripture)
+- Difficult phrases (from Translation Notes) 
+- Important biblical terms (from Translation Words)
+- Translation concepts (from Translation Academy)
+- Checking their understanding (from Translation Questions)
+
+Be helpful, accurate, and ONLY use the real translation resources provided to you.`,
     });
   }
 
@@ -168,10 +184,48 @@ Help users understand passages and translation concepts. Be concise but thorough
       content: message,
     });
 
-    // Show AI is thinking
-    process.stdout.write(chalk.green("AI: "));
-
     try {
+      // Check if message contains a Bible reference
+      const bibleRef = this.extractBibleReference(message);
+
+      let contextMessage = "";
+
+      if (bibleRef && this.mcpClient.isConnected()) {
+        // Fetch comprehensive translation data
+        process.stdout.write(
+          chalk.gray(`📖 Fetching data for ${bibleRef}...\n`),
+        );
+
+        try {
+          const data = await this.mcpClient.executePrompt(
+            "translation-helps-for-passage",
+            { reference: bibleRef },
+          );
+
+          if (data) {
+            contextMessage = this.formatTranslationData(data, bibleRef);
+            console.log(chalk.gray("✅ Translation data loaded\n"));
+          }
+        } catch (error) {
+          console.log(
+            chalk.yellow(
+              `⚠️  Could not fetch data for ${bibleRef}: ${error instanceof Error ? error.message : String(error)}\n`,
+            ),
+          );
+        }
+      }
+
+      // Add context to messages if we have it
+      if (contextMessage) {
+        this.messages.push({
+          role: "system",
+          content: contextMessage,
+        });
+      }
+
+      // Show AI is thinking
+      process.stdout.write(chalk.green("AI: "));
+
       // Get AI response with streaming
       let response = "";
       await this.aiProvider.chat(this.messages, (chunk) => {
@@ -186,6 +240,17 @@ Help users understand passages and translation concepts. Be concise but thorough
         role: "assistant",
         content: response,
       });
+
+      // Remove the context message from history to avoid bloat
+      // Keep only user message and assistant response
+      if (contextMessage) {
+        const sysIndex = this.messages.findIndex(
+          (m) => m.role === "system" && m.content === contextMessage,
+        );
+        if (sysIndex > 0) {
+          this.messages.splice(sysIndex, 1);
+        }
+      }
     } catch (error) {
       console.log(
         chalk.red(
@@ -193,6 +258,162 @@ Help users understand passages and translation concepts. Be concise but thorough
         ),
       );
     }
+  }
+
+  /**
+   * Extract Bible reference from user message
+   * Matches patterns like "Romans 12:2", "John 3:16", "Genesis 1:1-3"
+   */
+  private extractBibleReference(message: string): string | null {
+    // Common Bible book names
+    const books = [
+      "Genesis",
+      "Exodus",
+      "Leviticus",
+      "Numbers",
+      "Deuteronomy",
+      "Joshua",
+      "Judges",
+      "Ruth",
+      "1 Samuel",
+      "2 Samuel",
+      "1 Kings",
+      "2 Kings",
+      "1 Chronicles",
+      "2 Chronicles",
+      "Ezra",
+      "Nehemiah",
+      "Esther",
+      "Job",
+      "Psalms?",
+      "Proverbs?",
+      "Ecclesiastes",
+      "Song of Solomon",
+      "Isaiah",
+      "Jeremiah",
+      "Lamentations",
+      "Ezekiel",
+      "Daniel",
+      "Hosea",
+      "Joel",
+      "Amos",
+      "Obadiah",
+      "Jonah",
+      "Micah",
+      "Nahum",
+      "Habakkuk",
+      "Zephaniah",
+      "Haggai",
+      "Zechariah",
+      "Malachi",
+      "Matthew",
+      "Mark",
+      "Luke",
+      "John",
+      "Acts",
+      "Romans",
+      "1 Corinthians",
+      "2 Corinthians",
+      "Galatians",
+      "Ephesians",
+      "Philippians",
+      "Colossians",
+      "1 Thessalonians",
+      "2 Thessalonians",
+      "1 Timothy",
+      "2 Timothy",
+      "Titus",
+      "Philemon",
+      "Hebrews",
+      "James",
+      "1 Peter",
+      "2 Peter",
+      "1 John",
+      "2 John",
+      "3 John",
+      "Jude",
+      "Revelation",
+    ];
+
+    // Build regex pattern
+    const bookPattern = books.join("|");
+    const refPattern = new RegExp(
+      `(${bookPattern})\\s+(\\d+):(\\d+)(?:-(\\d+))?`,
+      "i",
+    );
+
+    const match = message.match(refPattern);
+    if (match) {
+      // Return the full matched reference
+      return match[0];
+    }
+
+    return null;
+  }
+
+  /**
+   * Format translation data for AI context
+   */
+  private formatTranslationData(data: any, reference: string): string {
+    let context = `=== Translation Data for ${reference} ===\n\n`;
+
+    // Add scripture
+    if (data.scripture?.text) {
+      context += `SCRIPTURE (ULT):\n${data.scripture.text}\n\n`;
+    }
+
+    // Add translation notes
+    if (data.notes?.items && data.notes.items.length > 0) {
+      context += `TRANSLATION NOTES (${data.notes.items.length} notes):\n`;
+      for (const note of data.notes.items) {
+        if (note.Note && note.Note.trim()) {
+          context += `- ${note.Quote || "Note"}: ${note.Note}\n`;
+        }
+      }
+      context += "\n";
+    }
+
+    // Add translation words
+    if (data.words && data.words.length > 0) {
+      context += `KEY BIBLICAL TERMS (${data.words.length} terms):\n`;
+      for (const word of data.words) {
+        context += `- ${word.title || word.term}\n`;
+        if (word.content) {
+          // Include just the definition part
+          const lines = word.content.split("\n").slice(0, 5);
+          context += `  ${lines.join("\n  ")}\n`;
+        }
+      }
+      context += "\n";
+    }
+
+    // Add translation academy articles
+    if (data.academyArticles && data.academyArticles.length > 0) {
+      context += `TRANSLATION CONCEPTS (${data.academyArticles.length} concepts):\n`;
+      for (const article of data.academyArticles) {
+        context += `- ${article.title || article.moduleId}\n`;
+      }
+      context += "\n";
+    }
+
+    // Add translation questions
+    if (data.questions?.items && data.questions.items.length > 0) {
+      context += `COMPREHENSION QUESTIONS (${data.questions.items.length}):\n`;
+      for (const q of data.questions.items) {
+        if (q.Question) {
+          context += `Q: ${q.Question}\n`;
+          if (q.Response) {
+            context += `A: ${q.Response}\n`;
+          }
+        }
+      }
+      context += "\n";
+    }
+
+    context += `=== End of Translation Data ===\n\n`;
+    context += `Use ONLY this official data to answer. Cite sources properly. Do not make up information.`;
+
+    return context;
   }
 
   /**
