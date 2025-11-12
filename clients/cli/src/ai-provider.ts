@@ -61,6 +61,9 @@ export class OllamaProvider implements AIProvider {
           content: m.content,
         })),
         stream: true,
+        options: {
+          temperature: 0, // Deterministic responses - use provided data, not training data
+        },
       });
 
       for await (const part of response) {
