@@ -211,30 +211,40 @@ export async function fetchScripture(
         let usfmData = await cache.getFileContent(cacheKey);
 
         if (!usfmData) {
-          logger.info(`Cache miss for scripture file, downloading...`);
+          logger.info(`⬇️  Cache MISS - downloading from Door43...`);
+          logger.info(`🌐 URL: ${fileUrl}`);
+
+          const downloadStart = Date.now();
           const fileResponse = await proxyFetch(fileUrl);
+          const downloadTime = Date.now() - downloadStart;
+
+          logger.info(
+            `📥 Download completed in ${downloadTime}ms - Status: ${fileResponse.status}`,
+          );
 
           if (!fileResponse.ok) {
-            logger.error(`Failed to fetch scripture file`, {
+            logger.error(`❌ Failed to download scripture`, {
               status: fileResponse.status,
               url: fileUrl,
             });
             continue;
           }
 
+          logger.info(`📄 Reading response text...`);
           usfmData = await fileResponse.text();
-          logger.info(`Downloaded USFM data`, { length: usfmData.length });
+          logger.info(`✅ Got USFM data: ${usfmData.length} characters`);
 
           // Cache the file content
+          logger.info(`💾 Saving to cache...`);
           await cache.setFileContent(cacheKey, usfmData);
-          logger.info(`Cached scripture file`, { length: usfmData.length });
+          logger.info(`✅ Cached for offline use`);
         } else {
-          logger.info(`Cache hit for scripture file`, {
-            length: usfmData.length,
-          });
+          logger.info(
+            `✨ Cache HIT - using cached data (${usfmData.length} chars)`,
+          );
         }
 
-        logger.debug(`Retrieved USFM data`, { length: usfmData.length });
+        logger.info(`🔧 Extracting verses from USFM...`);
 
         // Choose extraction method based on format and includeVerseNumbers
         const extractionStart = Date.now();
@@ -297,7 +307,11 @@ export async function fetchScripture(
           }
         }
 
+        logger.info(`✅ Extracted text: ${text.length} characters`);
+
         if (text.trim()) {
+          logger.info(`📝 Text extraction successful for ${resource.name}`);
+
           // Process alignment data if requested
           let alignmentData:
             | {
@@ -311,6 +325,7 @@ export async function fetchScripture(
             | undefined;
 
           if (includeAlignment && format !== "usfm") {
+            logger.info(`🔗 Processing alignment data...`);
             try {
               logger.debug(`Processing alignment data`, {
                 resource: resource.name,
@@ -345,6 +360,8 @@ export async function fetchScripture(
             }
           }
 
+          logger.info(`➕ Adding scripture result for ${resource.name}`);
+
           scriptures.push({
             text: text.trim(),
             translation: resource.title,
@@ -358,20 +375,23 @@ export async function fetchScripture(
             alignment: alignmentData,
           });
           const extractionTime = Date.now() - extractionStart;
-          logger.debug(`Extracted scripture text`, {
-            resource: resource.name,
-            ms: extractionTime,
-            length: text.length,
-          });
+          logger.info(
+            `✅ Successfully processed ${resource.name} in ${extractionTime}ms - ${text.length} chars`,
+          );
         }
       } catch (error) {
-        logger.warn(`Failed to process resource`, {
-          resource: resource.name,
+        logger.error(`❌ Exception processing ${resource.name}:`, {
           error: String(error),
+          stack:
+            error instanceof Error ? error.stack?.substring(0, 200) : undefined,
         });
         continue;
       }
     }
+
+    logger.info(
+      `🏁 Loop complete. Processed ${scriptures.length} scriptures out of ${resourcesToProcess.length} resources`,
+    );
 
     if (!scriptures || scriptures.length === 0) {
       throw new Error(`No scripture text found for ${referenceParam}`);
@@ -409,10 +429,15 @@ export async function fetchScripture(
             },
           };
 
+    logger.info(
+      `📤 Returning scripture result with ${scriptures.length} translations`,
+    );
     return result;
   }
 
+  logger.info(`🚀 Starting fresh scripture fetch...`);
   const result = await fetchFreshScripture();
+  logger.info(`✅ fetchScripture completed successfully`);
   return result;
 }
 

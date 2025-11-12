@@ -43,6 +43,11 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
   const startTime = Date.now();
 
   try {
+    logger.info("🎯 handleFetchScripture CALLED", {
+      reference: args.reference,
+      language: args.language,
+    });
+
     logger.info("Fetching scripture", {
       reference: args.reference,
       language: args.language,
@@ -50,6 +55,8 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
       includeVerseNumbers: args.includeVerseNumbers,
       format: args.format,
     });
+
+    logger.info("📞 Calling fetchScripture service...");
 
     // Use the shared scripture service (same as Netlify functions)
     const result = await fetchScripture({
@@ -59,6 +66,8 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
       includeVerseNumbers: args.includeVerseNumbers,
       format: args.format,
     });
+
+    logger.info("📦 fetchScripture service returned");
 
     // Build enhanced response format for MCP
     const response = {
@@ -83,7 +92,16 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
       cached: result.metadata.cached,
     });
 
-    return response;
+    // Return in MCP format
+    return {
+      content: [
+        {
+          type: "text",
+          text: result.scripture?.text || "",
+        },
+      ],
+      isError: false,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Failed to fetch scripture", {
@@ -93,9 +111,17 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
     });
 
     return {
-      error: errorMessage,
-      reference: args.reference,
-      timestamp: new Date().toISOString(),
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            error: errorMessage,
+            reference: args.reference,
+            timestamp: new Date().toISOString(),
+          }),
+        },
+      ],
+      isError: true,
     };
   }
 }
