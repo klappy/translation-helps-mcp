@@ -54,7 +54,13 @@
     "chaos:all": "cd tests/chaos && CHAOS_MODE=aggressive node run-all-chaos-tests.ts",
     "sync-version": "node scripts/sync-version.js",
     "prepare": "node -e \"if (!process.env.CI && !process.env.CLOUDFLARE_PAGES) { require('child_process').execSync('husky', {stdio: 'inherit'}); }\"",
-    "create-endpoint": "node scripts/create-endpoint.js"
+    "create-endpoint": "node scripts/create-endpoint.js",
+    "cli:install": "cd clients/cli && npm install",
+    "cli:dev": "cd clients/cli && npm run dev",
+    "cli:build": "cd clients/cli && npm run build",
+    "cli:start": "cd clients/cli && npm start",
+    "cli:sync": "cd clients/cli && npm start sync",
+    "cli:export": "cd clients/cli && npm start export"
   },
   "dependencies": {
     "@upstash/redis": "^1.28.0",
