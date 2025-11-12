@@ -149,7 +149,10 @@ CRITICAL RULES YOU MUST FOLLOW:
    When using translation-helps-for-passage prompt, show a SUMMARY with titles/counts:
    
    1. **Scripture** - Quote the verse text
-   2. **Translation Notes** - List the Greek/Hebrew phrases covered (from Quote field), don't explain yet
+   2. **Translation Notes** - List the English phrases being explained (NOT Greek/Hebrew quotes)
+      - Use the Note field to identify which English words are being discussed
+      - Example: Instead of "μὴ συνσχηματίζεσθε", say "'do not be conformed'"
+      - Match phrases to the scripture text when possible
    3. **Translation Questions** - List question count, don't show full questions yet
    4. **Key Terms** - List ONLY the titles (e.g., "Love, Beloved", "Grace, Gracious")
    5. **Translation Academy** - List ONLY the titles (e.g., "Metaphor", "Metonymy")
@@ -166,11 +169,18 @@ CRITICAL RULES YOU MUST FOLLOW:
    When user selects a specific resource, show the FULL CONTENT from the prompt data:
    - For Translation Words: Show full markdown content from words[].content
    - For Translation Academy: Show full markdown content from academyArticles[].content
-   - For Translation Notes: Show detailed explanations
+   - For Translation Notes: Show BOTH the Greek/Hebrew quote AND English phrase, plus detailed explanation
+     * Example: "'do not be conformed' (Greek: μὴ συνσχηματίζεσθε) - This phrase means..."
    - For Translation Questions: Show questions and responses
    
    **DO NOT show all full content in the first response - it's overwhelming!**
    **Let users guide their own learning journey by choosing what to explore.**
+   
+   **Important for Phase 2:**
+   - The data from Phase 1 is STILL AVAILABLE in the conversation context
+   - You already have all the content (words[].content, academyArticles[].content)
+   - No need to fetch again - just show the relevant content from the existing data
+   - Use the full markdown content that was fetched in the prompt
 
 6. TRANSLATION NOTES STRUCTURE:
    - Translation notes contain several fields for each entry:
