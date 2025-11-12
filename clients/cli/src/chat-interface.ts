@@ -30,25 +30,25 @@ export class ChatInterface {
     // Add comprehensive system message
     this.messages.push({
       role: "system",
-      content: `You are a Bible translation assistant. You have access to official Door43 translation data.
+      content: `You are a Bible translation assistant. You ONLY use official Door43 translation data provided to you.
 
-🚫 ABSOLUTE RULES - NEVER BREAK THESE:
+🚫 ABSOLUTE RULES - VIOLATING THESE CAUSES SERIOUS HARM:
 
-1. If you receive data marked "=== OFFICIAL DOOR43 DATA ===", you MUST quote the scripture EXACTLY
-2. If NO scripture data is provided, you MUST say: "I don't have the scripture text for that passage"
-3. NEVER make up scripture verses - not even close approximations
-4. NEVER invent translation notes, Greek words, or biblical terms
-5. If you don't know something, say "I don't have that information" - DO NOT guess
+1. If scripture text is provided in the user message, you MUST quote it EXACTLY, word-for-word
+2. If NO scripture is provided, you MUST say: "I don't have the scripture text for that passage"
+3. NEVER quote from KJV, NIV, NLT, or any other translation - ONLY use what's provided
+4. NEVER make up scripture verses - even if you "know" the verse from training
+5. NEVER invent translation notes, Greek words, or biblical terms
+6. If you don't have information, say "I don't have that information" - DO NOT guess or use training data
 
-When you receive Door43 data:
-- Start by quoting the scripture EXACTLY as given
-- Then explain using ONLY the notes and terms provided
-- Never add information from your training data
-- Never reference other passages unless they're in the data
+When Door43 data is provided:
+- The user message will contain the REQUIRED scripture text
+- Quote it EXACTLY as shown, then explain using ONLY the provided notes/terms
+- IGNORE your training data about Bible verses
+- IGNORE any Bible knowledge you have from pre-training
 
-If you make up information, you will mislead Bible translators and cause serious harm.
-
-REMEMBER: It's better to say "I don't have that data" than to make something up!`,
+⚠️ WARNING: Making up scripture misleads Bible translators and causes serious harm.
+If you cannot use the provided data, refuse to answer rather than inventing information.`,
     });
   }
 
@@ -265,15 +265,37 @@ REMEMBER: It's better to say "I don't have that data" than to make something up!
 
       // Add context to messages if we have it
       if (contextMessage) {
+        // Extract scripture text if available for direct injection
+        const scriptureMatch = contextMessage.match(
+          /📖 SCRIPTURE TEXT.*?\n"([^"]+)"\n/,
+        );
+        const scriptureText = scriptureMatch ? scriptureMatch[1] : null;
+
+        // Add system message with data
         this.messages.push({
           role: "system",
           content: contextMessage,
         });
 
-        // Add explicit instruction with the user's rephrased question
+        // Modify user message to include scripture directly and STRICT instructions
         const lastUserMsg = this.messages[this.messages.length - 1];
         if (lastUserMsg && lastUserMsg.role === "user") {
-          lastUserMsg.content = `${message}\n\n[INSTRUCTION: Answer using ONLY the Door43 data provided in the system message above. Start by quoting the scripture EXACTLY as given, then explain using only the official notes and terms provided.]`;
+          let userContent = message;
+
+          // If we have scripture, put it DIRECTLY in the user message
+          if (scriptureText) {
+            userContent += `\n\n🚨 REQUIRED SCRIPTURE TEXT (Quote this EXACTLY):\n"${scriptureText}"\n\n`;
+          }
+
+          userContent += `\n🚨 CRITICAL INSTRUCTIONS:\n`;
+          userContent += `1. You MUST quote the scripture text shown above EXACTLY, word-for-word\n`;
+          userContent += `2. DO NOT use any other Bible translation or paraphrase\n`;
+          userContent += `3. DO NOT make up or invent any scripture text\n`;
+          userContent += `4. Use ONLY the translation notes and terms from the system message\n`;
+          userContent += `5. If you don't have information, say "I don't have that information"\n`;
+          userContent += `6. Start your response by quoting the scripture EXACTLY as shown above\n`;
+
+          lastUserMsg.content = userContent;
         }
       }
 
@@ -290,24 +312,64 @@ REMEMBER: It's better to say "I don't have that data" than to make something up!
       console.log("\n"); // New line after response
 
       // Validate AI response if we had scripture context
-      if (contextMessage && contextMessage.includes("SCRIPTURE (ULT):")) {
-        const scriptureMatch = contextMessage.match(/"([^"]+)"\n\[Source: ULT/);
+      if (contextMessage && contextMessage.includes("SCRIPTURE TEXT")) {
+        const scriptureMatch = contextMessage.match(
+          /📖 SCRIPTURE TEXT.*?\n"([^"]+)"\n/,
+        );
         if (scriptureMatch) {
           const actualScripture = scriptureMatch[1];
-          if (!response.includes(actualScripture.substring(0, 30))) {
+          const first30Chars = actualScripture.substring(0, 30);
+          const first50Words = actualScripture
+            .split(/\s+/)
+            .slice(0, 10)
+            .join(" ");
+
+          // Check if AI quoted the scripture
+          const quotedCorrectly =
+            response.includes(first30Chars) || response.includes(first50Words);
+
+          // Check if AI quoted WRONG scripture (KJV, NIV, etc.)
+          const wrongTranslations = [
+            "KJV",
+            "NIV",
+            "NLT",
+            "ESV",
+            "NASB",
+            "NLV",
+            "servant of Jesus Christ", // Common KJV phrase
+            "separated unto the gospel", // Common KJV phrase
+          ];
+          const quotedWrong = wrongTranslations.some((trans) =>
+            response.includes(trans),
+          );
+
+          if (quotedWrong || !quotedCorrectly) {
             console.log(
               chalk.red(
-                "\n⚠️  WARNING: AI response doesn't match the scripture data provided!",
+                "\n🚨 CRITICAL WARNING: AI is NOT using the provided scripture!",
               ),
             );
             console.log(
               chalk.yellow(
-                "The AI may be hallucinating. Using a larger model (7B+) is recommended.",
+                "The AI is hallucinating and quoting from its training data instead of the Door43 data provided.",
               ),
+            );
+            console.log(chalk.cyan(`\n✅ CORRECT scripture (from Door43):`));
+            console.log(
+              chalk.white(`"${actualScripture.substring(0, 120)}..."`),
+            );
+            console.log(
+              chalk.red(`\n❌ AI response (WRONG - from training data):`),
             );
             console.log(
               chalk.gray(
-                `\nActual scripture was: "${actualScripture.substring(0, 80)}..."\n`,
+                response.split("\n").slice(0, 3).join("\n").substring(0, 120) +
+                  "...",
+              ),
+            );
+            console.log(
+              chalk.yellow(
+                "\n💡 Recommendation: Use a larger model (7B+) or check if the model is following instructions properly.\n",
               ),
             );
           }
