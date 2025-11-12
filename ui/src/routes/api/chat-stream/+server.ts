@@ -698,7 +698,7 @@ async function callOpenAI(
 					model: 'gpt-4o-mini',
 					messages,
 					temperature: 0.3, // Lower temperature for more factual responses
-					max_tokens: 1000
+					max_tokens: 4000 // Increased for comprehensive responses with academy articles
 				}),
 				signal: controller.signal
 			});
@@ -786,7 +786,7 @@ async function callOpenAIStream(
 						messages,
 						temperature: 0.3,
 						stream: true,
-						max_tokens: 600
+						max_tokens: 4000 // Increased for comprehensive responses with academy articles
 					})
 				});
 
