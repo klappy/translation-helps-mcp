@@ -192,9 +192,9 @@ Be helpful, accurate, and ONLY use the real translation resources provided to yo
 
       if (bibleRef && this.mcpClient.isConnected()) {
         // Fetch comprehensive translation data
-        process.stdout.write(
-          chalk.gray(`📖 Fetching data for ${bibleRef}...\n`),
-        );
+        console.log(chalk.gray(`\n📖 Fetching data for ${bibleRef}...`));
+        console.log(chalk.gray(`🔧 MCP Prompt: translation-helps-for-passage`));
+        console.log(chalk.gray(`🔧 Parameters: { reference: "${bibleRef}" }`));
 
         try {
           const data = await this.mcpClient.executePrompt(
@@ -203,20 +203,66 @@ Be helpful, accurate, and ONLY use the real translation resources provided to yo
           );
 
           if (data) {
-            contextMessage = this.formatTranslationData(data, bibleRef);
-            console.log(chalk.gray("✅ Translation data loaded"));
+            // Log the actual data received
+            console.log(chalk.gray(`\n✅ MCP Response Received:`));
 
-            // Show what was fetched for debugging
             if (data.scripture?.text) {
-              const preview = data.scripture.text.substring(0, 80) + "...";
-              console.log(chalk.gray(`📄 Scripture preview: ${preview}`));
+              const fullText = data.scripture.text.trim();
+              console.log(chalk.cyan(`\n📖 SCRIPTURE (ULT):`));
+              console.log(chalk.white(`"${fullText}"`));
+              console.log(
+                chalk.gray(`Length: ${fullText.length} characters\n`),
+              );
+            } else {
+              console.log(chalk.yellow(`⚠️  No scripture text in response`));
             }
-            console.log();
+
+            if (data.notes?.items) {
+              console.log(
+                chalk.gray(`📝 Notes: ${data.notes.items.length} items`),
+              );
+            }
+
+            if (data.words) {
+              console.log(chalk.gray(`📚 Words: ${data.words.length} items`));
+            }
+
+            if (data.academyArticles) {
+              console.log(
+                chalk.gray(
+                  `🎓 Academy: ${data.academyArticles.length} articles`,
+                ),
+              );
+            }
+
+            if (data.questions?.items) {
+              console.log(
+                chalk.gray(
+                  `❓ Questions: ${data.questions.items.length} items`,
+                ),
+              );
+            }
+
+            console.log(chalk.gray(`\n🤖 Sending to AI with this data...\n`));
+
+            // Optionally save full response for debugging
+            if (process.env.DEBUG_MCP === "true") {
+              const fs = await import("fs");
+              const debugFile = `.mcp-debug-${Date.now()}.json`;
+              fs.writeFileSync(debugFile, JSON.stringify(data, null, 2));
+              console.log(
+                chalk.gray(`💾 Full MCP response saved to: ${debugFile}\n`),
+              );
+            }
+
+            contextMessage = this.formatTranslationData(data, bibleRef);
+          } else {
+            console.log(chalk.yellow(`⚠️  MCP returned no data`));
           }
         } catch (error) {
           console.log(
-            chalk.yellow(
-              `⚠️  Could not fetch data for ${bibleRef}: ${error instanceof Error ? error.message : String(error)}\n`,
+            chalk.red(
+              `\n❌ MCP Error: ${error instanceof Error ? error.message : String(error)}\n`,
             ),
           );
         }
