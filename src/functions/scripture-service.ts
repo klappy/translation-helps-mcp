@@ -11,7 +11,8 @@ import {
 import { logger } from "../utils/logger.js";
 import { parseReference } from "./reference-parser.js";
 import { discoverAvailableResources } from "./resource-detector.js";
-import { CacheBypassOptions, cache } from "./unified-cache.js";
+import { CacheBypassOptions } from "./unified-cache.js";
+import { cache } from "./cache.js";
 import { proxyFetch } from "../utils/httpClient.js";
 import {
   extractChapterRange,
