@@ -184,30 +184,121 @@ export class MCPClient {
   }
 
   /**
-   * Execute a prompt
+   * Execute a prompt by calling the actual tools
    */
   async executePrompt(name: string, args: any = {}): Promise<any> {
     if (!this.client || !this.connected) {
       throw new Error("Not connected to MCP server");
     }
 
-    try {
-      const response = await this.client.request(
-        {
-          method: "prompts/get",
-          params: {
-            name,
-            arguments: args,
-          },
-        },
-        GenericResponseSchema,
-      );
-
-      return response;
-    } catch (error) {
-      console.error(`Failed to execute prompt ${name}:`, error);
-      throw error;
+    // Special handling for comprehensive prompts that need multiple tool calls
+    if (name === "translation-helps-for-passage") {
+      return await this.fetchComprehensiveHelps(args.reference, args.language);
     }
+
+    throw new Error(`Prompt ${name} not implemented`);
+  }
+
+  /**
+   * Fetch comprehensive translation helps by calling multiple tools
+   */
+  private async fetchComprehensiveHelps(
+    reference: string,
+    language: string = "en",
+  ): Promise<any> {
+    const result: any = {};
+
+    try {
+      // Fetch scripture
+      const scripture = await this.callTool("fetch_scripture", {
+        reference,
+        language,
+      });
+      result.scripture = scripture.content?.[0]?.text
+        ? { text: scripture.content[0].text }
+        : null;
+    } catch (error) {
+      console.error("Failed to fetch scripture:", error);
+    }
+
+    try {
+      // Fetch translation notes
+      const notes = await this.callTool("fetch_translation_notes", {
+        reference,
+        language,
+      });
+      result.notes = notes.content?.[0]?.text
+        ? JSON.parse(notes.content[0].text)
+        : null;
+    } catch (error) {
+      console.error("Failed to fetch notes:", error);
+    }
+
+    try {
+      // Fetch translation questions
+      const questions = await this.callTool("fetch_translation_questions", {
+        reference,
+        language,
+      });
+      result.questions = questions.content?.[0]?.text
+        ? JSON.parse(questions.content[0].text)
+        : null;
+    } catch (error) {
+      console.error("Failed to fetch questions:", error);
+    }
+
+    try {
+      // Fetch translation word links to get the terms used
+      const wordLinks = await this.callTool("fetch_translation_word_links", {
+        reference,
+        language,
+      });
+
+      if (wordLinks.content?.[0]?.text) {
+        const twlData = JSON.parse(wordLinks.content[0].text);
+        const words = [];
+
+        // For each word link, fetch the actual word article
+        if (twlData.links && Array.isArray(twlData.links)) {
+          for (const _link of twlData.links.slice(0, 10)) {
+            // Limit to 10 words for performance
+            try {
+              const wordArticle = await this.callTool(
+                "fetch_translation_word",
+                {
+                  reference,
+                  language,
+                },
+              );
+              if (wordArticle.content?.[0]?.text) {
+                words.push(JSON.parse(wordArticle.content[0].text));
+              }
+            } catch (_error) {
+              // Skip individual word failures
+            }
+          }
+        }
+
+        result.words = words;
+      }
+    } catch (error) {
+      console.error("Failed to fetch words:", error);
+    }
+
+    try {
+      // Fetch translation academy articles
+      const academy = await this.callTool("fetch_translation_academy", {
+        reference,
+        language,
+      });
+      result.academyArticles = academy.content?.[0]?.text
+        ? JSON.parse(academy.content[0].text)
+        : null;
+    } catch (error) {
+      console.error("Failed to fetch academy:", error);
+    }
+
+    return result;
   }
 
   /**
