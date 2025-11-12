@@ -204,7 +204,14 @@ Be helpful, accurate, and ONLY use the real translation resources provided to yo
 
           if (data) {
             contextMessage = this.formatTranslationData(data, bibleRef);
-            console.log(chalk.gray("✅ Translation data loaded\n"));
+            console.log(chalk.gray("✅ Translation data loaded"));
+
+            // Show what was fetched for debugging
+            if (data.scripture?.text) {
+              const preview = data.scripture.text.substring(0, 80) + "...";
+              console.log(chalk.gray(`📄 Scripture preview: ${preview}`));
+            }
+            console.log();
           }
         } catch (error) {
           console.log(
@@ -221,6 +228,12 @@ Be helpful, accurate, and ONLY use the real translation resources provided to yo
           role: "system",
           content: contextMessage,
         });
+
+        // Add explicit instruction with the user's rephrased question
+        const lastUserMsg = this.messages[this.messages.length - 1];
+        if (lastUserMsg && lastUserMsg.role === "user") {
+          lastUserMsg.content = `${message}\n\n[INSTRUCTION: Answer using ONLY the Door43 data provided in the system message above. Start by quoting the scripture EXACTLY as given, then explain using only the official notes and terms provided.]`;
+        }
       }
 
       // Show AI is thinking
@@ -355,63 +368,78 @@ Be helpful, accurate, and ONLY use the real translation resources provided to yo
    * Format translation data for AI context
    */
   private formatTranslationData(data: any, reference: string): string {
-    let context = `=== Translation Data for ${reference} ===\n\n`;
+    let context = `=== OFFICIAL DOOR43 DATA FOR ${reference} ===\n\n`;
 
-    // Add scripture
+    context += `⚠️ CRITICAL INSTRUCTIONS:\n`;
+    context += `1. You MUST quote the scripture text EXACTLY as shown below\n`;
+    context += `2. You MUST NOT make up or change any words from the scripture\n`;
+    context += `3. You MUST use ONLY the notes and terms provided below\n`;
+    context += `4. If something is not in this data, say "I don't have that information"\n\n`;
+
+    // Add scripture with VERY explicit instructions
     if (data.scripture?.text) {
-      context += `SCRIPTURE (ULT):\n${data.scripture.text}\n\n`;
+      context += `📖 SCRIPTURE TEXT (Quote this EXACTLY, word-for-word):\n`;
+      context += `"${data.scripture.text.trim()}"\n`;
+      context += `[Source: ULT - ${reference}]\n\n`;
+      context += `⚠️ YOU MUST quote this scripture EXACTLY as written above. Do not paraphrase or change it!\n\n`;
     }
 
     // Add translation notes
     if (data.notes?.items && data.notes.items.length > 0) {
-      context += `TRANSLATION NOTES (${data.notes.items.length} notes):\n`;
+      context += `📝 TRANSLATION NOTES (${data.notes.items.length} official notes):\n`;
       for (const note of data.notes.items) {
         if (note.Note && note.Note.trim()) {
-          context += `- ${note.Quote || "Note"}: ${note.Note}\n`;
+          context += `• Phrase: "${note.Quote || ""}"\n`;
+          context += `  Note: ${note.Note}\n`;
+          context += `  [Source: TN - ${reference}]\n\n`;
         }
       }
-      context += "\n";
     }
 
     // Add translation words
     if (data.words && data.words.length > 0) {
-      context += `KEY BIBLICAL TERMS (${data.words.length} terms):\n`;
+      context += `📚 KEY BIBLICAL TERMS (${data.words.length} official terms from Door43):\n`;
       for (const word of data.words) {
-        context += `- ${word.title || word.term}\n`;
+        context += `• Term: ${word.title || word.term}\n`;
         if (word.content) {
-          // Include just the definition part
-          const lines = word.content.split("\n").slice(0, 5);
+          // Include definition
+          const lines = word.content.split("\n").slice(0, 3);
           context += `  ${lines.join("\n  ")}\n`;
+          context += `  [Source: TW - ${word.term}]\n\n`;
         }
       }
-      context += "\n";
     }
 
     // Add translation academy articles
     if (data.academyArticles && data.academyArticles.length > 0) {
-      context += `TRANSLATION CONCEPTS (${data.academyArticles.length} concepts):\n`;
+      context += `🎓 TRANSLATION CONCEPTS (${data.academyArticles.length} concepts from Door43):\n`;
       for (const article of data.academyArticles) {
-        context += `- ${article.title || article.moduleId}\n`;
+        context += `• ${article.title || article.moduleId} [TA]\n`;
       }
       context += "\n";
     }
 
     // Add translation questions
     if (data.questions?.items && data.questions.items.length > 0) {
-      context += `COMPREHENSION QUESTIONS (${data.questions.items.length}):\n`;
+      context += `❓ COMPREHENSION QUESTIONS (${data.questions.items.length} questions):\n`;
       for (const q of data.questions.items) {
         if (q.Question) {
           context += `Q: ${q.Question}\n`;
           if (q.Response) {
             context += `A: ${q.Response}\n`;
           }
+          context += `[Source: TQ - ${reference}]\n\n`;
         }
       }
-      context += "\n";
     }
 
-    context += `=== End of Translation Data ===\n\n`;
-    context += `Use ONLY this official data to answer. Cite sources properly. Do not make up information.`;
+    context += `=== END OF OFFICIAL DATA ===\n\n`;
+    context += `🚫 FINAL WARNING:\n`;
+    context += `- DO NOT make up scripture that isn't shown above\n`;
+    context += `- DO NOT invent notes, terms, or concepts not listed\n`;
+    context += `- DO NOT reference Genesis unless Genesis data was provided\n`;
+    context += `- START your response by quoting the scripture EXACTLY as shown\n`;
+    context += `- Then explain using ONLY the notes and terms provided above\n`;
 
     return context;
   }
