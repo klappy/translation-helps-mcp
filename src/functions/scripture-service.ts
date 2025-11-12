@@ -8,11 +8,11 @@ import {
   parseUSFMAlignment,
   type WordAlignment,
 } from "../experimental/usfm-alignment-parser.js";
-import { DCSApiClient } from "../services/DCSApiClient.js";
 import { logger } from "../utils/logger.js";
 import { parseReference } from "./reference-parser.js";
 import { discoverAvailableResources } from "./resource-detector.js";
-import { CacheBypassOptions } from "./unified-cache.js";
+import { CacheBypassOptions, cache } from "./unified-cache.js";
+import { proxyFetch } from "../utils/httpClient.js";
 import {
   extractChapterRange,
   extractChapterRangeWithNumbers,
@@ -200,26 +200,39 @@ export async function fetchScripture(
       }
 
       // Use the ingredient path to fetch the USFM file
-
       try {
-        // Get USFM data using the cached DCS client
-        logger.debug(`Fetching USFM file via DCS client...`);
-        const dcsClient = new DCSApiClient();
-        const fileResponse = await dcsClient.getRawFileContent(
-          organization,
-          resource.name,
-          ingredient.path,
-          "master",
-        );
+        // Build URL from ingredient path (same pattern as TN/TQ services)
+        const ingredientPath = ingredient.path.replace(/^\.\//, "");
+        const fileUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredientPath}`;
 
-        if (!fileResponse.success || !fileResponse.data) {
-          logger.error(`Failed to fetch scripture content`, {
-            error: fileResponse.error || "Unknown",
+        // Try to get from cache first
+        const cacheKey = `scripture:${fileUrl}`;
+        let usfmData = await cache.getFileContent(cacheKey);
+
+        if (!usfmData) {
+          logger.info(`Cache miss for scripture file, downloading...`);
+          const fileResponse = await proxyFetch(fileUrl);
+
+          if (!fileResponse.ok) {
+            logger.error(`Failed to fetch scripture file`, {
+              status: fileResponse.status,
+              url: fileUrl,
+            });
+            continue;
+          }
+
+          usfmData = await fileResponse.text();
+          logger.info(`Downloaded USFM data`, { length: usfmData.length });
+
+          // Cache the file content
+          await cache.setFileContent(cacheKey, usfmData);
+          logger.info(`Cached scripture file`, { length: usfmData.length });
+        } else {
+          logger.info(`Cache hit for scripture file`, {
+            length: usfmData.length,
           });
-          continue;
         }
 
-        const usfmData = fileResponse.data;
         logger.debug(`Retrieved USFM data`, { length: usfmData.length });
 
         // Choose extraction method based on format and includeVerseNumbers

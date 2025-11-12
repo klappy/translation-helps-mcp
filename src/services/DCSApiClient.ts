@@ -594,6 +594,8 @@ export class DCSApiClient {
 
   /**
    * Get raw file content from a repository
+   * NOTE: This is intentionally not implemented. Use the unified resource fetcher
+   * with ZIP downloads instead for proper caching and offline support.
    */
   public async getRawFileContent(
     _owner: string,
@@ -603,8 +605,9 @@ export class DCSApiClient {
   ): Promise<DCSResponse<string>> {
     return {
       success: false,
-      status: 400,
-      error: "Direct raw fetch is disabled. Use ZIP + ingredients.",
+      status: 501,
+      error:
+        "Direct raw fetch not supported. Use unified resource fetcher with ZIP downloads.",
     } as DCSResponse<string>;
   }
 
