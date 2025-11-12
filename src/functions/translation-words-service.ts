@@ -115,8 +115,9 @@ export async function fetchTranslationWords(
     );
   }
 
-  // Build URL for the links file
-  // Direct raw URL fetch disabled. Use ZIP + ingredients.
+  // Build URL from ingredient path
+  const ingredientPath = linksIngredient.path.replace(/^\.\//, "");
+  const linksUrl = `https://git.door43.org/${organization}/${resourceInfo.name}/raw/branch/master/${ingredientPath}`;
 
   // Try to get links from cache first
   const linksCacheKey = `tw-links:${linksUrl}`;

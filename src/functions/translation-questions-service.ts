@@ -203,9 +203,9 @@ export async function fetchTranslationQuestions(
     );
   }
 
-  // Build URL for the TSV file
-  // Direct raw URL fetch disabled. Use ZIP + ingredients path via ZipResourceFetcher2 service.
-  const fileUrl = undefined as unknown as string;
+  // Build URL from ingredient path
+  const ingredientPath = ingredient.path.replace(/^\.\//, "");
+  const fileUrl = `https://git.door43.org/${organization}/${resourceInfo.name}/raw/branch/master/${ingredientPath}`;
 
   // Try to get from cache first
   const cacheKey = `tq:${fileUrl}`;

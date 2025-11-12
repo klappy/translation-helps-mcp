@@ -125,8 +125,9 @@ export async function fetchTranslationNotes(
     );
   }
 
-  // Enforce ingredients path via ZIP fetcher in new flow; avoid raw hardcoded URLs
-  const fileUrl = undefined as unknown as string;
+  // Build URL from ingredient path
+  const ingredientPath = ingredient.path.replace(/^\.\//, "");
+  const fileUrl = `https://git.door43.org/${organization}/${resourceInfo.name}/raw/branch/master/${ingredientPath}`;
 
   // Try to get from cache first
   const cacheKey = `tn:${fileUrl}`;

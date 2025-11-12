@@ -199,7 +199,7 @@ export async function fetchScripture(
         continue;
       }
 
-      // Do not build raw paths; rely on ZIP + ingredients in ZipResourceFetcher2
+      // Use the ingredient path to fetch the USFM file
 
       try {
         // Get USFM data using the cached DCS client
@@ -208,7 +208,7 @@ export async function fetchScripture(
         const fileResponse = await dcsClient.getRawFileContent(
           organization,
           resource.name,
-          filePath,
+          ingredient.path,
           "master",
         );
 
