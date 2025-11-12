@@ -57,9 +57,11 @@ If you cannot use the provided data, refuse to answer rather than inventing info
    */
   async start(): Promise<void> {
     console.log(chalk.bold.blue("\n📖 Translation Helps CLI\n"));
+    const currentModel = (this.aiProvider as any).getModel?.();
+    const modelInfo = currentModel ? ` (${currentModel})` : "";
     console.log(
       chalk.gray(
-        `AI: ${this.aiProvider.name} | MCP: ${this.mcpClient.isConnected() ? "Connected" : "Disconnected"}`,
+        `AI: ${this.aiProvider.name}${modelInfo} | MCP: ${this.mcpClient.isConnected() ? "Connected" : "Disconnected"}`,
       ),
     );
     console.log(chalk.gray(`Type /help for commands or /exit to quit\n`));
@@ -145,13 +147,29 @@ If you cannot use the provided data, refuse to answer rather than inventing info
         break;
 
       case "model":
-        if (args.length > 0 && this.aiProvider.name === "ollama") {
-          const model = args[0];
-          (this.aiProvider as any).setModel(model);
-          console.log(chalk.green(`✅ Switched to model: ${model}`));
+        if (args.length > 0) {
+          // Switch model
+          if (this.aiProvider.name === "ollama") {
+            const model = args[0];
+            (this.aiProvider as any).setModel(model);
+            console.log(chalk.green(`✅ Switched to model: ${model}`));
+          } else if (this.aiProvider.name === "openai") {
+            const model = args[0];
+            (this.aiProvider as any).setModel(model);
+            console.log(chalk.green(`✅ Switched to model: ${model}`));
+          } else {
+            console.log(
+              chalk.yellow("Model switching not supported for this provider"),
+            );
+          }
         } else {
-          console.log(chalk.yellow("Usage: /model <model-name>"));
+          // Show current model
+          this.showCurrentModel();
         }
+        break;
+
+      case "models":
+        await this.listAvailableModels();
         break;
 
       case "offline":
@@ -585,9 +603,12 @@ If you cannot use the provided data, refuse to answer rather than inventing info
     );
     console.log(chalk.cyan("  /config") + " - Show configuration");
     console.log(chalk.cyan("  /providers") + " - Show active cache providers");
+    console.log(chalk.cyan("  /model") + " - Show current AI model");
     console.log(
-      chalk.cyan("  /model <name>") +
-        " - Switch Ollama model (if using Ollama)",
+      chalk.cyan("  /model <name>") + " - Switch AI model (Ollama or OpenAI)",
+    );
+    console.log(
+      chalk.cyan("  /models") + " - List available models (Ollama only)",
     );
     console.log(chalk.cyan("  /offline") + " - Toggle offline mode indicator");
     console.log();
@@ -598,9 +619,10 @@ If you cannot use the provided data, refuse to answer rather than inventing info
    */
   private async showStatus(): Promise<void> {
     console.log(chalk.bold("\n📊 Status:\n"));
-    console.log(`  AI Provider: ${this.aiProvider.name}`);
-    if (this.aiProvider.name === "ollama") {
-      console.log(`  Model: ${(this.aiProvider as any).getModel()}`);
+    console.log(`  AI Provider: ${chalk.cyan(this.aiProvider.name)}`);
+    const currentModel = (this.aiProvider as any).getModel?.();
+    if (currentModel) {
+      console.log(`  Model: ${chalk.cyan(currentModel)}`);
     }
     console.log(
       `  MCP: ${this.mcpClient.isConnected() ? chalk.green("Connected") : chalk.red("Disconnected")}`,
@@ -609,6 +631,73 @@ If you cannot use the provided data, refuse to answer rather than inventing info
       `  Network: ${this.isOnline ? chalk.green("Online") : chalk.red("Offline")}`,
     );
     console.log(`  Messages: ${this.messages.length - 1}`); // Exclude system message
+    console.log();
+  }
+
+  /**
+   * Show current model
+   */
+  private showCurrentModel(): void {
+    console.log(chalk.bold("\n🤖 Current AI Model:\n"));
+    const currentModel = (this.aiProvider as any).getModel?.();
+    if (currentModel) {
+      console.log(`  Provider: ${chalk.cyan(this.aiProvider.name)}`);
+      console.log(`  Model: ${chalk.cyan(currentModel)}`);
+    } else {
+      console.log(chalk.yellow("  Model information not available"));
+    }
+    console.log();
+  }
+
+  /**
+   * List available models (Ollama only)
+   */
+  private async listAvailableModels(): Promise<void> {
+    console.log(chalk.bold("\n📋 Available Models:\n"));
+
+    if (this.aiProvider.name === "ollama") {
+      try {
+        const models = await (this.aiProvider as any).listModels();
+        const currentModel = (this.aiProvider as any).getModel();
+
+        if (models.length === 0) {
+          console.log(
+            chalk.yellow(
+              "  No models found. Install models with: ollama pull <model-name>",
+            ),
+          );
+        } else {
+          models.forEach((model: string) => {
+            const isCurrent = model === currentModel;
+            const marker = isCurrent ? chalk.green("✓") : " ";
+            const name = isCurrent ? chalk.cyan.bold(model) : chalk.gray(model);
+            console.log(`  ${marker} ${name}`);
+          });
+          console.log(chalk.gray(`\n  Current: ${currentModel}`));
+          console.log(chalk.gray(`  Switch with: /model <model-name>`));
+        }
+      } catch (error) {
+        console.log(
+          chalk.red(
+            `  Failed to list models: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        );
+      }
+    } else if (this.aiProvider.name === "openai") {
+      const currentModel = (this.aiProvider as any).getModel();
+      console.log(chalk.yellow("  OpenAI models are configured via API key."));
+      console.log(`  Current model: ${chalk.cyan(currentModel)}`);
+      console.log(chalk.gray(`  Switch with: /model <model-name>`));
+      console.log(
+        chalk.gray(
+          `  Common models: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo`,
+        ),
+      );
+    } else {
+      console.log(
+        chalk.yellow("  Model listing not supported for this provider"),
+      );
+    }
     console.log();
   }
 
