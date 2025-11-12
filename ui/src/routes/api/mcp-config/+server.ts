@@ -80,10 +80,21 @@ export const GET: RequestHandler = async () => {
 		const mcpPrompts = [
 			{
 				name: 'translation-helps-for-passage',
-				description: 'Get comprehensive translation help for a passage including scripture, questions, word articles with titles, notes, and academy articles',
+				description:
+					'Get comprehensive translation help for a passage including scripture, questions, word articles with titles, notes, and academy articles',
 				parameters: [
-					{ name: 'reference', type: 'string', required: true, description: 'Bible reference (e.g., John 3:16)' },
-					{ name: 'language', type: 'string', required: false, description: 'Language code (default: en)' }
+					{
+						name: 'reference',
+						type: 'string',
+						required: true,
+						description: 'Bible reference (e.g., John 3:16)'
+					},
+					{
+						name: 'language',
+						type: 'string',
+						required: false,
+						description: 'Language code (default: en)'
+					}
 				],
 				returns: {
 					scripture: 'Full scripture text',
@@ -97,8 +108,18 @@ export const GET: RequestHandler = async () => {
 				name: 'get-translation-words-for-passage',
 				description: 'Get translation word articles for a passage with full titles and content',
 				parameters: [
-					{ name: 'reference', type: 'string', required: true, description: 'Bible reference (e.g., John 3:16)' },
-					{ name: 'language', type: 'string', required: false, description: 'Language code (default: en)' }
+					{
+						name: 'reference',
+						type: 'string',
+						required: true,
+						description: 'Bible reference (e.g., John 3:16)'
+					},
+					{
+						name: 'language',
+						type: 'string',
+						required: false,
+						description: 'Language code (default: en)'
+					}
 				],
 				returns: {
 					words: 'Word articles with titles, terms, categories, and full markdown content'
@@ -108,11 +129,22 @@ export const GET: RequestHandler = async () => {
 				name: 'get-translation-academy-for-passage',
 				description: 'Get translation academy articles referenced in notes for a passage',
 				parameters: [
-					{ name: 'reference', type: 'string', required: true, description: 'Bible reference (e.g., John 3:16)' },
-					{ name: 'language', type: 'string', required: false, description: 'Language code (default: en)' }
+					{
+						name: 'reference',
+						type: 'string',
+						required: true,
+						description: 'Bible reference (e.g., John 3:16)'
+					},
+					{
+						name: 'language',
+						type: 'string',
+						required: false,
+						description: 'Language code (default: en)'
+					}
 				],
 				returns: {
-					academyArticles: 'Translation Academy articles with titles, moduleIds, and full markdown content'
+					academyArticles:
+						'Translation Academy articles with titles, moduleIds, and full markdown content'
 				}
 			}
 		];

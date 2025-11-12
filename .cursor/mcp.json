@@ -14,6 +14,18 @@
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
         "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
       }
+    },
+    "translation-helps": {
+      "command": "node",
+      "args": ["debug-mcp-server.mjs"],
+      "cwd": "C:/Users/LENOVO/Git/Github/translation-helps-mcp-2",
+      "env": {}
+    },
+    "translation-helps-direct": {
+      "command": "npx",
+      "args": ["tsx", "src/index.ts"],
+      "cwd": "C:/Users/LENOVO/Git/Github/translation-helps-mcp-2",
+      "env": {}
     }
   }
 }

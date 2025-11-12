@@ -243,7 +243,9 @@ When you receive MCP data, use it to provide accurate, helpful responses while m
 /**
  * Discover available MCP endpoints and prompts dynamically
  */
-async function discoverMCPEndpoints(baseUrl: string): Promise<{ endpoints: any[]; prompts: any[] }> {
+async function discoverMCPEndpoints(
+	baseUrl: string
+): Promise<{ endpoints: any[]; prompts: any[] }> {
 	try {
 		const response = await fetch(`${baseUrl}/api/mcp-config`);
 		if (!response.ok) {
@@ -275,7 +277,10 @@ async function discoverMCPEndpoints(baseUrl: string): Promise<{ endpoints: any[]
 		// Get prompts from config
 		const prompts = config.prompts || [];
 
-		logger.info('Discovered MCP resources', { endpoints: endpoints.length, prompts: prompts.length });
+		logger.info('Discovered MCP resources', {
+			endpoints: endpoints.length,
+			prompts: prompts.length
+		});
 		return { endpoints, prompts };
 	} catch (error) {
 		logger.error('Error discovering MCP resources', { error });
@@ -356,7 +361,10 @@ async function determineMCPCalls(
 	const promptDescriptions = prompts
 		.map((p) => {
 			const params = (p.parameters || [])
-				.map((param: any) => `  - ${param.name} (${param.required ? 'required' : 'optional'}, ${param.type}): ${param.description}`)
+				.map(
+					(param: any) =>
+						`  - ${param.name} (${param.required ? 'required' : 'optional'}, ${param.type}): ${param.description}`
+				)
 				.join('\n');
 			const returns = Object.entries(p.returns || {})
 				.map(([key, desc]) => `  - ${key}: ${desc}`)
@@ -1025,7 +1033,10 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		const { endpoints, prompts } = await discoverMCPEndpoints(baseUrl);
 		timings.endpointDiscovery = Date.now() - discoveryStart;
 
-		logger.info('Discovered resources for chat', { endpoints: endpoints.length, prompts: prompts.length });
+		logger.info('Discovered resources for chat', {
+			endpoints: endpoints.length,
+			prompts: prompts.length
+		});
 
 		if (endpoints.length === 0 && prompts.length === 0) {
 			return json(

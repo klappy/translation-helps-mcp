@@ -13,6 +13,7 @@ The chat endpoint uses **SvelteKit's built-in environment variable system** whic
 #### **Setup (Works for Both Dev Servers)**
 
 1. **Create `ui/.env` file:**
+
    ```bash
    # Create the file in the ui directory
    cd ui
@@ -25,6 +26,7 @@ The chat endpoint uses **SvelteKit's built-in environment variable system** whic
    ```
 
 **This works for:**
+
 - ✅ `npm run dev` (Vite on port 8174)
 - ✅ `npm run dev:cf` (Wrangler on port 8787)
 - ✅ Both read `ui/.env` automatically
@@ -33,6 +35,7 @@ The chat endpoint uses **SvelteKit's built-in environment variable system** whic
 **Get an OpenAI API key:**
 
 If you don't have one:
+
 - Visit: https://platform.openai.com/api-keys
 - Sign in or create an account
 - Click "Create new secret key"
@@ -40,6 +43,7 @@ If you don't have one:
 - Paste it into `ui/.env`
 
 3. **Restart your development server:**
+
    ```bash
    # Stop the current server (Ctrl+C)
    npm run dev
@@ -55,6 +59,7 @@ If you don't have one:
 For Cloudflare Pages production deployment:
 
 1. **Set the secret in Cloudflare:**
+
    ```bash
    npx wrangler pages secret put OPENAI_API_KEY --project-name=translation-helps-mcp
    ```
@@ -69,11 +74,13 @@ For Cloudflare Pages production deployment:
 The chat assistant follows **strict rules** to ensure accuracy:
 
 ### 1. **Scripture Quoting Rules**
+
 - ✅ Quotes scripture EXACTLY word-for-word
 - ❌ NEVER paraphrases or edits scripture
 - ✅ Always includes translation name (e.g., "ULT v86")
 
 ### 2. **Citation Requirements**
+
 - Every quote includes source: `[Resource - Reference]`
 - Examples:
   - Scripture: `[ULT v86 - John 3:16]`
@@ -81,13 +88,16 @@ The chat assistant follows **strict rules** to ensure accuracy:
   - Questions: `[TQ v86 - John 3:16]`
 
 ### 3. **Data Source Constraints**
+
 - ✅ Only uses MCP server data
 - ❌ Never uses training data about the Bible
 - ❌ Never adds external interpretations
 - ✅ Says "data not available" when appropriate
 
 ### 4. **MCP Integration**
+
 The chat automatically:
+
 - Discovers available MCP endpoints
 - Calls them based on user questions
 - Extracts and cites data properly
@@ -98,16 +108,19 @@ The chat automatically:
 Try these example prompts:
 
 1. **Fetch Scripture:**
+
    ```
    Show me John 3:16 in ULT
    ```
 
 2. **Translation Notes:**
+
    ```
    What do the Translation Notes say about Titus 1:2?
    ```
 
 3. **Translation Words:**
+
    ```
    Define 'grace' from Translation Words
    ```
@@ -120,6 +133,7 @@ Try these example prompts:
 ## 🔍 X-Ray Panel
 
 Click the "🔍 X-Ray" button to see:
+
 - Which MCP endpoints were called
 - How long each call took
 - What data was fetched
@@ -132,6 +146,7 @@ This provides full transparency into how the AI assistant is using the translati
 ### Chat shows "OpenAI API key not configured"
 
 **Solution:**
+
 1. Check that `ui/.dev.vars` exists
 2. Verify your API key starts with `sk-`
 3. Restart the dev server
@@ -140,6 +155,7 @@ This provides full transparency into how the AI assistant is using the translati
 ### Chat doesn't load or shows error
 
 **Solution:**
+
 1. Check terminal logs for errors
 2. Verify dev server is running on port 8174
 3. Try refreshing the page
@@ -148,6 +164,7 @@ This provides full transparency into how the AI assistant is using the translati
 ### API key works but responses are slow
 
 **Normal behavior:**
+
 - First response may be slower (cold start)
 - Subsequent responses should be faster (caching)
 - X-Ray panel shows timing breakdown
@@ -155,6 +172,7 @@ This provides full transparency into how the AI assistant is using the translati
 ### Chat gives wrong information
 
 **Expected behavior:**
+
 - Chat should ONLY use MCP server data
 - If it uses external knowledge, that's a bug
 - File an issue with the prompt and response
@@ -172,6 +190,7 @@ For development and testing, costs should be minimal (<$1/month for moderate use
 ## 🔒 Security
 
 **IMPORTANT:**
+
 - ✅ `ui/.dev.vars` is gitignored - never commits to repo
 - ✅ API keys never sent to client browser
 - ✅ All OpenAI calls happen server-side
@@ -187,4 +206,3 @@ For development and testing, costs should be minimal (<$1/month for moderate use
 ---
 
 Need help? Open an issue on GitHub or check the main README for more documentation links.
-
