@@ -408,7 +408,6 @@ export async function fetchScripture(
               includeVerseNumbers,
               format,
               translationsFound: scriptures.length,
-              cacheKey: responseKey,
               hasAlignmentData:
                 includeAlignment && scriptures[0]?.alignment !== undefined,
             },
@@ -422,7 +421,6 @@ export async function fetchScripture(
               includeVerseNumbers,
               format,
               translationsFound: scriptures.length,
-              cacheKey: responseKey,
               hasAlignmentData:
                 includeAlignment &&
                 scriptures.some((s) => s.alignment !== undefined),
