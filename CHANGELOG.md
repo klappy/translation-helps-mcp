@@ -2,6 +2,111 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [Unreleased]
+
+### Features
+
+- **Offline-First CLI with Local AI** - Complete CLI application with Ollama integration
+  - Interactive chat interface with streaming responses
+  - MCP client connecting via stdio transport
+  - AI provider abstraction (Ollama + OpenAI fallback)
+  - Configuration management system
+  - Full offline capability with local Ollama AI
+  - Special commands: /help, /status, /config, /providers, /model, /offline, /clear, /exit
+
+- **Pluggable Cache Provider System** - Flexible, configurable caching architecture
+  - CacheProvider interface for custom implementations
+  - 4 built-in providers: Memory, File System, Cloudflare KV, Door43
+  - CacheChain manager with dynamic add/remove/reorder
+  - Configurable provider priority and fallback chain
+  - Automatic filtering of unavailable providers
+  - Cache warming between tiers
+
+- **Offline Resource Management** - Download and share translation helps offline
+  - ResourceSync service for downloading from Door43
+  - ResourceTransfer service for import/export
+  - Share package format with manifests and checksums
+  - Network detection with graceful offline fallback
+  - File system cache in ~/.translation-helps-mcp/cache/
+
+- **Peer-to-Peer Resource Sharing** - Share translation helps via USB/Bluetooth
+  - Export resources as portable ZIP packages
+  - Import share packages with integrity verification
+  - Custom bundles (select specific resources)
+  - Split large exports for limited storage
+  - Complete offline workflow support
+
+### Documentation
+
+- **Cache Architecture Guide** - Detailed cache provider system documentation
+- **Offline Architecture Guide** - Offline-first design principles and flows
+- **Resource Sharing Guide** - Complete guide for offline sharing workflows
+- **Offline Getting Started** - Quick start guide for offline setup
+- **CLI README** - Comprehensive CLI installation and usage guide
+- **Clients README** - Overview of client architecture
+- **Implementation Summary** - Technical summary of offline implementation
+
+### Files Added
+
+**Server Infrastructure:**
+
+- `src/functions/caches/cache-provider.ts` - Base provider interface
+- `src/functions/caches/memory-cache-provider.ts` - Memory cache implementation
+- `src/functions/caches/kv-cache-provider.ts` - Cloudflare KV implementation
+- `src/functions/caches/fs-cache-provider.ts` - File system implementation
+- `src/functions/caches/door43-provider.ts` - Door43 upstream provider
+- `src/functions/caches/cache-chain.ts` - Configurable cache chain manager
+- `src/functions/unified-cache-v2.ts` - New unified cache with pluggable providers
+- `src/services/ResourceSync.ts` - Resource download service
+- `src/services/ResourceTransfer.ts` - Import/export service
+- `src/utils/network-detector.ts` - Online/offline detection
+
+**CLI Client:**
+
+- `clients/cli/src/index.ts` - Main entry point
+- `clients/cli/src/mcp-client.ts` - MCP protocol client
+- `clients/cli/src/ai-provider.ts` - AI provider abstraction
+- `clients/cli/src/chat-interface.ts` - Interactive REPL
+- `clients/cli/src/config.ts` - Configuration management
+- `clients/cli/package.json` - CLI package configuration
+- `clients/cli/tsconfig.json` - TypeScript configuration
+- `clients/cli/README.md` - CLI documentation
+
+**Documentation:**
+
+- `docs/CACHE_ARCHITECTURE.md`
+- `docs/OFFLINE_ARCHITECTURE.md`
+- `docs/OFFLINE_GETTING_STARTED.md`
+- `docs/SHARING_GUIDE.md`
+- `clients/README.md`
+- `OFFLINE_CLI_IMPLEMENTATION_SUMMARY.md`
+
+### Technical Details
+
+**Lines of Code:** ~9,200 lines added across 26 files
+
+**Capabilities Enabled:**
+
+- Bible translation work completely offline
+- Zero API costs with local Ollama AI
+- Complete privacy (no cloud dependencies)
+- Resource sharing via USB/Bluetooth
+- Configurable cache providers (add/remove/reorder)
+- Cross-platform support (Windows/Mac/Linux)
+
+**Storage Requirements:**
+
+- Ollama + Mistral 7B: ~4.6GB
+- English resources: ~600MB
+- Total: ~5.2GB for complete offline setup
+
+**Future Roadmap:**
+
+- Implement CLI commands (sync, import, export, cache)
+- Desktop app with Electron/Tauri
+- Mobile support (iOS/Android)
+- Background sync and updates
+
 ## [7.3.0](https://github.com/klappy/translation-helps-mcp/compare/v7.2.0...v7.3.0) (2025-11-12)
 
 ### Features
