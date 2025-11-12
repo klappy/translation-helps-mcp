@@ -15,13 +15,13 @@
         "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
       }
     },
-    "translation-helps": {
+    "translation-helps-debug": {
       "command": "node",
       "args": ["debug-mcp-server.mjs"],
       "cwd": "C:/Users/LENOVO/Git/Github/translation-helps-mcp-2",
       "env": {}
     },
-    "translation-helps-direct": {
+    "translation-helps": {
       "command": "npx",
       "args": ["tsx", "src/index.ts"],
       "cwd": "C:/Users/LENOVO/Git/Github/translation-helps-mcp-2",

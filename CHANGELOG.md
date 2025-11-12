@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.3.0](https://github.com/klappy/translation-helps-mcp/compare/v7.2.0...v7.3.0) (2025-11-12)
+
+### Features
+
+- add contextual conversational follow-up patterns to chat ([30334bb](https://github.com/klappy/translation-helps-mcp/commit/30334bb35cd3d30641bd473b647386f8d74c13ec))
+- add dotenv support for chat in Vite dev mode ([54f2c27](https://github.com/klappy/translation-helps-mcp/commit/54f2c27ff9efc5d6e8414cc4bc9f0bf09c899feb))
+- add intelligent intent mapping to chat system prompt ([06a5152](https://github.com/klappy/translation-helps-mcp/commit/06a51520e704719f0935dd851e99b4ec1e884d51))
+- add M server debugging tools and guide ([c2445c5](https://github.com/klappy/translation-helps-mcp/commit/c2445c56441ebb13401444ee251af44dcbd81e99))
+- implement two-phase learning approach in chat ([15f99a7](https://github.com/klappy/translation-helps-mcp/commit/15f99a7ae1009e2f58ae3e12f004236385166f72))
+- integrate M prompts into chat assistant ([1931868](https://github.com/klappy/translation-helps-mcp/commit/1931868e4b1e96711ae52842fa34b35878b5ff99))
+- require ranslation Academy section and follow-up questions in chat ([cf22cff](https://github.com/klappy/translation-helps-mcp/commit/cf22cff48eb9fb42e6fcb86d5d1a97c2ed40ece4))
+- show English phrases instead of Greek/ebrew in translation notes overview ([5a24f83](https://github.com/klappy/translation-helps-mcp/commit/5a24f83b1661c3fa47a688ebe7f94da97ae28d8d))
+- transform chat into guided multi-turn learning conversation ([7b69ea0](https://github.com/klappy/translation-helps-mcp/commit/7b69ea02733c98ab7cfb48f81c212deba33fb8f7))
+
+### Bug Fixes
+
+- enforce listing ALL items in comprehensive overview response ([9d40226](https://github.com/klappy/translation-helps-mcp/commit/9d402264bc517858c0b6a5bdd86f43b24857dc99))
+- increase max_tokens for comprehensive chat responses ([f8f774d](https://github.com/klappy/translation-helps-mcp/commit/f8f774d09e570c64f3a98de84d372f4676caa06a))
+- resolve undefined variable bugs in M tools ([196416b](https://github.com/klappy/translation-helps-mcp/commit/196416bee033df98820d4af88ff4e71ebb25e1ad))
+- use SvelteKit env for loudflare compatibility ([438c73a](https://github.com/klappy/translation-helps-mcp/commit/438c73ae773f4dc42ecf709787ab57384e9c4ab1))
+
+### Documentation
+
+- add OpenA chat setup guide ([5e41dd7](https://github.com/klappy/translation-helps-mcp/commit/5e41dd72c382a79e8a59d4ff8ad46cd3062dd590))
+- simplify chat setup ([a37ebaa](https://github.com/klappy/translation-helps-mcp/commit/a37ebaa48f026471a1766766b72e2197bf88a50e))
+- update chat setup guide ([ddac97f](https://github.com/klappy/translation-helps-mcp/commit/ddac97f6875b06b53da53ad6650884e4ee0623fc))
+
 ## 7.2.0 (2025-11-11)
 
 ### ⚠ BREAKING CHANGES
