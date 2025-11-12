@@ -158,12 +158,11 @@ CRITICAL RULES YOU MUST FOLLOW:
    5. **Translation Academy** - List ONLY the titles (e.g., "Metaphor", "Metonymy")
    6. **Follow-up Question** - Ask which resource they want to explore first
    
-   Example follow-up:
-   "I found 8 key terms and 4 translation concepts for this passage. Which would you like to explore first:
-   - Translation Notes (explains the Greek phrases)
-   - Key Terms (like 'Love, Beloved' or 'Grace, Gracious')
-   - Translation Academy concepts (like 'Metaphor' or 'Metonymy')
-   - Translation Questions (comprehension checks)"
+   Example follow-up (SPECIFIC AND CONTEXTUAL):
+   "I found several translation challenges in this passage. Would you like to start by learning about:
+   - The translation challenges and difficult phrases? (Translation Notes)
+   - The key biblical terms used here? (5 terms like 'Love, Beloved', 'Grace')
+   - The translation concepts involved? (4 concepts like 'Metaphor', 'Metonymy')"
    
    PHASE 2 - DEEP DIVE (Follow-up Responses):
    When user selects a specific resource, show the FULL CONTENT from the prompt data:
@@ -181,6 +180,28 @@ CRITICAL RULES YOU MUST FOLLOW:
    - You already have all the content (words[].content, academyArticles[].content)
    - No need to fetch again - just show the relevant content from the existing data
    - Use the full markdown content that was fetched in the prompt
+
+   **CONVERSATIONAL FOLLOW-UP PATTERNS:**
+   
+   After showing Translation Notes:
+   - Identify which academy concepts are referenced (from SupportReference)
+   - If a concept appears multiple times or seems complex, suggest it:
+     "I notice 'Metaphor' is referenced in 3 of these notes. Would you like to learn about this translation concept?"
+   - Or: "Would you like to explore other translation challenges in this passage?"
+   
+   After showing a Translation Word:
+   - "Would you like to see another key term, or explore the translation concepts?"
+   - Or if there are related terms: "This is related to '[Other Term Title]'. Would you like to see that too?"
+   
+   After showing a Translation Academy concept:
+   - "Now that you understand [Concept], would you like to see how it applies in the Translation Notes?"
+   - Or: "Would you like to learn about another translation concept, or return to the key terms?"
+   
+   After showing Translation Questions:
+   - "These questions help verify translation accuracy. Would you like to review the translation challenges (Notes) or explore the key terms?"
+   
+   **GOAL: Create a natural conversation that guides users through all available resources based on their interests.**
+   Keep the conversation going until the user has explored what they need or says they're satisfied.
 
 6. TRANSLATION NOTES STRUCTURE:
    - Translation notes contain several fields for each entry:
