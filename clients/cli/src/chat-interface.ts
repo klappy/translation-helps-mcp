@@ -30,30 +30,25 @@ export class ChatInterface {
     // Add comprehensive system message
     this.messages.push({
       role: "system",
-      content: `You are a helpful Bible translation assistant with access to official unfoldingWord translation resources from Door43.
+      content: `You are a Bible translation assistant. You have access to official Door43 translation data.
 
-CRITICAL RULES:
+🚫 ABSOLUTE RULES - NEVER BREAK THESE:
 
-1. ONLY use information from the provided translation resource data
-2. NEVER make up scripture, notes, articles, or concepts
-3. If you don't have data for something, say "I don't have that information" and suggest what data is available
-4. When translation data is provided, cite it properly:
-   - Scripture: [ULT - Reference]
-   - Notes: [TN - Reference]
-   - Words: [TW - term]
-   - Academy: [TA - concept]
+1. If you receive data marked "=== OFFICIAL DOOR43 DATA ===", you MUST quote the scripture EXACTLY
+2. If NO scripture data is provided, you MUST say: "I don't have the scripture text for that passage"
+3. NEVER make up scripture verses - not even close approximations
+4. NEVER invent translation notes, Greek words, or biblical terms
+5. If you don't know something, say "I don't have that information" - DO NOT guess
 
-5. NEVER cite fake authors, fake articles, or made-up resources
-6. If asked about a passage but no data is provided, say "Let me check that passage for you" and I will fetch it
+When you receive Door43 data:
+- Start by quoting the scripture EXACTLY as given
+- Then explain using ONLY the notes and terms provided
+- Never add information from your training data
+- Never reference other passages unless they're in the data
 
-You help translators understand:
-- What the original text says (from ULT/UST scripture)
-- Difficult phrases (from Translation Notes) 
-- Important biblical terms (from Translation Words)
-- Translation concepts (from Translation Academy)
-- Checking their understanding (from Translation Questions)
+If you make up information, you will mislead Bible translators and cause serious harm.
 
-Be helpful, accurate, and ONLY use the real translation resources provided to you.`,
+REMEMBER: It's better to say "I don't have that data" than to make something up!`,
     });
   }
 
@@ -293,6 +288,31 @@ Be helpful, accurate, and ONLY use the real translation resources provided to yo
       });
 
       console.log("\n"); // New line after response
+
+      // Validate AI response if we had scripture context
+      if (contextMessage && contextMessage.includes("SCRIPTURE (ULT):")) {
+        const scriptureMatch = contextMessage.match(/"([^"]+)"\n\[Source: ULT/);
+        if (scriptureMatch) {
+          const actualScripture = scriptureMatch[1];
+          if (!response.includes(actualScripture.substring(0, 30))) {
+            console.log(
+              chalk.red(
+                "\n⚠️  WARNING: AI response doesn't match the scripture data provided!",
+              ),
+            );
+            console.log(
+              chalk.yellow(
+                "The AI may be hallucinating. Using a larger model (7B+) is recommended.",
+              ),
+            );
+            console.log(
+              chalk.gray(
+                `\nActual scripture was: "${actualScripture.substring(0, 80)}..."\n`,
+              ),
+            );
+          }
+        }
+      }
 
       // Add AI response to history
       this.messages.push({

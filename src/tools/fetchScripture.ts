@@ -7,7 +7,6 @@
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
 import { fetchScripture } from "../functions/scripture-service.js";
-import { estimateTokens } from "../utils/tokenCounter.js";
 
 // Input schema
 export const FetchScriptureArgs = z.object({
@@ -69,35 +68,40 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
 
     logger.info("📦 fetchScripture service returned");
 
-    // Build enhanced response format for MCP
-    const response = {
-      scripture: result.scripture,
-      language: args.language,
-      organization: args.organization,
-      metadata: {
-        responseTime: Date.now() - startTime,
-        tokenEstimate: estimateTokens(JSON.stringify(result)),
-        timestamp: new Date().toISOString(),
-        includeVerseNumbers: result.metadata.includeVerseNumbers,
-        format: result.metadata.format,
-        cached: result.metadata.cached,
-      },
-    };
+    // Extract scripture text - service returns either .scripture or .scriptures[]
+    const scriptureText =
+      result.scripture?.text || result.scriptures?.[0]?.text || "";
+    const translation =
+      result.scripture?.translation ||
+      result.scriptures?.[0]?.translation ||
+      "ULT";
+
+    logger.info("✍️  Extracted scripture from result", {
+      hasScripture: !!result.scripture,
+      hasScriptures: !!result.scriptures,
+      scripturesCount: result.scriptures?.length || 0,
+      textLength: scriptureText.length,
+      translation,
+    });
+
+    if (!scriptureText) {
+      throw new Error("Scripture service returned no text");
+    }
 
     logger.info("Scripture fetched successfully", {
       reference: args.reference,
-      textLength: result.scripture?.text.length || 0,
-      translation: result.scripture?.translation,
-      responseTime: response.metadata.responseTime,
+      textLength: scriptureText.length,
+      translation,
+      responseTime: Date.now() - startTime,
       cached: result.metadata.cached,
     });
 
-    // Return in MCP format
+    // Return in MCP format with just the text
     return {
       content: [
         {
           type: "text",
-          text: result.scripture?.text || "",
+          text: scriptureText,
         },
       ],
       isError: false,
