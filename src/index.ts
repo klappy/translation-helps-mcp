@@ -181,6 +181,8 @@ const server = new Server(
       tools: {},
       prompts: {},
     },
+    // Allow tools to take up to 30 seconds to respond
+    requestTimeout: 30000,
   },
 );
 

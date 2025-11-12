@@ -19,13 +19,15 @@
       "command": "node",
       "args": ["debug-mcp-server.mjs"],
       "cwd": "C:/Users/LENOVO/Git/Github/translation-helps-mcp-2",
-      "env": {}
+      "env": {},
+      "timeout": 30000
     },
     "translation-helps": {
       "command": "npx",
       "args": ["tsx", "src/index.ts"],
       "cwd": "C:/Users/LENOVO/Git/Github/translation-helps-mcp-2",
-      "env": {}
+      "env": {},
+      "timeout": 30000
     }
   }
 }
