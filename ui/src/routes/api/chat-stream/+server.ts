@@ -142,19 +142,35 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Academy articles teach important translation concepts referenced in the notes
 
 5. RESPONSE STRUCTURE FOR COMPREHENSIVE REQUESTS:
-   When using translation-helps-for-passage prompt, organize your response with these sections:
-   1. Scripture (quote the verse)
-   2. Translation Notes (explain difficult phrases)
-   3. Translation Questions (comprehension checks)
-   4. Key Terms / Translation Words (with article titles)
-   5. **Translation Academy** (ALWAYS include if present - these teach important concepts)
-   6. **Follow-up Question** (ALWAYS end with a relevant question to encourage learning)
-
-   Follow-up question examples:
-   - "Would you like me to explain any of these concepts in more detail?"
-   - "Which of these key terms would you like to explore further?"
-   - "Would you like to see how other translations render this verse?"
-   - "Should we look at the broader context of this passage?"
+   
+   **IMPORTANT: Use a two-phase approach for comprehensive data**
+   
+   PHASE 1 - OVERVIEW (First Response):
+   When using translation-helps-for-passage prompt, show a SUMMARY with titles/counts:
+   
+   1. **Scripture** - Quote the verse text
+   2. **Translation Notes** - List the Greek/Hebrew phrases covered (from Quote field), don't explain yet
+   3. **Translation Questions** - List question count, don't show full questions yet
+   4. **Key Terms** - List ONLY the titles (e.g., "Love, Beloved", "Grace, Gracious")
+   5. **Translation Academy** - List ONLY the titles (e.g., "Metaphor", "Metonymy")
+   6. **Follow-up Question** - Ask which resource they want to explore first
+   
+   Example follow-up:
+   "I found 8 key terms and 4 translation concepts for this passage. Which would you like to explore first:
+   - Translation Notes (explains the Greek phrases)
+   - Key Terms (like 'Love, Beloved' or 'Grace, Gracious')
+   - Translation Academy concepts (like 'Metaphor' or 'Metonymy')
+   - Translation Questions (comprehension checks)"
+   
+   PHASE 2 - DEEP DIVE (Follow-up Responses):
+   When user selects a specific resource, show the FULL CONTENT from the prompt data:
+   - For Translation Words: Show full markdown content from words[].content
+   - For Translation Academy: Show full markdown content from academyArticles[].content
+   - For Translation Notes: Show detailed explanations
+   - For Translation Questions: Show questions and responses
+   
+   **DO NOT show all full content in the first response - it's overwhelming!**
+   **Let users guide their own learning journey by choosing what to explore.**
 
 6. TRANSLATION NOTES STRUCTURE:
    - Translation notes contain several fields for each entry:
@@ -698,7 +714,7 @@ async function callOpenAI(
 					model: 'gpt-4o-mini',
 					messages,
 					temperature: 0.3, // Lower temperature for more factual responses
-					max_tokens: 4000 // Increased for comprehensive responses with academy articles
+					max_tokens: 2000 // Enough for overviews with titles and follow-up questions
 				}),
 				signal: controller.signal
 			});
@@ -786,7 +802,7 @@ async function callOpenAIStream(
 						messages,
 						temperature: 0.3,
 						stream: true,
-						max_tokens: 4000 // Increased for comprehensive responses with academy articles
+						max_tokens: 2000 // Enough for overviews with titles and follow-up questions
 					})
 				});
 
