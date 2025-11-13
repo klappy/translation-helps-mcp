@@ -11,6 +11,12 @@ import { normalizeReference as normalizeReferenceNew } from "../parsers/referenc
 import { DCSApiClient } from "../services/DCSApiClient.js";
 import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2.js";
 import { logger } from "../utils/logger.js";
+import {
+  transformScriptureResultToHTTP,
+  transformTranslationNotesResultToHTTP,
+  transformTranslationQuestionsResultToHTTP,
+} from "../utils/http-response-transformers.js";
+import { extractErrorMessage, extractErrorStatus } from "../utils/mcp-error-handler.js";
 import type { DataSourceConfig, EndpointConfig } from "./EndpointConfig.js";
 
 // Types for our functional approach
@@ -124,223 +130,79 @@ export const createZIPFetcher = (
           params.resource || zipConfig.resourceType,
         );
 
-        logger.info("DEBUG: Resource determination", {
-          paramsResource: params.resource,
-          zipConfigResourceType: zipConfig.resourceType,
-          requestedResource,
-          isAll: requestedResource === "all",
-        });
-
-        logger.debug("getScripture params", {
-          reference: reference,
+        logger.info("Using core scripture service", {
+          reference: String(params.reference),
           language,
           organization,
           resource: requestedResource,
-          rawResource: params.resource,
-          zipResourceType: zipConfig.resourceType,
         });
 
-        // Handle "all" resource type by fetching multiple translations
-        let scriptures: Array<{ text: string; translation: string }> = [];
+        try {
+          // Use core scripture service (same as MCP tools)
+          const { fetchScripture } = await import(
+            "../functions/scripture-service.js"
+          );
 
-        if (requestedResource === "all") {
-          // Fetch ALL available Bible resources via ZIP system
-          // ZipResourceFetcher2.getScripture without version will iterate catalog
-          // and return results for all matching Bible resources
-          try {
-            // Convert Reference to ParsedReference-compatible format for getScripture
-            const compatibleRef = {
-              ...reference,
-              originalText: reference.original || "",
-              isValid: true,
-            };
-            scriptures = await zipFetcher.getScripture(
-              compatibleRef as any, // Type assertion to handle interface mismatch
-              language,
-              organization,
-            );
-          } catch (err) {
-            logger.warn("Failed to fetch ALL resources", {
-              error: String(err),
-            });
-            scriptures = [];
-          }
-
-          // If nothing came back (cold cache or catalog variance), try prioritized fallbacks
-          if (!Array.isArray(scriptures) || scriptures.length === 0) {
-            // Try common unfoldingWord resources in priority order
-            const preferred = ["ult", "ust", "t4t", "ueb"];
-            for (const code of preferred) {
-              try {
-                const compatibleRef = {
-                  ...reference,
-                  originalText: reference.original || "",
-                  isValid: true,
-                };
-                const partial = await zipFetcher.getScripture(
-                  compatibleRef as any,
-                  language,
-                  organization,
-                  code,
-                );
-                if (Array.isArray(partial) && partial.length > 0) {
-                  scriptures.push(...partial);
-                }
-              } catch {
-                /* noop - try next */
-              }
-            }
-          }
-        } else {
-          // Get specific translation
-          const compatibleRef = {
-            ...reference,
-            originalText: reference.original || "",
-            isValid: true,
-          };
-          scriptures = await zipFetcher.getScripture(
-            compatibleRef as any,
+          const result = await fetchScripture({
+            reference: String(params.reference),
             language,
             organization,
-            requestedResource,
-          );
-        }
-
-        // Normalize shape: translation -> resource for consistency across endpoints
-        // Also track actual organization for accurate attribution
-        let normalized = scriptures.map((s) => ({
-          text: s.text,
-          resource: s.translation,
-          // @ts-expect-error - actualOrganization added for proper attribution
-          actualOrganization:
-            s.actualOrganization ||
-            String(params.organization || "unfoldingWord"),
-        }));
-
-        // Dedupe by resource (UST can appear twice via different flavors)
-        const seenResources = new Set<string>();
-        normalized = normalized.filter((s) => {
-          if (seenResources.has(s.resource)) return false;
-          seenResources.add(s.resource);
-          return true;
-        });
-        logger.debug("ZIP fetcher returned (unique)", {
-          scripturesLength: normalized.length,
-          sample: normalized.slice(0, 2),
-        });
-
-        // If we have multiple, prefer ULT when available for deterministic primary
-        const primary =
-          normalized.find((s) => s.resource.toUpperCase().includes("ULT")) ||
-          normalized[0];
-        const includeVerseNumbers = params.includeVerseNumbers !== "false";
-        const format = (params.format as string) || "text";
-
-        // Build the reference string properly using the shared normalizer
-        logger.debug("Building reference string", { reference });
-
-        // Determine if this is a chapter range (verseEnd but no verse means chapter range)
-        const isChapterRange = reference.verseEnd && !reference.verse;
-
-        // Use UI-side normalizer for display string to ensure standard book names
-        const normalizeInput = {
-          book: reference.bookName || reference.book,
-          chapter: reference.chapter,
-          verse: reference.verse,
-          endChapter: isChapterRange ? reference.verseEnd : undefined, // For chapter ranges, verseEnd holds end chapter
-          endVerse: isChapterRange ? undefined : reference.verseEnd, // For verse ranges, verseEnd holds end verse
-          originalText: reference.original || "", // Reference uses original instead of originalText
-          isValid: true,
-        };
-        logger.debug("Normalizing reference", {
-          isChapterRange,
-          normalizeInput,
-        });
-        const referenceStr = normalizeReferenceNew(
-          normalizeInput as unknown as import("../parsers/referenceParser.js").ParsedReference,
-        );
-
-        // Inspect tracer to determine cache warm status
-        let cacheWarm = false;
-        try {
-          const xray = (
-            zipFetcher as unknown as { getTrace: () => unknown }
-          )?.getTrace?.() as
-            | {
-                cacheStats?: { hits?: number };
-                apiCalls?: Array<{ cached?: boolean; url?: string }>;
-              }
-            | undefined;
-          const hits = xray?.cacheStats?.hits || 0;
-          const hadKvZipHits = Array.isArray(xray?.apiCalls)
-            ? xray.apiCalls.some(
-                (c) =>
-                  Boolean(c?.cached) &&
-                  String(c?.url || "").includes("internal://kv/zip/"),
-              )
-            : false;
-          cacheWarm = hits > 0 || hadKvZipHits;
-        } catch {
-          // ignore trace inspection failures
-        }
-
-        // If nothing was found but a chapter was requested, annotate reason for formatter
-        const notFoundReason =
-          !primary && reference.chapter ? "chapter_not_found" : undefined;
-
-        // Check if the failure was due to server errors
-        let serverErrorCount = 0;
-        let hadValidCatalog = false;
-        try {
-          const xrayTrace = zipFetcher.getTrace() as XRayTrace;
-          logger.debug("Checking xray trace for errors", {
-            hasApiCalls: !!xrayTrace?.apiCalls,
-            apiCallCount: xrayTrace?.apiCalls?.length || 0,
+            format: (params.format as string) === "usfm" ? "usfm" : "text",
+            includeVerseNumbers: params.includeVerseNumbers !== "false",
+            specificTranslations:
+              requestedResource === "all"
+                ? undefined
+                : requestedResource.split(",").map((r) => r.trim()),
+            includeAlignment: params.includeAlignment === true,
           });
 
-          if (xrayTrace?.apiCalls) {
-            serverErrorCount = xrayTrace.apiCalls.filter(
-              (call) => call.status >= 500,
-            ).length;
-            hadValidCatalog = xrayTrace.apiCalls.some(
-              (call) =>
-                call.url.includes("catalog") &&
-                call.status === 200 &&
-                call.size > 0,
-            );
+          // Transform service result to HTTP format
+          const httpResponse = transformScriptureResultToHTTP(
+            result,
+            String(params.reference),
+            { language, organization },
+          );
 
-            logger.debug("Server error check", {
-              serverErrorCount,
-              hadValidCatalog,
-              apiCalls: xrayTrace.apiCalls.map((c) => ({
-                url: c.url,
-                status: c.status,
-                isServerError: c.status >= 500,
-              })),
-            });
+          // If no scriptures found, return error response
+          if (httpResponse.length === 0) {
+            const status = 400;
+            const errorMessage = `Invalid reference: passage could not be found for ${String(
+              params.reference,
+            )} in available resources`;
+
+            const response = {
+              error: errorMessage,
+              citation: "",
+              language,
+              organization,
+              _metadata: {
+                success: false,
+                status,
+                responseTime: result.metadata?.responseTime || 0,
+                timestamp: new Date().toISOString(),
+              },
+            };
+            // Signal to RouteGenerator to set HTTP status
+            (response as Record<string, unknown>).__httpStatus = status;
+            return response;
           }
-        } catch (err) {
-          logger.error("Failed to check xray trace", { error: String(err) });
-        }
 
-        if (!primary) {
-          const status = serverErrorCount > 0 ? 503 : 400;
-          const errorMessage =
-            serverErrorCount > 0 && hadValidCatalog
-              ? `Server error: Unable to download scripture files from Door43 (${serverErrorCount} failed requests). The server may be blocking automated requests.`
-              : `Invalid reference: passage could not be found for ${String(
-                  params.reference,
-                )} in available resources`;
+          return httpResponse;
+        } catch (error) {
+          // Extract error status if present
+          const errorStatus = extractErrorStatus(error);
+          const errorMessage = extractErrorMessage(error);
 
+          // If service threw an error, return appropriate HTTP error response
+          const status = errorStatus || 500;
           const response = {
             error: errorMessage,
             citation: "",
-            language: String(params.language || "en"),
-            organization: String(params.organization || "unfoldingWord"),
+            language,
+            organization,
             _metadata: {
               success: false,
               status,
-              serverErrors: serverErrorCount > 0 ? serverErrorCount : undefined,
               responseTime: 0,
               timestamp: new Date().toISOString(),
             },
@@ -349,18 +211,6 @@ export const createZIPFetcher = (
           (response as Record<string, unknown>).__httpStatus = status;
           return response;
         }
-
-        // Return clean array of scripture objects as per design
-        return normalized.map((scripture) => ({
-          text: scripture.text,
-          reference: referenceStr,
-          resource: scripture.resource,
-          language: String(params.language || "en"),
-          citation: `${referenceStr} (${scripture.resource})`,
-          organization:
-            scripture.actualOrganization ||
-            String(params.organization || "unfoldingWord"),
-        }));
       }
 
       case "getTSVData": {
@@ -370,27 +220,124 @@ export const createZIPFetcher = (
           (err as Error & { status?: number }).status = 400;
           throw err;
         }
-        const rows = await zipFetcher.getTSVData(
-          reference,
-          String(params.language || "en"),
-          String(params.organization || "unfoldingWord"),
-          zipConfig.resourceType,
-        );
-        const count = Array.isArray(rows) ? rows.length : 0;
-        const baseMeta = {
-          language: String(params.language || "en"),
-          organization: String(params.organization || "unfoldingWord"),
-          reference: params.reference,
-          count,
-        };
-        if (zipConfig.resourceType === "tn") {
-          return { verseNotes: rows, _metadata: baseMeta };
+
+        const language = String(params.language || "en");
+        const organization = String(params.organization || "unfoldingWord");
+        const referenceStr = String(params.reference);
+
+        logger.info("Using core service for TSV data", {
+          resourceType: zipConfig.resourceType,
+          reference: referenceStr,
+          language,
+          organization,
+        });
+
+        try {
+          if (zipConfig.resourceType === "tn") {
+            // Use core translation notes service
+            const { fetchTranslationNotes } = await import(
+              "../functions/translation-notes-service.js"
+            );
+
+            const result = await fetchTranslationNotes({
+              reference: referenceStr,
+              language,
+              organization,
+              includeIntro: params.includeIntro !== "false",
+              includeContext: params.includeContext !== "false",
+            });
+
+            return transformTranslationNotesResultToHTTP(result, {
+              language,
+              organization,
+            });
+          }
+
+          if (zipConfig.resourceType === "tq") {
+            // Use core translation questions service
+            const { fetchTranslationQuestions } = await import(
+              "../functions/translation-questions-service.js"
+            );
+
+            const result = await fetchTranslationQuestions({
+              reference: referenceStr,
+              language,
+              organization,
+            });
+
+            return transformTranslationQuestionsResultToHTTP(result, {
+              language,
+              organization,
+              reference: referenceStr,
+            });
+          }
+
+          if (zipConfig.resourceType === "twl") {
+            // Use core word links service
+            const { fetchWordLinks } = await import(
+              "../functions/word-links-service.js"
+            );
+
+            const result = await fetchWordLinks({
+              reference: referenceStr,
+              language,
+              organization,
+            });
+
+            return {
+              links: result.translationWordLinks,
+              _metadata: {
+                language,
+                organization,
+                reference: referenceStr,
+                count: result.metadata.linksFound,
+              },
+            };
+          }
+
+          // Fallback to old method if resource type not recognized
+          logger.warn("Unknown resource type, falling back to direct ZIP fetch", {
+            resourceType: zipConfig.resourceType,
+          });
+          const rows = await zipFetcher.getTSVData(
+            reference,
+            language,
+            organization,
+            zipConfig.resourceType,
+          );
+          const count = Array.isArray(rows) ? rows.length : 0;
+          return {
+            data: rows,
+            _metadata: {
+              language,
+              organization,
+              reference: referenceStr,
+              count,
+            },
+          };
+        } catch (error) {
+          // Extract error status if present
+          const errorStatus = extractErrorStatus(error);
+          const errorMessage = extractErrorMessage(error);
+
+          // Return error response
+          const status = errorStatus || 500;
+          const response = {
+            error: errorMessage,
+            _metadata: {
+              success: false,
+              status,
+              language,
+              organization,
+              reference: referenceStr,
+              responseTime: 0,
+              timestamp: new Date().toISOString(),
+            },
+          };
+          // Signal to RouteGenerator to set HTTP status
+          (response as Record<string, unknown>).__httpStatus = status;
+          return response;
         }
-        if (zipConfig.resourceType === "tq") {
-          return { questions: rows, _metadata: baseMeta };
-        }
-        // twl
-        return { links: rows, _metadata: baseMeta };
       }
 
       case "getMarkdownContent": {

@@ -9,6 +9,7 @@ import { logger } from "../utils/logger.js";
 import { fetchScripture } from "../functions/scripture-service.js";
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
+import { withPerformanceTracking } from "../utils/mcp-performance-tracker.js";
 import {
   ReferenceParam,
   LanguageParam,
@@ -38,7 +39,10 @@ export type FetchScriptureArgs = z.infer<typeof FetchScriptureArgs>;
 export async function handleFetchScripture(args: FetchScriptureArgs) {
   const startTime = Date.now();
 
-  try {
+  return withPerformanceTracking(
+    "fetch_scripture",
+    async () => {
+      try {
     logger.info("Fetching scripture", {
       reference: args.reference,
       language: args.language,
@@ -96,26 +100,44 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
       ...metadata,
     });
 
-    // Return in MCP format with just the text
-    return {
-      content: [
-        {
-          type: "text",
-          text: scriptureText,
-        },
-      ],
-      isError: false,
-    };
-  } catch (error) {
-    return handleMCPError({
-      toolName: "fetch_scripture",
-      args: {
-        reference: args.reference,
-        language: args.language,
-        organization: args.organization,
+        // Return in MCP format with just the text
+        return {
+          content: [
+            {
+              type: "text",
+              text: scriptureText,
+            },
+          ],
+          isError: false,
+        };
+      } catch (error) {
+        return handleMCPError({
+          toolName: "fetch_scripture",
+          args: {
+            reference: args.reference,
+            language: args.language,
+            organization: args.organization,
+          },
+          startTime,
+          originalError: error,
+        });
+      }
+    },
+    {
+      extractCacheHit: (result) => {
+        // Check if result indicates cache hit (would need to inspect metadata)
+        return false; // Service doesn't expose cache status in result
       },
-      startTime,
-      originalError: error,
-    });
-  }
+      extractDataSize: (result) => {
+        // Extract data size from result
+        if (result && typeof result === "object" && "content" in result) {
+          const content = (result as any).content;
+          if (Array.isArray(content) && content[0]?.text) {
+            return Buffer.byteLength(content[0].text, "utf8");
+          }
+        }
+        return 0;
+      },
+    },
+  );
 }

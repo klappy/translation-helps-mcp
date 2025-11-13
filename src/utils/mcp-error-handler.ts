@@ -6,6 +6,34 @@
  */
 
 import { logger } from "./logger.js";
+import { buildMetadata } from "./metadata-builder.js";
+
+/**
+ * Extract error message from unknown error type
+ * Shared utility to avoid duplication of error instanceof Error checks
+ */
+export function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return String(error);
+}
+
+/**
+ * Extract HTTP status code from error if present
+ */
+export function extractErrorStatus(error: unknown): number | undefined {
+  if (error instanceof Error && "status" in error) {
+    const status = (error as Error & { status?: number }).status;
+    if (typeof status === "number" && status >= 400 && status < 600) {
+      return status;
+    }
+  }
+  return undefined;
+}
 
 export interface MCPErrorResponse {
   content?: Array<{ type: "text"; text: string }>;
