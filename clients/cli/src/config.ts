@@ -23,7 +23,7 @@ export interface Config {
 }
 
 const DEFAULT_CONFIG: Config = {
-  aiProvider: "ollama",
+  aiProvider: "openai",
   ollamaModel: "mistral:7b",
   ollamaBaseUrl: "http://localhost:11434",
   openaiModel: "gpt-4o-mini",

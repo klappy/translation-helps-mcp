@@ -186,7 +186,7 @@ export class OpenAIProvider implements AIProvider {
 
 /**
  * AI Provider Factory
- * Tries Ollama first (offline), falls back to OpenAI if configured
+ * Tries OpenAI first (default), falls back to Ollama if OpenAI not available
  */
 export class AIProviderFactory {
   static async create(
@@ -201,39 +201,39 @@ export class AIProviderFactory {
     const ollamaModel = config?.ollamaModel || "mistral:7b";
     const openaiModel = config?.openaiModel || "gpt-4o-mini";
 
-    // Try preferred provider first if specified
-    if (preferredProvider === "openai" && config?.openaiApiKey) {
+    // Try preferred provider first if explicitly specified
+    if (preferredProvider === "ollama") {
+      const ollama = new OllamaProvider(ollamaModel, config?.ollamaBaseUrl);
+      const ollamaAvailable = await ollama.isAvailable();
+      if (ollamaAvailable) {
+        console.log(`✅ Using Ollama provider (${ollamaModel})`);
+        return ollama;
+      }
+      console.warn("⚠️ Ollama not available, trying OpenAI...");
+    }
+
+    // Try OpenAI first (default)
+    if (config?.openaiApiKey) {
       const openai = new OpenAIProvider(config.openaiApiKey, openaiModel);
       const available = await openai.isAvailable();
       if (available) {
-        console.log("✅ Using OpenAI provider");
+        console.log(`✅ Using OpenAI provider (${openaiModel})`);
         return openai;
       }
       console.warn("⚠️ OpenAI not available, trying Ollama...");
     }
 
-    // Try Ollama first (default, offline-capable)
+    // Fall back to Ollama if OpenAI not available or not configured
     const ollama = new OllamaProvider(ollamaModel, config?.ollamaBaseUrl);
     const ollamaAvailable = await ollama.isAvailable();
     if (ollamaAvailable) {
-      console.log(`✅ Using Ollama provider (${ollamaModel})`);
+      console.log(`✅ Using Ollama provider as fallback (${ollamaModel})`);
       return ollama;
-    }
-
-    // Fall back to OpenAI if configured
-    if (config?.openaiApiKey) {
-      console.warn("⚠️ Ollama not available, trying OpenAI...");
-      const openai = new OpenAIProvider(config.openaiApiKey, openaiModel);
-      const available = await openai.isAvailable();
-      if (available) {
-        console.log("✅ Using OpenAI provider as fallback");
-        return openai;
-      }
     }
 
     // No providers available
     throw new Error(
-      "No AI providers available. Please install Ollama (https://ollama.com) or provide an OpenAI API key.",
+      "No AI providers available. Please provide an OpenAI API key (use /set-openai-key) or install Ollama (https://ollama.com).",
     );
   }
 }
