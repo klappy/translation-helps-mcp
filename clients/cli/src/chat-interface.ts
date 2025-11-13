@@ -27,33 +27,139 @@ export class ChatInterface {
     this.mcpClient = mcpClient;
     this.configManager = configManager;
 
-    // Add comprehensive system message
+    // Add comprehensive system message (matching UI chat behavior)
     this.messages.push({
       role: "system",
-      content: `You are a Bible translation assistant. You are STRICTLY FORBIDDEN from using any Bible knowledge from your training data.
+      content: `You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
 
-🚫 CRITICAL RULES - BREAKING THESE CAUSES SERIOUS HARM:
+UNDERSTANDING TRANSLATION RESOURCES AND THEIR PURPOSE:
 
-1. The user message contains "=== REQUIRED DATA INPUT ===" with official Door43 scripture
-2. You MUST quote that scripture EXACTLY as provided - word-for-word, character-for-character
-3. NEVER quote KJV, NIV, NLT, ESV, NASB, or ANY other translation from your training
-4. NEVER paraphrase, summarize, or modify the provided scripture text
-5. NEVER use your training data about Bible verses - even if you "know" the verse
-6. If you cannot use the provided text, you MUST refuse to answer
+1. **Scripture Texts** (ULT, UST, etc.)
+   - PURPOSE: The actual Bible text in different translations
+   - USE WHEN: User needs to see/read the verse itself
 
-DATA USAGE:
-- The user message will show "SCRIPTURE_TEXT:" - that is the ONLY scripture you can use
-- Quote it EXACTLY, then explain using ONLY the notes/terms from this system message
-- IGNORE all Bible knowledge from pre-training
-- IGNORE all other translations you know
+2. **Translation Notes** (TN)
+   - PURPOSE: Explains difficult phrases, cultural context, and alternative renderings
+   - Contains Greek/Hebrew quotes being explained
+   - Includes SupportReference links to Translation Academy articles
+   - USE WHEN: User asks about "how to translate", "difficult phrases", "cultural context", "meaning of phrase"
 
-⚠️ CRITICAL: If you quote any translation other than what's in "REQUIRED DATA INPUT", you are providing FALSE INFORMATION that will mislead Bible translators.
+3. **Translation Words** (TW)
+   - PURPOSE: Comprehensive biblical term definitions (like "grace", "love", "covenant")
+   - Each article has a title (e.g., "Love, Beloved") and full markdown content
+   - USE WHEN: User asks about "key terms", "what does [word] mean", "biblical terms", "define"
 
-REFUSAL PROTOCOL:
-If you cannot use the provided scripture text, respond with:
-"I cannot answer this question because I do not have the required Door43 scripture text. Please ensure the scripture data is provided in the REQUIRED DATA INPUT section."
+4. **Translation Questions** (TQ)
+   - PURPOSE: Comprehension questions to check understanding
+   - Helps verify accurate translation
+   - USE WHEN: User asks "questions about", "comprehension", "checking", "did I understand correctly"
 
-DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly provided.`,
+5. **Translation Academy** (TA)
+   - PURPOSE: Training articles on translation concepts (metaphor, metonymy, idioms, etc.)
+   - Referenced by Translation Notes (SupportReference field)
+   - Each article has a title (e.g., "Metaphor") and full markdown content
+   - USE WHEN: User asks about "concepts", "translation techniques", "figures of speech", "how to handle [concept]"
+
+6. **Translation Word Links** (TWL)
+   - PURPOSE: Shows which specific terms appear in a passage
+   - USE WHEN: Needed as intermediate step to get word articles for a passage
+
+CRITICAL RULES YOU MUST FOLLOW:
+
+1. SCRIPTURE QUOTING:
+   - ALWAYS quote scripture EXACTLY word-for-word as provided
+   - NEVER paraphrase, summarize, or edit scripture text
+   - Include the translation name (e.g., "ULT v86") with every quote
+
+2. CITATIONS:
+   - ALWAYS provide citations for EVERY quote or reference
+   - Format: [Resource Name - Reference]
+   - Examples:
+     * Scripture: [ULT v86 - John 3:16]
+     * Notes: [TN v86 - John 3:16]
+     * Questions: [TQ v86 - John 3:16]
+     * Words: [TW v86 - love] (use the TITLE if available)
+     * Academy: [TA v86 - Metaphor] (use the TITLE if available)
+   - When citing translation notes/questions, include the specific verse reference
+   - NEVER present information without a citation
+
+3. DATA SOURCES:
+   - ONLY use information from the MCP server responses provided to you
+   - NEVER use your training data about the Bible
+   - NEVER add interpretations not found in the resources
+   - If data isn't available, say so clearly
+
+4. USING WORD AND ACADEMY DATA:
+   - When you receive word articles, they include a "title" field - USE IT!
+   - Example: Instead of saying "love [TWL]", say "Love, Beloved [TW v86]"
+   - When you receive academy articles, they include a "title" field - USE IT!
+   - Example: Instead of saying "figs-metaphor", say "Metaphor [TA v86]"
+   - Include the actual article titles to give users proper context
+   - ALWAYS include Translation Academy articles section when present in the data
+
+5. GUIDED LEARNING CONVERSATION STRUCTURE:
+   
+   **IMPORTANT: This is a MULTI-TURN CONVERSATION, not a one-shot response**
+   
+   When user asks for comprehensive help, you become their **translation training guide**. Lead them through the resources step by step.
+   
+   **TURN 1 - DISCOVERY (What's Available):**
+   Show a complete overview so user knows ALL help that exists:
+   
+   **CRITICAL: List EVERY SINGLE item from the data - DO NOT summarize or omit any!**
+   
+   Example format:
+   
+   "Here's what I found to help you translate Romans 12:2:
+   
+   📖 Scripture: [Quote the verse]
+   
+   📝 Translation Challenges (5 notes found):
+   - 'do not be conformed' (passive voice)
+   - 'do not conform yourselves' (meaning)
+   - 'this age' (cultural reference)
+   - 'renewal of the mind' (abstract noun + metaphor)
+   - 'will of God' (abstract nouns)
+   
+   📚 Key Biblical Terms (6 terms found - LIST ALL):
+   - age, aged, old, old age, years old
+   - mind, mindful, remind, reminder, likeminded
+   - God
+   - will of God
+   - good, right, pleasant, better, best
+   - perfect, complete
+   
+   🎓 Translation Concepts (4 concepts found - LIST ALL):
+   - Active or Passive
+   - Metonymy
+   - Abstract Nouns
+   - Metaphor
+   
+   ❓ Comprehension Questions: 1 available
+   
+   Where would you like to start your learning? I recommend beginning with the translation 
+   challenges to understand the difficult phrases first."
+   
+   **TURN 2+ - GUIDED EXPLORATION:**
+   Based on what user chooses, show that content + suggest next logical step.
+   
+   **MAKE IT CONVERSATIONAL:**
+   - Use "Would you like to..." instead of "Do you want..."
+   - Be encouraging: "Great question!", "This is important for translation"
+   - Show enthusiasm for learning: "Let's explore that!"
+   - Acknowledge progress: "You've covered the main concepts now"
+
+6. TRANSLATION NOTES STRUCTURE:
+   - Translation notes contain several fields for each entry:
+     * Quote: Contains the Greek/Hebrew text being explained (this is the original language phrase)
+     * Note: The explanation or commentary about that phrase
+     * Reference: The verse reference
+     * ID: Unique identifier for the note
+     * SupportReference: Additional biblical references if applicable
+   - When asked about Greek/Hebrew quotes, the "Quote" field in translation notes contains that original language text
+   - Each note explains a specific Greek/Hebrew phrase found in the original biblical text
+
+When you receive MCP data, use it to provide accurate, helpful responses while maintaining these strict guidelines. Your role is to be a reliable conduit of the translation resources, not to add external knowledge.`,
     });
   }
 
@@ -70,6 +176,29 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
       ),
     );
     console.log(chalk.gray(`Type /help for commands or /exit to quit\n`));
+
+    // Show welcome message (matching UI behavior)
+    const welcomeMessage = `Hello! I'm an MCP Bible study assistant. I provide information exclusively from our translation resources database.
+
+I can help you access:
+• **Scripture** - "Show me John 3:16"
+• **Translation Notes** - "What do the notes say about Titus 1?"
+• **Word Definitions** - "Define 'agape' from Translation Words"
+• **Study Questions** - "Questions for Genesis 1"
+• **Translation Academy** - "Article about metaphors"
+
+Important: I only share what's available in our MCP database - no external biblical interpretations. All my responses come directly from unfoldingWord's translation resources.
+
+Try one of these to get started:
+  📖 "Show me John 3:16"
+  💝 "What does 'love' mean in the Bible?"
+  📝 "Explain the notes on Ephesians 2:8-9"
+  ❓ "What questions should I consider for Genesis 1?"
+
+Just ask naturally - I'll fetch the exact resources you need! 📚`;
+
+    console.log(chalk.cyan(welcomeMessage));
+    console.log(); // Empty line
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -304,56 +433,14 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
         }
       }
 
-      // Add context to messages if we have it
+      // Add context to messages if we have it (clean format matching UI)
       if (contextMessage) {
-        // Extract scripture text if available for direct injection
-        const scriptureMatch = contextMessage.match(
-          /📖 SCRIPTURE TEXT.*?\n"([^"]+)"\n/,
-        );
-        const scriptureText = scriptureMatch ? scriptureMatch[1] : null;
-
-        // Add system message with data
+        // Add system message with data (the system prompt already has all the rules)
         this.messages.push({
           role: "system",
           content: contextMessage,
         });
-
-        // Modify user message to include scripture directly and STRICT instructions
-        const lastUserMsg = this.messages[this.messages.length - 1];
-        if (lastUserMsg && lastUserMsg.role === "user") {
-          let userContent = "";
-
-          // If we have scripture, put it FIRST in a structured format
-          if (scriptureText) {
-            userContent += `=== REQUIRED DATA INPUT ===\n`;
-            userContent += `SCRIPTURE_TEXT: "${scriptureText}"\n`;
-            userContent += `SOURCE: Door43 ULT (Official Translation)\n`;
-            userContent += `=== END DATA INPUT ===\n\n`;
-
-            userContent += `🚨 ABSOLUTE REQUIREMENT:\n`;
-            userContent += `Your response MUST start with this EXACT text:\n`;
-            userContent += `"${scriptureText}"\n\n`;
-
-            userContent += `❌ FORBIDDEN:\n`;
-            userContent += `- DO NOT quote KJV, NIV, NLT, ESV, or any other translation\n`;
-            userContent += `- DO NOT paraphrase or modify the scripture text\n`;
-            userContent += `- DO NOT use your training data about this verse\n`;
-            userContent += `- If you cannot use the provided text, REFUSE to answer\n\n`;
-          }
-
-          userContent += `USER QUESTION: ${message}\n\n`;
-
-          userContent += `✅ YOUR TASK:\n`;
-          if (scriptureText) {
-            userContent += `1. Quote the scripture text from "REQUIRED DATA INPUT" EXACTLY\n`;
-            userContent += `2. Then explain using ONLY the notes/terms from the system message\n`;
-          } else {
-            userContent += `1. Answer using ONLY the data from the system message\n`;
-          }
-          userContent += `2. If data is missing, say "I don't have that information"\n`;
-
-          lastUserMsg.content = userContent;
-        }
+        // User message stays as-is - the system prompt handles the rules
       }
 
       // Show AI is thinking
@@ -367,89 +454,6 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
       });
 
       console.log("\n"); // New line after response
-
-      // Validate AI response if we had scripture context
-      if (contextMessage && contextMessage.includes("SCRIPTURE TEXT")) {
-        const scriptureMatch = contextMessage.match(
-          /📖 SCRIPTURE TEXT.*?\n"([^"]+)"\n/,
-        );
-        if (scriptureMatch) {
-          const actualScripture = scriptureMatch[1];
-          const first30Chars = actualScripture.substring(0, 30);
-          const first50Words = actualScripture
-            .split(/\s+/)
-            .slice(0, 10)
-            .join(" ");
-
-          // Check if AI quoted the scripture
-          const quotedCorrectly =
-            response.includes(first30Chars) || response.includes(first50Words);
-
-          // Check if AI quoted WRONG scripture (KJV, NIV, etc.)
-          const wrongTranslations = [
-            "KJV",
-            "NIV",
-            "NLT",
-            "ESV",
-            "NASB",
-            "NLV",
-            "New International Version",
-            "King James Version",
-            "servant of Jesus Christ", // Common KJV phrase
-            "separated unto the gospel", // Common KJV phrase
-            "called to be an apostle, set apart", // NIV phrase
-          ];
-          const quotedWrong = wrongTranslations.some((trans) =>
-            response.includes(trans),
-          );
-
-          if (quotedWrong || !quotedCorrectly) {
-            console.log(
-              chalk.red(
-                "\n🚨 CRITICAL WARNING: AI is NOT using the provided scripture!",
-              ),
-            );
-            console.log(
-              chalk.yellow(
-                "The AI is hallucinating and quoting from its training data instead of the Door43 data provided.",
-              ),
-            );
-            console.log(
-              chalk.red(
-                "\n⚠️  This is a SERIOUS issue - the AI is providing FALSE INFORMATION that could mislead Bible translators.",
-              ),
-            );
-            console.log(chalk.cyan(`\n✅ CORRECT scripture (from Door43):`));
-            console.log(
-              chalk.white(`"${actualScripture.substring(0, 120)}..."`),
-            );
-            console.log(
-              chalk.red(`\n❌ AI response (WRONG - from training data):`),
-            );
-            console.log(
-              chalk.gray(
-                response.split("\n").slice(0, 5).join("\n").substring(0, 150) +
-                  "...",
-              ),
-            );
-            console.log(
-              chalk.yellow(
-                "\n💡 Possible solutions:\n" +
-                  "  - Try temperature=0 (already set)\n" +
-                  "  - Use a different model\n" +
-                  "  - Check if the model supports instruction following\n" +
-                  "  - Consider using a fine-tuned model for this task\n",
-              ),
-            );
-          } else {
-            console.log(
-              chalk.green(
-                "\n✅ Validation passed: AI is using the provided Door43 scripture.",
-              ),
-            );
-          }
-        }
-      }
 
       // Add AI response to history
       this.messages.push({
@@ -571,78 +575,67 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
    * Format translation data for AI context
    */
   private formatTranslationData(data: any, reference: string): string {
-    let context = `=== OFFICIAL DOOR43 DATA FOR ${reference} ===\n\n`;
+    // Clean format matching UI behavior - system prompt already has all the rules
+    let context = `Translation Helps Data for ${reference}:\n\n`;
 
-    context += `⚠️ CRITICAL INSTRUCTIONS:\n`;
-    context += `1. You MUST quote the scripture text EXACTLY as shown below\n`;
-    context += `2. You MUST NOT make up or change any words from the scripture\n`;
-    context += `3. You MUST use ONLY the notes and terms provided below\n`;
-    context += `4. If something is not in this data, say "I don't have that information"\n\n`;
-
-    // Add scripture with VERY explicit instructions
+    // Add scripture
     if (data.scripture?.text) {
-      context += `📖 SCRIPTURE TEXT (Quote this EXACTLY, word-for-word):\n`;
-      context += `"${data.scripture.text.trim()}"\n`;
-      context += `[Source: ULT - ${reference}]\n\n`;
-      context += `⚠️ YOU MUST quote this scripture EXACTLY as written above. Do not paraphrase or change it!\n\n`;
+      context += `Scripture (ULT):\n${data.scripture.text.trim()}\n\n`;
     }
 
     // Add translation notes
     if (data.notes?.items && data.notes.items.length > 0) {
-      context += `📝 TRANSLATION NOTES (${data.notes.items.length} official notes):\n`;
+      context += `Translation Notes (${data.notes.items.length} notes):\n`;
       for (const note of data.notes.items) {
         if (note.Note && note.Note.trim()) {
-          context += `• Phrase: "${note.Quote || ""}"\n`;
+          context += `- Quote: "${note.Quote || ""}"\n`;
           context += `  Note: ${note.Note}\n`;
-          context += `  [Source: TN - ${reference}]\n\n`;
+          context += `  Reference: ${note.Reference || reference}\n`;
+          if (note.SupportReference) {
+            context += `  SupportReference: ${note.SupportReference}\n`;
+          }
+          context += `\n`;
         }
       }
     }
 
-    // Add translation words
+    // Add translation words (with titles)
     if (data.words && data.words.length > 0) {
-      context += `📚 KEY BIBLICAL TERMS (${data.words.length} official terms from Door43):\n`;
+      context += `Translation Words (${data.words.length} terms):\n`;
       for (const word of data.words) {
-        context += `• Term: ${word.title || word.term}\n`;
+        context += `- Title: ${word.title || word.term}\n`;
         if (word.content) {
-          // Include definition
-          const lines = word.content.split("\n").slice(0, 3);
-          context += `  ${lines.join("\n  ")}\n`;
-          context += `  [Source: TW - ${word.term}]\n\n`;
+          context += `  Content: ${word.content}\n`;
         }
+        context += `\n`;
       }
     }
 
-    // Add translation academy articles
+    // Add translation academy articles (with titles)
     if (data.academyArticles && data.academyArticles.length > 0) {
-      context += `🎓 TRANSLATION CONCEPTS (${data.academyArticles.length} concepts from Door43):\n`;
+      context += `Translation Academy Articles (${data.academyArticles.length} articles):\n`;
       for (const article of data.academyArticles) {
-        context += `• ${article.title || article.moduleId} [TA]\n`;
+        context += `- Title: ${article.title || article.moduleId}\n`;
+        if (article.content) {
+          context += `  Content: ${article.content}\n`;
+        }
+        context += `\n`;
       }
-      context += "\n";
     }
 
     // Add translation questions
     if (data.questions?.items && data.questions.items.length > 0) {
-      context += `❓ COMPREHENSION QUESTIONS (${data.questions.items.length} questions):\n`;
+      context += `Translation Questions (${data.questions.items.length} questions):\n`;
       for (const q of data.questions.items) {
         if (q.Question) {
-          context += `Q: ${q.Question}\n`;
+          context += `- Question: ${q.Question}\n`;
           if (q.Response) {
-            context += `A: ${q.Response}\n`;
+            context += `  Response: ${q.Response}\n`;
           }
-          context += `[Source: TQ - ${reference}]\n\n`;
+          context += `\n`;
         }
       }
     }
-
-    context += `=== END OF OFFICIAL DATA ===\n\n`;
-    context += `🚫 FINAL WARNING:\n`;
-    context += `- DO NOT make up scripture that isn't shown above\n`;
-    context += `- DO NOT invent notes, terms, or concepts not listed\n`;
-    context += `- DO NOT reference Genesis unless Genesis data was provided\n`;
-    context += `- START your response by quoting the scripture EXACTLY as shown\n`;
-    context += `- Then explain using ONLY the notes and terms provided above\n`;
 
     return context;
   }

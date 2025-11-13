@@ -149,6 +149,8 @@ export class OpenAIProvider implements AIProvider {
           role: m.role,
           content: m.content,
         })),
+        temperature: 0.3, // Lower temperature for more factual responses (matching UI)
+        max_tokens: 2000, // Enough for overviews with titles and follow-up questions (matching UI)
         stream: true,
       });
 
