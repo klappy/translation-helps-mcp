@@ -5,43 +5,25 @@
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
-import { estimateTokens } from "../utils/tokenCounter.js";
+import { buildMetadata } from "../utils/metadata-builder.js";
+import { handleMCPError } from "../utils/mcp-error-handler.js";
+import {
+  LanguageParam,
+  OrganizationParam,
+  FormatParam,
+  ModuleIdParam,
+  PathParam,
+  RCLinkParam,
+} from "../schemas/common-params.js";
 
-// Input schema
+// Input schema - using shared common parameters
 export const FetchTranslationAcademyArgs = z.object({
-  moduleId: z
-    .string()
-    .optional()
-    .describe(
-      'Academy module ID (e.g., "figs-metaphor"). Searches in order: translate, process, checking, intro',
-    ),
-  path: z
-    .string()
-    .optional()
-    .describe(
-      'Path to module. Can be directory (e.g., "translate/figs-metaphor") for all .md files concatenated, or file path (e.g., "translate/figs-metaphor/01.md") for single file.',
-    ),
-  rcLink: z
-    .string()
-    .optional()
-    .describe(
-      'RC link (e.g., "rc://*/ta/man/translate/figs-metaphor"). Supports wildcards for any segment.',
-    ),
-  language: z
-    .string()
-    .optional()
-    .default("en")
-    .describe('Language code (default: "en")'),
-  organization: z
-    .string()
-    .optional()
-    .default("unfoldingWord")
-    .describe('Organization (default: "unfoldingWord")'),
-  format: z
-    .string()
-    .optional()
-    .default("json")
-    .describe('Response format: "json" or "markdown"'),
+  moduleId: ModuleIdParam,
+  path: PathParam,
+  rcLink: RCLinkParam,
+  language: LanguageParam,
+  organization: OrganizationParam,
+  format: FormatParam,
 });
 
 export type FetchTranslationAcademyArgs = z.infer<
@@ -112,6 +94,18 @@ export async function handleFetchTranslationAcademy(
       title = titleMatch[1].trim();
     }
 
+    // Build metadata using shared utility
+    const metadata = buildMetadata({
+      startTime,
+      data: result,
+      serviceMetadata: {},
+      additionalFields: {
+        language: args.language,
+        organization: args.organization,
+        resourceType: "ta",
+      },
+    });
+
     // Build MCP response
     const mcpResponse = {
       success: true,
@@ -119,40 +113,28 @@ export async function handleFetchTranslationAcademy(
       title,
       path: result.modules?.[0]?.path || finalPath || args.moduleId,
       moduleId: args.moduleId || result.modules?.[0]?.id,
-      metadata: {
-        language: args.language,
-        organization: args.organization,
-        resourceType: "ta",
-        responseTime: Date.now() - startTime,
-        tokenEstimate: estimateTokens(content || JSON.stringify(result)),
-        timestamp: new Date().toISOString(),
-      },
+      metadata,
     };
 
     logger.info("Translation academy content fetched successfully", {
       moduleId: args.moduleId,
       path: mcpResponse.path,
-      responseTime: mcpResponse.metadata.responseTime,
+      ...metadata,
     });
 
     return mcpResponse;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("Failed to fetch translation academy content", {
-      moduleId: args.moduleId,
-      path: args.path,
-      rcLink: args.rcLink,
-      error: errorMessage,
-      responseTime: Date.now() - startTime,
+    return handleMCPError({
+      toolName: "fetch_translation_academy",
+      args: {
+        moduleId: args.moduleId,
+        path: args.path,
+        rcLink: args.rcLink,
+        language: args.language,
+        organization: args.organization,
+      },
+      startTime,
+      originalError: error,
     });
-
-    return {
-      success: false,
-      error: errorMessage,
-      moduleId: args.moduleId,
-      path: args.path,
-      rcLink: args.rcLink,
-      timestamp: new Date().toISOString(),
-    };
   }
 }

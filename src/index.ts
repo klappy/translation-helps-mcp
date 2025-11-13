@@ -99,14 +99,9 @@ const tools = [
   },
   {
     name: "fetch_translation_word",
-    description: "Fetch translation word articles for biblical terms",
-    inputSchema: GetTranslationWordArgs.omit({ reference: true }).extend({
-      reference: z
-        .string()
-        .describe(
-          'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
-        ),
-    }),
+    description:
+      "Fetch translation word articles for biblical terms. Can search by term name (e.g., 'grace', 'paul', 'god', 'faith'), path, rcLink, or Bible reference. Use term parameter for questions like 'Who is Paul?' or 'What is grace?'",
+    inputSchema: GetTranslationWordArgs,
   },
   {
     name: "fetch_translation_academy",

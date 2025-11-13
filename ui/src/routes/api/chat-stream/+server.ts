@@ -101,8 +101,10 @@ User asks: "Can you provide all the help I need to translate {passage}?"
 User asks: "How do I translate [specific phrase] in {passage}?"
 → Use translation-notes endpoint (explains specific phrases)
 
-User asks: "What does 'grace' mean in the Bible?"
-→ Use get-translation-word endpoint (single term definition)
+User asks: "What does 'grace' mean in the Bible?" or "Who is Paul?" or "What is faith?" or "Who is God?"
+→ Use fetch_translation_word tool with term parameter (e.g., term="grace", term="paul", term="faith", term="god")
+→ The tool searches across all categories (kt, names, other) to find matching articles
+→ Try variations if exact term doesn't match (e.g., "paul" might be "apostlepaul" or "paul-apostle")
 
 User asks: "Show me {passage} in ULT"
 → Use fetch-scripture endpoint (just the text)
@@ -341,10 +343,10 @@ async function determineMCPCalls(
 				exampleBlock = `\nExample params: ${JSON.stringify(ep.examples[0].params)}`;
 			}
 
-			// Special guidance for get-translation-word
+			// Special guidance for translation word endpoints
 			const specialNote =
-				endpointName === 'get-translation-word'
-					? `\nNotes: Provide either term (preferred) or path ending with .md. Do not include reference. Use format=md for full article output.`
+				endpointName === 'get-translation-word' || endpointName === 'fetch-translation-word'
+					? `\nNotes: For term-based lookups (e.g., "Who is Paul?", "What is grace?"), use term parameter. The tool searches across all categories (kt, names, other) automatically. Use format=md for full article output.`
 					: '';
 
 			return `- ${endpointName}: ${ep.description || ''}\n  Parameters:\n${paramDetails || '  (none)'}${exampleBlock}${specialNote}`;
@@ -387,6 +389,7 @@ Current user query: "${message}"
 1. If user asks for "all translation helps", "everything", or comprehensive data → Use translation-helps-for-passage PROMPT
 2. If user asks only for specific resource type (e.g., just scripture, just notes) → Use individual endpoint
 3. Prompts return richer data (titles, full content) than individual endpoints
+4. If user asks "Who is [name]?" or "What is [term]?" (e.g., "Who is Paul?", "What is grace?", "Who is God?", "What is faith?") → Use fetch-translation-word endpoint with term parameter (e.g., {"endpoint": "fetch-translation-word", "params": {"term": "paul", "language": "en"}})
 
 Return ONLY a JSON array like this (no markdown, no explanation):
 

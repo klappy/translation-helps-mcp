@@ -48,6 +48,13 @@ UNDERSTANDING TRANSLATION RESOURCES AND THEIR PURPOSE:
    - PURPOSE: Comprehensive biblical term definitions (like "grace", "love", "covenant")
    - Each article has a title (e.g., "Love, Beloved") and full markdown content
    - USE WHEN: User asks about "key terms", "what does [word] mean", "biblical terms", "define"
+   - TOOL USAGE: Use fetch_translation_word tool with term parameter for questions like:
+     * "Who is Paul?" → term="paul"
+     * "What is grace?" → term="grace"
+     * "Who is God?" → term="god"
+     * "What is faith?" → term="faith"
+   - The tool searches across all categories (kt, names, other) automatically
+   - Try variations if exact term doesn't match (e.g., "paul" might be "apostlepaul")
 
 4. **Translation Questions** (TQ)
    - PURPOSE: Comprehension questions to check understanding
@@ -191,7 +198,7 @@ Important: I only share what's available in our MCP database - no external bibli
 
 Try one of these to get started:
   📖 "Show me John 3:16"
-  💝 "What does 'love' mean in the Bible?"
+  💝 "What does 'love' mean in the Bible?" or "Who is Paul?" or "What is grace?"
   📝 "Explain the notes on Ephesians 2:8-9"
   ❓ "What questions should I consider for Genesis 1?"
 
