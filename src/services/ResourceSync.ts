@@ -10,6 +10,8 @@ import * as path from "path";
 import * as os from "os";
 import { logger } from "../utils/logger.js";
 import { networkDetector } from "../utils/network-detector.js";
+import { LocalZipFetcher } from "./LocalZipFetcher.js";
+import { EdgeXRayTracer } from "../functions/edge-xray.js";
 
 export interface ResourceInfo {
   organization: string;
@@ -141,40 +143,64 @@ export class ResourceSync {
 
   /**
    * Perform the actual download
+   * Uses LocalZipFetcher to reuse sophisticated download logic (ref tags, zipball URLs, fallbacks)
    */
   private async performDownload(
     org: string,
     lang: string,
     resourceType: string,
   ): Promise<void> {
-    // Construct Door43 ZIP download URL
     const repoName = `${lang}_${resourceType}`;
-    const url = `https://git.door43.org/${org}/${repoName}/archive/master.zip`;
+    const tracer = new EdgeXRayTracer("resource-sync", "download");
+    const zipFetcher = new LocalZipFetcher(this.cacheDir, tracer);
 
-    logger.info(`⬇️ Downloading ${url}`);
+    logger.info(`⬇️ Downloading ${org}/${repoName} using ZIP fetcher`);
 
     try {
-      const response = await fetch(url);
+      // Use LocalZipFetcher which handles:
+      // - Catalog lookup for ref tags and zipball URLs
+      // - Fallback to tar.gz
+      // - Immutable link headers
+      // - Local file system caching
+      const zipData = await zipFetcher.getOrDownloadZip(
+        org,
+        repoName,
+        "master", // Default ref, LocalZipFetcher will resolve actual ref from catalog if available
+        null, // zipballUrl - will be resolved from catalog
+      );
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (!zipData) {
+        throw new Error(`Failed to download ZIP for ${org}/${repoName}`);
       }
 
-      const buffer = await response.arrayBuffer();
-      const uint8Array = new Uint8Array(buffer);
-
-      // Save to file system
+      // LocalZipFetcher already saved the ZIP to local cache
+      // But we also want it in the old location for compatibility
       const targetDir = path.join(this.cacheDir, lang);
       fs.mkdirSync(targetDir, { recursive: true });
 
       const targetFile = path.join(targetDir, `${resourceType}.zip`);
-      fs.writeFileSync(targetFile, uint8Array);
+      // Copy from LocalZipFetcher's cache location to the old location
+      const cachedPath = zipFetcher.getCacheDir();
+      const cachedZipPath = path.join(
+        cachedPath,
+        "zips",
+        org,
+        repoName,
+        `${org}_${repoName}_master.zip`,
+      );
+
+      if (fs.existsSync(cachedZipPath)) {
+        fs.copyFileSync(cachedZipPath, targetFile);
+      } else {
+        // Fallback: write directly if cache path doesn't exist
+        fs.writeFileSync(targetFile, zipData);
+      }
 
       logger.info(
-        `✅ Downloaded ${resourceType} for ${lang} (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`,
+        `✅ Downloaded ${resourceType} for ${lang} (${(zipData.length / 1024 / 1024).toFixed(2)} MB)`,
       );
     } catch (error) {
-      logger.error(`Failed to download ${url}`, {
+      logger.error(`Failed to download ${org}/${repoName}`, {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;

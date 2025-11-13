@@ -40,6 +40,139 @@ program
     }
   });
 
+// Export command
+program
+  .command("export")
+  .description("Export cached ZIP files for sharing")
+  .option("-l, --language <lang>", "Export resources for a specific language")
+  .option("-r, --resource <type>", "Export a specific resource type")
+  .option("-o, --output <path>", "Output directory path")
+  .action(async (options) => {
+    // Import from the main package (relative to CLI location)
+    const { ResourceTransfer } = await import(
+      "../../../src/services/ResourceTransfer.js"
+    );
+    const cfg = config.load();
+    const transfer = new ResourceTransfer(cfg.cachePath);
+
+    if (options.language && options.resource) {
+      const outputPath = await transfer.exportResource(
+        options.language,
+        options.resource,
+        { outputPath: options.output },
+      );
+      if (outputPath) {
+        console.log(chalk.green(`✅ Exported to: ${outputPath}`));
+      } else {
+        console.log(chalk.red("❌ Export failed"));
+      }
+    } else if (options.language) {
+      const outputPath = await transfer.exportLanguage(options.language, {
+        outputPath: options.output,
+      });
+      if (outputPath) {
+        console.log(chalk.green(`✅ Exported to: ${outputPath}`));
+      } else {
+        console.log(chalk.red("❌ Export failed"));
+      }
+    } else {
+      const outputPath = await transfer.exportAll({ outputPath: options.output });
+      if (outputPath) {
+        console.log(chalk.green(`✅ Exported all to: ${outputPath}`));
+      } else {
+        console.log(chalk.red("❌ Export failed"));
+      }
+    }
+  });
+
+// Import command
+program
+  .command("import")
+  .description("Import ZIP files into local cache")
+  .argument("<path>", "Path to ZIP file or directory containing ZIP files")
+  .action(async (filePath) => {
+    const { ResourceTransfer } = await import(
+      "../../../src/services/ResourceTransfer.js"
+    );
+    const cfg = config.load();
+    const transfer = new ResourceTransfer(cfg.cachePath);
+
+    const fs = await import("fs");
+    const stat = fs.statSync(filePath);
+
+    if (stat.isDirectory()) {
+      const result = await transfer.importBulk(filePath);
+      console.log(
+        chalk.green(
+          `✅ Imported ${result.imported.length} files, ${result.failed.length} failed`,
+        ),
+      );
+      if (result.errors.length > 0) {
+        console.log(chalk.yellow("Errors:"));
+        result.errors.forEach((e: { file: string; error: string }) => {
+          console.log(chalk.red(`  - ${e.file}: ${e.error}`));
+        });
+      }
+    } else {
+      const result = await transfer.importZip(filePath);
+      if (result.success) {
+        console.log(chalk.green(`✅ Imported: ${result.imported.join(", ")}`));
+      } else {
+        console.log(chalk.red("❌ Import failed"));
+        result.errors.forEach((e: { file: string; error: string }) => {
+          console.log(chalk.red(`  - ${e.file}: ${e.error}`));
+        });
+      }
+    }
+  });
+
+// Sync command
+program
+  .command("sync")
+  .description("Download/sync resources from Door43")
+  .option("-l, --language <lang>", "Sync resources for a specific language")
+  .option("-r, --resource <type>", "Sync a specific resource type")
+  .action(async (options) => {
+    const { ResourceSync } = await import(
+      "../../../src/services/ResourceSync.js"
+    );
+    const cfg = config.load();
+    const sync = new ResourceSync(cfg.cachePath);
+
+    if (options.language && options.resource) {
+      const success = await sync.downloadResource(
+        "unfoldingWord",
+        options.language,
+        options.resource,
+      );
+      if (success) {
+        console.log(chalk.green("✅ Sync completed"));
+      } else {
+        console.log(chalk.red("❌ Sync failed"));
+      }
+    } else if (options.language) {
+      await sync.downloadAll(
+        "unfoldingWord",
+        options.language,
+        (status: {
+          resources: Array<{ status: string }>;
+        }) => {
+          const completed = status.resources.filter(
+            (r: { status: string }) => r.status === "completed",
+          ).length;
+        const total = status.resources.length;
+        console.log(
+          chalk.gray(
+            `Progress: ${completed}/${total} resources downloaded...`,
+          ),
+        );
+      });
+      console.log(chalk.green("✅ Sync completed"));
+    } else {
+      console.log(chalk.yellow("⚠️  Please specify a language with -l, --language"));
+    }
+  });
+
 // Add global options
 program
   .option("-m, --model <name>", "Ollama model to use")

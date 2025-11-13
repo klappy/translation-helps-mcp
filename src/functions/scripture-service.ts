@@ -14,6 +14,9 @@ import { discoverAvailableResources } from "./resource-detector.js";
 import { CacheBypassOptions } from "./unified-cache.js";
 import { EdgeXRayTracer } from "./edge-xray.js";
 import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2.js";
+import { LocalZipFetcher } from "../services/LocalZipFetcher.js";
+import * as os from "os";
+import * as path from "path";
 import {
   extractChapterRange,
   extractChapterRangeWithNumbers,
@@ -179,10 +182,33 @@ export async function fetchScripture(
       specific: specificTranslations?.join(", "),
     });
 
-    // 🚀 Use ZipResourceFetcher2 for ZIP-based downloads and caching
+    // 🚀 Use ZIP-based downloads and caching
+    // Detect if we're in a local/CLI environment (use LocalZipFetcher) or Cloudflare (use ZipResourceFetcher2)
     logger.info(`🚀 Starting fresh scripture fetch...`);
     const tracer = new EdgeXRayTracer("scripture-service", "fetchScripture");
-    const zipFetcher = new ZipResourceFetcher2(tracer);
+    
+    // Check if we should use local file system storage (CLI/local environment)
+    const useLocalStorage =
+      typeof process !== "undefined" &&
+      (process.env.USE_FS_CACHE === "true" ||
+        process.env.NODE_ENV === "development" ||
+        typeof (globalThis as any).navigator === "undefined"); // Not in browser/Cloudflare Workers
+
+    let zipFetcher: ZipResourceFetcher2 | LocalZipFetcher;
+    
+    if (useLocalStorage) {
+      // Use local file system storage for CLI/local environments
+      const cacheDir =
+        typeof process !== "undefined" && process.env.CACHE_PATH
+          ? process.env.CACHE_PATH
+          : path.join(os.homedir(), ".translation-helps-mcp", "cache");
+      zipFetcher = new LocalZipFetcher(cacheDir, tracer);
+      logger.info(`📁 Using local ZIP storage at ${cacheDir}`);
+    } else {
+      // Use R2/Cache API storage for Cloudflare Workers
+      zipFetcher = new ZipResourceFetcher2(tracer);
+      logger.info(`☁️ Using Cloudflare R2/Cache API storage`);
+    }
 
     const scriptures: NonNullable<ScriptureResult["scriptures"]> = [];
 
