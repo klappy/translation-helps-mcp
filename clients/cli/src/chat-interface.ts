@@ -198,23 +198,8 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
         break;
 
       case "set-openai-key":
-        if (args.length > 0) {
-          const apiKey = args[0];
-          this.configManager.setOpenAIApiKey(apiKey);
-          console.log(chalk.green("✅ OpenAI API key set"));
-          console.log(
-            chalk.gray(
-              "Note: You can also set it via environment variable OPENAI_API_KEY",
-            ),
-          );
-        } else {
-          console.log(chalk.yellow("Usage: /set-openai-key <api-key>"));
-          console.log(
-            chalk.gray(
-              "Or set environment variable: export OPENAI_API_KEY=your-key",
-            ),
-          );
-        }
+        // Always use secure input (masked)
+        await this.setOpenAIKeySecurely();
         break;
 
       default:
@@ -803,28 +788,99 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
   /**
    * Show current AI provider
    */
-  private showCurrentProvider(): void {
+  private async showCurrentProvider(): Promise<void> {
     console.log(chalk.bold("\n🤖 Current AI Provider:\n"));
-    const cfg = this.configManager.get();
     console.log(`  Provider: ${chalk.cyan(this.aiProvider.name)}`);
     const currentModel = (this.aiProvider as any).getModel?.();
     if (currentModel) {
       console.log(`  Model: ${chalk.cyan(currentModel)}`);
     }
     if (this.aiProvider.name === "openai") {
-      const hasKey = cfg.openaiApiKey || process.env.OPENAI_API_KEY;
+      const hasKey = !!process.env.OPENAI_API_KEY;
+      const envPath = this.configManager.getEnvPath();
+      const fs = await import("fs");
+      const fromEnvFile = hasKey && fs.existsSync(envPath);
+
       console.log(
         `  API Key: ${hasKey ? chalk.green("Set") : chalk.red("Not set")}`,
       );
-      if (!hasKey) {
+      if (hasKey) {
         console.log(
-          chalk.yellow(
-            "  Use /set-openai-key <key> or set OPENAI_API_KEY environment variable",
+          chalk.gray(
+            `    Source: ${fromEnvFile ? ".env file" : "Environment variable"}`,
+          ),
+        );
+      } else {
+        console.log(chalk.yellow("  Use /set-openai-key to save to .env file"));
+        console.log(
+          chalk.gray(
+            "  Or set environment variable: export OPENAI_API_KEY=your-key",
           ),
         );
       }
     }
     console.log();
+  }
+
+  /**
+   * Set OpenAI API key securely (masked input, saves to .env file)
+   */
+  private async setOpenAIKeySecurely(): Promise<void> {
+    try {
+      console.log(chalk.cyan("\n📝 Setting OpenAI API Key\n"));
+      console.log(
+        chalk.gray(
+          "The API key will be saved to a .env file in the current directory.\n",
+        ),
+      );
+
+      const { default: inquirer } = await import("inquirer");
+      const answer = await inquirer.prompt([
+        {
+          type: "password",
+          name: "apiKey",
+          message: "Enter OpenAI API key:",
+          mask: "*",
+        },
+      ]);
+
+      if (!answer.apiKey || answer.apiKey.trim().length === 0) {
+        console.log(chalk.yellow("❌ No API key provided"));
+        return;
+      }
+
+      this.configManager.setOpenAIApiKey(answer.apiKey.trim());
+      const envPath = this.configManager.getEnvPath();
+
+      console.log(chalk.green("\n✅ OpenAI API key saved to .env file"));
+      console.log(chalk.gray(`   Location: ${envPath}\n`));
+      console.log(
+        chalk.yellow("⚠️  IMPORTANT: Add .env to your .gitignore file!"),
+      );
+      console.log(
+        chalk.gray(
+          "   The .env file contains sensitive credentials and should not be committed to version control.\n",
+        ),
+      );
+      console.log(
+        chalk.cyan(
+          "💡 Alternative: You can also set it as an environment variable:",
+        ),
+      );
+      console.log(chalk.gray("   Linux/macOS: export OPENAI_API_KEY=your-key"));
+      console.log(chalk.gray("   Windows: set OPENAI_API_KEY=your-key\n"));
+    } catch (error) {
+      console.log(
+        chalk.red(
+          `\n❌ Failed to save API key: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+      console.log(
+        chalk.yellow("\n💡 Alternative: Set it as an environment variable:"),
+      );
+      console.log(chalk.gray("   Linux/macOS: export OPENAI_API_KEY=your-key"));
+      console.log(chalk.gray("   Windows: set OPENAI_API_KEY=your-key\n"));
+    }
   }
 
   /**
@@ -835,12 +891,15 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
 
     if (provider === "openai") {
       // Check if API key is set
-      const hasKey = cfg.openaiApiKey || process.env.OPENAI_API_KEY;
+      const hasKey = !!process.env.OPENAI_API_KEY;
       if (!hasKey) {
         console.log(
           chalk.red("\n❌ OpenAI API key not set. Please set it first:\n"),
         );
-        console.log(chalk.cyan("  /set-openai-key <your-api-key>"));
+        console.log(chalk.cyan("  /set-openai-key"));
+        console.log(
+          chalk.gray("  This will save the key to a .env file (secure).\n"),
+        );
         console.log(
           chalk.gray(
             "  Or set environment variable: export OPENAI_API_KEY=your-key\n",
@@ -859,7 +918,7 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
       const newProvider = await AIProviderFactory.create(provider, {
         ollamaModel: cfg.ollamaModel,
         ollamaBaseUrl: cfg.ollamaBaseUrl,
-        openaiApiKey: cfg.openaiApiKey || process.env.OPENAI_API_KEY,
+        openaiApiKey: process.env.OPENAI_API_KEY, // Only from environment or .env file
         openaiModel: cfg.openaiModel,
       });
 

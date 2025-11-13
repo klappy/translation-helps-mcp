@@ -172,11 +172,38 @@ The API key is stored in:
 
 ## Security Best Practices
 
-1. **Don't commit API keys** to version control
-2. **Use environment variables** in production
-3. **Rotate API keys** regularly
-4. **Set usage limits** in OpenAI dashboard
-5. **Monitor usage** to prevent unexpected charges
+### ⚠️ Security Warning
+
+**API keys are sensitive credentials. Choose your method carefully:**
+
+| Method                            | Security Level    | Risks                                                              |
+| --------------------------------- | ----------------- | ------------------------------------------------------------------ |
+| **Environment Variable**          | ✅ **Safest**     | Visible in process environment (low risk)                          |
+| **Interactive `/set-openai-key`** | ⚠️ **Moderate**   | Saved to plain text config file, visible in terminal history       |
+| **Command Line `--openai-key`**   | ❌ **Least Safe** | Visible in process list (`ps aux`), shell history, command logs    |
+| **Config File**                   | ❌ **Least Safe** | Stored in plain text, accessible to anyone with file system access |
+
+### Recommendations
+
+1. **✅ Use environment variables** for production and shared systems
+2. **❌ Never use command line option** in production or shared environments
+3. **⚠️ Be cautious with config file** - ensure proper file permissions (chmod 600)
+4. **Don't commit API keys** to version control
+5. **Rotate API keys** regularly
+6. **Set usage limits** in OpenAI dashboard
+7. **Monitor usage** to prevent unexpected charges
+8. **Use secrets managers** (AWS Secrets Manager, HashiCorp Vault) for production
+
+### File Permissions
+
+If using config file, restrict access:
+
+```bash
+# Linux/macOS
+chmod 600 ~/.translation-helps-cli/config.json
+
+# Windows: Right-click file → Properties → Security → Remove all users except yourself
+```
 
 ## Cost Considerations
 
