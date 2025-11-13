@@ -109,11 +109,26 @@ export class ConfigManager {
         const fileContent = fs.readFileSync(this.configPath, "utf-8");
         const loadedConfig = JSON.parse(fileContent);
 
+        // Migration: Update old default "ollama" to new default "openai"
+        if (
+          loadedConfig.aiProvider === "ollama" &&
+          !loadedConfig._migratedToOpenAI
+        ) {
+          loadedConfig.aiProvider = "openai";
+          loadedConfig._migratedToOpenAI = true; // Mark as migrated
+          console.log("🔄 Migrated default AI provider from Ollama to OpenAI");
+        }
+
         // Merge with defaults (in case new fields were added)
         this.config = {
           ...DEFAULT_CONFIG,
           ...loadedConfig,
         };
+
+        // Save migrated config
+        if (loadedConfig._migratedToOpenAI) {
+          this.save();
+        }
 
         console.log("✅ Configuration loaded");
       } else {

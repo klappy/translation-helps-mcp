@@ -212,15 +212,26 @@ export class AIProviderFactory {
       console.warn("⚠️ Ollama not available, trying OpenAI...");
     }
 
-    // Try OpenAI first (default)
-    if (config?.openaiApiKey) {
-      const openai = new OpenAIProvider(config.openaiApiKey, openaiModel);
-      const available = await openai.isAvailable();
-      if (available) {
-        console.log(`✅ Using OpenAI provider (${openaiModel})`);
-        return openai;
+    // Try OpenAI first (default or if preferred)
+    if (preferredProvider === "openai" || !preferredProvider) {
+      if (config?.openaiApiKey) {
+        const openai = new OpenAIProvider(config.openaiApiKey, openaiModel);
+        const available = await openai.isAvailable();
+        if (available) {
+          console.log(`✅ Using OpenAI provider (${openaiModel})`);
+          return openai;
+        }
+        console.warn("⚠️ OpenAI not available, trying Ollama...");
+      } else {
+        // OpenAI is preferred/default but no API key
+        console.warn(
+          "⚠️ OpenAI is the default provider, but no API key is set.",
+        );
+        console.warn(
+          "   Use /set-openai-key to set your API key, or /provider ollama to use Ollama.",
+        );
+        console.warn("   Falling back to Ollama...");
       }
-      console.warn("⚠️ OpenAI not available, trying Ollama...");
     }
 
     // Fall back to Ollama if OpenAI not available or not configured
