@@ -221,7 +221,13 @@ export class AIProviderFactory {
           console.log(`✅ Using OpenAI provider (${openaiModel})`);
           return openai;
         }
-        console.warn("⚠️ OpenAI not available, trying Ollama...");
+        console.warn(
+          "⚠️ OpenAI API key is set but validation failed (invalid key or network issue).",
+        );
+        console.warn(
+          "   Check your API key with /provider command, or use /set-openai-key to update it.",
+        );
+        console.warn("   Falling back to Ollama...");
       } else {
         // OpenAI is preferred/default but no API key
         console.warn(
