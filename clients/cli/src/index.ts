@@ -44,6 +44,10 @@ program
 program
   .option("-m, --model <name>", "Ollama model to use")
   .option("-p, --provider <ollama|openai>", "AI provider (ollama or openai)")
+  .option(
+    "--openai-key <key>",
+    "OpenAI API key (or set OPENAI_API_KEY env var)",
+  )
   .option("--offline", "Force offline mode")
   .option("--list-models", "List available Ollama models");
 
@@ -81,6 +85,10 @@ async function startChat(options: any): Promise<void> {
     }
     if (options.provider) {
       config.setAIProvider(options.provider);
+    }
+    if (options.openaiKey) {
+      config.setOpenAIApiKey(options.openaiKey);
+      console.log(chalk.green("✅ OpenAI API key set from command line"));
     }
     if (options.offline) {
       config.setOfflineMode(true);

@@ -184,6 +184,39 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
         );
         break;
 
+      case "provider":
+        if (args.length > 0) {
+          const provider = args[0].toLowerCase() as "ollama" | "openai";
+          if (provider === "ollama" || provider === "openai") {
+            await this.switchProvider(provider);
+          } else {
+            console.log(chalk.yellow("Provider must be 'ollama' or 'openai'"));
+          }
+        } else {
+          this.showCurrentProvider();
+        }
+        break;
+
+      case "set-openai-key":
+        if (args.length > 0) {
+          const apiKey = args[0];
+          this.configManager.setOpenAIApiKey(apiKey);
+          console.log(chalk.green("✅ OpenAI API key set"));
+          console.log(
+            chalk.gray(
+              "Note: You can also set it via environment variable OPENAI_API_KEY",
+            ),
+          );
+        } else {
+          console.log(chalk.yellow("Usage: /set-openai-key <api-key>"));
+          console.log(
+            chalk.gray(
+              "Or set environment variable: export OPENAI_API_KEY=your-key",
+            ),
+          );
+        }
+        break;
+
       default:
         console.log(chalk.red(`Unknown command: /${cmd}`));
         console.log(chalk.gray("Type /help for available commands"));
@@ -642,6 +675,10 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
     );
     console.log(chalk.cyan("  /config") + " - Show configuration");
     console.log(chalk.cyan("  /providers") + " - Show active cache providers");
+    console.log(chalk.cyan("  /provider") + " - Show current AI provider");
+    console.log(
+      chalk.cyan("  /provider <ollama|openai>") + " - Switch AI provider",
+    );
     console.log(chalk.cyan("  /model") + " - Show current AI model");
     console.log(
       chalk.cyan("  /model <name>") + " - Switch AI model (Ollama or OpenAI)",
@@ -649,7 +686,16 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
     console.log(
       chalk.cyan("  /models") + " - List available models (Ollama only)",
     );
+    console.log(
+      chalk.cyan("  /set-openai-key <key>") + " - Set OpenAI API key",
+    );
     console.log(chalk.cyan("  /offline") + " - Toggle offline mode indicator");
+    console.log();
+    console.log(
+      chalk.gray(
+        "  💡 Tip: You can also set OPENAI_API_KEY environment variable",
+      ),
+    );
     console.log();
   }
 
@@ -752,5 +798,90 @@ DO NOT make up scripture. DO NOT use training data. ONLY use what's explicitly p
       console.log(chalk.red("  Failed to get providers from MCP server"));
     }
     console.log();
+  }
+
+  /**
+   * Show current AI provider
+   */
+  private showCurrentProvider(): void {
+    console.log(chalk.bold("\n🤖 Current AI Provider:\n"));
+    const cfg = this.configManager.get();
+    console.log(`  Provider: ${chalk.cyan(this.aiProvider.name)}`);
+    const currentModel = (this.aiProvider as any).getModel?.();
+    if (currentModel) {
+      console.log(`  Model: ${chalk.cyan(currentModel)}`);
+    }
+    if (this.aiProvider.name === "openai") {
+      const hasKey = cfg.openaiApiKey || process.env.OPENAI_API_KEY;
+      console.log(
+        `  API Key: ${hasKey ? chalk.green("Set") : chalk.red("Not set")}`,
+      );
+      if (!hasKey) {
+        console.log(
+          chalk.yellow(
+            "  Use /set-openai-key <key> or set OPENAI_API_KEY environment variable",
+          ),
+        );
+      }
+    }
+    console.log();
+  }
+
+  /**
+   * Switch AI provider
+   */
+  private async switchProvider(provider: "ollama" | "openai"): Promise<void> {
+    const cfg = this.configManager.get();
+
+    if (provider === "openai") {
+      // Check if API key is set
+      const hasKey = cfg.openaiApiKey || process.env.OPENAI_API_KEY;
+      if (!hasKey) {
+        console.log(
+          chalk.red("\n❌ OpenAI API key not set. Please set it first:\n"),
+        );
+        console.log(chalk.cyan("  /set-openai-key <your-api-key>"));
+        console.log(
+          chalk.gray(
+            "  Or set environment variable: export OPENAI_API_KEY=your-key\n",
+          ),
+        );
+        return;
+      }
+    }
+
+    try {
+      // Update config
+      this.configManager.setAIProvider(provider);
+
+      // Recreate AI provider
+      const { AIProviderFactory } = await import("./ai-provider.js");
+      const newProvider = await AIProviderFactory.create(provider, {
+        ollamaModel: cfg.ollamaModel,
+        ollamaBaseUrl: cfg.ollamaBaseUrl,
+        openaiApiKey: cfg.openaiApiKey || process.env.OPENAI_API_KEY,
+        openaiModel: cfg.openaiModel,
+      });
+
+      // Update the provider
+      (this as any).aiProvider = newProvider;
+
+      console.log(chalk.green(`✅ Switched to provider: ${provider}`));
+      const currentModel = (this.aiProvider as any).getModel?.();
+      if (currentModel) {
+        console.log(chalk.gray(`  Model: ${currentModel}`));
+      }
+    } catch (error) {
+      console.log(
+        chalk.red(
+          `Failed to switch provider: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+      console.log(
+        chalk.yellow(
+          "Provider may not be available. Check your configuration.",
+        ),
+      );
+    }
   }
 }
