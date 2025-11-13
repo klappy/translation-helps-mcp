@@ -356,10 +356,28 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
       let contextMessage = "";
 
       if (bibleRef && this.mcpClient.isConnected()) {
-        // Fetch comprehensive translation data
-        console.log(chalk.gray(`\n📖 Fetching data for ${bibleRef}...`));
-        console.log(chalk.gray(`🔧 MCP Prompt: translation-helps-for-passage`));
-        console.log(chalk.gray(`🔧 Parameters: { reference: "${bibleRef}" }`));
+        // Discover available prompts dynamically (like Svelte app)
+        const prompts = await this.mcpClient.listPrompts();
+        const prompt = prompts.find(
+          (p) => p.name === "translation-helps-for-passage",
+        );
+
+        if (prompt) {
+          console.log(chalk.gray(`\n📖 Fetching data for ${bibleRef}...`));
+          console.log(chalk.gray(`🔧 MCP Prompt: ${prompt.name}`));
+          console.log(
+            chalk.gray(`🔧 Description: ${prompt.description || "N/A"}`),
+          );
+          console.log(
+            chalk.gray(`🔧 Parameters: { reference: "${bibleRef}" }`),
+          );
+        } else {
+          console.log(
+            chalk.yellow(
+              `\n⚠️  Prompt 'translation-helps-for-passage' not found, using direct tool calls`,
+            ),
+          );
+        }
 
         try {
           const data = await this.mcpClient.executePrompt(

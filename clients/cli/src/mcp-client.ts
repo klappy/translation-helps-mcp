@@ -184,19 +184,76 @@ export class MCPClient {
   }
 
   /**
-   * Execute a prompt by calling the actual tools
+   * Get a prompt template (returns instructions for the AI)
+   */
+  async getPrompt(name: string, args: any = {}): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error("Not connected to MCP server");
+    }
+
+    try {
+      const response = await this.client.request(
+        {
+          method: "prompts/get",
+          params: {
+            name,
+            arguments: args,
+          },
+        },
+        GenericResponseSchema,
+      );
+
+      return response;
+    } catch (error) {
+      console.error(`Failed to get prompt ${name}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute a prompt by following its instructions (like Svelte app)
+   * This discovers prompts dynamically and executes them properly
    */
   async executePrompt(name: string, args: any = {}): Promise<any> {
     if (!this.client || !this.connected) {
       throw new Error("Not connected to MCP server");
     }
 
-    // Special handling for comprehensive prompts that need multiple tool calls
-    if (name === "translation-helps-for-passage") {
-      return await this.fetchComprehensiveHelps(args.reference, args.language);
+    // First, verify the prompt exists
+    const prompts = await this.listPrompts();
+    const prompt = prompts.find((p) => p.name === name);
+    if (!prompt) {
+      throw new Error(
+        `Prompt ${name} not found. Available prompts: ${prompts.map((p) => p.name).join(", ")}`,
+      );
     }
 
-    throw new Error(`Prompt ${name} not implemented`);
+    // For now, use direct execution for known prompts
+    // In the future, we could use prompts/get to get instructions and execute them
+    if (name === "translation-helps-for-passage") {
+      return await this.fetchComprehensiveHelps(
+        args.reference,
+        args.language || "en",
+      );
+    }
+
+    if (name === "get-translation-words-for-passage") {
+      return await this.fetchTranslationWordsForPassage(
+        args.reference,
+        args.language || "en",
+      );
+    }
+
+    if (name === "get-translation-academy-for-passage") {
+      return await this.fetchTranslationAcademyForPassage(
+        args.reference,
+        args.language || "en",
+      );
+    }
+
+    throw new Error(
+      `Prompt ${name} execution not yet implemented. Available: ${prompts.map((p) => p.name).join(", ")}`,
+    );
   }
 
   /**
@@ -296,6 +353,109 @@ export class MCPClient {
         : null;
     } catch (error) {
       console.error("Failed to fetch academy:", error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Fetch translation words for a passage
+   */
+  private async fetchTranslationWordsForPassage(
+    reference: string,
+    language: string = "en",
+  ): Promise<any> {
+    const result: any = { words: [] };
+
+    try {
+      // Fetch translation word links to get the terms used
+      const wordLinks = await this.callTool("fetch_translation_word_links", {
+        reference,
+        language,
+      });
+
+      if (wordLinks.content?.[0]?.text) {
+        const twlData = JSON.parse(wordLinks.content[0].text);
+        const words = [];
+
+        // For each word link, fetch the actual word article
+        if (twlData.links && Array.isArray(twlData.links)) {
+          for (const link of twlData.links) {
+            try {
+              const wordArticle = await this.callTool(
+                "fetch_translation_word",
+                {
+                  term: link.term,
+                  language,
+                },
+              );
+              if (wordArticle.content?.[0]?.text) {
+                words.push(JSON.parse(wordArticle.content[0].text));
+              }
+            } catch (_error) {
+              // Skip individual word failures
+            }
+          }
+        }
+
+        result.words = words;
+      }
+    } catch (error) {
+      console.error("Failed to fetch words:", error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Fetch translation academy articles for a passage
+   */
+  private async fetchTranslationAcademyForPassage(
+    reference: string,
+    language: string = "en",
+  ): Promise<any> {
+    const result: any = { academyArticles: [] };
+
+    try {
+      // First get translation notes to find support references
+      const notes = await this.callTool("fetch_translation_notes", {
+        reference,
+        language,
+      });
+
+      if (notes.content?.[0]?.text) {
+        const notesData = JSON.parse(notes.content[0].text);
+        const supportRefs = new Set<string>();
+
+        // Extract all support references from notes
+        if (notesData.items && Array.isArray(notesData.items)) {
+          for (const note of notesData.items) {
+            if (note.SupportReference) {
+              supportRefs.add(note.SupportReference);
+            }
+          }
+        }
+
+        // Fetch academy articles for each support reference
+        const articles = [];
+        for (const rcLink of Array.from(supportRefs)) {
+          try {
+            const academy = await this.callTool("fetch_translation_academy", {
+              rcLink,
+              language,
+            });
+            if (academy.content?.[0]?.text) {
+              articles.push(JSON.parse(academy.content[0].text));
+            }
+          } catch (_error) {
+            // Skip individual article failures
+          }
+        }
+
+        result.academyArticles = articles;
+      }
+    } catch (error) {
+      console.error("Failed to fetch academy articles:", error);
     }
 
     return result;
