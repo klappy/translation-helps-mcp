@@ -653,6 +653,50 @@ export class ZipResourceFetcher2 {
   }
 
   /**
+   * Get raw USFM file content from ZIP (public method for scripture service)
+   * Downloads ZIP if needed (cached), extracts USFM file (cached extraction)
+   */
+  async getRawUSFMContent(
+    organization: string,
+    repository: string,
+    filePath: string,
+    ref?: string | null,
+    zipballUrl?: string | null,
+  ): Promise<string | null> {
+    try {
+      // Download ZIP (cached)
+      const zipData = await this.getOrDownloadZip(
+        organization,
+        repository,
+        ref,
+        zipballUrl,
+      );
+
+      if (!zipData) {
+        return null;
+      }
+
+      // Build cache key for extracted file
+      const zipCacheKey = ref
+        ? `zip:${organization}/${repository}:${ref}`
+        : `zip:${organization}/${repository}`;
+
+      // Extract USFM file from ZIP (cached extraction)
+      const usfmContent = await this.extractFileFromZip(
+        zipData,
+        filePath,
+        repository,
+        zipCacheKey,
+      );
+
+      return usfmContent;
+    } catch (error) {
+      logger.error("Error in getRawUSFMContent:", error as Error);
+      return null;
+    }
+  }
+
+  /**
    * Get TSV data (TN, TQ, TWL) using ingredients
    */
   async getTSVData(
@@ -1727,9 +1771,9 @@ export class ZipResourceFetcher2 {
   }
 
   /**
-   * Get or download a ZIP file
+   * Get or download a ZIP file (public for scripture service)
    */
-  private async getOrDownloadZip(
+  async getOrDownloadZip(
     organization: string,
     repository: string,
     ref?: string | null,
@@ -2057,9 +2101,9 @@ export class ZipResourceFetcher2 {
   }
 
   /**
-   * Extract a file from ZIP using the exact path from ingredients
+   * Extract a file from ZIP using the exact path from ingredients (public for scripture service)
    */
-  private async extractFileFromZip(
+  async extractFileFromZip(
     zipData: Uint8Array,
     filePath: string,
     repository: string,

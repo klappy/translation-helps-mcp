@@ -12,8 +12,8 @@ import { logger } from "../utils/logger.js";
 import { parseReference } from "./reference-parser.js";
 import { discoverAvailableResources } from "./resource-detector.js";
 import { CacheBypassOptions } from "./unified-cache.js";
-import { cache } from "./cache.js";
-import { proxyFetch } from "../utils/httpClient.js";
+import { EdgeXRayTracer } from "./edge-xray.js";
+import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2.js";
 import {
   extractChapterRange,
   extractChapterRangeWithNumbers,
@@ -179,7 +179,14 @@ export async function fetchScripture(
       specific: specificTranslations?.join(", "),
     });
 
-    const scriptures = [] as ScriptureResult["scriptures"];
+    // 🚀 Use ZipResourceFetcher2 for ZIP-based downloads and caching
+    logger.info(`🚀 Starting fresh scripture fetch...`);
+    const tracer = new EdgeXRayTracer("scripture-service", "fetchScripture");
+    const zipFetcher = new ZipResourceFetcher2(tracer);
+
+    const scriptures: NonNullable<ScriptureResult["scriptures"]> = [];
+
+    // Process each resource using ZIP-based approach
     for (const resource of resourcesToProcess) {
       logger.debug(`Processing resource`, {
         name: resource.name,
@@ -200,49 +207,37 @@ export async function fetchScripture(
         continue;
       }
 
-      // Use the ingredient path to fetch the USFM file
       try {
-        // Build URL from ingredient path (same pattern as TN/TQ services)
+        // Use ZipResourceFetcher2 to get raw USFM from ZIP (cached)
+        // This downloads ZIP once, caches it, and extracts the USFM file
         const ingredientPath = ingredient.path.replace(/^\.\//, "");
-        const fileUrl = `https://git.door43.org/${organization}/${resource.name}/raw/branch/master/${ingredientPath}`;
 
-        // Try to get from cache first
-        const cacheKey = `scripture:${fileUrl}`;
-        let usfmData = await cache.getFileContent(cacheKey);
+        // Get catalog data to find ref tag and zipball URL
+        // ZipResourceFetcher2 will fetch catalog internally, but we need it for refTag/zipballUrl
+        // For now, use "master" as default ref - ZipResourceFetcher2 will handle catalog fetching
+        const refTag = "master"; // Default, ZipResourceFetcher2 will resolve actual ref from catalog
+        const zipballUrl = null; // ZipResourceFetcher2 will get from catalog
+
+        logger.info(
+          `📦 Using ZIP-based download for ${resource.name} (ref: ${refTag})`,
+        );
+
+        // Download ZIP (cached in R2) and extract USFM file (cached extraction)
+        // ZipResourceFetcher2.getRawUSFMContent will fetch catalog if needed to get refTag/zipballUrl
+        const usfmData = await zipFetcher.getRawUSFMContent(
+          organization,
+          resource.name,
+          ingredientPath,
+          refTag,
+          zipballUrl,
+        );
 
         if (!usfmData) {
-          logger.info(`⬇️  Cache MISS - downloading from Door43...`);
-          logger.info(`🌐 URL: ${fileUrl}`);
-
-          const downloadStart = Date.now();
-          const fileResponse = await proxyFetch(fileUrl);
-          const downloadTime = Date.now() - downloadStart;
-
-          logger.info(
-            `📥 Download completed in ${downloadTime}ms - Status: ${fileResponse.status}`,
-          );
-
-          if (!fileResponse.ok) {
-            logger.error(`❌ Failed to download scripture`, {
-              status: fileResponse.status,
-              url: fileUrl,
-            });
-            continue;
-          }
-
-          logger.info(`📄 Reading response text...`);
-          usfmData = await fileResponse.text();
-          logger.info(`✅ Got USFM data: ${usfmData.length} characters`);
-
-          // Cache the file content
-          logger.info(`💾 Saving to cache...`);
-          await cache.setFileContent(cacheKey, usfmData);
-          logger.info(`✅ Cached for offline use`);
-        } else {
-          logger.info(
-            `✨ Cache HIT - using cached data (${usfmData.length} chars)`,
-          );
+          logger.warn(`Failed to get USFM from ZIP for ${resource.name}`);
+          continue;
         }
+
+        logger.info(`✅ Got USFM data from ZIP: ${usfmData.length} characters`);
 
         logger.info(`🔧 Extracting verses from USFM...`);
 
@@ -393,14 +388,14 @@ export async function fetchScripture(
       `🏁 Loop complete. Processed ${scriptures.length} scriptures out of ${resourcesToProcess.length} resources`,
     );
 
-    if (!scriptures || scriptures.length === 0) {
+    if (scriptures.length === 0) {
       throw new Error(`No scripture text found for ${referenceParam}`);
     }
 
     const result: ScriptureResult =
       specificTranslations && specificTranslations.length === 1
         ? {
-            scripture: scriptures[0],
+            scripture: scriptures[0]!,
             metadata: {
               responseTime: Date.now() - startTime,
               cached: false,
