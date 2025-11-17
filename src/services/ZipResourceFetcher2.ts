@@ -205,7 +205,7 @@ export class ZipResourceFetcher2 {
       // KV+memory cached catalog per (lang, org, stage=prod, subject)
       const catalogCacheKey = catalogUrl; // Use exact URL as KV key
       let catalogData: { data?: CatalogResource[] } | null = null;
-      const kvCatalogStart =
+      const cacheStart =
         typeof performance !== "undefined" ? performance.now() : Date.now();
 
       // Check if we should bypass cache
@@ -220,32 +220,82 @@ export class ZipResourceFetcher2 {
       const cachedCatalog = !forceRefresh
         ? await this.kvCache.get(catalogCacheKey)
         : null;
+      const cacheDuration = Math.max(
+        1,
+        Math.round(
+          (typeof performance !== "undefined"
+            ? performance.now()
+            : Date.now()) - cacheStart,
+        ),
+      );
+
       if (cachedCatalog) {
         try {
           const json =
             typeof cachedCatalog === "string"
               ? cachedCatalog
               : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
-          catalogData = JSON.parse(json);
+          const parsed = JSON.parse(json);
 
-          // Log synthetic cache hit for X-Ray
-          this.tracer.addApiCall({
-            url: `internal://kv/catalog/${language}/${organization}/Bible,Aligned Bible`,
-            duration: Math.max(
-              1,
-              Math.round(
-                (typeof performance !== "undefined"
-                  ? performance.now()
-                  : Date.now()) - kvCatalogStart,
-              ),
-            ),
-            status: 200,
-            size: json.length,
-            cached: true,
-          });
+          // Validate cached data structure - must have data array with items
+          if (
+            parsed &&
+            parsed.data &&
+            Array.isArray(parsed.data) &&
+            parsed.data.length > 0
+          ) {
+            catalogData = parsed;
+
+            // Determine cache source from duration: very fast (< 5ms) = memory, slower = KV
+            const cacheSource = cacheDuration < 5 ? "memory" : "kv";
+
+            console.log(`[CACHE TRACE] ✅ Catalog cache HIT:`, {
+              source: cacheSource,
+              duration: cacheDuration,
+              key: catalogCacheKey,
+              dataLength: parsed.data.length,
+            });
+
+            // Log synthetic cache hit for X-Ray
+            this.tracer.addApiCall({
+              url: `internal://${cacheSource}/catalog/${language}/${organization}/Bible,Aligned Bible`,
+              duration: cacheDuration,
+              status: 200,
+              size: json.length,
+              cached: true,
+            });
+
+            console.log(
+              `[CACHE TRACE] Added to tracer with cached=true, source=${cacheSource}`,
+            );
+          } else {
+            // Cached data is empty or invalid - treat as cache miss and clean up
+            logger.warn(
+              `Cached catalog data is empty or invalid, treating as cache miss`,
+              {
+                key: catalogCacheKey,
+                hasData: !!parsed?.data,
+                dataLength: parsed?.data?.length || 0,
+              },
+            );
+            // Clean up invalid cache entry to prevent future misses
+            try {
+              await this.kvCache.delete(catalogCacheKey);
+              logger.debug(
+                `Cleaned up invalid cache entry for ${catalogCacheKey}`,
+              );
+            } catch (err) {
+              // Best effort - ignore cleanup failures
+              logger.debug(`Failed to clean up invalid cache entry: ${err}`);
+            }
+            catalogData = null; // Force fetch from network
+          }
         } catch {
           // eslint-disable-next-line no-empty -- ignore corrupt cache JSON
-          void 0; // swallow JSON parse failure
+          logger.warn(
+            `Failed to parse cached catalog data, treating as cache miss`,
+          );
+          catalogData = null; // Force fetch from network
         }
       }
       // unified discovery uses KV+memory cache; no local flag needed
@@ -516,12 +566,20 @@ export class ZipResourceFetcher2 {
           continue;
         }
         try {
+          // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
+          const isCacheHit = source === "cache" || source === "r2";
+          console.log(`[CACHE TRACE] R2 file result:`, {
+            fileKey,
+            source,
+            isCacheHit,
+            duration: durationMs,
+          });
           this.tracer.addApiCall({
             url: `internal://${source}/file/${fileKey}`,
             duration: durationMs,
             status: 200,
             size,
-            cached: source === "cache",
+            cached: isCacheHit,
           });
         } catch {
           // ignore tracer issues
@@ -910,24 +968,58 @@ export class ZipResourceFetcher2 {
               typeof cachedCatalog === "string"
                 ? (cachedCatalog as string)
                 : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
-            catalogData = JSON.parse(json) as { data?: CatalogResource[] };
-            // Log synthetic cache hit for X-Ray
-            this.tracer.addApiCall({
-              url: `internal://kv/catalog/${language}/${organization}/${subject}`,
-              duration: Math.max(
-                1,
-                Math.round(
-                  (typeof performance !== "undefined"
-                    ? performance.now()
-                    : Date.now()) - (kvStart as number),
+            const parsed = JSON.parse(json) as { data?: CatalogResource[] };
+
+            // Validate cached data before using it
+            if (
+              parsed &&
+              parsed.data &&
+              Array.isArray(parsed.data) &&
+              parsed.data.length > 0
+            ) {
+              catalogData = parsed;
+              // Log synthetic cache hit for X-Ray
+              this.tracer.addApiCall({
+                url: `internal://kv/catalog/${language}/${organization}/${subject}`,
+                duration: Math.max(
+                  1,
+                  Math.round(
+                    (typeof performance !== "undefined"
+                      ? performance.now()
+                      : Date.now()) - (kvStart as number),
+                  ),
                 ),
-              ),
-              status: 200,
-              size: json.length || 0,
-              cached: true,
-            });
+                status: 200,
+                size: json.length || 0,
+                cached: true,
+              });
+            } else {
+              // Cached data is empty or invalid - treat as cache miss and clean up
+              logger.warn(
+                `[getMarkdownContent] Cached catalog data is empty or invalid, treating as cache miss`,
+                {
+                  key: catalogCacheKey,
+                  hasData: !!parsed?.data,
+                  dataLength: parsed?.data?.length || 0,
+                },
+              );
+              // Clean up invalid cache entry to prevent future misses
+              try {
+                await this.kvCache.delete(catalogCacheKey);
+                logger.debug(
+                  `Cleaned up invalid catalog cache entry for ${catalogCacheKey}`,
+                );
+              } catch (err) {
+                // Best effort - ignore cleanup failures
+                logger.debug(
+                  `Failed to clean up invalid catalog cache entry: ${err}`,
+                );
+              }
+              catalogData = null; // Force fetch from network
+            }
           } catch {
-            // fall through to network
+            // Parse error - fall through to network
+            catalogData = null;
           }
         }
       } else {
@@ -1827,12 +1919,20 @@ export class ZipResourceFetcher2 {
               // Fall through to download fresh copy
             } else {
               try {
+                // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
+                const isCacheHit = source === "cache" || source === "r2";
+                console.log(`[CACHE TRACE] R2 ZIP result:`, {
+                  zipKey,
+                  source,
+                  isCacheHit,
+                  duration: durationMs,
+                });
                 this.tracer.addApiCall({
                   url: `internal://${source}/zip-url/${organization}/${repository}:${ref || "unknown"}`,
                   duration: durationMs,
                   status: 200,
                   size,
-                  cached: source === "cache",
+                  cached: isCacheHit,
                 });
               } catch {
                 // ignore trace add errors
@@ -1864,12 +1964,14 @@ export class ZipResourceFetcher2 {
               // Fall through to download fresh copy
             } else {
               try {
+                // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
+                const isCacheHit = source === "cache" || source === "r2";
                 this.tracer.addApiCall({
                   url: `internal://${source}/tar-url/${organization}/${repository}:${ref || "unknown"}`,
                   duration: durationMs,
                   status: 200,
                   size,
-                  cached: source === "cache",
+                  cached: isCacheHit,
                 });
               } catch {
                 // ignore trace add errors
@@ -2130,12 +2232,14 @@ export class ZipResourceFetcher2 {
           );
           if (data !== null) {
             try {
+              // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
+              const isCacheHit = source === "cache" || source === "r2";
               this.tracer.addApiCall({
                 url: `internal://${source}/file/${fileKey}`,
                 duration: durationMs,
                 status: 200,
                 size,
-                cached: source === "cache",
+                cached: isCacheHit,
               });
             } catch {
               // ignore
@@ -2630,16 +2734,34 @@ export class ZipResourceFetcher2 {
   ): unknown[] {
     try {
       const lines = tsv.split("\n");
-      if (lines.length < 2) return [];
+      if (lines.length < 2) {
+        logger.debug("parseTSVForReference: TSV has less than 2 lines", {
+          lineCount: lines.length,
+        });
+        return [];
+      }
 
       // Parse header
       const headers = lines[0].split("\t");
+      logger.debug("parseTSVForReference: Parsing TSV", {
+        totalLines: lines.length,
+        reference:
+          reference.originalText ||
+          `${reference.book} ${reference.chapter}:${reference.verse}${reference.endVerse ? `-${reference.endVerse}` : ""}`,
+        chapter: reference.chapter,
+        verse: reference.verse,
+        endVerse: reference.endVerse || (reference as any).verseEnd,
+      });
 
       // Parse data rows
       const results: Record<string, string>[] = [];
+      let processedRows = 0;
+      let matchedRows = 0;
+
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split("\t");
         if (values.length !== headers.length) continue;
+        processedRows++;
 
         // Build object from headers and values
         const row: Record<string, string> = {};
@@ -2687,12 +2809,43 @@ export class ZipResourceFetcher2 {
               if (endVerse) {
                 // Check if verse is within range
                 if (verseNum >= reference.verse && verseNum <= endVerse) {
+                  matchedRows++;
                   results.push(row as Record<string, string>);
                 }
               } else {
                 // Exact verse match when no range provided
                 if (verseNum === reference.verse) {
+                  matchedRows++;
                   results.push(row as Record<string, string>);
+                }
+              }
+            }
+          } else {
+            // Handle verse ranges in TSV (e.g., "2:8-9" in Reference column)
+            const verseRangeMatch = refCv.match(/^(\d+):(\d+)-(\d+)$/);
+            if (verseRangeMatch) {
+              const chapterNum = parseInt(verseRangeMatch[1]);
+              const rangeStart = parseInt(verseRangeMatch[2]);
+              const rangeEnd = parseInt(verseRangeMatch[3]);
+
+              if (chapterNum === reference.chapter) {
+                const endVerse =
+                  reference.endVerse || (reference as any).verseEnd;
+                if (endVerse) {
+                  // Check if the TSV verse range overlaps with requested range
+                  if (rangeStart <= endVerse && rangeEnd >= reference.verse) {
+                    matchedRows++;
+                    results.push(row as Record<string, string>);
+                  }
+                } else {
+                  // Check if requested verse is within TSV range
+                  if (
+                    reference.verse >= rangeStart &&
+                    reference.verse <= rangeEnd
+                  ) {
+                    matchedRows++;
+                    results.push(row as Record<string, string>);
+                  }
                 }
               }
             }
@@ -2707,9 +2860,19 @@ export class ZipResourceFetcher2 {
           (refCv.startsWith(`${reference.chapter}:`) ||
             ref.includes(` ${reference.chapter}:`))
         ) {
+          matchedRows++;
           results.push(row as Record<string, string>);
         }
       }
+
+      logger.debug("parseTSVForReference: Filtering complete", {
+        processedRows,
+        matchedRows,
+        totalResults: results.length,
+        reference:
+          reference.originalText ||
+          `${reference.book} ${reference.chapter}:${reference.verse}${reference.endVerse ? `-${reference.endVerse}` : ""}`,
+      });
 
       return results;
     } catch (error) {

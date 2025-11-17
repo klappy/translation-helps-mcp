@@ -16,7 +16,10 @@ import {
   transformTranslationNotesResultToHTTP,
   transformTranslationQuestionsResultToHTTP,
 } from "../utils/http-response-transformers.js";
-import { extractErrorMessage, extractErrorStatus } from "../utils/mcp-error-handler.js";
+import {
+  extractErrorMessage,
+  extractErrorStatus,
+} from "../utils/mcp-error-handler.js";
 import type { DataSourceConfig, EndpointConfig } from "./EndpointConfig.js";
 
 // Types for our functional approach
@@ -296,9 +299,12 @@ export const createZIPFetcher = (
           }
 
           // Fallback to old method if resource type not recognized
-          logger.warn("Unknown resource type, falling back to direct ZIP fetch", {
-            resourceType: zipConfig.resourceType,
-          });
+          logger.warn(
+            "Unknown resource type, falling back to direct ZIP fetch",
+            {
+              resourceType: zipConfig.resourceType,
+            },
+          );
           const rows = await zipFetcher.getTSVData(
             reference,
             language,

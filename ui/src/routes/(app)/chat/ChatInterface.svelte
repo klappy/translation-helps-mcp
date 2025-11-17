@@ -140,8 +140,8 @@
 		// Handle different types of RC links
 		if (href.includes('/tw/dict/') || href.includes('rc://words/')) {
 			// Translation Word link
-			const wordId = parts[parts.length - 1];
-			const word = wordId.replace(/-/g, ' ');
+			const term = parts[parts.length - 1];
+			const word = term.replace(/-/g, ' ');
 			prompt = `Define the biblical term "${word}" and explain its significance`;
 		} else if (href.includes('/ta/man/')) {
 			// Translation Academy article
@@ -406,7 +406,16 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		{#if messages.length === 1}
 			<!-- Starter suggestions area -->
 			<div class="mx-auto mb-6 max-w-4xl">
-				<div class="mb-3 text-sm text-gray-400">Try one of these to get started:</div>
+				<div class="mb-3 flex items-center justify-between">
+					<div class="text-sm text-gray-400">Try one of these to get started:</div>
+					<a
+						href="/chat/sdk-integration"
+						class="text-xs text-blue-400 transition-colors hover:text-blue-300"
+						title="Learn how this chat integrates with the SDK"
+					>
+						SDK Integration Study Case →
+					</a>
+				</div>
 				<div class="grid gap-3 sm:grid-cols-2">
 					{#each suggestions as s (s.title)}
 						<button

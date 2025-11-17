@@ -1,6 +1,6 @@
 /**
  * MCP Performance Tracker
- * 
+ *
  * Utility to track performance metrics for MCP tools.
  * Provides consistent performance monitoring across all MCP tools.
  */
@@ -19,14 +19,14 @@ export interface MCPToolMetrics {
 
 /**
  * Track performance metrics for an MCP tool execution
- * 
+ *
  * @param metrics - Performance metrics to record
  */
 export function trackMCPToolPerformance(metrics: MCPToolMetrics): void {
   try {
     // Map MCP tool name to endpoint format
     const endpoint = `/mcp/${metrics.toolName}`;
-    
+
     // Determine status code from success/error
     const statusCode = metrics.success
       ? 200
@@ -62,9 +62,9 @@ export function trackMCPToolPerformance(metrics: MCPToolMetrics): void {
 
 /**
  * Create a performance tracking wrapper for MCP tool handlers
- * 
+ *
  * This wrapper automatically tracks performance metrics for tool execution.
- * 
+ *
  * @example
  * ```typescript
  * export async function handleFetchScripture(args: FetchScriptureArgs) {
@@ -135,4 +135,3 @@ export async function withPerformanceTracking<T>(
     throw error;
   }
 }
-

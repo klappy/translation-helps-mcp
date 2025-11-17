@@ -6,9 +6,34 @@
 	import ApiTester from '../../../lib/components/ApiTester.svelte';
 	import PerformanceMetrics from '../../../lib/components/PerformanceMetrics.svelte';
 	import XRayTraceView from '../../../lib/components/XRayTraceView.svelte';
+	import {
+		callTool,
+		getPrompt,
+		executePrompt as executePromptViaSDK
+	} from '../../../lib/mcp/client.js';
 
 	// Three main categories - Core tools, MCP Prompts, and Health status
 	type MainCategory = 'core' | 'prompts' | 'health';
+
+	// Helper: Convert endpoint name (kebab-case) to MCP tool name (snake_case)
+	function endpointToToolName(endpointName: string): string {
+		return endpointName.replace(/-/g, '_');
+	}
+
+	// Helper: Extract data from MCP response format
+	function extractMCPResponseData(mcpResponse: any): any {
+		// MCP responses have content array with text fields containing JSON
+		if (mcpResponse.content && mcpResponse.content[0]?.text) {
+			try {
+				return JSON.parse(mcpResponse.content[0].text);
+			} catch (e) {
+				// If not JSON, return as text
+				return { data: mcpResponse.content[0].text };
+			}
+		}
+		// Fallback to direct response
+		return mcpResponse;
+	}
 	const categoryConfig = {
 		core: { name: 'Core Tools', icon: Database },
 		prompts: { name: 'MCP Prompts', icon: Workflow },
@@ -206,12 +231,48 @@
 		selectedPrompt = prompt;
 		selectedCategory = 'prompts';
 		promptParameters = {};
-		// Set default values
-		prompt.parameters.forEach((param: any) => {
-			if (param.default) {
-				promptParameters[param.name] = param.default;
+
+		// Try to load saved values from localStorage first
+		const savedKey = `mcp-prompt-${prompt.id}`;
+		const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(savedKey) : null;
+
+		if (saved) {
+			try {
+				const savedParams = JSON.parse(saved);
+				// Restore saved values
+				prompt.parameters.forEach((param: any) => {
+					if (savedParams[param.name] !== undefined) {
+						promptParameters[param.name] = savedParams[param.name];
+					} else if (param.default) {
+						promptParameters[param.name] = param.default;
+					}
+				});
+			} catch (e) {
+				// If parsing fails, fall back to defaults
+				prompt.parameters.forEach((param: any) => {
+					if (param.default) {
+						promptParameters[param.name] = param.default;
+					}
+				});
 			}
-		});
+		} else {
+			// Set default values (including sensible defaults for reference)
+			prompt.parameters.forEach((param: any) => {
+				if (param.default) {
+					promptParameters[param.name] = param.default;
+				} else if (param.name === 'reference') {
+					// Set a common test reference for each prompt
+					if (prompt.id === 'translation-helps-for-passage') {
+						promptParameters[param.name] = 'John 3:16';
+					} else if (prompt.id === 'get-translation-words-for-passage') {
+						promptParameters[param.name] = 'Romans 1:1';
+					} else if (prompt.id === 'get-translation-academy-for-passage') {
+						promptParameters[param.name] = 'Matthew 5:13';
+					}
+				}
+			});
+		}
+
 		promptWorkflowSteps = [];
 		promptResults = null;
 	}
@@ -219,6 +280,12 @@
 	// Execute prompt workflow
 	async function executePrompt() {
 		if (!selectedPrompt) return;
+
+		// Save current parameters to localStorage for next time
+		if (typeof localStorage !== 'undefined') {
+			const savedKey = `mcp-prompt-${selectedPrompt.id}`;
+			localStorage.setItem(savedKey, JSON.stringify(promptParameters));
+		}
 
 		isExecutingPrompt = true;
 		promptResults = null;
@@ -231,21 +298,55 @@
 		}));
 
 		try {
-			const response = await fetch('/api/execute-prompt', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					promptName: selectedPrompt.id,
-					parameters: promptParameters
-				})
+			const startTime = Date.now();
+
+			// Execute prompt via SDK (which internally calls /api/execute-prompt)
+			console.log(`🚀 Executing prompt via SDK: ${selectedPrompt.id}`, promptParameters);
+
+			const mcpResponse = await executePromptViaSDK(
+				selectedPrompt.id,
+				promptParameters,
+				true // enableMetrics = true
+			);
+
+			console.log(`✅ MCP prompt response received:`, mcpResponse);
+			console.log(`📊 SDK Metadata (prompt):`, {
+				cacheStatus: mcpResponse.metadata?.cacheStatus,
+				responseTime: mcpResponse.metadata?.responseTime,
+				traceId: mcpResponse.metadata?.traceId,
+				xrayTrace: mcpResponse.metadata?.xrayTrace,
+				hasXrayTrace: !!mcpResponse.metadata?.xrayTrace,
+				hasCacheStats: !!mcpResponse.metadata?.xrayTrace?.cacheStats,
+				fullMetadata: mcpResponse.metadata
 			});
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const data = await response.json();
+			// Extract data from MCP response format
+			const data = extractMCPResponseData(mcpResponse);
 			promptResults = data;
+
+			// Create response with diagnostics from SDK metadata
+			const responseWithDiagnostics = {
+				...data,
+				metadata: {
+					...(data.metadata || {}),
+					// Use SDK metadata if available
+					xrayTrace: mcpResponse.metadata?.xrayTrace,
+					responseTime: mcpResponse.metadata?.responseTime || Date.now() - startTime,
+					cacheStatus: mcpResponse.metadata?.cacheStatus,
+					traceId: mcpResponse.metadata?.traceId,
+					statusCode: mcpResponse.metadata?.statusCode
+				}
+			};
+
+			console.log(`[CLIENT DEBUG] Prompt response with diagnostics:`, {
+				cacheStatus: responseWithDiagnostics.metadata.cacheStatus,
+				hasXrayTrace: !!responseWithDiagnostics.metadata.xrayTrace,
+				xrayTraceCacheStats: responseWithDiagnostics.metadata.xrayTrace?.cacheStats,
+				responseTime: responseWithDiagnostics.metadata.responseTime
+			});
+
+			// Store performance data for prompts (using prompt ID as key)
+			handleApiResponse({ name: selectedPrompt.id }, responseWithDiagnostics);
 
 			// Mark all steps as complete
 			promptWorkflowSteps = promptWorkflowSteps.map((step) => ({
@@ -283,8 +384,8 @@
 			}
 			// Verse Referenced Data
 			else if (
-				name === 'translation-notes' ||
-				name === 'translation-questions' ||
+				name === 'fetch-translation-notes' ||
+				name === 'fetch-translation-questions' ||
 				name === 'fetch-translation-word-links'
 			) {
 				groups.verseReferenced.push(endpoint);
@@ -302,8 +403,8 @@
 		// Custom sort order for each group
 		const sortOrder = {
 			verseReferenced: [
-				'translation-notes',
-				'translation-questions',
+				'fetch-translation-notes',
+				'fetch-translation-questions',
 				'fetch-translation-word-links'
 			],
 			rcLinked: ['fetch-translation-word', 'fetch-translation-academy'],
@@ -363,11 +464,11 @@
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'translation-notes') {
+		} else if (endpoint.name === 'fetch-translation-notes') {
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'translation-questions') {
+		} else if (endpoint.name === 'fetch-translation-questions') {
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
@@ -384,27 +485,24 @@
 			testParams.organization = 'unfoldingWord';
 		}
 
-		// Build query string
-		const params = new URLSearchParams();
-		Object.entries(testParams).forEach(([key, value]) => {
-			if (value !== null && value !== undefined && value !== '') {
-				params.append(key, String(value));
-			}
-		});
-
-		const queryString = params.toString();
-		const url = `/api${endpoint.path}${queryString ? '?' + queryString : ''}`;
+		// Convert endpoint name to MCP tool name
+		const toolName = endpointToToolName(endpoint.name);
+		const serverUrl = '/api/mcp'; // Use local MCP server
 
 		try {
 			endpointTestResults[endpoint.name] = { status: 'pending' };
 
-			const response = await fetch(url);
-			const data = await response.json();
+			// Call tool via SDK with metrics enabled
+			const mcpResponse = await callTool(toolName, testParams, serverUrl, true); // enableMetrics = true
 
-			if (!response.ok) {
+			// Extract data from MCP response
+			const data = extractMCPResponseData(mcpResponse);
+
+			// Check if response is successful
+			if (mcpResponse.error) {
 				endpointTestResults[endpoint.name] = {
 					status: 'error',
-					message: `HTTP ${response.status}: ${data.error || data.message || 'Unknown error'}`
+					message: mcpResponse.error.message || 'MCP tool execution failed'
 				};
 			} else if (data.error) {
 				endpointTestResults[endpoint.name] = {
@@ -513,6 +611,14 @@
 		const metadata = response.metadata || {};
 		const xrayTrace = metadata.xrayTrace || {};
 
+		console.log(`[HANDLER DEBUG] Extracted metadata:`, {
+			cacheStatus: metadata.cacheStatus,
+			hasXrayTrace: !!metadata.xrayTrace,
+			xrayTraceKeys: metadata.xrayTrace ? Object.keys(metadata.xrayTrace) : [],
+			xrayTraceCacheStats: metadata.xrayTrace?.cacheStats,
+			xrayTraceApiCalls: metadata.xrayTrace?.apiCalls?.length || 0
+		});
+
 		performanceData[endpoint.name] = {
 			// Basic performance
 			responseTime: metadata.responseTime,
@@ -571,6 +677,17 @@
 			performanceData[endpoint.name]
 		);
 
+		// Debug cache status specifically
+		console.log(`[HANDLER DEBUG] Cache status in performanceData:`, {
+			cacheStatus: performanceData[endpoint.name].cacheStatus,
+			cacheStats: performanceData[endpoint.name].cacheStats,
+			hasCacheStats: !!performanceData[endpoint.name].cacheStats,
+			internalCalls:
+				performanceData[endpoint.name].calls?.filter((c: any) =>
+					c.url?.startsWith('internal://')
+				) || []
+		});
+
 		// Debug X-ray data specifically
 		console.log(`🔍 X-ray trace data:`, {
 			traceId: performanceData[endpoint.name].traceId,
@@ -587,7 +704,7 @@
 	async function handleApiTest(event: any) {
 		const { endpoint, formData } = event.detail;
 
-		console.log(`🧪 Testing endpoint: ${endpoint.name}`, formData);
+		console.log(`🧪 Testing endpoint via MCP: ${endpoint.name}`, formData);
 
 		// Set loading state
 		isLoading = true;
@@ -595,119 +712,67 @@
 		const startTime = Date.now();
 
 		try {
-			// Build query string from formData
-			const params = new URLSearchParams();
-			Object.entries(formData).forEach(([key, value]) => {
-				if (value !== null && value !== undefined && value !== '') {
-					params.append(key, String(value));
-				}
+			// Convert endpoint name to MCP tool name
+			const toolName = endpointToToolName(endpoint.name);
+			const serverUrl = '/api/mcp'; // Use local MCP server
+
+			console.log(`🚀 Calling MCP tool: ${toolName}`, formData);
+
+			// Call tool via SDK with metrics enabled
+			const mcpResponse = await callTool(toolName, formData, serverUrl, true); // enableMetrics = true
+
+			// Extract actual data from MCP response format
+			const responseData = extractMCPResponseData(mcpResponse);
+
+			console.log(`✅ MCP response received:`, responseData);
+			console.log(`📊 SDK Metadata (raw):`, {
+				cacheStatus: mcpResponse.metadata?.cacheStatus,
+				responseTime: mcpResponse.metadata?.responseTime,
+				traceId: mcpResponse.metadata?.traceId,
+				xrayTrace: mcpResponse.metadata?.xrayTrace,
+				hasXrayTrace: !!mcpResponse.metadata?.xrayTrace,
+				hasCacheStats: !!mcpResponse.metadata?.xrayTrace?.cacheStats,
+				xrayTraceKeys: mcpResponse.metadata?.xrayTrace
+					? Object.keys(mcpResponse.metadata.xrayTrace)
+					: [],
+				fullMetadata: mcpResponse.metadata
 			});
 
-			const queryString = params.toString();
-			const url = `/api${endpoint.path}${queryString ? `?${queryString}` : ''}`;
-
-			console.log(`🚀 Making request to: ${url}`);
-
-			const response = await fetch(url, {
-				method: 'GET',
-				headers: {
-					Accept: 'application/json',
-					'Content-Type': 'application/json'
-				}
-			});
-
-			// Check content type to determine how to parse response
-			const contentType = response.headers.get('content-type') || '';
-			let responseData;
-
-			if (contentType.includes('application/json')) {
-				responseData = await response.json();
-			} else if (contentType.includes('text/markdown') || contentType.includes('text/plain')) {
-				// For markdown/text responses, wrap in a simple object
-				const text = await response.text();
-				responseData = {
-					success: true,
-					data: text,
-					metadata: {
-						format: 'markdown',
-						contentType: contentType
-					}
-				};
-			} else {
-				// Default to JSON parsing
-				responseData = await response.json();
-			}
-
-			// Extract diagnostic data from headers WITHOUT polluting the response body
-			let headerDiagnostics = {
-				xrayTrace: null as any,
-				responseTime: undefined as number | undefined,
-				cacheStatus: undefined as string | undefined,
-				traceId: undefined as string | undefined
-			};
-
-			try {
-				// X-ray trace (case-sensitive header name)
-				const xrayHeader =
-					response.headers.get('X-XRay-Trace') || response.headers.get('x-xray-trace');
-				if (xrayHeader) {
-					const cleaned = xrayHeader.replace(/\s+/g, '');
-					headerDiagnostics.xrayTrace = JSON.parse(atob(cleaned));
-				}
-
-				// Response time
-				const rt = response.headers.get('X-Response-Time');
-				if (rt) {
-					const rtNum = parseInt(rt.replace(/[^0-9]/g, ''), 10);
-					if (!isNaN(rtNum)) {
-						headerDiagnostics.responseTime = rtNum;
-					}
-				}
-
-				// Cache status
-				const cacheStatus = response.headers.get('X-Cache-Status');
-				if (cacheStatus) {
-					headerDiagnostics.cacheStatus = cacheStatus.toLowerCase();
-				}
-
-				// Trace ID
-				const traceId = response.headers.get('X-Trace-Id');
-				if (traceId) {
-					headerDiagnostics.traceId = traceId;
-				}
-			} catch (e) {
-				console.warn('Failed to extract diagnostic headers', e);
-			}
-
-			console.log(`✅ Response received:`, responseData);
-
-			// Set the result for display (clean, without injected headers)
+			// Set the result for display
 			apiResult = responseData;
 
-			// Create a separate object for performance tracking that includes diagnostic data from headers
+			// Create response with diagnostics from SDK metadata
 			const responseWithDiagnostics = {
 				...responseData,
 				metadata: {
 					...(responseData.metadata || {}),
-					// Add header diagnostics ONLY for performance tracking UI
-					xrayTrace: headerDiagnostics.xrayTrace,
-					responseTime: responseData.metadata?.responseTime || headerDiagnostics.responseTime,
-					cacheStatus: responseData.metadata?.cacheStatus || headerDiagnostics.cacheStatus,
-					traceId: responseData.metadata?.traceId || headerDiagnostics.traceId
+					// Use SDK metadata if available
+					xrayTrace: mcpResponse.metadata?.xrayTrace,
+					responseTime: mcpResponse.metadata?.responseTime || Date.now() - startTime,
+					cacheStatus: mcpResponse.metadata?.cacheStatus,
+					traceId: mcpResponse.metadata?.traceId,
+					statusCode: mcpResponse.metadata?.statusCode
 				}
 			};
+
+			console.log(`[CLIENT DEBUG] Response with diagnostics:`, {
+				cacheStatus: responseWithDiagnostics.metadata.cacheStatus,
+				hasXrayTrace: !!responseWithDiagnostics.metadata.xrayTrace,
+				xrayTraceCacheStats: responseWithDiagnostics.metadata.xrayTrace?.cacheStats,
+				responseTime: responseWithDiagnostics.metadata.responseTime
+			});
 
 			// Process response and extract performance data
 			handleApiResponse(endpoint, responseWithDiagnostics);
 		} catch (error: any) {
-			console.error(`❌ API test failed for ${endpoint.name}:`, error);
+			console.error(`❌ MCP tool call failed for ${endpoint.name}:`, error);
 
-			// Even for network errors, try to create a minimal error response
+			// Create error response
 			apiResult = {
-				error: error.message || 'Network or request error',
+				error: error.message || 'MCP tool execution error',
 				details: {
 					endpoint: endpoint.name,
-					path: endpoint.path,
+					toolName: endpointToToolName(endpoint.name),
 					timestamp: new Date().toISOString()
 				},
 				status: 0
@@ -753,13 +818,11 @@
 			) {
 				testParams.reference = 'John 3:16';
 				testParams.outputFormat = 'text';
-			} else if (endpoint.name === 'translation-notes') {
+			} else if (endpoint.name === 'fetch-translation-notes') {
 				testParams.reference = 'John 3:16';
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'fetch-translation-words') {
-				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'translation-questions') {
+			} else if (endpoint.name === 'fetch-translation-questions') {
 				testParams.reference = 'John 3:16';
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
@@ -784,26 +847,20 @@
 				}
 			});
 
-			// Force JSON format for endpoints that support multiple formats
-			if (endpoint.name === 'browse-translation-academy' && !params.has('format')) {
-				params.append('format', 'json');
-			}
+			// Convert endpoint name to MCP tool name
+			const toolName = endpointToToolName(endpoint.name);
+			const serverUrl = '/api/mcp'; // Use local MCP server
 
-			// Ensure endpoint path starts with /api
-			const apiPath = endpoint.path.startsWith('/api') ? endpoint.path : `/api${endpoint.path}`;
-			const queryString = params.toString();
-			const url = `${apiPath}${queryString ? `?${queryString}` : ''}`;
+			// Call tool via SDK with metrics enabled
+			const mcpResponse = await callTool(toolName, testParams, serverUrl, true); // enableMetrics = true
 
-			const response = await fetch(url, {
-				method: 'GET',
-				headers: {
-					Accept: 'application/json'
-				}
-			});
+			// Extract data from MCP response
+			const data = extractMCPResponseData(mcpResponse);
 
-			if (response.ok) {
-				const data = await response.json(); // Everything returns JSON now
+			// Check if response is successful (MCP doesn't use HTTP status, check for errors)
+			const isOk = !mcpResponse.error && !data.error && data.success !== false;
 
+			if (isOk) {
 				// Antifragile error detection: recursively search entire response for ANY error indicators
 				function hasAnyErrors(
 					obj: any,
@@ -934,16 +991,12 @@
 						message: data.error || data.message || 'Endpoint returned error'
 					};
 				}
-			} else if (response.status === 500) {
-				// Skip unimplemented endpoints
-				const data = await response.json().catch(() => ({}));
-				if (data.error && data.error.includes('not yet implemented')) {
-					healthStatus[healthKey] = { status: 'warning', message: 'Feature not yet implemented' };
-				} else {
-					healthStatus[healthKey] = { status: 'error', message: `HTTP ${response.status}` };
-				}
 			} else {
-				healthStatus[healthKey] = { status: 'error', message: `HTTP ${response.status}` };
+				// MCP tool execution failed
+				healthStatus[healthKey] = {
+					status: 'error',
+					message: mcpResponse.error?.message || data.error || 'MCP tool execution failed'
+				};
 			}
 		} catch (error) {
 			healthStatus[healthKey] = {
@@ -1701,6 +1754,11 @@
 										{/each}
 									</div>
 								</div>
+							{/if}
+
+							<!-- Performance Metrics -->
+							{#if performanceData[selectedPrompt.id]}
+								<PerformanceMetrics data={performanceData[selectedPrompt.id]} />
 							{/if}
 
 							<!-- Results -->

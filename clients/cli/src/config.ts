@@ -7,6 +7,10 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface Config {
   aiProvider: "ollama" | "openai";
@@ -19,6 +23,7 @@ export interface Config {
   exportPath: string;
   cacheProviders: string[];
   cacheProvidersOrder: string[];
+  zipFetcherProvider: "r2" | "fs" | "auto";
   languages: string[];
 }
 
@@ -37,20 +42,72 @@ const DEFAULT_CONFIG: Config = {
   ),
   cacheProviders: ["memory", "fs"],
   cacheProvidersOrder: ["memory", "fs", "door43"],
+  zipFetcherProvider: "fs", // CLI uses file system for ZIP storage
   languages: [],
 };
 
 export class ConfigManager {
-  private configDir: string;
-  private configPath: string;
+  private projectConfigPath: string; // Project-local config (preferred)
+  private globalConfigDir: string; // Global config (fallback)
+  private globalConfigPath: string;
   private envPath: string;
   private config: Config;
 
   constructor() {
-    this.configDir = path.join(os.homedir(), ".translation-helps-cli");
-    this.configPath = path.join(this.configDir, "config.json");
-    // .env file in project root (where CLI is run from)
-    this.envPath = path.join(process.cwd(), ".env");
+    // Project-local config (standard location for project-specific tools)
+    // Located in project root: .translation-helps-cli.json
+    // Find project root by walking up from __dirname (which is clients/cli/dist or clients/cli/src)
+    const findProjectRoot = (): string => {
+      // __dirname will be clients/cli/dist (when built) or clients/cli/src (when running with tsx)
+      const currentDir = __dirname;
+
+      // Walk up until we find the root package.json (which has "translation-helps-mcp" as name)
+      let dir = currentDir;
+      while (dir !== path.dirname(dir)) {
+        const packageJsonPath = path.join(dir, "package.json");
+        if (fs.existsSync(packageJsonPath)) {
+          try {
+            const packageJson = JSON.parse(
+              fs.readFileSync(packageJsonPath, "utf-8"),
+            );
+            // Check if this is the root package.json (has "translation-helps-mcp" name and has clients/cli subdirectory)
+            if (
+              packageJson.name === "translation-helps-mcp" &&
+              fs.existsSync(path.join(dir, "clients", "cli", "package.json"))
+            ) {
+              return dir;
+            }
+          } catch {
+            // Continue searching if package.json is invalid
+          }
+        }
+        dir = path.dirname(dir);
+      }
+      // Fallback: assume we're 2-3 levels deep from project root
+      // From clients/cli/dist -> go up 3 levels
+      // From clients/cli/src -> go up 2 levels
+      if (currentDir.includes("dist")) {
+        return path.resolve(currentDir, "..", "..", "..");
+      } else if (currentDir.includes("clients")) {
+        return path.resolve(currentDir, "..", "..");
+      }
+      // Last resort: use current working directory
+      return process.cwd();
+    };
+
+    const projectRoot = findProjectRoot();
+    this.projectConfigPath = path.join(
+      projectRoot,
+      ".translation-helps-cli.json",
+    );
+
+    // Global config (fallback for backward compatibility)
+    // Located in home directory: ~/.translation-helps-cli/config.json
+    this.globalConfigDir = path.join(os.homedir(), ".translation-helps-cli");
+    this.globalConfigPath = path.join(this.globalConfigDir, "config.json");
+
+    // .env file in project root
+    this.envPath = path.join(projectRoot, ".env");
     this.config = { ...DEFAULT_CONFIG };
   }
 
@@ -93,48 +150,101 @@ export class ConfigManager {
 
   /**
    * Load configuration from disk
+   * Priority: Project-local config > Global config > Defaults
    */
   load(): Config {
     // Load .env file first (before loading config)
     this.loadEnvFile();
 
     try {
-      // Ensure config directory exists
-      if (!fs.existsSync(this.configDir)) {
-        fs.mkdirSync(this.configDir, { recursive: true });
-      }
+      let loadedConfig: Partial<Config> | null = null;
+      let configSource = "";
 
-      // Load config file if it exists
-      if (fs.existsSync(this.configPath)) {
-        const fileContent = fs.readFileSync(this.configPath, "utf-8");
-        const loadedConfig = JSON.parse(fileContent);
+      // 1. Try project-local config first (standard location)
+      if (fs.existsSync(this.projectConfigPath)) {
+        const fileContent = fs.readFileSync(this.projectConfigPath, "utf-8");
+        console.log(`🔍 DEBUG: Reading config from: ${this.projectConfigPath}`);
+        console.log(
+          `🔍 DEBUG: Raw file content (first 200 chars):`,
+          fileContent.substring(0, 200),
+        );
+        loadedConfig = JSON.parse(fileContent);
+        configSource = "project-local";
 
-        // Migration: Update old default "ollama" to new default "openai"
-        if (
-          loadedConfig.aiProvider === "ollama" &&
-          !loadedConfig._migratedToOpenAI
-        ) {
-          loadedConfig.aiProvider = "openai";
-          loadedConfig._migratedToOpenAI = true; // Mark as migrated
-          console.log("🔄 Migrated default AI provider from Ollama to OpenAI");
+        // Debug: Log what was loaded from file
+        if (loadedConfig) {
+          console.log(`🔍 DEBUG: Parsed config from file:`, {
+            cachePath: loadedConfig.cachePath,
+            exportPath: loadedConfig.exportPath,
+            aiProvider: loadedConfig.aiProvider,
+          });
         }
+      }
+      // 2. Fall back to global config (backward compatibility)
+      else if (fs.existsSync(this.globalConfigPath)) {
+        const fileContent = fs.readFileSync(this.globalConfigPath, "utf-8");
+        loadedConfig = JSON.parse(fileContent);
+        configSource = "global";
 
-        // Merge with defaults (in case new fields were added)
+        // Migrate global config to project-local if it exists
+        console.log("📦 Migrating global config to project-local...");
         this.config = {
           ...DEFAULT_CONFIG,
           ...loadedConfig,
         };
+        this.save(); // This will save to project-local
+        console.log("✅ Migrated config to project-local");
+        return this.config;
+      }
 
-        // Save migrated config
-        if (loadedConfig._migratedToOpenAI) {
+      if (loadedConfig) {
+        // Migration: Update old default "ollama" to new default "openai"
+        const configWithMigration = loadedConfig as Partial<Config> & {
+          _migratedToOpenAI?: boolean;
+        };
+        if (
+          configWithMigration.aiProvider === "ollama" &&
+          !configWithMigration._migratedToOpenAI
+        ) {
+          configWithMigration.aiProvider = "openai";
+          configWithMigration._migratedToOpenAI = true; // Mark as migrated
+          console.log("🔄 Migrated default AI provider from Ollama to OpenAI");
+        }
+
+        // Merge with defaults (in case new fields were added)
+        // IMPORTANT: loadedConfig values should override defaults
+        // Explicitly preserve all loaded values, especially cachePath
+        this.config = {
+          ...DEFAULT_CONFIG,
+          ...configWithMigration,
+          // Explicitly preserve cachePath and exportPath from loaded config if present
+          // Use loadedConfig directly (not configWithMigration) to ensure we get the actual values
+          cachePath:
+            (loadedConfig.cachePath as string | undefined) ||
+            DEFAULT_CONFIG.cachePath,
+          exportPath:
+            (loadedConfig.exportPath as string | undefined) ||
+            DEFAULT_CONFIG.exportPath,
+        };
+
+        // Debug: Log what we're using after merge
+        console.log(`🔍 DEBUG: After merge:`, {
+          cachePath: this.config.cachePath,
+          exportPath: this.config.exportPath,
+          loadedCachePath: loadedConfig.cachePath,
+          defaultCachePath: DEFAULT_CONFIG.cachePath,
+        });
+
+        // Save migrated config (only if AI provider was migrated)
+        if (configWithMigration._migratedToOpenAI) {
           this.save();
         }
 
-        console.log("✅ Configuration loaded");
+        console.log(`✅ Configuration loaded from ${configSource} config`);
       } else {
-        // Create default config file
+        // Create default config file in project root (standard location)
         this.save();
-        console.log("✅ Created default configuration");
+        console.log("✅ Created default configuration in project root");
       }
     } catch (error) {
       console.error("Failed to load configuration:", error);
@@ -146,17 +256,13 @@ export class ConfigManager {
 
   /**
    * Save configuration to disk
+   * Always saves to project-local config (standard location)
    */
   save(): void {
     try {
-      // Ensure directory exists
-      if (!fs.existsSync(this.configDir)) {
-        fs.mkdirSync(this.configDir, { recursive: true });
-      }
-
-      // Write config file
+      // Save to project-local config (standard location for project-specific tools)
       fs.writeFileSync(
-        this.configPath,
+        this.projectConfigPath,
         JSON.stringify(this.config, null, 2),
         "utf-8",
       );
@@ -186,17 +292,18 @@ export class ConfigManager {
   }
 
   /**
-   * Get configuration directory path
+   * Get config directory path (for backward compatibility)
+   * @deprecated Use getConfigPath() instead
    */
   getConfigDir(): string {
-    return this.configDir;
+    return path.dirname(this.projectConfigPath);
   }
 
   /**
-   * Get configuration file path
+   * Get config file path (project-local)
    */
   getConfigPath(): string {
-    return this.configPath;
+    return this.projectConfigPath;
   }
 
   /**
@@ -366,7 +473,7 @@ export class ConfigManager {
       `  Cache Order: ${this.config.cacheProvidersOrder.join(" → ")}`,
     );
     console.log(`  Languages: ${this.config.languages.join(", ") || "None"}`);
-    console.log(`\n  Config file: ${this.configPath}`);
+    console.log(`\n  Config file: ${this.projectConfigPath}`);
     console.log(`  .env file: ${this.envPath}\n`);
   }
 }

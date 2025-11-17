@@ -22,7 +22,7 @@ import { getVersion } from '../../../../../src/version.js';
 // import { handleSearchResources } from '../../../../../src/tools/searchResources.js';
 
 // MCP-over-HTTP Bridge
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) => {
 	try {
 		const body = await request.json();
 		const method = body.method || url.searchParams.get('method');
@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					protocolVersion: '1.0',
 					capabilities: {
 						tools: {},
-						resources: {}
+						prompts: {}
 					},
 					serverInfo: {
 						name: 'translation-helps-mcp',
@@ -185,19 +185,6 @@ export const POST: RequestHandler = async ({ request, url }) => {
 							}
 						},
 						{
-							name: 'get_translation_word',
-							description: 'Get translation words linked to a specific Bible reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
-								},
-								required: ['reference']
-							}
-						},
-						{
 							name: 'search_resources',
 							description: 'Search across multiple resource types for content',
 							inputSchema: {
@@ -228,14 +215,45 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				console.log('[MCP ENDPOINT] Tool call:', toolName, 'Args:', JSON.stringify(args));
 
 				const { UnifiedMCPHandler } = await import('$lib/mcp/UnifiedMCPHandler');
-				// Use relative base to avoid cross-origin/self-fetch issues in production
-				const handler = new UnifiedMCPHandler();
+				// Use event.fetch for SvelteKit compatibility (allows relative URLs)
+				// eventFetch is the fetch function from the RequestEvent that supports relative URLs
+				const handler = new UnifiedMCPHandler('', eventFetch);
 
 				try {
 					console.log('[MCP ENDPOINT] Using UnifiedMCPHandler for:', toolName);
 					const result = await handler.handleToolCall(toolName, args);
 					console.log('[MCP ENDPOINT] Result preview:', JSON.stringify(result).substring(0, 300));
-					return json(result);
+
+					// Extract metadata from result if present
+					const metadata = (result as any).metadata;
+					console.log('[MCP ENDPOINT] Result metadata:', metadata);
+
+					// Create response with headers if metadata is available
+					const response = json(result);
+
+					// Forward diagnostic headers from internal endpoint if available
+					if (metadata) {
+						if (metadata.cacheStatus) {
+							response.headers.set('X-Cache-Status', metadata.cacheStatus);
+						}
+						if (metadata.responseTime) {
+							response.headers.set('X-Response-Time', `${metadata.responseTime}ms`);
+						}
+						if (metadata.traceId) {
+							response.headers.set('X-Trace-Id', metadata.traceId);
+						}
+						if (metadata.xrayTrace) {
+							response.headers.set('X-XRay-Trace', btoa(JSON.stringify(metadata.xrayTrace)));
+						}
+						console.log('[MCP ENDPOINT] Forwarded headers:', {
+							cacheStatus: metadata.cacheStatus,
+							responseTime: metadata.responseTime,
+							traceId: metadata.traceId,
+							hasXrayTrace: !!metadata.xrayTrace
+						});
+					}
+
+					return response;
 				} catch (error) {
 					console.error(`[MCP ENDPOINT] Tool error for ${toolName}:`, error);
 					// Special logging for translation notes
@@ -429,16 +447,16 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						});
 					}
 				}
-				else if (toolName === 'get_translation_word' || toolName === 'fetch_translation_words') {
+				else if (toolName === 'fetch_translation_word') {
 					const params = new URLSearchParams({
-						wordId: args.wordId || args.reference || '',
+						term: args.term || args.reference || '',
 						language: args.language || 'en',
 						organization: args.organization || 'unfoldingWord'
 					});
 					
 					try {
-						const endpoint = await import('../fetch-translation-words/+server.js');
-						const mockRequest = new Request(`http://localhost/api/fetch-translation-words?${params}`);
+						const endpoint = await import('../fetch-translation-word/+server.js');
+						const mockRequest = new Request(`http://localhost/api/fetch-translation-word?${params}`);
 						const response = await endpoint.GET({ url: new URL(mockRequest.url), request: mockRequest });
 						
 						if (response.ok) {
@@ -517,6 +535,223 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				*/
 			}
 
+			case 'prompts/list':
+				return json({
+					prompts: [
+						{
+							name: 'translation-helps-for-passage',
+							description:
+								'Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles',
+							arguments: [
+								{
+									name: 'reference',
+									description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
+									required: true
+								},
+								{
+									name: 'language',
+									description: 'Language code (default: "en")',
+									required: false
+								}
+							]
+						},
+						{
+							name: 'get-translation-words-for-passage',
+							description:
+								'Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)',
+							arguments: [
+								{
+									name: 'reference',
+									description: 'Bible reference (e.g., "John 3:16")',
+									required: true
+								},
+								{
+									name: 'language',
+									description: 'Language code (default: "en")',
+									required: false
+								}
+							]
+						},
+						{
+							name: 'get-translation-academy-for-passage',
+							description:
+								'Get Translation Academy training articles referenced in the translation notes for a passage',
+							arguments: [
+								{
+									name: 'reference',
+									description: 'Bible reference (e.g., "John 3:16")',
+									required: true
+								},
+								{
+									name: 'language',
+									description: 'Language code (default: "en")',
+									required: false
+								}
+							]
+						}
+					]
+				});
+
+			case 'prompts/get': {
+				const { name, arguments: args } = body.params || {};
+
+				if (!name) {
+					return json(
+						{
+							error: {
+								code: ErrorCode.InvalidParams,
+								message: 'Prompt name is required'
+							}
+						},
+						{ status: 400 }
+					);
+				}
+
+				const language = (args?.language as string) || 'en';
+				const reference = (args?.reference as string) || '';
+
+				switch (name) {
+					case 'translation-helps-for-passage':
+						return json({
+							messages: [
+								{
+									role: 'user',
+									content: {
+										type: 'text',
+										text: `Please provide comprehensive translation help for ${reference} in ${language}.
+
+Follow these steps to gather all relevant information:
+
+1. **Get the Scripture Text:**
+   - Use fetch_scripture tool with reference="${reference}" and language="${language}"
+   - This provides the actual Bible text to work with
+
+2. **Get Translation Questions:**
+   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
+   - These help check comprehension and guide translation decisions
+
+3. **Get Translation Word Links and Fetch Titles:**
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
+   - This returns a list of terms (e.g., [{term: "love", category: "kt", path: "..."}])
+   - For EACH term in the response, use fetch_translation_word tool with term=<term_value> to get the full article
+   - Extract the TITLE from each article (found in the first H1 heading or title field)
+   - Show the user these dictionary entry TITLES, not the technical term IDs
+   - Example: Show "Love, Beloved" not "love"; show "Son of God, Son" not "sonofgod"
+
+4. **Get Translation Notes:**
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - Notes contain supportReference fields that link to Translation Academy articles
+
+5. **Get Related Translation Academy Articles:**
+   - From the translation notes response, extract all supportReference values
+   - These are RC links like "rc://*/ta/man/translate/figs-metaphor"
+   - For each supportReference, use fetch_translation_academy tool with rcLink=<supportReference_value>
+   - Extract the TITLE from each academy article
+   - Show these training article titles to help the user understand translation concepts
+
+6. **Organize the Response:**
+   Present everything in a clear, structured way:
+   - Scripture text at the top
+   - List of translation word titles (dictionary entries)
+   - Translation questions for comprehension
+   - Translation notes with guidance
+   - Related academy article titles for deeper learning
+
+The goal is to provide EVERYTHING a translator needs for this passage in one comprehensive response.`
+									}
+								}
+							]
+						});
+
+					case 'get-translation-words-for-passage':
+						return json({
+							messages: [
+								{
+									role: 'user',
+									content: {
+										type: 'text',
+										text: `Please show me all the translation word definitions for ${reference} in ${language}.
+
+Follow these steps:
+
+1. **Get Translation Word Links:**
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
+   - This returns links like: [{term: "love", category: "kt", ...}, {term: "god", ...}]
+
+2. **Fetch Full Articles and Extract Titles:**
+   - For EACH term in the links result, call fetch_translation_word with term=<term_value>
+   - From each article response, extract the TITLE (not the term ID)
+   - The title is usually in the first H1 heading or a dedicated title field
+   - Example: The term "love" might have title "Love, Beloved"
+   - Example: The term "sonofgod" might have title "Son of God, Son"
+
+3. **Present to User:**
+   - Show the dictionary entry TITLES in a clear list
+   - These are human-readable names, not technical IDs
+   - Optionally group by category (Key Terms, Names, Other Terms)
+   - Let the user know they can ask for the full definition of any term
+
+Focus on making the translation words accessible by showing their proper titles.`
+									}
+								}
+							]
+						});
+
+					case 'get-translation-academy-for-passage':
+						return json({
+							messages: [
+								{
+									role: 'user',
+									content: {
+										type: 'text',
+										text: `Please find all the Translation Academy training articles related to ${reference} in ${language}.
+
+Follow these steps:
+
+1. **Get Translation Notes:**
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - Translation notes contain supportReference fields that link to academy articles
+
+2. **Extract Support References:**
+   - From the notes response, find all supportReference values
+   - These are RC links in format: "rc://*/ta/man/translate/figs-metaphor"
+   - Or they might be moduleIds like: "figs-metaphor", "translate-names"
+   - Collect all unique support references
+
+3. **Fetch Academy Articles:**
+   - For each supportReference, use fetch_translation_academy tool
+   - If it's an RC link: use rcLink=<supportReference_value>
+   - If it's a moduleId: use moduleId=<supportReference_value>
+   - Each call returns an academy article with training content
+
+4. **Extract Titles:**
+   - From each academy article response, extract the TITLE
+   - The title is in the first H1 heading or dedicated title field
+
+5. **Present to User:**
+   - Show the academy article titles
+   - Brief description of what each article teaches
+   - Let the user know they can request the full content of any article
+   
+The goal is to show what translation concepts and training materials are relevant to understanding this passage.`
+									}
+								}
+							]
+						});
+
+					default:
+						return json(
+							{
+								error: {
+									code: ErrorCode.InvalidRequest,
+									message: `Unknown prompt: ${name}`
+								}
+							},
+							{ status: 400 }
+						);
+				}
+			}
+
 			case 'ping':
 				return json({});
 
@@ -541,19 +776,92 @@ export const POST: RequestHandler = async ({ request, url }) => {
 export const GET: RequestHandler = async ({ url }) => {
 	const method = url.searchParams.get('method');
 
-	if (method === 'tools/list') {
-		return POST({
-			request: new Request(url, {
-				method: 'POST',
-				body: JSON.stringify({ method })
-			}),
-			url
+	// Handle prompts/list directly
+	if (method === 'prompts/list') {
+		return json({
+			prompts: [
+				{
+					name: 'translation-helps-for-passage',
+					description:
+						'Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles',
+					arguments: [
+						{
+							name: 'reference',
+							description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
+							required: true
+						},
+						{
+							name: 'language',
+							description: 'Language code (default: "en")',
+							required: false
+						}
+					]
+				},
+				{
+					name: 'get-translation-words-for-passage',
+					description:
+						'Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)',
+					arguments: [
+						{
+							name: 'reference',
+							description: 'Bible reference (e.g., "John 3:16")',
+							required: true
+						},
+						{
+							name: 'language',
+							description: 'Language code (default: "en")',
+							required: false
+						}
+					]
+				},
+				{
+					name: 'get-translation-academy-for-passage',
+					description:
+						'Get Translation Academy training articles referenced in the translation notes for a passage',
+					arguments: [
+						{
+							name: 'reference',
+							description: 'Bible reference (e.g., "John 3:16")',
+							required: true
+						},
+						{
+							name: 'language',
+							description: 'Language code (default: "en")',
+							required: false
+						}
+					]
+				}
+			]
 		});
+	}
+
+	// For tools/list, delegate to POST handler
+	if (method === 'tools/list') {
+		const mockRequest = new Request(url, {
+			method: 'POST',
+			body: JSON.stringify({ method })
+		});
+		return POST({
+			request: mockRequest,
+			url,
+			cookies: {} as any,
+			fetch,
+			getClientAddress: () => '',
+			locals: {} as any,
+			params: {},
+			platform: undefined,
+			route: { id: '/api/mcp' },
+			setHeaders: () => {},
+			isDataRequest: false,
+			isSubRequest: false,
+			tracing: { enabled: false, root: {} as any, current: {} as any },
+			isRemoteRequest: false
+		} as any);
 	}
 
 	return json({
 		name: 'translation-helps-mcp',
-		version: '3.6.0',
-		methods: ['initialize', 'tools/list', 'tools/call', 'ping']
+		version: getVersion(),
+		methods: ['initialize', 'tools/list', 'tools/call', 'prompts/list', 'prompts/get', 'ping']
 	});
 };

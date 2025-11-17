@@ -4,7 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "./dist",
-    "rootDir": "../..",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -12,8 +12,11 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "paths": {
+      "../../src/services/*": ["../../src/services/*"]
+    }
   },
-  "include": ["src/**/*", "../../src/services/ResourceTransfer.ts", "../../src/services/ResourceSync.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

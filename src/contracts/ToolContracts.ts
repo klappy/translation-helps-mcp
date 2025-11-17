@@ -30,24 +30,28 @@ export interface TranslationQuestionsToolArgs {
 }
 
 export interface TranslationWordToolArgs {
-  wordId: string;
+  term: string;
   language?: string;
+  organization?: string;
 }
 
 // Define the exact response formatters
 export const ToolFormatters = {
   scripture: (data: any): string => {
-    if (data.scriptures && Array.isArray(data.scriptures)) {
-      const ult = data.scriptures.find((s: any) =>
+    // Check both 'scripture' (singular - standard response format) and 'scriptures' (plural - legacy)
+    const scriptureArray = data.scripture || data.scriptures;
+
+    if (scriptureArray && Array.isArray(scriptureArray)) {
+      const ult = scriptureArray.find((s: any) =>
         s.translation?.includes("Literal Text"),
       );
-      const ust = data.scriptures.find((s: any) =>
+      const ust = scriptureArray.find((s: any) =>
         s.translation?.includes("Simplified Text"),
       );
       return (
         ult?.text ||
         ust?.text ||
-        data.scriptures[0]?.text ||
+        scriptureArray[0]?.text ||
         "Scripture not found"
       );
     }
@@ -59,6 +63,7 @@ export const ToolFormatters = {
 
     // Collect all notes with flexible extraction
     const possibleArrays = [
+      "items", // Standard response format from createTranslationHelpsResponse
       "verseNotes",
       "contextNotes",
       "notes",
@@ -168,7 +173,12 @@ export const ToolFormatters = {
   },
 
   questions: (data: any): string => {
-    const questions = data.translationQuestions || data.questions || [];
+    // Check multiple possible field names, including the standard "items" field
+    const questions =
+      data.items || // Standard response format from createTranslationHelpsResponse
+      data.translationQuestions ||
+      data.questions ||
+      [];
 
     if (!Array.isArray(questions) || questions.length === 0) {
       return "No translation questions found";
@@ -186,6 +196,18 @@ export const ToolFormatters = {
   },
 
   words: (data: any): string => {
+    // Handle word links format (from fetch_translation_word_links)
+    if (data.items && Array.isArray(data.items)) {
+      const links = data.items.map((link: any) => {
+        const term = link.term || link.TWLink || "Unknown term";
+        const category = link.category ? ` (${link.category})` : "";
+        return `**${term}**${category}`;
+      });
+      return links.length > 0
+        ? links.join("\n")
+        : "No translation word links found";
+    }
+    // Handle word articles format (from fetch_translation_word)
     if (data.words && Array.isArray(data.words)) {
       return (
         data.words
@@ -197,6 +219,43 @@ export const ToolFormatters = {
       return `**${data.term}**\n${data.definition}`;
     }
     return "No translation words found";
+  },
+
+  academy: (data: any): string => {
+    // Handle single academy article
+    if (data.title && data.content) {
+      return `# ${data.title}\n\n${data.content}`;
+    }
+    // Handle array of academy articles
+    if (Array.isArray(data)) {
+      return data
+        .map((article: any) => {
+          if (article.title && article.content) {
+            return `# ${article.title}\n\n${article.content}`;
+          }
+          return article.content || article.markdown || "No content";
+        })
+        .join("\n\n---\n\n");
+    }
+    // Handle nested structure
+    if (data.modules && Array.isArray(data.modules)) {
+      return data.modules
+        .map((module: any) => {
+          const title =
+            module.title || module.id || "Translation Academy Article";
+          const content = module.markdown || module.content || "";
+          return `# ${title}\n\n${content}`;
+        })
+        .join("\n\n---\n\n");
+    }
+    // Fallback: return content if available
+    if (data.content) {
+      return data.content;
+    }
+    if (data.markdown) {
+      return data.markdown;
+    }
+    return "No translation academy content found";
   },
 };
 
@@ -217,9 +276,19 @@ export const ToolRegistry = {
     formatter: ToolFormatters.questions,
     requiredParams: ["reference"],
   },
-  get_translation_word: {
-    endpoint: "/api/fetch-translation-words",
+  fetch_translation_word: {
+    endpoint: "/api/fetch-translation-word",
     formatter: ToolFormatters.words,
-    requiredParams: ["wordId"],
+    requiredParams: ["term"],
+  },
+  fetch_translation_word_links: {
+    endpoint: "/api/fetch-translation-word-links",
+    formatter: ToolFormatters.words, // Uses same formatter as words
+    requiredParams: ["reference"],
+  },
+  fetch_translation_academy: {
+    endpoint: "/api/fetch-translation-academy",
+    formatter: ToolFormatters.academy,
+    requiredParams: [], // At least one of moduleId, path, or rcLink should be provided, but we don't enforce it here
   },
 };

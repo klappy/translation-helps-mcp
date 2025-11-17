@@ -24,9 +24,11 @@ Manual transformation            Pre-transformed data
 ## Specific Duplications Found
 
 ### 1. **Scripture Data Transformation** (~50 lines)
+
 **Location**: `src/config/functionalDataFetchers.ts` lines 209-261
 
 **What's Duplicated:**
+
 - Translation → resource field mapping
 - Deduplication logic (filtering duplicate resources)
 - Primary scripture selection (prefer ULT)
@@ -40,9 +42,11 @@ Manual transformation            Pre-transformed data
 ---
 
 ### 2. **Cache Status Detection** (~25 lines)
+
 **Location**: `src/config/functionalDataFetchers.ts` lines 263-285
 
 **What's Duplicated:**
+
 - X-ray trace inspection
 - Cache hit/miss detection
 - KV cache status checking
@@ -54,9 +58,11 @@ Manual transformation            Pre-transformed data
 ---
 
 ### 3. **Error Detection & Classification** (~40 lines)
+
 **Location**: `src/config/functionalDataFetchers.ts` lines 291-350
 
 **What's Duplicated:**
+
 - Server error counting
 - Catalog validation
 - Error message construction
@@ -69,9 +75,11 @@ Manual transformation            Pre-transformed data
 ---
 
 ### 4. **Parameter Parsing** (~60 lines)
+
 **Location**: `src/config/RouteGenerator.ts` lines 530-589
 
 **What's Duplicated:**
+
 - Type conversion (string → boolean, number, array)
 - Default value application
 - Required parameter checking
@@ -86,18 +94,19 @@ Manual transformation            Pre-transformed data
 
 ### Lines of Duplicate Code
 
-| Category | Lines | Location | Priority |
-|----------|-------|----------|----------|
-| Data Transformation | ~50 | functionalDataFetchers.ts | Critical |
-| Cache Detection | ~25 | functionalDataFetchers.ts | Critical |
-| Error Classification | ~40 | functionalDataFetchers.ts | Critical |
-| Parameter Parsing | ~60 | RouteGenerator.ts | High |
-| Reference Normalization | ~25 | functionalDataFetchers.ts | Critical |
-| **TOTAL** | **~200 lines** | | |
+| Category                | Lines          | Location                  | Priority |
+| ----------------------- | -------------- | ------------------------- | -------- |
+| Data Transformation     | ~50            | functionalDataFetchers.ts | Critical |
+| Cache Detection         | ~25            | functionalDataFetchers.ts | Critical |
+| Error Classification    | ~40            | functionalDataFetchers.ts | Critical |
+| Parameter Parsing       | ~60            | RouteGenerator.ts         | High     |
+| Reference Normalization | ~25            | functionalDataFetchers.ts | Critical |
+| **TOTAL**               | **~200 lines** |                           |          |
 
 ### Per Resource Type
 
 Each resource type (scripture, notes, questions, etc.) has similar duplication patterns:
+
 - **Scripture**: ~150 lines of duplicate logic
 - **Translation Notes**: ~30 lines (less because simpler transformation)
 - **Translation Questions**: ~30 lines
@@ -112,6 +121,7 @@ Each resource type (scripture, notes, questions, etc.) has similar duplication p
 ### Make HTTP Endpoints Use Core Services
 
 **Current (HTTP):**
+
 ```typescript
 // functionalDataFetchers.ts
 case "getScripture": {
@@ -122,6 +132,7 @@ case "getScripture": {
 ```
 
 **Proposed (HTTP):**
+
 ```typescript
 // functionalDataFetchers.ts
 case "getScripture": {
@@ -141,6 +152,7 @@ case "getScripture": {
 ```
 
 **Benefits:**
+
 - ✅ Eliminates ~150 lines of duplicate transformation logic
 - ✅ Single source of truth for data fetching
 - ✅ Consistent behavior between HTTP and MCP
@@ -148,6 +160,7 @@ case "getScripture": {
 - ✅ Service already handles all the complex logic
 
 **Implementation Steps:**
+
 1. Update `functionalDataFetchers.ts` to import and call core services
 2. Create simple transformation functions to convert service results to HTTP format
 3. Remove duplicate transformation/normalization logic
@@ -160,6 +173,7 @@ case "getScripture": {
 ### Unify Parameter Validation
 
 **Option A: Generate Zod from Endpoint Configs**
+
 ```typescript
 // Generate Zod schema from EndpointConfig.params
 function generateZodSchema(config: EndpointConfig): z.ZodObject<any> {
@@ -172,9 +186,12 @@ function generateZodSchema(config: EndpointConfig): z.ZodObject<any> {
 ```
 
 **Option B: Generate Endpoint Config from Zod**
+
 ```typescript
 // Generate EndpointConfig.params from Zod schema
-function generateEndpointParams(schema: z.ZodObject<any>): Record<string, ParamConfig> {
+function generateEndpointParams(
+  schema: z.ZodObject<any>,
+): Record<string, ParamConfig> {
   const params: Record<string, ParamConfig> = {};
   for (const [name, field] of Object.entries(schema.shape)) {
     params[name] = convertZodToParamConfig(field);
@@ -184,6 +201,7 @@ function generateEndpointParams(schema: z.ZodObject<any>): Record<string, ParamC
 ```
 
 **Benefits:**
+
 - ✅ Single source of truth for parameters
 - ✅ Consistent validation across HTTP and MCP
 - ✅ Automatic synchronization
@@ -214,19 +232,25 @@ These are **not** duplications - they're intentional protocol differences:
 ## Implementation Priority
 
 ### Phase 1: Critical (Do First) ⚡
+
 **Make HTTP use core services**
+
 - **Impact**: Eliminates ~150 lines per resource type
 - **Effort**: Medium (need to test thoroughly)
 - **Risk**: Low (core services are already tested)
 
 ### Phase 2: High Priority (Do Next) 📋
+
 **Unify parameter validation**
+
 - **Impact**: Eliminates ~60 lines, prevents future mismatches
 - **Effort**: Medium (need schema converter)
 - **Risk**: Low (validation logic is straightforward)
 
 ### Phase 3: Medium Priority (Nice to Have) ✨
+
 **Share error message construction**
+
 - **Impact**: Eliminates ~10-20 lines of repeated patterns
 - **Effort**: Low (simple utility function)
 - **Risk**: Very Low
@@ -236,6 +260,7 @@ These are **not** duplications - they're intentional protocol differences:
 ## Expected Outcomes
 
 ### After Phase 1 (HTTP uses core services):
+
 - ✅ **~150 lines eliminated** per resource type
 - ✅ **Single code path** for data fetching
 - ✅ **Consistent behavior** between HTTP and MCP
@@ -243,12 +268,14 @@ These are **not** duplications - they're intentional protocol differences:
 - ✅ **No more parameter mismatches** - both use same service interface
 
 ### After Phase 2 (Unified validation):
+
 - ✅ **~60 lines eliminated** from RouteGenerator
 - ✅ **Automatic synchronization** of parameters
 - ✅ **Type safety** across both systems
 - ✅ **Prevents future mismatches**
 
 ### Total Impact:
+
 - **~250-300 lines of duplicate code eliminated**
 - **Single source of truth** for all data operations
 - **Consistent behavior** across HTTP and MCP
@@ -261,10 +288,10 @@ These are **not** duplications - they're intentional protocol differences:
 **The biggest remaining duplication is HTTP endpoints bypassing core services.**
 
 By making HTTP endpoints use the same core services as MCP tools, we would:
+
 1. Eliminate ~150 lines of duplicate transformation logic per resource type
 2. Create a single source of truth for data fetching
 3. Ensure consistent behavior between HTTP and MCP
 4. Make the codebase significantly easier to maintain
 
 **This single change would eliminate ~70% of remaining duplication.**
-

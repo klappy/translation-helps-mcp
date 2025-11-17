@@ -58,6 +58,9 @@ async function startChat(options: any): Promise<void> {
     // Load configuration
     const cfg = config.load();
 
+    // Debug: Log the cache path from config
+    console.log(chalk.gray(`📁 Config cachePath: ${cfg.cachePath}`));
+
     // Handle list-models option
     if (options.listModels) {
       console.log(chalk.bold("\n📋 Ollama Models:\n"));
@@ -91,7 +94,7 @@ async function startChat(options: any): Promise<void> {
     // Connect to MCP server
     console.log(chalk.gray("Connecting to MCP server..."));
     const mcpClient = new MCPClient();
-    await mcpClient.connect();
+    await mcpClient.connect(cfg.cachePath);
 
     // Initialize AI provider
     console.log(chalk.gray("Initializing AI provider..."));

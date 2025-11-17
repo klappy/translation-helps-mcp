@@ -1,40 +1,225 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { EdgeXRayTracer } from '../../../../../src/functions/edge-xray.js';
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
+export const POST: RequestHandler = async ({ request, fetch: eventFetch }) => {
+	const startTime = Date.now();
 	const { promptName, parameters } = await request.json();
 	const { reference, language = 'en' } = parameters;
+
+	// Create X-Ray tracer for this prompt execution
+	const tracer = new EdgeXRayTracer(`execute-prompt:${promptName}`, `/api/execute-prompt`);
+
+	// Create a tracked fetch wrapper that uses event.fetch (supports relative URLs)
+	// This wrapper extracts X-Ray traces from responses and merges them into the main tracer
+	const trackedFetchCall = async (url: string) => {
+		const fetchStartTime =
+			typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+
+		try {
+			const response = await eventFetch(url);
+			const now =
+				typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+			const duration = Math.max(1, Math.round(now - fetchStartTime));
+
+			// Extract X-Ray trace from response header if available
+			const xrayTraceHeader = response.headers.get('X-XRay-Trace');
+			if (xrayTraceHeader) {
+				try {
+					const cleaned = xrayTraceHeader.replace(/\s+/g, '');
+					const nestedTrace = JSON.parse(atob(cleaned));
+
+					// Merge only internal cache calls from the nested trace
+					// HTTP calls to /api/fetch-* endpoints are just transport, not cache operations
+					if (nestedTrace.apiCalls && Array.isArray(nestedTrace.apiCalls)) {
+						for (const apiCall of nestedTrace.apiCalls) {
+							// Only merge internal:// cache calls
+							// Skip HTTP calls to /api/ endpoints as they're not cache operations
+							if (apiCall.url && apiCall.url.startsWith('internal://')) {
+								tracer.addApiCall({
+									url: apiCall.url,
+									duration: apiCall.duration || 0,
+									status: apiCall.status || 200,
+									size: apiCall.size || 0,
+									cached: apiCall.cached === true // Only true if explicitly true
+								});
+							}
+						}
+					}
+				} catch (e) {
+					// If parsing fails, just log and continue
+					console.warn('[execute-prompt] Failed to parse X-Ray trace from response:', e);
+				}
+			} else {
+				// No X-Ray trace in response - add the HTTP call itself
+				// Extract cache status from response headers
+				const cacheStatus = response.headers.get('X-Cache-Status')?.toLowerCase();
+				const isCached = cacheStatus === 'hit';
+
+				tracer.addApiCall({
+					url,
+					duration,
+					status: response.status,
+					size: parseInt(response.headers.get('content-length') || '0', 10),
+					cached: isCached
+				});
+			}
+
+			return response;
+		} catch (error) {
+			const now =
+				typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+			const duration = Math.max(1, Math.round(now - fetchStartTime));
+
+			tracer.addApiCall({
+				url,
+				duration,
+				status: 0, // Network error
+				size: 0,
+				cached: false
+			});
+
+			throw error;
+		}
+	};
 
 	console.log(
 		`[execute-prompt] Starting prompt execution: ${promptName} for ${reference} (${language})`
 	);
 
 	try {
+		let result;
 		switch (promptName) {
 			case 'translation-helps-for-passage':
 				console.log('[execute-prompt] Executing translation-helps-for-passage');
-				return await executeTranslationHelpsPrompt(reference, language, fetch);
+				result = await executeTranslationHelpsPrompt(reference, language, trackedFetchCall, tracer);
+				break;
 
 			case 'get-translation-words-for-passage':
 				console.log('[execute-prompt] Executing get-translation-words-for-passage');
-				return await executeWordsPrompt(reference, language, fetch);
+				result = await executeWordsPrompt(reference, language, trackedFetchCall, tracer);
+				break;
 
 			case 'get-translation-academy-for-passage':
 				console.log('[execute-prompt] Executing get-translation-academy-for-passage');
-				return await executeAcademyPrompt(reference, language, fetch);
+				result = await executeAcademyPrompt(reference, language, trackedFetchCall, tracer);
+				break;
 
 			default:
 				console.error('[execute-prompt] Unknown prompt:', promptName);
 				return json({ error: 'Unknown prompt' }, { status: 400 });
 		}
+
+		// Trace is finalized when getTrace() is called
+
+		// Add response time header
+		const responseTime = Date.now() - startTime;
+		// Extract data from Response if needed, otherwise use result directly
+		let data = result;
+		if (result instanceof Response) {
+			data = await result.json();
+		}
+
+		// Build trace data for headers
+		const traceData = tracer.getTrace();
+		const headers: Record<string, string> = {
+			'X-Response-Time': `${responseTime}ms`
+		};
+
+		// Add X-Ray trace headers if available
+		if (traceData) {
+			// Calculate cache status based on internal cache calls only
+			const apiCalls = traceData.apiCalls || [];
+			const internalCalls = apiCalls.filter((call: any) => call.url?.startsWith('internal://'));
+
+			// Calculate cache stats for internal calls only
+			const internalHits = internalCalls.filter((call: any) => call.cached).length;
+			const internalMisses = internalCalls.filter((call: any) => call.cached === false).length;
+			const totalInternal = internalCalls.length;
+
+			// Recalculate cacheStats to only include internal calls
+			const recalculatedCacheStats = {
+				hits: internalHits,
+				misses: internalMisses,
+				total: totalInternal
+			};
+
+			// Update traceData with recalculated cache stats
+			const updatedTraceData = {
+				...traceData,
+				cacheStats: recalculatedCacheStats
+			};
+
+			let cacheStatus = 'miss';
+			if (totalInternal === 0) {
+				// No internal cache calls - check overall stats
+				if (recalculatedCacheStats.hits > 0 && recalculatedCacheStats.misses === 0) {
+					cacheStatus = 'hit';
+				} else if (recalculatedCacheStats.hits > 0 && recalculatedCacheStats.misses > 0) {
+					cacheStatus = 'partial';
+				}
+			} else if (internalHits > 0 && internalMisses === 0) {
+				// All internal cache calls were hits
+				cacheStatus = 'hit';
+			} else if (internalHits > 0 && internalMisses > 0) {
+				// Some internal cache hits, some misses
+				cacheStatus = 'partial';
+			} else if (internalHits === 0 && totalInternal > 0) {
+				// All internal cache calls were misses
+				cacheStatus = 'miss';
+			}
+
+			headers['X-Cache-Status'] = cacheStatus;
+			headers['X-XRay-Trace'] = btoa(JSON.stringify(updatedTraceData));
+			if (traceData.traceId) {
+				headers['X-Trace-Id'] = traceData.traceId;
+			}
+		}
+
+		// Create new response with headers
+		return json(data, { headers });
 	} catch (error) {
 		console.error('[execute-prompt] Prompt execution error:', error);
+		const responseTime = Date.now() - startTime;
+
+		const headers: Record<string, string> = {
+			'X-Response-Time': `${responseTime}ms`
+		};
+
+		// Add trace even on error
+		const traceData = tracer.getTrace();
+		if (traceData) {
+			// Recalculate cacheStats to only include internal calls
+			const apiCalls = traceData.apiCalls || [];
+			const internalCalls = apiCalls.filter((call: any) => call.url?.startsWith('internal://'));
+			const internalHits = internalCalls.filter((call: any) => call.cached).length;
+			const internalMisses = internalCalls.filter((call: any) => call.cached === false).length;
+			const totalInternal = internalCalls.length;
+
+			const updatedTraceData = {
+				...traceData,
+				cacheStats: {
+					hits: internalHits,
+					misses: internalMisses,
+					total: totalInternal
+				}
+			};
+
+			headers['X-XRay-Trace'] = btoa(JSON.stringify(updatedTraceData));
+			if (traceData.traceId) {
+				headers['X-Trace-Id'] = traceData.traceId;
+			}
+		}
+
 		return json(
 			{
 				error: 'Failed to execute prompt',
 				message: error instanceof Error ? error.message : String(error)
 			},
-			{ status: 500 }
+			{
+				status: 500,
+				headers
+			}
 		);
 	}
 };
@@ -42,7 +227,8 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 async function executeTranslationHelpsPrompt(
 	reference: string,
 	language: string,
-	fetch: typeof global.fetch
+	trackedFetchCall: (url: string) => Promise<Response>,
+	tracer: EdgeXRayTracer
 ) {
 	const results: any = {
 		scripture: null,
@@ -54,7 +240,7 @@ async function executeTranslationHelpsPrompt(
 
 	// Step 1: Fetch scripture
 	try {
-		const scriptureRes = await fetch(
+		const scriptureRes = await trackedFetchCall(
 			`/api/fetch-scripture?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (scriptureRes.ok) {
@@ -87,8 +273,8 @@ async function executeTranslationHelpsPrompt(
 
 	// Step 2: Fetch questions
 	try {
-		const questionsRes = await fetch(
-			`/api/translation-questions?reference=${encodeURIComponent(reference)}&language=${language}`
+		const questionsRes = await trackedFetchCall(
+			`/api/fetch-translation-questions?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (questionsRes.ok) {
 			const questionsData = await questionsRes.json();
@@ -104,7 +290,7 @@ async function executeTranslationHelpsPrompt(
 	// Step 3: Fetch word links
 	let wordLinks: any[] = [];
 	try {
-		const linksRes = await fetch(
+		const linksRes = await trackedFetchCall(
 			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (linksRes.ok) {
@@ -132,7 +318,7 @@ async function executeTranslationHelpsPrompt(
 			// Use the path parameter from the link (it has category and .md extension)
 			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`;
 			console.log(`Fetching word article: ${url}`);
-			const wordRes = await fetch(url);
+			const wordRes = await trackedFetchCall(url);
 			if (wordRes.ok) {
 				const wordData = await wordRes.json();
 
@@ -143,7 +329,7 @@ async function executeTranslationHelpsPrompt(
 					);
 					// Try fetching using rcLink instead as fallback
 					try {
-						const fallbackRes = await fetch(
+						const fallbackRes = await trackedFetchCall(
 							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}`
 						);
 						if (fallbackRes.ok) {
@@ -225,8 +411,8 @@ async function executeTranslationHelpsPrompt(
 
 	// Step 5: Fetch notes
 	try {
-		const notesRes = await fetch(
-			`/api/translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
+		const notesRes = await trackedFetchCall(
+			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (notesRes.ok) {
 			results.notes = await notesRes.json();
@@ -241,7 +427,7 @@ async function executeTranslationHelpsPrompt(
 	for (const ref of supportRefs.slice(0, 5)) {
 		// Limit to first 5
 		try {
-			const academyRes = await fetch(
+			const academyRes = await trackedFetchCall(
 				`/api/fetch-translation-academy?rcLink=${encodeURIComponent(ref)}&language=${language}`
 			);
 			if (academyRes.ok) {
@@ -256,7 +442,7 @@ async function executeTranslationHelpsPrompt(
 					const moduleId = ref.split('/').pop() || '';
 					if (moduleId) {
 						try {
-							const fallbackRes = await fetch(
+							const fallbackRes = await trackedFetchCall(
 								`/api/fetch-translation-academy?moduleId=${encodeURIComponent(moduleId)}&language=${language}`
 							);
 							if (fallbackRes.ok) {
@@ -341,7 +527,12 @@ async function executeTranslationHelpsPrompt(
 	return json(results);
 }
 
-async function executeWordsPrompt(reference: string, language: string, fetch: typeof global.fetch) {
+async function executeWordsPrompt(
+	reference: string,
+	language: string,
+	trackedFetchCall: (url: string) => Promise<Response>,
+	tracer: EdgeXRayTracer
+) {
 	console.log('[executeWordsPrompt] Reusing translation-helps logic for word links and articles');
 
 	const results: any = {
@@ -351,7 +542,7 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 	// Step 1: Fetch word links (same as main prompt)
 	let wordLinks: any[] = [];
 	try {
-		const linksRes = await fetch(
+		const linksRes = await trackedFetchCall(
 			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (linksRes.ok) {
@@ -376,7 +567,7 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 
 			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`;
 			console.log(`Fetching word article: ${url}`);
-			const wordRes = await fetch(url);
+			const wordRes = await trackedFetchCall(url);
 			if (wordRes.ok) {
 				const wordData = await wordRes.json();
 
@@ -385,7 +576,7 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 						`Word fetch with path returned error for ${link.term}. Trying rcLink fallback...`
 					);
 					try {
-						const fallbackRes = await fetch(
+						const fallbackRes = await trackedFetchCall(
 							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}`
 						);
 						if (fallbackRes.ok) {
@@ -465,7 +656,8 @@ async function executeWordsPrompt(reference: string, language: string, fetch: ty
 async function executeAcademyPrompt(
 	reference: string,
 	language: string,
-	fetch: typeof global.fetch
+	trackedFetchCall: (url: string) => Promise<Response>,
+	tracer: EdgeXRayTracer
 ) {
 	console.log(
 		'[executeAcademyPrompt] Reusing translation-helps logic for notes and academy articles'
@@ -480,8 +672,8 @@ async function executeAcademyPrompt(
 
 	// Step 1: Fetch notes (same as main prompt, but not included in results)
 	try {
-		const notesRes = await fetch(
-			`/api/translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
+		const notesRes = await trackedFetchCall(
+			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
 		);
 		if (notesRes.ok) {
 			notesData = await notesRes.json();
@@ -495,7 +687,7 @@ async function executeAcademyPrompt(
 	console.log(`Found ${supportRefs.length} support references (limiting to 5)`);
 	for (const ref of supportRefs.slice(0, 5)) {
 		try {
-			const academyRes = await fetch(
+			const academyRes = await trackedFetchCall(
 				`/api/fetch-translation-academy?rcLink=${encodeURIComponent(ref)}&language=${language}`
 			);
 			if (academyRes.ok) {
@@ -508,7 +700,7 @@ async function executeAcademyPrompt(
 					const moduleId = ref.split('/').pop() || '';
 					if (moduleId) {
 						try {
-							const fallbackRes = await fetch(
+							const fallbackRes = await trackedFetchCall(
 								`/api/fetch-translation-academy?moduleId=${encodeURIComponent(moduleId)}&language=${language}`
 							);
 							if (fallbackRes.ok) {

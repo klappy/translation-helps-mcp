@@ -1,6 +1,6 @@
 /**
  * HTTP Response Transformers
- * 
+ *
  * Utilities to transform core service results into HTTP endpoint response format.
  * This allows HTTP endpoints to use core services while maintaining HTTP-specific response shapes.
  */
@@ -31,7 +31,8 @@ export function transformScriptureResultToHTTP(
   organization: string;
 }> {
   // Extract scriptures array (service may return .scripture or .scriptures[])
-  const scriptures = result.scriptures || (result.scripture ? [result.scripture] : []);
+  const scriptures =
+    result.scriptures || (result.scripture ? [result.scripture] : []);
 
   if (scriptures.length === 0) {
     return [];
@@ -41,11 +42,11 @@ export function transformScriptureResultToHTTP(
   // Parse and normalize the reference to ensure consistent formatting
   const parsedRef = parseReference(reference);
   let referenceStr = reference;
-  
+
   if (parsedRef) {
     // Determine if this is a chapter range (verseEnd but no verse means chapter range)
     const isChapterRange = parsedRef.verseEnd && !parsedRef.verse;
-    
+
     const normalizeInput = {
       book: parsedRef.bookName || parsedRef.book,
       chapter: parsedRef.chapter,
@@ -55,7 +56,7 @@ export function transformScriptureResultToHTTP(
       originalText: parsedRef.original || "",
       isValid: true,
     };
-    
+
     try {
       referenceStr = normalizeReference(
         normalizeInput as unknown as import("../parsers/referenceParser.js").ParsedReference,
@@ -65,7 +66,7 @@ export function transformScriptureResultToHTTP(
       referenceStr = reference;
     }
   }
-  
+
   // Transform each scripture to HTTP format
   // Deduplicate by resource (translation) to avoid duplicates
   const seenResources = new Set<string>();
@@ -81,13 +82,13 @@ export function transformScriptureResultToHTTP(
   for (const scripture of scriptures) {
     // Map translation -> resource for consistency
     const resource = scripture.translation || "ULT";
-    
+
     // Skip if we've already seen this resource (deduplication)
     if (seenResources.has(resource)) {
       continue;
     }
     seenResources.add(resource);
-    
+
     // Build citation string
     const citation = `${referenceStr} (${resource})`;
 
@@ -97,7 +98,10 @@ export function transformScriptureResultToHTTP(
       resource,
       language: params.language || "en",
       citation,
-      organization: scripture.citation?.organization || params.organization || "unfoldingWord",
+      organization:
+        scripture.citation?.organization ||
+        params.organization ||
+        "unfoldingWord",
     });
   }
 
@@ -172,5 +176,7 @@ export function transformTranslationQuestionsResultToHTTP(
 }
 
 // Re-export error utilities for convenience
-export { extractErrorMessage, extractErrorStatus } from "./mcp-error-handler.js";
-
+export {
+  extractErrorMessage,
+  extractErrorStatus,
+} from "./mcp-error-handler.js";

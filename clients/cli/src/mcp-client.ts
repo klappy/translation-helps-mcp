@@ -44,8 +44,9 @@ export class MCPClient {
 
   /**
    * Connect to the MCP server
+   * @param cachePath Optional cache path from config to pass to MCP server
    */
-  async connect(): Promise<void> {
+  async connect(cachePath?: string): Promise<void> {
     if (this.connected) {
       console.log("Already connected to MCP server");
       return;
@@ -65,14 +66,24 @@ export class MCPClient {
       console.log(`🔌 Connecting to MCP server at: ${serverPath}`);
 
       // Create transport - it will spawn the server process internally
+      const env: Record<string, string> = {
+        ...process.env,
+        USE_FS_CACHE: "true", // Enable file system cache
+        NODE_ENV: "development",
+      };
+
+      // Pass cache path from config to MCP server
+      if (cachePath) {
+        env.CACHE_PATH = cachePath;
+        console.log(`📁 Setting CACHE_PATH=${cachePath}`);
+      } else {
+        console.log(`⚠️  No cache path provided, MCP server will use default`);
+      }
+
       this.transport = new StdioClientTransport({
         command: "npx",
         args: ["tsx", serverPath],
-        env: {
-          ...process.env,
-          USE_FS_CACHE: "true", // Enable file system cache
-          NODE_ENV: "development",
-        },
+        env,
       });
 
       // Create client

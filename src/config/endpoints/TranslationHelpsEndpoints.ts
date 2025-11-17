@@ -95,8 +95,8 @@ const TERM_PARAMS = {
  * Fetch Translation Questions (tQ) - Questions for checking translation
  */
 export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
-  name: "translation-questions",
-  path: "/translation-questions",
+  name: "fetch-translation-questions",
+  path: "/fetch-translation-questions",
   title: "Fetch Translation Questions",
   description:
     "Retrieve comprehension and checking questions for scripture passages",
@@ -550,8 +550,8 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
  * Fetch Translation Notes (tN) - Detailed translation notes
  */
 export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
-  name: "translation-notes",
-  path: "/translation-notes",
+  name: "fetch-translation-notes",
+  path: "/fetch-translation-notes",
   title: "Fetch Translation Notes",
   description:
     "Retrieve detailed translation notes explaining difficult passages and terms. Each note includes the original Greek or Hebrew text (in the 'quote' field) along with explanations of what that text means.",

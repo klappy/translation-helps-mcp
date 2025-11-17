@@ -19,6 +19,26 @@ Command-line interface for interacting with translation helps offline using loca
 
 See [`cli/README.md`](cli/README.md) for installation and usage instructions.
 
+### TypeScript Example Client (`typescript-example/`)
+
+Example TypeScript client demonstrating how to use the `@translation-helps/mcp-client` SDK with AI providers (Anthropic Claude, OpenAI, etc.).
+
+**Features:**
+
+- 📦 Uses official `@translation-helps/mcp-client` SDK
+- 🤖 Integrates with multiple AI providers (Anthropic, OpenAI)
+- 🔧 Demonstrates correct MCP tool calling flow
+- 💡 Complete example code with error handling
+- 📚 Well-documented with architecture diagrams
+
+**Perfect for:**
+
+- Learning how to build MCP clients
+- Understanding the MCP tool calling pattern
+- Starting point for your own client implementation
+
+See [`typescript-example/README.md`](typescript-example/README.md) for installation and usage instructions.
+
 ### Future Clients
 
 - **Desktop Client** (Electron/Tauri) - Planned
@@ -48,6 +68,11 @@ When adding a new client:
 clients/
 ├── README.md              # This file
 ├── cli/                   # Command-line client
+│   ├── src/
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── README.md
+├── typescript-example/    # TypeScript example client
 │   ├── src/
 │   ├── package.json
 │   ├── tsconfig.json

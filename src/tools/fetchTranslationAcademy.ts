@@ -49,14 +49,31 @@ export async function handleFetchTranslationAcademy(
 
     // Import dependencies
     const { EdgeXRayTracer } = await import("../functions/edge-xray.js");
-    const { UnifiedResourceFetcher } = await import(
-      "../../ui/src/lib/unifiedResourceFetcher.js"
+    const { ZipFetcherFactory } = await import(
+      "../services/zip-fetcher-provider.js"
     );
     const { parseTranslationAcademyRCLink, isTranslationAcademyRCLink } =
       await import("../../ui/src/lib/rcLinkParser.js");
+    const osModule = await import("os");
+    const pathModule = await import("path");
+    const os = osModule.default || osModule;
+    const path = pathModule.default || pathModule;
 
     const tracer = new EdgeXRayTracer(`ta-mcp-${Date.now()}`, "mcp-ta");
-    const fetcher = new UnifiedResourceFetcher(tracer);
+
+    // Use configurable ZIP fetcher provider (from config or environment)
+    const providerName =
+      (args as any).zipFetcherProvider ||
+      process.env.ZIP_FETCHER_PROVIDER ||
+      "auto";
+
+    const cacheDir =
+      typeof process !== "undefined" && process.env.CACHE_PATH
+        ? process.env.CACHE_PATH
+        : path.join(os.homedir(), ".translation-helps-mcp", "cache");
+
+    const zipFetcher = ZipFetcherFactory.create(providerName, cacheDir, tracer);
+    logger.info(`📦 Using ZIP fetcher provider: ${zipFetcher.name}`);
 
     // Priority: rcLink > path > moduleId
     let finalPath: string | undefined;
@@ -76,12 +93,13 @@ export async function handleFetchTranslationAcademy(
     }
     // If only moduleId provided (and not RC link), let fetcher handle category fallback
 
-    const result = await fetcher.fetchTranslationAcademy(
+    // Use ZipResourceFetcher2.getMarkdownContent directly (same as UnifiedResourceFetcher does)
+    const result = (await zipFetcher.getMarkdownContent(
       args.language || "en",
       args.organization || "unfoldingWord",
-      args.moduleId,
-      finalPath,
-    );
+      "ta",
+      finalPath || args.moduleId,
+    )) as any;
 
     // Extract title from content
     // Title is now at the beginning as # Title

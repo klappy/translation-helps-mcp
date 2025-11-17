@@ -10,7 +10,9 @@ import { fetchTranslationWords } from "../functions/translation-words-service.js
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
 import { EdgeXRayTracer } from "../functions/edge-xray.js";
-import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2.js";
+import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
+import * as os from "os";
+import * as path from "path";
 import {
   TermParam,
   PathParam,
@@ -35,7 +37,9 @@ export const GetTranslationWordArgs = z.object({
   category: z
     .string()
     .optional()
-    .describe("Filter by category (kt, names, other) - only used with reference"),
+    .describe(
+      "Filter by category (kt, names, other) - only used with reference",
+    ),
 });
 
 export type GetTranslationWordArgs = z.infer<typeof GetTranslationWordArgs>;
@@ -63,7 +67,35 @@ export async function handleGetTranslationWord(args: GetTranslationWordArgs) {
       });
 
       const tracer = new EdgeXRayTracer("mcp-tool", "fetch_translation_word");
-      const zipFetcher = new ZipResourceFetcher2(tracer);
+
+      // Use configurable ZIP fetcher provider (from config or environment)
+      const providerName =
+        (args as any).zipFetcherProvider ||
+        process.env.ZIP_FETCHER_PROVIDER ||
+        "auto";
+
+      const cacheDir =
+        typeof process !== "undefined" && process.env.CACHE_PATH
+          ? process.env.CACHE_PATH
+          : path.join(os.homedir(), ".translation-helps-mcp", "cache");
+
+      // Log which cache directory is being used
+      if (typeof process !== "undefined" && process.env.CACHE_PATH) {
+        logger.info(
+          `📁 getTranslationWord: Using CACHE_PATH from environment: ${process.env.CACHE_PATH}`,
+        );
+      } else {
+        logger.info(
+          `📁 getTranslationWord: Using default cache directory: ${cacheDir}`,
+        );
+      }
+
+      const zipFetcher = ZipFetcherFactory.create(
+        providerName,
+        cacheDir,
+        tracer,
+      );
+      logger.info(`📦 Using ZIP fetcher provider: ${zipFetcher.name}`);
 
       // Extract identifier from term, path, or rcLink (matches functionalDataFetchers.ts logic)
       let finalIdentifier: string | undefined;
@@ -115,7 +147,16 @@ export async function handleGetTranslationWord(args: GetTranslationWordArgs) {
         ...metadata,
       });
 
-      return response;
+      // Return in MCP format (wrapped in content array like other tools)
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(response, null, 2),
+          },
+        ],
+        isError: false,
+      };
     } else if (hasReference) {
       // Reference-based lookup (legacy, for backward compatibility)
       logger.info("Fetching translation words by reference", {

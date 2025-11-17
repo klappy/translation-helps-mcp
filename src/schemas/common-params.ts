@@ -1,6 +1,6 @@
 /**
  * Common Parameter Schemas
- * 
+ *
  * Shared Zod schemas for common parameters used across MCP tools and HTTP endpoints.
  * This provides a single source of truth for parameter definitions.
  */
@@ -67,9 +67,7 @@ export const IncludeAlignmentParam = z
   .boolean()
   .optional()
   .default(false)
-  .describe(
-    "Include word alignment data (only available with USFM format)",
-  );
+  .describe("Include word alignment data (only available with USFM format)");
 
 /**
  * Common includeVerseNumbers parameter
@@ -101,9 +99,7 @@ export const IncludeContextParam = z
   .boolean()
   .optional()
   .default(true)
-  .describe(
-    "Include contextual notes from related passages (default: true)",
-  );
+  .describe("Include contextual notes from related passages (default: true)");
 
 /**
  * Common term parameter
@@ -123,9 +119,7 @@ export const TermParam = z
 export const PathParam = z
   .string()
   .optional()
-  .describe(
-    "Explicit path to the resource file (e.g., bible/kt/love.md)",
-  );
+  .describe("Explicit path to the resource file (e.g., bible/kt/love.md)");
 
 /**
  * Common rcLink parameter
@@ -134,9 +128,7 @@ export const PathParam = z
 export const RCLinkParam = z
   .string()
   .optional()
-  .describe(
-    'RC link to the resource (e.g., "rc://*/tw/dict/bible/kt/love")',
-  );
+  .describe('RC link to the resource (e.g., "rc://*/tw/dict/bible/kt/love")');
 
 /**
  * Common moduleId parameter
@@ -178,4 +170,3 @@ export function createTermBasedSchema<T extends z.ZodRawShape>(
     ...additionalFields,
   });
 }
-

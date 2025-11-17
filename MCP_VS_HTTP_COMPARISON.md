@@ -5,6 +5,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 ## Summary of Mismatches
 
 ### ✅ **fetch_translation_word** - FIXED
+
 - **Status**: Now matches HTTP endpoint
 - **MCP**: Supports `term`, `path`, `rcLink`, `reference` (optional)
 - **HTTP**: Supports `term`, `path`, `rcLink` (TERM_PARAMS)
@@ -15,6 +16,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 ### ❌ **fetch_scripture** - HAS MISMATCHES
 
 **HTTP Endpoint Parameters:**
+
 - `reference` (required)
 - `language` (optional, default: "en")
 - `organization` (optional, default: "unfoldingWord")
@@ -25,6 +27,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 - `includeAlignment` (optional, default: false) - **MISSING IN MCP**
 
 **MCP Tool Parameters:**
+
 - `reference` (required)
 - `language` (optional, default: "en")
 - `organization` (optional, default: "unfoldingWord")
@@ -33,6 +36,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
   - Options: "text", "usfm" - **LIMITED OPTIONS**
 
 **Issues:**
+
 1. ❌ Missing `resource` parameter (HTTP allows selecting specific translations: ult, ust, all, etc.)
 2. ❌ Missing `includeAlignment` parameter
 3. ❌ `format` options don't match (HTTP has: json, text, md, markdown, usfm; MCP has: text, usfm)
@@ -43,6 +47,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 ### ⚠️ **fetch_translation_notes** - POTENTIAL MISMATCHES
 
 **HTTP Endpoint Parameters:**
+
 - `reference` (required)
 - `language` (optional, default: "en")
 - `organization` (optional, default: "unfoldingWord")
@@ -50,6 +55,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
   - Options: "json", "md", "text"
 
 **MCP Tool Parameters:**
+
 - `reference` (required)
 - `language` (optional, default: "en")
 - `organization` (optional, default: "unfoldingWord")
@@ -57,6 +63,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 - `includeContext` (optional, default: true) - **NOT IN HTTP**
 
 **Issues:**
+
 1. ⚠️ Missing `format` parameter (HTTP supports json, md, text)
 2. ⚠️ `includeIntro` and `includeContext` exist in MCP but not explicitly in HTTP endpoint config
    - These may be handled internally by the HTTP endpoint, but not exposed as parameters
@@ -66,6 +73,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 ### ❌ **fetch_translation_questions** - HAS MISMATCHES
 
 **HTTP Endpoint Parameters:**
+
 - `reference` (required)
 - `language` (optional, default: "en")
 - `organization` (optional, default: "unfoldingWord")
@@ -73,11 +81,13 @@ This document compares MCP tool implementations with their HTTP endpoint counter
   - Options: "json", "md", "text"
 
 **MCP Tool Parameters:**
+
 - `reference` (required)
 - `language` (optional, default: "en")
 - `organization` (optional, default: "unfoldingWord")
 
 **Issues:**
+
 1. ❌ Missing `format` parameter (HTTP supports json, md, text)
 
 ---
@@ -85,6 +95,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 ### ❌ **fetch_translation_word_links** - HAS MISMATCHES
 
 **HTTP Endpoint Parameters:**
+
 - `reference` (required)
 - `language` (optional, default: "en")
 - `organization` (optional, default: "unfoldingWord")
@@ -92,11 +103,13 @@ This document compares MCP tool implementations with their HTTP endpoint counter
   - Options: "json", "md", "text"
 
 **MCP Tool Parameters:**
+
 - `reference` (required)
 - `language` (optional, default: "en")
 - `organization` (optional, default: "unfoldingWord")
 
 **Issues:**
+
 1. ❌ Missing `format` parameter (HTTP supports json, md, text)
 
 ---
@@ -104,6 +117,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 ### ⚠️ **fetch_translation_academy** - POTENTIAL MISMATCHES
 
 **HTTP Endpoint Parameters:**
+
 - `moduleId` (optional)
 - `path` (optional)
 - `rcLink` (optional)
@@ -113,6 +127,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
   - Options: "json", "md", "markdown"
 
 **MCP Tool Parameters:**
+
 - `moduleId` (optional)
 - `path` (optional)
 - `rcLink` (optional)
@@ -122,6 +137,7 @@ This document compares MCP tool implementations with their HTTP endpoint counter
   - Options: "json", "markdown"
 
 **Issues:**
+
 1. ⚠️ `format` options don't fully match (HTTP has: json, md, markdown; MCP has: json, markdown)
    - HTTP "md" might be same as "markdown", but should verify
 
@@ -146,4 +162,3 @@ This document compares MCP tool implementations with their HTTP endpoint counter
 
 1. **fetch_scripture**: Verify if `includeVerseNumbers` should be removed or if HTTP should add it
 2. **fetch_translation_notes**: Verify if `includeIntro` and `includeContext` are handled by HTTP endpoint internally
-

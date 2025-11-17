@@ -12,6 +12,9 @@ node_modules/
 # Environment variables
 .env
 
+# CLI configuration (project-local)
+.translation-helps-cli.json
+
 # Editor directories and files
 .idea
 .vscode

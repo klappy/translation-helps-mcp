@@ -146,9 +146,9 @@ export async function fetchTranslationWords(
   }
 
   // Parse the word links for the specific verse/chapter
-  const wordIds = parseWordLinksFromTSV(linksData, parsedRef);
+  const terms = parseWordLinksFromTSV(linksData, parsedRef);
   logger.info(`Found word links for reference`, {
-    count: wordIds.length,
+    count: terms.length,
     reference,
   });
 
@@ -189,13 +189,13 @@ function parseWordLinksFromTSV(
   reference: { book: string; chapter: number; verse?: number },
 ): string[] {
   const lines = tsvData.split("\n").filter((line) => line.trim());
-  const wordIds: string[] = [];
+  const terms: string[] = [];
 
   for (const line of lines) {
     const columns = line.split("\t");
     if (columns.length < 5) continue; // Skip malformed lines
 
-    const [ref, , , , wordId] = columns;
+    const [ref, , , , term] = columns;
 
     // Parse the reference to check if it matches
     const refMatch = ref.match(/(\d+):(\d+)/);
@@ -213,10 +213,10 @@ function parseWordLinksFromTSV(
       include = chapterNum === reference.chapter;
     }
 
-    if (include && wordId && wordId.trim()) {
-      wordIds.push(wordId.trim());
+    if (include && term && term.trim()) {
+      terms.push(term.trim());
     }
   }
 
-  return [...new Set(wordIds)]; // Remove duplicates
+  return [...new Set(terms)]; // Remove duplicates
 }

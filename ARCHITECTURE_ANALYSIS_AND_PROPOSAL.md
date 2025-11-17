@@ -5,12 +5,14 @@
 ### How It Works Now
 
 **HTTP Endpoints:**
+
 1. **Route Generator** (`src/config/RouteGenerator.ts`) generates HTTP handlers from endpoint configs
 2. **Functional Data Fetchers** (`src/config/functionalDataFetchers.ts`) contain the actual data fetching logic
 3. **Endpoint Configs** (`src/config/endpoints/*.ts`) define parameters, shapes, and examples
 4. HTTP endpoints call `functionalDataFetchers` which **directly call `ZipResourceFetcher2`** (bypassing core services)
 
 **MCP Tools:**
+
 1. **MCP Tool Handlers** (`src/tools/*.ts`) are separate implementations
 2. They call **Core Services** directly:
    - `fetchScripture` from `src/functions/scripture-service.ts`
@@ -19,6 +21,7 @@
 3. **MCP Tool Schemas** are defined in each tool file (e.g., `FetchScriptureArgs`)
 
 **The Critical Issue:**
+
 - HTTP endpoints bypass core services and call `ZipResourceFetcher2` directly
 - MCP tools use core services which also call `ZipResourceFetcher2`
 - **Result**: Two different code paths with different parameter handling
@@ -41,6 +44,7 @@ HTTP Endpoints                    MCP Tools
 ```
 
 **Issues:**
+
 1. **Parameter Mismatches**: HTTP endpoints use `EndpointConfig.params`, MCP tools use custom Zod schemas
 2. **Different Code Paths**: HTTP goes through `functionalDataFetchers`, MCP goes through `*-service.ts`
 3. **No Single Source of Truth**: Parameters are defined in two places
@@ -49,6 +53,7 @@ HTTP Endpoints                    MCP Tools
 ## Root Cause
 
 The architecture evolved organically:
+
 - HTTP endpoints were built first with `RouteGenerator` + `functionalDataFetchers`
 - MCP tools were added later, calling core services directly
 - Both use the same underlying services (`ZipResourceFetcher2`, etc.) but have different parameter interfaces
@@ -95,16 +100,17 @@ The architecture evolved organically:
 **Implementation Steps:**
 
 1. **Define Unified Service Interfaces** (already partially done):
+
    ```typescript
    // src/functions/scripture-service.ts
    export interface ScriptureOptions {
      reference: string;
      language?: string;
      organization?: string;
-     resource?: string;        // ADD: ult, ust, all, etc.
-     format?: "text" | "usfm" | "json" | "md" | "markdown";  // EXPAND
+     resource?: string; // ADD: ult, ust, all, etc.
+     format?: "text" | "usfm" | "json" | "md" | "markdown"; // EXPAND
      includeVerseNumbers?: boolean;
-     includeAlignment?: boolean;  // ADD
+     includeAlignment?: boolean; // ADD
      // ... other options
    }
    ```
@@ -114,13 +120,14 @@ The architecture evolved organically:
    - Make services the complete, authoritative interface
 
 3. **Update HTTP Endpoints** to use core services instead of calling `ZipResourceFetcher2` directly:
+
    ```typescript
    // In functionalDataFetchers.ts - CHANGE THIS:
    // OLD: scriptures = await zipFetcher.getScripture(...)
-   
+
    // NEW: Use core service
    import { fetchScripture } from "../functions/scripture-service.js";
-   
+
    const serviceOptions: ScriptureOptions = {
      reference: params.reference,
      language: params.language,
@@ -134,20 +141,21 @@ The architecture evolved organically:
    ```
 
 4. **Update MCP Tools** to use the same service options:
+
    ```typescript
    // src/tools/fetchScripture.ts
    export const FetchScriptureArgs = z.object({
      reference: z.string(),
      language: z.string().optional().default("en"),
      organization: z.string().optional().default("unfoldingWord"),
-     resource: z.string().optional().default("all"),  // ADD
-     format: z.enum(["text", "usfm", "json", "md", "markdown"]).optional(),  // EXPAND
-     includeAlignment: z.boolean().optional().default(false),  // ADD
+     resource: z.string().optional().default("all"), // ADD
+     format: z.enum(["text", "usfm", "json", "md", "markdown"]).optional(), // EXPAND
+     includeAlignment: z.boolean().optional().default(false), // ADD
      // ... match ScriptureOptions exactly
    });
 
    export async function handleFetchScripture(args: FetchScriptureArgs) {
-     const result = await fetchScripture(args);  // Direct pass-through
+     const result = await fetchScripture(args); // Direct pass-through
      return formatMCPResponse(result);
    }
    ```
@@ -190,11 +198,13 @@ The architecture evolved organically:
 ```
 
 **Pros:**
+
 - Single source of truth in config files
 - Can generate both HTTP and MCP automatically
 - Documentation, examples, and validation in one place
 
 **Cons:**
+
 - Requires significant refactoring
 - Less flexible for MCP-specific needs
 - Config files become more complex
@@ -202,6 +212,7 @@ The architecture evolved organically:
 ## Recommendation: Option 1 (Core Services)
 
 **Why Option 1 is better:**
+
 1. ✅ **Minimal Changes**: Core services already exist and are used by MCP tools
 2. ✅ **Type Safety**: TypeScript interfaces provide compile-time validation
 3. ✅ **Flexibility**: Services can evolve independently of HTTP/MCP concerns
@@ -209,6 +220,7 @@ The architecture evolved organically:
 5. ✅ **Incremental**: Can be implemented tool-by-tool
 
 **Implementation Priority:**
+
 1. **High Priority**: `fetch_scripture` (most mismatches)
 2. **Medium Priority**: `fetch_translation_notes`, `fetch_translation_questions`, `fetch_translation_word_links`
 3. **Low Priority**: `fetch_translation_academy` (fewer mismatches)
@@ -229,4 +241,3 @@ The architecture evolved organically:
 - ✅ **Better Testing**: Test services once, both paths benefit
 - ✅ **Type Safety**: TypeScript ensures consistency
 - ✅ **Documentation**: One place to document all parameters
-

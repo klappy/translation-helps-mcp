@@ -9,6 +9,8 @@ import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
+import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
+import { EdgeXRayTracer } from "./edge-xray";
 
 export interface TranslationQuestion {
   id: string;
@@ -203,36 +205,49 @@ export async function fetchTranslationQuestions(
     );
   }
 
-  // Build URL from ingredient path
-  const ingredientPath = ingredient.path.replace(/^\.\//, "");
-  const fileUrl = `https://git.door43.org/${organization}/${resourceInfo.name}/raw/branch/master/${ingredientPath}`;
+  // Use ZIP-based fetching via ZipFetcherFactory (pluggable system)
+  const tracer = new EdgeXRayTracer(
+    `tq-${Date.now()}`,
+    "translation-questions-service",
+  );
+  const zipFetcherProvider = ZipFetcherFactory.create(
+    (options.zipFetcherProvider as "r2" | "fs" | "auto") ||
+      (process.env.ZIP_FETCHER_PROVIDER as "r2" | "fs" | "auto") ||
+      "auto",
+    process.env.CACHE_PATH,
+    tracer,
+  );
 
-  // Try to get from cache first
-  const cacheKey = `tq:${fileUrl}`;
-  let tsvData = await cache.getFileContent(cacheKey);
+  // Get TSV rows from ZIP (already parsed and filtered by reference)
+  const rows = (await zipFetcherProvider.getTSVData(
+    {
+      book: parsedRef.book,
+      chapter: parsedRef.chapter!,
+      verse: parsedRef.verse,
+    },
+    language,
+    organization,
+    "tq",
+  )) as Array<Record<string, string>>;
 
-  if (!tsvData) {
-    logger.info(`Cache miss for TQ file, downloading...`);
-    const fileResponse = await proxyFetch(fileUrl);
-    if (!fileResponse.ok) {
-      logger.error(`Failed to fetch TQ file`, { status: fileResponse.status });
-      throw new Error(
-        `Failed to fetch translation questions content: ${fileResponse.status}`,
-      );
-    }
+  logger.info(`Fetched TSV rows from ZIP`, { count: rows.length });
 
-    tsvData = await fileResponse.text();
-    logger.info(`Downloaded TSV data`, { length: tsvData.length });
+  // Convert rows to TranslationQuestion format
+  // The rows are already filtered by reference, so we just need to map them
+  const questions: TranslationQuestion[] = rows.map((row) => {
+    const question: TranslationQuestion = {
+      id: row.ID || row.Id || "",
+      reference: row.Reference || row.reference || "",
+      question: row.Question || row.question || "",
+      response: row.Response || row.response || "",
+      tags:
+        row.Tags || row.tags
+          ? (row.Tags || row.tags).split(",").map((t) => t.trim())
+          : undefined,
+    };
+    return question;
+  });
 
-    // Cache the file content
-    await cache.setFileContent(cacheKey, tsvData);
-    logger.info(`Cached TQ file`, { length: tsvData.length });
-  } else {
-    logger.info(`Cache hit for TQ file`, { length: tsvData.length });
-  }
-
-  // Parse the TSV data
-  const questions = parseTQFromTSV(tsvData, parsedRef);
   logger.info(`Parsed translation questions`, { count: questions.length });
 
   const result: TranslationQuestionsResult = {

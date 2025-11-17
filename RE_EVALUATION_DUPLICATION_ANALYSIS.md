@@ -5,6 +5,7 @@ After implementing shared utilities for MCP tools, this document analyzes what d
 ## Current State
 
 ### ✅ **What We've Unified (MCP Tools)**
+
 - **Metadata Generation**: All MCP tools now use `buildMetadata()`
 - **Error Handling**: All MCP tools now use `handleMCPError()`
 - **Parameter Schemas**: All MCP tools use shared Zod schemas from `common-params.ts`
@@ -14,6 +15,7 @@ After implementing shared utilities for MCP tools, this document analyzes what d
 ## 1. **Data Fetching Logic** (CRITICAL - High Priority)
 
 **HTTP Endpoints:**
+
 ```typescript
 // src/config/functionalDataFetchers.ts
 case "getScripture": {
@@ -30,6 +32,7 @@ case "getScripture": {
 ```
 
 **MCP Tools:**
+
 ```typescript
 // src/tools/fetchScripture.ts
 const result = await fetchScripture({
@@ -42,11 +45,13 @@ const result = await fetchScripture({
 ```
 
 **The Problem:**
+
 - HTTP endpoints call `ZipResourceFetcher2` directly via `functionalDataFetchers`
 - MCP tools call core services (`scripture-service.ts`, `translation-notes-service.ts`, etc.)
 - **Result**: Two different code paths for the same data
 
 **Solution (Already Proposed):**
+
 - Make HTTP endpoints use core services instead of calling `ZipResourceFetcher2` directly
 - This is covered in `ARCHITECTURE_ANALYSIS_AND_PROPOSAL.md`
 
@@ -55,6 +60,7 @@ const result = await fetchScripture({
 ## 2. **Parameter Parsing & Validation** (High Priority)
 
 **HTTP Endpoints:**
+
 ```typescript
 // src/config/RouteGenerator.ts
 private parseParameters(request, paramConfigs) {
@@ -71,6 +77,7 @@ private validateParameters(params, paramConfigs) {
 ```
 
 **MCP Tools:**
+
 ```typescript
 // MCP SDK handles parsing automatically
 // Zod schemas handle validation automatically
@@ -78,11 +85,13 @@ private validateParameters(params, paramConfigs) {
 ```
 
 **The Problem:**
+
 - HTTP has custom parsing/validation logic in `RouteGenerator`
 - MCP uses Zod schemas (automatic via MCP SDK)
 - **Result**: Different validation logic, different error formats
 
 **Solution:**
+
 - Could generate Zod schemas from `EndpointConfig.params`
 - Or convert Zod schemas to `EndpointConfig.params` format
 - Use shared validation logic
@@ -92,6 +101,7 @@ private validateParameters(params, paramConfigs) {
 ## 3. **Error Response Formatting** (Medium Priority)
 
 **HTTP Endpoints:**
+
 ```typescript
 // src/config/RouteGenerator.ts
 private generateErrorResponse(statusCode, message, details, responseTime) {
@@ -111,6 +121,7 @@ private generateErrorResponse(statusCode, message, details, responseTime) {
 ```
 
 **MCP Tools:**
+
 ```typescript
 // src/utils/mcp-error-handler.ts
 return {
@@ -120,11 +131,13 @@ return {
 ```
 
 **The Problem:**
+
 - HTTP returns HTTP response format (statusCode, body, headers)
 - MCP returns MCP protocol format (content array, isError flag)
 - **Result**: Different error response structures
 
 **Solution:**
+
 - This is **intentional** - different protocols need different formats
 - But we could share the error message construction logic
 - Could create `buildErrorDetails()` utility
@@ -134,6 +147,7 @@ return {
 ## 4. **Response Formatting** (Medium Priority)
 
 **HTTP Endpoints:**
+
 ```typescript
 // src/services/ResponseFormatter.ts
 public format(data, format, params, metadata) {
@@ -146,6 +160,7 @@ public format(data, format, params, metadata) {
 ```
 
 **MCP Tools:**
+
 ```typescript
 // MCP tools return structured objects
 return {
@@ -161,11 +176,13 @@ return {
 ```
 
 **The Problem:**
+
 - HTTP uses `ResponseFormatter` service for text/md/json formats
 - MCP tools return raw data or simple text content
 - **Result**: Different formatting approaches
 
 **Solution:**
+
 - MCP tools could use `ResponseFormatter` for text/markdown formats
 - Or create MCP-specific formatter that wraps `ResponseFormatter`
 
@@ -174,18 +191,21 @@ return {
 ## 5. **Reference Parsing** (Low Priority - Already Mostly Shared)
 
 **HTTP Endpoints:**
+
 ```typescript
 // src/config/functionalDataFetchers.ts
 const reference = parseReference(normalizedRefStr);
 ```
 
 **MCP Tools:**
+
 ```typescript
 // src/tools/fetchTranslationWordLinks.ts
 const reference = parseReference(args.reference);
 ```
 
 **Status:**
+
 - ✅ Both use `parseReference()` from `parsers/referenceParser.ts`
 - ⚠️ But HTTP also uses `functions/reference-parser.ts` in some places
 - **Minor**: Could consolidate to single parser
@@ -195,6 +215,7 @@ const reference = parseReference(args.reference);
 ## 6. **Performance Tracking** (Low Priority)
 
 **HTTP Endpoints:**
+
 ```typescript
 // src/config/RouteGenerator.ts
 performanceMonitor.recordMetrics({
@@ -209,17 +230,20 @@ performanceMonitor.recordMetrics({
 ```
 
 **MCP Tools:**
+
 ```typescript
 // Currently no performance tracking
 // Metadata includes responseTime, but not recorded to performanceMonitor
 ```
 
 **The Problem:**
+
 - HTTP tracks metrics via `performanceMonitor`
 - MCP tools don't track metrics
 - **Result**: No visibility into MCP tool performance
 
 **Solution:**
+
 - Add `performanceMonitor.recordMetrics()` calls to MCP tools
 - Or create shared wrapper that tracks automatically
 
@@ -228,6 +252,7 @@ performanceMonitor.recordMetrics({
 ## 7. **Response Transformation** (Medium Priority)
 
 **HTTP Endpoints:**
+
 ```typescript
 // src/config/functionalDataFetchers.ts
 // Manual transformation of ZipResourceFetcher2 results
@@ -243,6 +268,7 @@ return {
 ```
 
 **MCP Tools:**
+
 ```typescript
 // Core services handle transformation
 const result = await fetchScripture(...);
@@ -250,11 +276,13 @@ const result = await fetchScripture(...);
 ```
 
 **The Problem:**
+
 - HTTP endpoints manually transform `ZipResourceFetcher2` results
 - MCP tools get pre-transformed data from core services
 - **Result**: HTTP has transformation logic that MCP doesn't need
 
 **Solution:**
+
 - If HTTP uses core services, transformation happens once in the service
 - Eliminates duplicate transformation logic
 
@@ -263,16 +291,19 @@ const result = await fetchScripture(...);
 ## Summary: Remaining Duplication
 
 ### Critical (Must Fix)
+
 1. **Data Fetching Logic** - HTTP bypasses core services, calls `ZipResourceFetcher2` directly
    - **Impact**: Two code paths, different behavior, harder to maintain
    - **Solution**: Make HTTP use core services (already proposed)
 
 ### High Priority (Should Fix)
+
 2. **Parameter Parsing/Validation** - Different validation systems
    - **Impact**: Inconsistent validation, different error messages
    - **Solution**: Generate Zod schemas from endpoint configs or vice versa
 
 ### Medium Priority (Nice to Have)
+
 3. **Response Formatting** - Different formatting approaches
    - **Impact**: Inconsistent output formats
    - **Solution**: Share formatting logic where possible
@@ -282,6 +313,7 @@ const result = await fetchScripture(...);
    - **Solution**: Resolved if HTTP uses core services
 
 ### Low Priority (Optional)
+
 5. **Performance Tracking** - MCP tools don't track metrics
    - **Impact**: No visibility into MCP performance
    - **Solution**: Add performance tracking to MCP tools
@@ -295,26 +327,34 @@ const result = await fetchScripture(...);
 ## Recommended Next Steps
 
 ### Phase 1: Critical Fix (Highest Impact)
+
 **Make HTTP endpoints use core services:**
+
 1. Update `functionalDataFetchers.ts` to call core services instead of `ZipResourceFetcher2` directly
 2. Remove duplicate transformation logic from HTTP endpoints
 3. **Result**: Single code path for data fetching
 
 ### Phase 2: Parameter Validation Unification
+
 **Create shared validation layer:**
+
 1. Generate Zod schemas from `EndpointConfig.params` OR
 2. Generate `EndpointConfig.params` from Zod schemas
 3. Use shared validation logic for both HTTP and MCP
 4. **Result**: Consistent validation across both systems
 
 ### Phase 3: Response Formatting Sharing
+
 **Share formatting logic:**
+
 1. Create MCP-specific wrapper for `ResponseFormatter`
 2. Use shared formatter for text/markdown formats in MCP tools
 3. **Result**: Consistent formatting
 
 ### Phase 4: Performance Tracking
+
 **Add metrics to MCP tools:**
+
 1. Create wrapper that automatically tracks performance
 2. Add to all MCP tool handlers
 3. **Result**: Full observability
@@ -331,10 +371,10 @@ MCP:  Tool Handler → Core Service → ZipResourceFetcher2 (via service)
 ```
 
 **If we fix this (make HTTP use core services), we eliminate:**
+
 - Duplicate data fetching logic
 - Duplicate transformation logic
 - Different parameter handling
 - Different error handling in data layer
 
 **This single change would eliminate ~70% of remaining duplication.**
-

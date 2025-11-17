@@ -1,6 +1,6 @@
 /**
  * Parameter Schema Generator
- * 
+ *
  * Utilities to convert between EndpointConfig.params and Zod schemas.
  * This allows HTTP endpoints and MCP tools to share the same parameter definitions.
  */
@@ -119,12 +119,12 @@ export function zodToParamConfig(
   // Handle base types
   if (zodType instanceof z.ZodString) {
     config.type = "string";
-    
+
     // Check for enum
     if (zodType instanceof z.ZodEnum) {
       config.enum = zodType._def.values;
     }
-    
+
     // Check for regex (min/max would need to be extracted from refinements)
     // This is a simplified version - full implementation would need to parse refinements
   } else if (zodType instanceof z.ZodNumber) {
@@ -152,9 +152,11 @@ export function generateParamsFromZodSchema(
   const params: Record<string, ParamConfig> = {};
 
   for (const [fieldName, fieldSchema] of Object.entries(schema.shape)) {
-    params[fieldName] = zodToParamConfig(fieldName, fieldSchema as z.ZodTypeAny);
+    params[fieldName] = zodToParamConfig(
+      fieldName,
+      fieldSchema as z.ZodTypeAny,
+    );
   }
 
   return params;
 }
-

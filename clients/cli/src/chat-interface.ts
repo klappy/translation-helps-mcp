@@ -103,6 +103,25 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Example: Instead of saying "figs-metaphor", say "Metaphor [TA v86]"
    - Include the actual article titles to give users proper context
    - ALWAYS include Translation Academy articles section when present in the data
+   
+   **CRITICAL FOR TRANSLATION WORD ARTICLES:**
+   - **FIRST RESPONSE RULE: When a translation word article is provided, your FIRST response MUST include the COMPLETE article content - do NOT just show the title or a summary**
+   - When a translation word article is provided, you MUST include ALL sections in your FIRST response:
+     * Definition (with ALL meanings/definitions listed - copy the full text)
+     * Translation Suggestions (ALL suggestions provided - copy the full text)
+     * Bible References (ALL passages listed - this is critical!)
+     * Examples from the Bible stories (ALL examples - copy the full text)
+     * Word Data (Strong's numbers if present)
+   - **DO NOT summarize, paraphrase, or give a brief overview - provide the COMPLETE content from each section verbatim**
+   - **DO NOT ask "Would you like to explore further?" until AFTER you've shown the complete article content**
+   - If the article contains a "Bible References" section, you MUST list ALL passages in your first response
+   - If the article contains "Examples from the Bible stories", you MUST include ALL examples in your first response
+   - **WHEN USER ASKS "What passages use this term?" or "What scripture passages use this term?" or similar:**
+     * Look for the "## Bible References:" section in the article markdown
+     * List EVERY SINGLE passage from that section
+     * Do NOT say "I don't have access" - the passages are in the article you received
+     * Format them clearly (e.g., "John 3:16", "1 Corinthians 13:7", etc.)
+     * If the section shows RC links like "[1 Corinthians 13:7](rc://en/tn/help/1co/13/07)", extract just the reference part (e.g., "1 Corinthians 13:7")
 
 5. GUIDED LEARNING CONVERSATION STRUCTURE:
    
@@ -359,9 +378,99 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
     try {
       // Check if message contains a Bible reference
       const bibleRef = this.extractBibleReference(message);
+      // Check if message is a term-based question (e.g., "What is love?", "Who is Paul?")
+      const term = this.extractTermFromQuestion(message);
 
       let contextMessage = "";
 
+      // Handle term-based questions (e.g., "What is love?", "Who is Paul?")
+      if (term && !bibleRef && this.mcpClient.isConnected()) {
+        try {
+          const wordData = await this.mcpClient.callTool(
+            "fetch_translation_word",
+            {
+              term: term,
+              language: "en",
+              organization: "unfoldingWord",
+            },
+          );
+
+          // Handle both response formats:
+          // 1. Wrapped in content: { content: [{ type: "text", text: "..." }] }
+          // 2. Direct object: { articles: [...], language: "...", ... }
+          let parsedData: any;
+          if (wordData.content?.[0]?.text) {
+            // Response is wrapped in content array
+            parsedData = JSON.parse(wordData.content[0].text);
+          } else if (wordData.articles) {
+            // Response is direct object
+            parsedData = wordData;
+          } else {
+            console.log(
+              chalk.yellow(`⚠️  Unexpected response format from MCP server`),
+            );
+            console.log(
+              chalk.gray(`Response keys: ${Object.keys(wordData).join(", ")}`),
+            );
+            parsedData = wordData;
+          }
+
+          if (
+            parsedData.articles &&
+            Array.isArray(parsedData.articles) &&
+            parsedData.articles.length > 0
+          ) {
+            // Format the word data for AI context
+            contextMessage = this.formatTranslationWordData(parsedData, term);
+
+            // Only show debug info if DEBUG_MCP is enabled
+            if (process.env.DEBUG_MCP === "true") {
+              console.log(chalk.gray(`\n✅ Translation Word Data Received:`));
+              console.log(
+                chalk.cyan(`📚 Found ${parsedData.articles.length} article(s)`),
+              );
+              console.log(
+                chalk.gray(
+                  `📝 Context message length: ${contextMessage.length} characters`,
+                ),
+              );
+              console.log(
+                chalk.gray(
+                  `📄 Context message preview (first 1000 chars):\n${contextMessage.substring(0, 1000)}...\n`,
+                ),
+              );
+
+              const fs = await import("fs");
+              const debugFile = `.mcp-word-debug-${Date.now()}.json`;
+              fs.writeFileSync(
+                debugFile,
+                JSON.stringify(
+                  {
+                    term,
+                    parsedData,
+                    contextMessage,
+                    articleMarkdown:
+                      parsedData.articles?.[0]?.markdown?.substring(0, 500),
+                  },
+                  null,
+                  2,
+                ),
+              );
+              console.log(
+                chalk.gray(`💾 Full debug data saved to: ${debugFile}\n`),
+              );
+            }
+          }
+        } catch (error) {
+          console.log(
+            chalk.red(
+              `\n❌ MCP Error fetching translation word: ${error instanceof Error ? error.message : String(error)}\n`,
+            ),
+          );
+        }
+      }
+
+      // Handle Bible reference-based questions
       if (bibleRef && this.mcpClient.isConnected()) {
         // Discover available prompts dynamically (like Svelte app)
         const prompts = await this.mcpClient.listPrompts();
@@ -369,21 +478,18 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
           (p) => p.name === "translation-helps-for-passage",
         );
 
-        if (prompt) {
-          console.log(chalk.gray(`\n📖 Fetching data for ${bibleRef}...`));
-          console.log(chalk.gray(`🔧 MCP Prompt: ${prompt.name}`));
-          console.log(
-            chalk.gray(`🔧 Description: ${prompt.description || "N/A"}`),
-          );
-          console.log(
-            chalk.gray(`🔧 Parameters: { reference: "${bibleRef}" }`),
-          );
-        } else {
-          console.log(
-            chalk.yellow(
-              `\n⚠️  Prompt 'translation-helps-for-passage' not found, using direct tool calls`,
-            ),
-          );
+        // Only show debug info if DEBUG_MCP is enabled
+        if (process.env.DEBUG_MCP === "true") {
+          if (prompt) {
+            console.log(chalk.gray(`\n📖 Fetching data for ${bibleRef}...`));
+            console.log(chalk.gray(`🔧 MCP Prompt: ${prompt.name}`));
+          } else {
+            console.log(
+              chalk.yellow(
+                `\n⚠️  Prompt 'translation-helps-for-passage' not found, using direct tool calls`,
+              ),
+            );
+          }
         }
 
         try {
@@ -393,50 +499,40 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
           );
 
           if (data) {
-            // Log the actual data received
-            console.log(chalk.gray(`\n✅ MCP Response Received:`));
-
-            if (data.scripture?.text) {
-              const fullText = data.scripture.text.trim();
-              console.log(chalk.cyan(`\n📖 SCRIPTURE (ULT):`));
-              console.log(chalk.white(`"${fullText}"`));
-              console.log(
-                chalk.gray(`Length: ${fullText.length} characters\n`),
-              );
-            } else {
-              console.log(chalk.yellow(`⚠️  No scripture text in response`));
-            }
-
-            if (data.notes?.items) {
-              console.log(
-                chalk.gray(`📝 Notes: ${data.notes.items.length} items`),
-              );
-            }
-
-            if (data.words) {
-              console.log(chalk.gray(`📚 Words: ${data.words.length} items`));
-            }
-
-            if (data.academyArticles) {
-              console.log(
-                chalk.gray(
-                  `🎓 Academy: ${data.academyArticles.length} articles`,
-                ),
-              );
-            }
-
-            if (data.questions?.items) {
-              console.log(
-                chalk.gray(
-                  `❓ Questions: ${data.questions.items.length} items`,
-                ),
-              );
-            }
-
-            console.log(chalk.gray(`\n🤖 Sending to AI with this data...\n`));
-
-            // Optionally save full response for debugging
+            // Only show debug info if DEBUG_MCP is enabled
             if (process.env.DEBUG_MCP === "true") {
+              console.log(chalk.gray(`\n✅ MCP Response Received:`));
+              if (data.scripture?.text) {
+                const fullText = data.scripture.text.trim();
+                console.log(
+                  chalk.cyan(
+                    `📖 SCRIPTURE (ULT): "${fullText.substring(0, 100)}..."`,
+                  ),
+                );
+              }
+              if (data.notes?.items) {
+                console.log(
+                  chalk.gray(`📝 Notes: ${data.notes.items.length} items`),
+                );
+              }
+              if (data.words) {
+                console.log(chalk.gray(`📚 Words: ${data.words.length} items`));
+              }
+              if (data.academyArticles) {
+                console.log(
+                  chalk.gray(
+                    `🎓 Academy: ${data.academyArticles.length} articles`,
+                  ),
+                );
+              }
+              if (data.questions?.items) {
+                console.log(
+                  chalk.gray(
+                    `❓ Questions: ${data.questions.items.length} items`,
+                  ),
+                );
+              }
+
               const fs = await import("fs");
               const debugFile = `.mcp-debug-${Date.now()}.json`;
               fs.writeFileSync(debugFile, JSON.stringify(data, null, 2));
@@ -446,8 +542,6 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
             }
 
             contextMessage = this.formatTranslationData(data, bibleRef);
-          } else {
-            console.log(chalk.yellow(`⚠️  MCP returned no data`));
           }
         } catch (error) {
           console.log(
@@ -461,6 +555,13 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
       // Add context to messages if we have it (clean format matching UI)
       if (contextMessage) {
         // Add system message with data (the system prompt already has all the rules)
+        if (process.env.DEBUG_MCP === "true") {
+          console.log(
+            chalk.gray(
+              `\n📤 Sending to AI:\n- Context message: ${contextMessage.substring(0, 200)}...\n- User message: ${message}\n`,
+            ),
+          );
+        }
         this.messages.push({
           role: "system",
           content: contextMessage,
@@ -597,6 +698,37 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
   }
 
   /**
+   * Extract term from question (e.g., "What is love?" -> "love")
+   */
+  private extractTermFromQuestion(message: string): string | null {
+    // Patterns for term-based questions
+    const patterns = [
+      /^(?:what|who|define|tell me about|explain)\s+(?:is|are|was|were)?\s+(?:the\s+)?(?:biblical\s+|bible\s+)?(?:term\s+|word\s+|concept\s+)?['"]?([^'"?]+)['"]?\s*\??$/i,
+      /^(?:what|who|define|tell me about|explain)\s+(?:is|are|was|were)?\s+['"]?([^'"?]+)['"]?\s*(?:in\s+the\s+bible|biblically)?\s*\??$/i,
+      /^(?:what|who|define|tell me about|explain)\s+['"]?([^'"?]+)['"]?\s*\??$/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = message.trim().match(pattern);
+      if (match && match[1]) {
+        const term = match[1].trim().toLowerCase();
+        // Filter out common stop words and phrases
+        if (
+          term &&
+          !term.match(
+            /^(the|a|an|is|are|was|were|in|on|at|to|for|of|with|from)$/i,
+          ) &&
+          term.length > 1
+        ) {
+          return term;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Format translation data for AI context
    */
   private formatTranslationData(data: any, reference: string): string {
@@ -609,15 +741,29 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
     }
 
     // Add translation notes
-    if (data.notes?.items && data.notes.items.length > 0) {
-      context += `Translation Notes (${data.notes.items.length} notes):\n`;
-      for (const note of data.notes.items) {
-        if (note.Note && note.Note.trim()) {
-          context += `- Quote: "${note.Quote || ""}"\n`;
-          context += `  Note: ${note.Note}\n`;
-          context += `  Reference: ${note.Reference || reference}\n`;
-          if (note.SupportReference) {
-            context += `  SupportReference: ${note.SupportReference}\n`;
+    // Handle both old format (items) and new format (verseNotes/contextNotes)
+    const allNotes = [
+      ...(data.notes?.verseNotes || []),
+      ...(data.notes?.contextNotes || []),
+      ...(data.notes?.items || []),
+    ];
+    if (allNotes.length > 0) {
+      context += `Translation Notes (${allNotes.length} notes):\n`;
+      for (const note of allNotes) {
+        // Handle both uppercase and lowercase field names
+        const noteText = note.Note || note.note || "";
+        const quote = note.Quote || note.quote || "";
+        const noteRef = note.Reference || note.reference || reference;
+        const supportRef = note.SupportReference || note.supportReference;
+
+        if (noteText && noteText.trim()) {
+          if (quote) {
+            context += `- Quote: "${quote}"\n`;
+          }
+          context += `  Note: ${noteText}\n`;
+          context += `  Reference: ${noteRef}\n`;
+          if (supportRef) {
+            context += `  SupportReference: ${supportRef}\n`;
           }
           context += `\n`;
         }
@@ -649,17 +795,128 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`;
     }
 
     // Add translation questions
-    if (data.questions?.items && data.questions.items.length > 0) {
-      context += `Translation Questions (${data.questions.items.length} questions):\n`;
-      for (const q of data.questions.items) {
-        if (q.Question) {
-          context += `- Question: ${q.Question}\n`;
-          if (q.Response) {
-            context += `  Response: ${q.Response}\n`;
+    // Handle both old format (items) and new format (translationQuestions)
+    const allQuestions =
+      data.questions?.translationQuestions || data.questions?.items || [];
+    if (allQuestions.length > 0) {
+      context += `Translation Questions (${allQuestions.length} questions):\n`;
+      for (const q of allQuestions) {
+        // Handle both uppercase and lowercase field names
+        const questionText = q.Question || q.question || "";
+        const responseText = q.Response || q.response || "";
+
+        if (questionText) {
+          context += `- Question: ${questionText}\n`;
+          if (responseText) {
+            context += `  Response: ${responseText}\n`;
           }
           context += `\n`;
         }
       }
+    }
+
+    return context;
+  }
+
+  /**
+   * Format translation word data for AI context
+   */
+  private formatTranslationWordData(data: any, term: string): string {
+    let context = `Translation Word Data for "${term}":\n\n`;
+    context += `**CRITICAL INSTRUCTIONS FOR YOUR RESPONSE:**
+- This is the COMPLETE translation word article with ALL sections
+- **YOUR FIRST RESPONSE MUST INCLUDE THE FULL ARTICLE CONTENT - DO NOT JUST SHOW THE TITLE OR A SUMMARY**
+- You MUST include ALL sections in your FIRST response: Definition, Translation Suggestions, Bible References, Examples, and Word Data
+- **DO NOT summarize, paraphrase, or give a brief overview - provide the COMPLETE content from each section verbatim**
+- **DO NOT ask "Would you like to explore further?" until AFTER you've shown the complete article content**
+- Copy the full text from each section - do not rewrite or summarize
+- **SPECIFICALLY: If the user asks "What passages use this term?" or similar, you MUST look for the "## Bible References:" section below and list EVERY passage from it**
+- The Bible References section contains the exact answer to "What passages use this term?" - use it directly
+- DO NOT say "I don't have access" - all the data is provided below
+- **START YOUR RESPONSE WITH THE FULL ARTICLE CONTENT, NOT A SUMMARY**\n\n`;
+
+    if (
+      data.articles &&
+      Array.isArray(data.articles) &&
+      data.articles.length > 0
+    ) {
+      for (const article of data.articles) {
+        // Extract title from markdown (first H1 heading) or use term
+        let title = article.term || term;
+        if (article.markdown) {
+          const titleMatch = article.markdown.match(/^#\s+(.+)$/m);
+          if (titleMatch) {
+            title = titleMatch[1].trim();
+          }
+        }
+
+        context += `Translation Word Article: ${title}\n`;
+        context += `[TW v86 - ${title}]\n\n`;
+
+        // Extract and highlight Bible References section if it exists
+        if (article.markdown) {
+          const bibleRefsMatch = article.markdown.match(
+            /##\s+Bible References:?\s*\n([\s\S]*?)(?=\n##|$)/i,
+          );
+          if (bibleRefsMatch) {
+            const bibleRefsSection = bibleRefsMatch[1].trim();
+            // Extract individual references (they're usually in markdown link format or bullet points)
+            const refLines = bibleRefsSection
+              .split("\n")
+              .filter((line: string) => line.trim());
+            const references: string[] = [];
+
+            for (const line of refLines) {
+              // Extract reference from markdown link format: [1 Corinthians 13:7](rc://...)
+              const linkMatch = line.match(/\[([^\]]+)\]\(rc:\/\/[^)]+\)/);
+              if (linkMatch) {
+                references.push(linkMatch[1].trim());
+              } else if (line.match(/^\*\s*\[/) || line.match(/^-\s*\[/)) {
+                // Bullet point with link
+                const bulletLinkMatch = line.match(
+                  /\[([^\]]+)\]\(rc:\/\/[^)]+\)/,
+                );
+                if (bulletLinkMatch) {
+                  references.push(bulletLinkMatch[1].trim());
+                }
+              } else if (
+                line.match(/^\*\s*[A-Z]/) ||
+                line.match(/^-\s*[A-Z]/)
+              ) {
+                // Bullet point without link, extract reference directly
+                const refMatch = line.match(/^\*?\s*-?\s*\[?([A-Z][^\]]+)\]?/);
+                if (refMatch) {
+                  references.push(refMatch[1].trim());
+                }
+              }
+            }
+
+            if (references.length > 0) {
+              context += `**BIBLE REFERENCES FOR THIS TERM (${references.length} passages found):**\n`;
+              context += `When the user asks "What passages use this term?", list these:\n`;
+              for (const ref of references) {
+                context += `- ${ref}\n`;
+              }
+              context += `\n`;
+            }
+          }
+
+          // Include full markdown content (this is the complete article)
+          context += `**FULL ARTICLE CONTENT:**\n${article.markdown}\n\n`;
+        } else if (article.content) {
+          context += `${article.content}\n\n`;
+        } else if (article.text) {
+          context += `${article.text}\n\n`;
+        }
+
+        // Include additional metadata if available
+        if (article.path) {
+          context += `Path: ${article.path}\n`;
+        }
+        context += `\n`;
+      }
+    } else {
+      context += `No translation word articles found for "${term}".\n`;
     }
 
     return context;

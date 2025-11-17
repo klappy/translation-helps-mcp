@@ -1,6 +1,6 @@
 /**
  * MCP Error Handler Utility
- * 
+ *
  * Provides consistent error handling and formatting for MCP tools.
  * Eliminates duplication of error handling logic across all tools.
  */
@@ -57,16 +57,16 @@ export interface ErrorContext {
 
 /**
  * Handle errors consistently across all MCP tools
- * 
+ *
  * Provides:
  * - Consistent error logging with context
  * - MCP-compliant error response format
  * - Automatic response time calculation
  * - Structured error information
- * 
+ *
  * @param context - Error context information
  * @returns MCP-formatted error response
- * 
+ *
  * @example
  * ```typescript
  * try {
@@ -90,9 +90,10 @@ export function handleMCPError(context: ErrorContext): MCPErrorResponse {
     additionalContext = {},
   } = context;
 
-  const errorMessage = originalError instanceof Error
-    ? originalError.message
-    : String(originalError);
+  const errorMessage =
+    originalError instanceof Error
+      ? originalError.message
+      : String(originalError);
 
   const responseTime = Date.now() - startTime;
 
@@ -134,7 +135,7 @@ export function handleMCPError(context: ErrorContext): MCPErrorResponse {
 
 /**
  * Create a standardized error response for validation failures
- * 
+ *
  * @param toolName - Name of the tool
  * @param validationErrors - Array of validation error messages
  * @returns MCP-formatted error response
@@ -162,4 +163,3 @@ export function createValidationErrorResponse(
     isError: true,
   };
 }
-

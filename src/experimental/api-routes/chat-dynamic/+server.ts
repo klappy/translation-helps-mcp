@@ -87,7 +87,7 @@ export const POST: RequestHandler = async ({ request }) => {
     if (selectedTool === "get_translation_word") {
       const wordMatch = message.match(/word\s+(\S+)|define\s+(\S+)/i);
       if (wordMatch) {
-        params.wordId = wordMatch[1] || wordMatch[2];
+        params.term = wordMatch[1] || wordMatch[2];
       }
     }
 

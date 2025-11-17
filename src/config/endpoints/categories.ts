@@ -56,8 +56,8 @@ export const ENDPOINT_CLASSIFICATION = {
   // Core endpoints - Essential for basic functionality (6 total)
   core: [
     "fetch-scripture",
-    "translation-notes",
-    "translation-questions",
+    "fetch-translation-notes",
+    "fetch-translation-questions",
     "fetch-translation-word-links",
     "fetch-translation-word",
     "fetch-translation-academy",

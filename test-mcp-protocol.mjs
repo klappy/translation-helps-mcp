@@ -89,7 +89,7 @@ async function testMCPServer() {
       links.slice(0, 3).forEach((link, i) => {
         console.log(`Link ${i + 1}:`);
         console.log(`   category: ${link.category || "❌ MISSING"}`);
-        console.log(`   wordId: ${link.wordId || "❌ MISSING"}`);
+        console.log(`   term: ${link.term || "❌ MISSING"}`);
         console.log(`   path: ${link.path || "❌ MISSING"}`);
         console.log(`   rcLink: ${link.rcLink || "❌ MISSING"}`);
         console.log("");
@@ -101,7 +101,7 @@ async function testMCPServer() {
 
       // Verify all links have the required fields
       const allHaveCategory = links.every((l) => l.category);
-      const allHaveWordId = links.every((l) => l.wordId);
+      const allHaveTerm = links.every((l) => l.term);
       const allHavePath = links.every((l) => l.path);
       const allHaveRcLink = links.every((l) => l.rcLink);
       const pathsHaveMd = links.every((l) => l.path && l.path.endsWith(".md"));
@@ -110,14 +110,14 @@ async function testMCPServer() {
       console.log(
         `   ${allHaveCategory ? "✅" : "❌"} All links have 'category'`,
       );
-      console.log(`   ${allHaveWordId ? "✅" : "❌"} All links have 'wordId'`);
+      console.log(`   ${allHaveTerm ? "✅" : "❌"} All links have 'term'`);
       console.log(`   ${allHavePath ? "✅" : "❌"} All links have 'path'`);
       console.log(`   ${pathsHaveMd ? "✅" : "❌"} All paths end with .md`);
       console.log(`   ${allHaveRcLink ? "✅" : "❌"} All links have 'rcLink'`);
 
       if (
         allHaveCategory &&
-        allHaveWordId &&
+        allHaveTerm &&
         allHavePath &&
         allHaveRcLink &&
         pathsHaveMd

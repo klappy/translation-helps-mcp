@@ -15,11 +15,11 @@
  * 4. When answering questions, cite all sources used
  */
 
-import { initializeKVCache } from '$lib/../../../src/functions/kv-cache.js';
 import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
+import { callTool, getPrompt, listTools, listPrompts } from '$lib/mcp/client.js';
 
 interface ChatRequest {
 	message: string;
@@ -86,28 +86,84 @@ AVAILABLE MCP PROMPTS (Use these for comprehensive data):
 
 INTENT MAPPING (How to interpret user questions):
 
-User asks: "What concepts do I need to know to translate {passage}?"
-→ Use translation-helps-for-passage (returns Notes + Academy articles)
+**CRITICAL: Differentiate between LIST requests vs EXPLANATION requests**
 
-User asks: "What are the key terms in {passage}?"
-→ Use translation-helps-for-passage (returns Word articles with titles)
+**LIST requests** (user wants a summary/list):
+- "What notes are there for {passage}?"
+- "List the translation challenges in {passage}"
+- "What terms appear in {passage}?"
+- "Show me the questions for {passage}"
+→ Use individual tools (fetch_translation_notes, fetch_translation_word_links, etc.)
+→ Provide concise lists/summaries
 
-User asks: "Teach me everything about {passage}"
-→ Use translation-helps-for-passage (returns ALL resources)
+**EXPLANATION requests** (user wants comprehensive understanding):
+- "Explain the notes for {passage}"
+- "Explain the translation challenges in {passage}"
+- "What do the notes say about {passage}?"
+- "Help me understand {passage}"
+→ Use individual tools (fetch_translation_notes, etc.) BUT provide comprehensive explanations
+→ Don't just list - explain what each note means, why it matters, how it helps translation
 
-User asks: "Can you provide all the help I need to translate {passage}?"
-→ Use translation-helps-for-passage (that's its PURPOSE!)
+**PROMPTS - Use ONLY for specific comprehensive cases:**
+
+1. **translation-helps-for-passage** - Use ONLY when:
+   - User asks for "all translation helps" or "everything I need to translate {passage}"
+   - User asks "What do I need to know to translate {passage}?"
+   - User asks "Can you provide all the help I need to translate {passage}?"
+   - User asks "Teach me everything about {passage}" (comprehensive learning)
+   → This prompt chains multiple tools and takes longer - use sparingly!
+
+2. **get-translation-academy-for-passage** - Use ONLY when:
+   - User specifically asks for "concepts" or "translation concepts" for {passage}
+   - User asks "What concepts do I need to learn for {passage}?"
+   - User asks "What translation techniques apply to {passage}?"
+   → Returns academy articles about translation concepts
+
+3. **get-translation-words-for-passage** - Use ONLY when:
+   - User specifically asks for "key terms" or "important terms" for {passage}
+   - User asks "What key terms do I need to know for {passage}?"
+   - User asks "What are the important words in {passage}?"
+   → Returns word articles with full definitions
+
+**INDIVIDUAL TOOLS - Use for specific, focused requests:**
+
+User asks: "Explain the notes for {passage}" or "What do the notes say about {passage}?"
+→ Use fetch_translation_notes tool
+→ Provide COMPREHENSIVE EXPLANATION (not just a list)
+→ Explain what each note means, the Greek/Hebrew context, why it matters
+
+User asks: "List the notes for {passage}" or "What notes are there for {passage}?"
+→ Use fetch_translation_notes tool
+→ Provide CONCISE LIST (just the challenges/phrases)
 
 User asks: "How do I translate [specific phrase] in {passage}?"
-→ Use translation-notes endpoint (explains specific phrases)
+→ Use fetch_translation_notes tool (filters to relevant notes)
 
 User asks: "What does 'grace' mean in the Bible?" or "Who is Paul?" or "What is faith?" or "Who is God?"
 → Use fetch_translation_word tool with term parameter (e.g., term="grace", term="paul", term="faith", term="god")
 → The tool searches across all categories (kt, names, other) to find matching articles
 → Try variations if exact term doesn't match (e.g., "paul" might be "apostlepaul" or "paul-apostle")
 
+User asks: "What passages of the Bible mention this term?" or "Where is 'apostle' mentioned in the Bible?" or "Show me Bible references for 'grace'"
+→ Use fetch_translation_word_links tool with reference parameter (e.g., reference="John 3:16") OR
+→ Use fetch_translation_word tool first to get the term article, which includes "Bible References" section
+→ DO NOT use browse_translation_words (this tool does not exist)
+
 User asks: "Show me {passage} in ULT"
-→ Use fetch-scripture endpoint (just the text)
+→ Use fetch_scripture tool (just the text)
+
+**EXAMPLES:**
+
+❌ WRONG: User says "Explain the notes for Ephesians 2:8-9" → Using translation-helps-for-passage prompt
+✅ CORRECT: User says "Explain the notes for Ephesians 2:8-9" → Use fetch_translation_notes tool, provide comprehensive explanation
+
+❌ WRONG: User says "What are the key terms in Romans 12:2?" → Using fetch_translation_word_links (just links)
+✅ CORRECT: User says "What are the key terms in Romans 12:2?" → Use get-translation-words-for-passage prompt (returns full word articles)
+
+❌ WRONG: User says "List the notes for Titus 1" → Providing comprehensive explanations
+✅ CORRECT: User says "List the notes for Titus 1" → Use fetch_translation_notes tool, provide concise list
+
+✅ CORRECT: User says "What do I need to know to translate Romans 12:2?" → Use translation-helps-for-passage prompt (comprehensive request)
 
 CRITICAL RULES YOU MUST FOLLOW:
 
@@ -143,7 +199,22 @@ CRITICAL RULES YOU MUST FOLLOW:
    - ALWAYS include Translation Academy articles section when present in the data
    - Academy articles teach important translation concepts referenced in the notes
 
-5. GUIDED LEARNING CONVERSATION STRUCTURE:
+5. TRANSLATION WORD ARTICLES - STRICT RULES:
+   - When presenting Translation Word articles, you MUST use ONLY the content provided in the MCP response
+   - DO NOT add Greek/Hebrew words, etymologies, or linguistic details unless they appear in the article
+   - DO NOT add historical context, theological interpretations, or extra biblical references unless they are in the article
+   - DO NOT add information from your training data - ONLY use what's in the article
+   - Present the Definition section exactly as provided
+   - Include Translation Suggestions if present
+   - Include Bible References if present
+   - Include Examples from Bible stories if present
+   - Include Word Data (Strong's numbers) if present
+   - If the article doesn't mention something, DO NOT add it - even if you know it from your training
+   - Example: If the article doesn't mention the Greek word "ἀπόστολος", DO NOT add it
+   - Example: If the article doesn't discuss Paul's apostleship in detail, DO NOT add that information
+   - Your role is to PRESENT the article content, not to ENHANCE it with external knowledge
+
+6. GUIDED LEARNING CONVERSATION STRUCTURE:
    
    **IMPORTANT: This is a MULTI-TURN CONVERSATION, not a one-shot response**
    
@@ -230,7 +301,7 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Show enthusiasm for learning: "Let's explore that!"
    - Acknowledge progress: "You've covered the main concepts now"
 
-6. TRANSLATION NOTES STRUCTURE:
+7. TRANSLATION NOTES STRUCTURE:
    - Translation notes contain several fields for each entry:
      * Quote: Contains the Greek/Hebrew text being explained (this is the original language phrase)
      * Note: The explanation or commentary about that phrase
@@ -239,54 +310,83 @@ CRITICAL RULES YOU MUST FOLLOW:
      * SupportReference: Additional biblical references if applicable
    - When asked about Greek/Hebrew quotes, the "Quote" field in translation notes contains that original language text
    - Each note explains a specific Greek/Hebrew phrase found in the original biblical text
+   - **IMPORTANT**: If there are no verse-specific notes for a passage, the system may return chapter introductions (e.g., "21:intro" for Revelation 21). This is expected behavior - chapter introductions provide context for the entire chapter when individual verse notes are not available. When presenting notes, clearly distinguish between verse-specific notes and chapter introductions.
+
+8. RESPONSE STYLE - LIST vs EXPLANATION:
+
+   **When user asks for a LIST** (e.g., "What notes are there?", "List the challenges"):
+   - Provide concise, bullet-point summaries
+   - Just identify the challenges/phrases
+   - Keep it brief and scannable
+
+   **When user asks for EXPLANATION** (e.g., "Explain the notes", "What do the notes say?"):
+   - Provide comprehensive, detailed explanations
+   - Explain what each note means
+   - Explain the Greek/Hebrew context (from Quote field)
+   - Explain why it matters for translation
+   - Connect notes to translation concepts when relevant
+   - Make it educational and thorough
+
+   Example for "Explain the notes for Ephesians 2:8-9":
+   - Don't just say: "There are 2 notes: 'by grace you have been saved' and 'not of yourselves'"
+   - Instead say: "Here are the translation challenges in Ephesians 2:8-9:
+   
+   1. **'by grace you have been saved' (passive voice)**: This phrase uses passive voice in Greek, which emphasizes that salvation is something done TO the person, not something they do themselves. The note explains that translators need to maintain this passive construction to preserve the theological emphasis that salvation is a gift received, not earned.
+   
+   2. **'not of yourselves' (meaning)**: This phrase clarifies that salvation doesn't originate from human effort. The note explains the importance of making it clear that salvation is external to human works, which is crucial for accurate translation of this key theological passage."
 
 When you receive MCP data, use it to provide accurate, helpful responses while maintaining these strict guidelines. Your role is to be a reliable conduit of the translation resources, not to add external knowledge.`;
 
 /**
- * Discover available MCP endpoints and prompts dynamically
+ * Discover available MCP endpoints and prompts dynamically using SDK
  */
 async function discoverMCPEndpoints(
 	baseUrl: string
 ): Promise<{ endpoints: any[]; prompts: any[] }> {
 	try {
-		const response = await fetch(`${baseUrl}/api/mcp-config`);
-		if (!response.ok) {
-			logger.error('Failed to discover MCP resources', { status: response.status });
-			return { endpoints: [], prompts: [] };
-		}
+		const serverUrl = `${baseUrl}/api/mcp`;
 
-		const config = await response.json();
+		// Use SDK to discover tools and prompts
+		const tools = await listTools(serverUrl);
+		const prompts = await listPrompts(serverUrl);
 
-		// Flatten all endpoints from all categories
-		const endpoints: any[] = [];
-		if (config.data && typeof config.data === 'object') {
-			for (const category of Object.values(config.data)) {
-				if (Array.isArray(category)) {
-					endpoints.push(...category);
-				}
-			}
-		} else if (config.endpoints && typeof config.endpoints === 'object') {
-			// Fallback for old structure
-			for (const category of Object.values(config.endpoints)) {
-				if (Array.isArray(category)) {
-					endpoints.push(...category);
-				}
-			}
-		} else {
-			logger.error('Invalid MCP config structure', { config });
-		}
+		// Convert tools to endpoint format (for compatibility with existing code)
+		const endpoints = tools.map((tool) => ({
+			name: tool.name,
+			description: tool.description,
+			path: `/api/${tool.name.replace(/_/g, '-')}`, // Convert snake_case to kebab-case
+			method: 'GET',
+			parameters: tool.inputSchema?.properties || {}
+		}));
 
-		// Get prompts from config
-		const prompts = config.prompts || [];
-
-		logger.info('Discovered MCP resources', {
+		logger.info('Discovered MCP resources via SDK', {
 			endpoints: endpoints.length,
 			prompts: prompts.length
 		});
 		return { endpoints, prompts };
 	} catch (error) {
-		logger.error('Error discovering MCP resources', { error });
-		return { endpoints: [], prompts: [] };
+		logger.error('Error discovering MCP resources via SDK', { error });
+		// Fallback to old method if SDK fails
+		try {
+			const response = await fetch(`${baseUrl}/api/mcp-config`);
+			if (!response.ok) {
+				return { endpoints: [], prompts: [] };
+			}
+			const config = await response.json();
+			const endpoints: any[] = [];
+			if (config.data && typeof config.data === 'object') {
+				for (const category of Object.values(config.data)) {
+					if (Array.isArray(category)) {
+						endpoints.push(...category);
+					}
+				}
+			}
+			const prompts = config.prompts || [];
+			return { endpoints, prompts };
+		} catch (fallbackError) {
+			logger.error('Fallback discovery also failed', { fallbackError });
+			return { endpoints: [], prompts: [] };
+		}
 	}
 }
 
@@ -346,7 +446,7 @@ async function determineMCPCalls(
 			// Special guidance for translation word endpoints
 			const specialNote =
 				endpointName === 'get-translation-word' || endpointName === 'fetch-translation-word'
-					? `\nNotes: For term-based lookups (e.g., "Who is Paul?", "What is grace?"), use term parameter. The tool searches across all categories (kt, names, other) automatically. Use format=md for full article output.`
+					? `\nNotes: For term-based lookups (e.g., "Who is Paul?", "What is grace?", "What does 'love' mean?"), use term parameter with the extracted term. Extract the term from the user's question - if they ask "What does 'love' mean?", use term="love". The tool searches across all categories (kt, names, other) automatically.`
 					: '';
 
 			return `- ${endpointName}: ${ep.description || ''}\n  Parameters:\n${paramDetails || '  (none)'}${exampleBlock}${specialNote}`;
@@ -377,7 +477,7 @@ async function determineMCPCalls(
 
 	const prompt = `Based on the user's query and conversation context, determine which MCP resources (prompts or endpoints) to call. Return a JSON array.
 
-${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}**AVAILABLE PROMPTS (Use these for comprehensive data):**
+${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}**AVAILABLE PROMPTS (Use ONLY for specific comprehensive cases - they chain multiple tools and take longer):**
 ${promptDescriptions}
 
 **Available endpoints:**
@@ -385,11 +485,66 @@ ${endpointDescriptions}
 
 Current user query: "${message}"
 
-**DECISION RULES:**
-1. If user asks for "all translation helps", "everything", or comprehensive data → Use translation-helps-for-passage PROMPT
-2. If user asks only for specific resource type (e.g., just scripture, just notes) → Use individual endpoint
-3. Prompts return richer data (titles, full content) than individual endpoints
-4. If user asks "Who is [name]?" or "What is [term]?" (e.g., "Who is Paul?", "What is grace?", "Who is God?", "What is faith?") → Use fetch-translation-word endpoint with term parameter (e.g., {"endpoint": "fetch-translation-word", "params": {"term": "paul", "language": "en"}})
+**CRITICAL DECISION RULES:**
+
+**1. LIST vs EXPLANATION - This is the most important distinction:**
+
+**LIST requests** (user wants a summary/list):
+- "What notes are there for {passage}?"
+- "List the translation challenges in {passage}"
+- "What terms appear in {passage}?"
+- "Show me the questions for {passage}"
+→ Use individual tools (fetch-translation-notes, fetch-translation-word-links, etc.)
+→ Response should be concise lists/summaries
+
+**EXPLANATION requests** (user wants comprehensive understanding):
+- "Explain the notes for {passage}"
+- "Explain the translation challenges in {passage}"
+- "What do the notes say about {passage}?"
+- "Help me understand {passage}"
+→ Use individual tools (fetch-translation-notes, etc.)
+→ Response should provide comprehensive explanations (explain what each note means, why it matters)
+
+**2. PROMPTS - Use ONLY when user explicitly requests comprehensive/complex data:**
+
+**translation-helps-for-passage** - Use ONLY when:
+- User asks for "all translation helps" or "everything I need to translate {passage}"
+- User asks "What do I need to know to translate {passage}?"
+- User asks "Can you provide all the help I need to translate {passage}?"
+- User asks "Teach me everything about {passage}" (comprehensive learning)
+→ This prompt chains multiple tools - use sparingly!
+
+**get-translation-academy-for-passage** - Use ONLY when:
+- User specifically asks for "concepts" or "translation concepts" for {passage}
+- User asks "What concepts do I need to learn for {passage}?"
+- User asks "What translation techniques apply to {passage}?"
+
+**get-translation-words-for-passage** - Use ONLY when:
+- User specifically asks for "key terms" or "important terms" for {passage}
+- User asks "What key terms do I need to know for {passage}?"
+- User asks "What are the important words in {passage}?"
+
+**3. INDIVIDUAL TOOLS - Use for specific, focused requests:**
+
+- "Explain the notes for {passage}" → Use fetch-translation-notes endpoint (NOT the prompt!)
+- "What do the notes say about {passage}?" → Use fetch-translation-notes endpoint
+- "List the notes for {passage}" → Use fetch-translation-notes endpoint
+- "How do I translate [specific phrase] in {passage}?" → Use fetch-translation-notes endpoint
+- "What does 'grace' mean?" or "Who is Paul?" or "What does 'love' mean?" → Use fetch-translation-word endpoint with term parameter. Extract the term from the question (e.g., "grace", "paul", "love") and pass it as term="grace", term="paul", or term="love"
+- "Show me {passage} in ULT" → Use fetch-scripture endpoint
+
+**4. EXAMPLES:**
+
+❌ WRONG: User says "Explain the notes for Ephesians 2:8-9" → Using translation-helps-for-passage prompt
+✅ CORRECT: User says "Explain the notes for Ephesians 2:8-9" → Use fetch-translation-notes endpoint
+
+❌ WRONG: User says "What are the key terms in Romans 12:2?" → Using fetch-translation-word-links (just links)
+✅ CORRECT: User says "What are the key terms in Romans 12:2?" → Use get-translation-words-for-passage prompt
+
+❌ WRONG: User says "What does 'love' mean?" → Using get-translation-word with reference="" or missing term parameter
+✅ CORRECT: User says "What does 'love' mean?" → Use fetch-translation-word endpoint with term="love" (extract "love" from the quoted word in the question)
+
+✅ CORRECT: User says "What do I need to know to translate Romans 12:2?" → Use translation-helps-for-passage prompt
 
 Return ONLY a JSON array like this (no markdown, no explanation):
 
@@ -417,11 +572,37 @@ For ENDPOINTS:
   }
 ]
 
+For TERM-BASED LOOKUPS (extract the term from the user's question):
+User: "What does 'love' mean?"
+[
+  {
+    "endpoint": "fetch-translation-word",
+    "params": {
+      "term": "love",
+      "language": "en",
+      "organization": "unfoldingWord"
+    }
+  }
+]
+
+User: "Who is Paul?"
+[
+  {
+    "endpoint": "fetch-translation-word",
+    "params": {
+      "term": "paul",
+      "language": "en",
+      "organization": "unfoldingWord"
+    }
+  }
+]
+
 Important:
 - Use "prompt" field for prompts, "endpoint" field for endpoints
 - All parameters should be strings
 - Include all required parameters
-- For endpoints that support formats, default to "md" for better readability
+- DO NOT use prompts for simple "explain" or "list" requests - use individual tools instead
+- Prompts are for comprehensive requests that need multiple resources chained together
 - If no resources are needed, return an empty array: []`;
 
 	// Add timeout
@@ -482,7 +663,14 @@ Important:
 }
 
 /**
- * Execute the MCP calls determined by the LLM (handles both prompts and endpoints)
+ * Map endpoint name (kebab-case) to MCP tool name (snake_case)
+ */
+function endpointToToolName(endpointName: string): string {
+	return endpointName.replace(/-/g, '_');
+}
+
+/**
+ * Execute the MCP calls determined by the LLM using the SDK (handles both prompts and endpoints)
  */
 async function executeMCPCalls(
 	calls: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>,
@@ -490,29 +678,33 @@ async function executeMCPCalls(
 ): Promise<{ data: any[]; apiCalls: any[] }> {
 	const data: any[] = [];
 	const apiCalls: any[] = [];
+	const serverUrl = `${baseUrl}/api/mcp`;
 
 	for (const call of calls) {
 		const startTime = Date.now();
 		try {
 			// Check if this is a prompt or an endpoint
 			if (call.prompt) {
-				// Handle MCP Prompt (POST to /api/execute-prompt)
+				// Handle MCP Prompt using SDK
 				const promptName = call.prompt;
-				logger.info('Executing MCP prompt', { prompt: promptName, params: call.params });
+				logger.info('Executing MCP prompt via SDK', { prompt: promptName, params: call.params });
 
-				const response = await fetch(`${baseUrl}/api/execute-prompt`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						promptName: promptName,
-						parameters: call.params
-					})
-				});
+				try {
+					const response = await getPrompt(promptName, call.params, serverUrl);
+					const duration = Date.now() - startTime;
 
-				const duration = Date.now() - startTime;
+					// Extract text from MCP response
+					let result: any;
+					if (response.content && response.content[0]?.text) {
+						try {
+							result = JSON.parse(response.content[0].text);
+						} catch {
+							result = response.content[0].text;
+						}
+					} else {
+						result = response;
+					}
 
-				if (response.ok) {
-					const result = await response.json();
 					data.push({
 						type: `prompt:${promptName}`,
 						params: call.params,
@@ -522,88 +714,80 @@ async function executeMCPCalls(
 						endpoint: `execute-prompt (${promptName})`,
 						params: call.params,
 						duration: `${duration}ms`,
-						status: response.status,
+						status: 200,
 						cacheStatus: 'n/a'
 					});
-				} else {
-					logger.error('MCP prompt failed', {
+				} catch (error) {
+					const duration = Date.now() - startTime;
+					logger.error('MCP prompt failed via SDK', {
 						prompt: promptName,
-						status: response.status
+						error
 					});
 					apiCalls.push({
 						endpoint: `execute-prompt (${promptName})`,
 						params: call.params,
 						duration: `${duration}ms`,
-						status: response.status,
-						error: await response.text()
+						status: 500,
+						error: error instanceof Error ? error.message : 'Unknown error'
 					});
 				}
 				continue;
 			}
 
-			// Handle individual endpoint
+			// Handle individual endpoint using SDK
 			const endpointName = (call.endpoint || '')
 				.toString()
 				.replace(/^\/api\//, '')
 				.replace(/^\//, '');
+
+			// Convert endpoint name to tool name (kebab-case → snake_case)
+			const toolName = endpointToToolName(endpointName);
+
 			// Normalize params with sensible defaults to avoid LLM omissions
-			const normalizedParams: Record<string, string> = {
+			const normalizedParams: Record<string, any> = {
 				...call.params
 			};
 			if (!normalizedParams.language) normalizedParams.language = 'en';
 			if (!normalizedParams.organization) normalizedParams.organization = 'unfoldingWord';
-			// Param aliasing for robustness (LLM may send 'word' instead of 'term')
-			if (endpointName === 'get-translation-word') {
-				if (!normalizedParams.term && (normalizedParams.word || normalizedParams.termName)) {
-					normalizedParams.term = normalizedParams.word || normalizedParams.termName;
-					delete normalizedParams.word;
-					delete normalizedParams.termName;
-				}
+
+			// Clean up invalid parameters for fetch_translation_word
+			if (toolName === 'fetch_translation_word') {
 				// Reference is not required for this endpoint; ignore if present
-				if (normalizedParams.reference) delete normalizedParams.reference;
+				if (normalizedParams.reference && !normalizedParams.term) {
+					// Keep reference if no term provided (for reference-based lookup)
+				}
 				// If LLM supplied an invalid path (e.g., "bible"), drop it to avoid 400s
 				if (normalizedParams.path && !/\.md$/i.test(normalizedParams.path)) {
 					delete normalizedParams.path;
 				}
 			}
-			// Prefer markdown for human-readable resources when format is omitted
-			if (
-				!normalizedParams.format &&
-				[
-					'fetch-scripture',
-					'translation-notes',
-					'translation-questions',
-					'fetch-translation-words',
-					'fetch-translation-academy',
-					'get-translation-word'
-				].includes(endpointName)
-			) {
-				normalizedParams.format = 'md';
+
+			// Chat interface needs JSON for structured data processing
+			// Don't set format - let endpoints default to JSON
+			// Remove format parameter if present to ensure JSON response
+			if (normalizedParams.format) {
+				delete normalizedParams.format;
 			}
 
-			// Build query string
-			const queryParams = new URLSearchParams(normalizedParams);
+			logger.info('Executing MCP tool via SDK', { tool: toolName, params: normalizedParams });
 
-			const url = `${baseUrl}/api/${endpointName}?${queryParams}`;
-			logger.info('Executing MCP call', { endpoint: endpointName, params: normalizedParams });
+			try {
+				const response = await callTool(toolName, normalizedParams, serverUrl);
+				const duration = Date.now() - startTime;
 
-			const response = await fetch(url);
-			const duration = Date.now() - startTime;
-
-			if (response.ok) {
-				// Check content type to determine how to parse response
-				const contentType = response.headers.get('content-type') || '';
-				let result;
-
-				if (contentType.includes('application/json')) {
-					result = await response.json();
+				// Extract result from MCP response
+				let result: any;
+				if (response.content && response.content[0]?.text) {
+					const text = response.content[0].text;
+					// Try to parse as JSON, fallback to text
+					try {
+						result = JSON.parse(text);
+					} catch {
+						result = text;
+					}
 				} else {
-					// For markdown or text responses
-					result = await response.text();
+					result = response;
 				}
-
-				// Extract cache status from headers
-				const cacheStatus = response.headers.get('X-Cache-Status') || 'miss';
 
 				data.push({
 					type: endpointName,
@@ -614,21 +798,21 @@ async function executeMCPCalls(
 					endpoint: endpointName,
 					params: normalizedParams,
 					duration: `${duration}ms`,
-					status: response.status,
-					cacheStatus
+					status: 200,
+					cacheStatus: 'n/a' // SDK doesn't expose cache status, could be enhanced
 				});
-			} else {
-				logger.error('MCP call failed', {
-					endpoint: endpointName,
-					status: response.status,
-					statusText: response.statusText
+			} catch (error) {
+				const duration = Date.now() - startTime;
+				logger.error('MCP tool call failed via SDK', {
+					tool: toolName,
+					error
 				});
 				apiCalls.push({
 					endpoint: endpointName,
 					params: normalizedParams,
 					duration: `${duration}ms`,
-					status: response.status,
-					error: response.statusText
+					status: 500,
+					error: error instanceof Error ? error.message : 'Unknown error'
 				});
 			}
 		} catch (error) {
@@ -708,7 +892,7 @@ function formatDataForContext(data: any[]): string {
 		) {
 			// Pretty-print a single TW article
 			const w = item.result;
-			context += `Translation Word Article: ${w.word || w.term || '(unknown)'}\n`;
+			context += `Translation Word Article: ${w.term || '(unknown)'}\n`;
 			if (w.definition) context += `Definition: ${w.definition}\n`;
 			if (w.extendedDefinition) context += `Extended: ${w.extendedDefinition}\n`;
 			if (Array.isArray(w.facts) && w.facts.length) {
@@ -980,17 +1164,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 	const startTime = Date.now();
 	const timings: Record<string, number> = {};
 
-	// Initialize KV cache if available
-	try {
-		// @ts-expect-error platform typing differs by adapter
-		const kv = platform?.env?.TRANSLATION_HELPS_CACHE;
-		if (kv) {
-			initializeKVCache(kv);
-			logger.debug('KV cache initialized for chat-stream endpoint');
-		}
-	} catch (error) {
-		logger.warn('Failed to initialize KV cache', { error });
-	}
+	// Note: KV cache is initialized by the platform adapter for all MCP endpoints.
+	// The chat endpoint doesn't need to initialize it - MCP tools use the cache internally
+	// via services like ZipResourceFetcher2 when fetching resources.
 
 	try {
 		const { message, chatHistory = [], enableXRay = false }: ChatRequest = await request.json();
