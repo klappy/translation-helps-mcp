@@ -325,3 +325,56 @@ class TranslationHelpsClient:
         """Check if client is initialized."""
         return self.initialized
 
+    async def check_prompts_support(self) -> bool:
+        """
+        Dynamically check if the MCP server supports prompts.
+        
+        This attempts to call prompts/list and returns True if successful,
+        False if prompts are not supported.
+        
+        Returns:
+            True if the server supports prompts, False otherwise
+            
+        Example:
+            >>> if await client.check_prompts_support():
+            ...     # Server supports prompts - use them natively
+            ...     prompts = await client.list_prompts()
+        """
+        await self._ensure_initialized()
+        try:
+            await self._refresh_prompts()
+            return True
+        except Exception:
+            return False
+
+    async def get_capabilities(self) -> Dict[str, Any]:
+        """
+        Get the server's capabilities by checking what's actually supported.
+        
+        This dynamically checks if tools and prompts are supported by attempting
+        to use them, rather than relying on cached initialization data.
+        
+        Returns:
+            Dictionary with capabilities information
+            
+        Example:
+            >>> await client.connect()
+            >>> caps = await client.get_capabilities()
+            >>> if caps.get("prompts_supported"):
+            ...     print("Server supports prompts")
+        """
+        await self._ensure_initialized()
+        
+        capabilities = {
+            "tools_supported": self.tools_cache is not None and len(self.tools_cache) > 0,
+            "prompts_supported": False
+        }
+        
+        # Check prompts support dynamically
+        try:
+            capabilities["prompts_supported"] = await self.check_prompts_support()
+        except Exception:
+            capabilities["prompts_supported"] = False
+        
+        return capabilities
+

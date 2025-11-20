@@ -57,8 +57,14 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		throw new Error(`Scripture not found for reference: ${reference}`);
 	}
 
+	// Log for debugging - verify all versions are being returned
+	console.log(
+		`[fetch-scripture-v2] Fetched ${results.length} scripture versions:`,
+		results.map((s: any) => s.translation || 'Unknown')
+	);
+
 	// Return in standard format with trace data
-	return {
+	const response = {
 		...createScriptureResponse(results, {
 			reference,
 			requestedResources,
@@ -66,6 +72,13 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		}),
 		_trace: fetcher.getTrace()
 	};
+
+	// Log the response structure to verify all scriptures are included
+	console.log(
+		`[fetch-scripture-v2] Response contains ${response.scripture?.length || 0} scriptures in response.scripture array`
+	);
+
+	return response;
 }
 
 // Create the endpoint with format support

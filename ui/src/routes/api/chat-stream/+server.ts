@@ -19,7 +19,12 @@ import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { callTool, getPrompt, listTools, listPrompts } from '$lib/mcp/client.js';
+import { callTool, listTools, listPrompts } from '$lib/mcp/client.js';
+import {
+	getSystemPrompt,
+	detectRequestType,
+	type EndpointCall
+} from '@translation-helps/mcp-client';
 
 interface ChatRequest {
 	message: string;
@@ -27,8 +32,44 @@ interface ChatRequest {
 	enableXRay?: boolean;
 }
 
-// System prompt that enforces our rules
-const SYSTEM_PROMPT = `You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
+// Prompts are now imported from the SDK
+// Using @translation-helps/mcp-client for optimized, contextual prompts
+
+// Legacy prompt (kept for fallback/feature flag)
+const SYSTEM_PROMPT_LEGACY = `You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
+
+**CRITICAL: CHECK PREVIOUS RESPONSES BEFORE MAKING NEW TOOL CALLS**
+
+Before requesting new data, ALWAYS check the conversation history to see if the information was already fetched in a previous response. If the user asks about something that was already mentioned or shown in a previous response, use that existing information instead of making a new tool call.
+
+**CRITICAL: WHEN USING ALREADY-FETCHED RESOURCES, PROVIDE THE COMPLETE CONTENT - DO NOT SUMMARIZE OR PARAPHRASE**
+
+When a user asks about a resource that was already fetched (e.g., a Translation Academy article, Translation Word article, or concept that was mentioned), you MUST:
+
+1. **Provide the COMPLETE article content** - Do NOT summarize, paraphrase, or provide a generic explanation
+2. **Use the EXACT content from the MCP response** - The full markdown content is available in the conversation history
+3. **Present it in full** - Include all sections, examples, and details as provided in the original article
+4. **Do NOT add your own explanations** - Only use what's in the article content
+5. **Copy the article content VERBATIM** - When you see "--- Full Article Content (Markdown) ---" in the context, you MUST copy that entire content section word-for-word into your response
+
+**ABSOLUTE REQUIREMENT FOR ACADEMY ARTICLES:**
+- When a user asks for "the whole academy article" or "the complete article" about a concept, you MUST render the ENTIRE markdown content that appears between "--- Full Article Content (Markdown) ---" and "--- End of Article Content ---"
+- Do NOT create your own summary, explanation, or paraphrase
+- Do NOT pick and choose sections - include EVERYTHING
+- The article content includes: Description, Examples From the Bible, Translation Strategies, Examples of Translation Strategies Applied, and all subsections
+- Present it EXACTLY as it appears in the markdown, preserving all formatting, headings, quotes, and examples
+
+Examples:
+- If you previously showed "Introduction of a New Event" as a translation concept, and the user asks "Can you give me the whole academy article about Introduction of a new event?", you MUST copy the ENTIRE article content from the "--- Full Article Content (Markdown) ---" section - do NOT summarize, do NOT paraphrase, do NOT create your own explanation.
+- If you previously fetched translation notes for a passage, and the user asks a follow-up question about those notes, use the notes you already have and provide the complete note content.
+- If you previously showed translation word articles, and the user asks about a term you already displayed, provide the COMPLETE article content, not a summary.
+
+Only make new tool calls when:
+1. The information was NOT previously fetched
+2. The user is asking about a different passage/term/concept
+3. The user explicitly requests "fresh" or "updated" information
+
+This prevents unnecessary API calls and provides faster, more efficient responses.
 
 UNDERSTANDING TRANSLATION RESOURCES AND THEIR PURPOSE:
 
@@ -200,19 +241,33 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Academy articles teach important translation concepts referenced in the notes
 
 5. TRANSLATION WORD ARTICLES - STRICT RULES:
+   - **CRITICAL: When a user asks about a translation word (e.g., "Who is God?", "What is grace?", "What does 'love' mean?"), you MUST render the COMPLETE article content**
+   - The article content is provided in FULL MARKDOWN format in the MCP response - you MUST include ALL of it
+   - DO NOT just say "I can provide that information" or "Let me find that for you" - you MUST actually present the full article
+   - The article includes sections like: Definition, Facts, Examples, Translation Suggestions, Bible References, Word Data, etc.
+   - Present the ENTIRE article content as provided - do not summarize or truncate
    - When presenting Translation Word articles, you MUST use ONLY the content provided in the MCP response
    - DO NOT add Greek/Hebrew words, etymologies, or linguistic details unless they appear in the article
    - DO NOT add historical context, theological interpretations, or extra biblical references unless they are in the article
    - DO NOT add information from your training data - ONLY use what's in the article
-   - Present the Definition section exactly as provided
-   - Include Translation Suggestions if present
-   - Include Bible References if present
-   - Include Examples from Bible stories if present
-   - Include Word Data (Strong's numbers) if present
    - If the article doesn't mention something, DO NOT add it - even if you know it from your training
    - Example: If the article doesn't mention the Greek word "ἀπόστολος", DO NOT add it
    - Example: If the article doesn't discuss Paul's apostleship in detail, DO NOT add that information
-   - Your role is to PRESENT the article content, not to ENHANCE it with external knowledge
+   - Your role is to PRESENT the COMPLETE article content, not to ENHANCE it with external knowledge or provide empty acknowledgments
+
+6. TRANSLATION ACADEMY ARTICLES - STRICT RULES:
+   - **CRITICAL: When a user asks about a Translation Academy article or concept (e.g., "Give me the whole academy article about Introduction of a New Event", "Teach me about metaphors", "What is metonymy?"), you MUST render the COMPLETE article content**
+   - The article content is provided in FULL MARKDOWN format in the MCP response - you MUST include ALL of it
+   - DO NOT summarize, paraphrase, or create your own explanation - you MUST copy the article content VERBATIM
+   - When you see "--- Full Article Content (Markdown) ---" in the context, you MUST copy that ENTIRE section word-for-word
+   - The article includes sections like: Description, Examples From the Bible, Translation Strategies, Examples of Translation Strategies Applied, and all subsections
+   - Present the ENTIRE article content as provided - include ALL headings, ALL examples, ALL Bible quotes, ALL translation strategies, and ALL subsections
+   - DO NOT pick and choose sections - include EVERYTHING between "--- Full Article Content (Markdown) ---" and "--- End of Article Content ---"
+   - DO NOT add your own explanations, interpretations, or additional examples - ONLY use what's in the article
+   - DO NOT create summaries or paraphrases - copy the markdown content EXACTLY as it appears
+   - If the user asks for "the whole article" or "the complete article", this means they want the FULL markdown content, not a summary
+   - Example: If the article shows "# Introduction of a New Event\n\n## How do we introduce...", you MUST include that EXACT heading structure and ALL content that follows
+   - Your role is to PRESENT the COMPLETE article content verbatim, not to summarize, paraphrase, or enhance it
 
 6. GUIDED LEARNING CONVERSATION STRUCTURE:
    
@@ -301,7 +356,7 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Show enthusiasm for learning: "Let's explore that!"
    - Acknowledge progress: "You've covered the main concepts now"
 
-7. TRANSLATION NOTES STRUCTURE:
+8. TRANSLATION NOTES STRUCTURE:
    - Translation notes contain several fields for each entry:
      * Quote: Contains the Greek/Hebrew text being explained (this is the original language phrase)
      * Note: The explanation or commentary about that phrase
@@ -312,7 +367,7 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Each note explains a specific Greek/Hebrew phrase found in the original biblical text
    - **IMPORTANT**: If there are no verse-specific notes for a passage, the system may return chapter introductions (e.g., "21:intro" for Revelation 21). This is expected behavior - chapter introductions provide context for the entire chapter when individual verse notes are not available. When presenting notes, clearly distinguish between verse-specific notes and chapter introductions.
 
-8. RESPONSE STYLE - LIST vs EXPLANATION:
+9. RESPONSE STYLE - LIST vs EXPLANATION:
 
    **When user asks for a LIST** (e.g., "What notes are there?", "List the challenges"):
    - Provide concise, bullet-point summaries
@@ -336,6 +391,9 @@ CRITICAL RULES YOU MUST FOLLOW:
    2. **'not of yourselves' (meaning)**: This phrase clarifies that salvation doesn't originate from human effort. The note explains the importance of making it clear that salvation is external to human works, which is crucial for accurate translation of this key theological passage."
 
 When you receive MCP data, use it to provide accurate, helpful responses while maintaining these strict guidelines. Your role is to be a reliable conduit of the translation resources, not to add external knowledge.`;
+
+// Feature flag: use optimized prompt by default, fallback to legacy if needed
+const USE_OPTIMIZED_PROMPT = true;
 
 /**
  * Discover available MCP endpoints and prompts dynamically using SDK
@@ -477,7 +535,16 @@ async function determineMCPCalls(
 
 	const prompt = `Based on the user's query and conversation context, determine which MCP resources (prompts or endpoints) to call. Return a JSON array.
 
-${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}**AVAILABLE PROMPTS (Use ONLY for specific comprehensive cases - they chain multiple tools and take longer):**
+${recentContext ? `Recent conversation:\n${recentContext}\n\n` : ''}**CRITICAL: CHECK CONVERSATION HISTORY FIRST**
+
+Before making any tool calls, check if the information was already fetched in previous responses. If the user is asking about something that was already shown (e.g., a translation concept, word article, or note that was mentioned), return an empty array [] and the assistant will use the existing information.
+
+Only make tool calls when:
+1. The information was NOT previously fetched
+2. The user is asking about a different passage/term/concept than what was already shown
+3. The user explicitly requests new/fresh data
+
+**AVAILABLE PROMPTS (Use ONLY for specific comprehensive cases - they chain multiple tools and take longer):**
 ${promptDescriptions}
 
 **Available endpoints:**
@@ -634,7 +701,31 @@ Important:
 		clearTimeout(timeout);
 
 		if (!response.ok) {
-			logger.error('Failed to determine MCP calls', { status: response.status });
+			const errorText = await response.text().catch(() => 'Unable to read error response');
+			let errorData: any = {};
+			try {
+				errorData = JSON.parse(errorText);
+			} catch {
+				errorData = { error: errorText };
+			}
+
+			logger.error('Failed to determine MCP calls', {
+				status: response.status,
+				statusText: response.statusText,
+				error: errorData.error || errorData.message || errorText,
+				errorType: errorData.type || 'unknown'
+			});
+
+			// For 403 errors, this is likely an API key issue - log more details
+			if (response.status === 403) {
+				logger.error('OpenAI API returned 403 Forbidden - possible causes:', {
+					apiKeyPresent: !!apiKey,
+					apiKeyLength: apiKey?.length || 0,
+					apiKeyPrefix: apiKey?.substring(0, 7) || 'none',
+					hint: 'Check if API key is valid and has access to gpt-4o-mini model'
+				});
+			}
+
 			return [];
 		}
 
@@ -684,14 +775,81 @@ async function executeMCPCalls(
 		const startTime = Date.now();
 		try {
 			// Check if this is a prompt or an endpoint
-			if (call.prompt) {
-				// Handle MCP Prompt using SDK
-				const promptName = call.prompt;
+			// Also check if endpoint name is actually a prompt name (LLM might misclassify)
+			const knownPrompts = [
+				'translation-helps-for-passage',
+				'get-translation-words-for-passage',
+				'get-translation-academy-for-passage'
+			];
+			const isPrompt = call.prompt || (call.endpoint && knownPrompts.includes(call.endpoint));
+
+			if (isPrompt) {
+				// Use the prompt name from either field
+				const promptName = call.prompt || call.endpoint;
+				// Handle MCP Prompt using SDK - use executePrompt to actually execute the workflow
 				logger.info('Executing MCP prompt via SDK', { prompt: promptName, params: call.params });
 
 				try {
-					const response = await getPrompt(promptName, call.params, serverUrl);
+					// Use executePrompt to actually execute the prompt workflow
+					// executePrompt calls /api/execute-prompt which runs the full workflow
+					// We need to use the full URL for server-side execution
+					const executePromptUrl = `${baseUrl}/api/execute-prompt`;
+					const startTime2 = Date.now();
+
+					const fetchResponse = await fetch(executePromptUrl, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							promptName: promptName,
+							parameters: call.params
+						})
+					});
+
+					if (!fetchResponse.ok) {
+						const errorData = await fetchResponse.json().catch(() => ({ error: 'Unknown error' }));
+						throw new Error(errorData.error || `HTTP ${fetchResponse.status}`);
+					}
+
+					const responseData = await fetchResponse.json();
 					const duration = Date.now() - startTime;
+
+					// Capture diagnostic headers
+					const cacheStatus = fetchResponse.headers.get('X-Cache-Status');
+					const xrayTrace = fetchResponse.headers.get('X-XRay-Trace');
+					const responseTime = fetchResponse.headers.get('X-Response-Time');
+					const traceId = fetchResponse.headers.get('X-Trace-Id');
+
+					// Parse X-Ray trace if available
+					let parsedXrayTrace: any = null;
+					if (xrayTrace) {
+						try {
+							const cleaned = xrayTrace.replace(/\s+/g, '');
+							parsedXrayTrace = JSON.parse(atob(cleaned));
+						} catch (_e) {
+							// Ignore parse errors
+						}
+					}
+
+					// Build MCPResponse format with metadata
+					const response: any = {
+						content: [
+							{
+								type: 'text',
+								text: JSON.stringify(responseData)
+							}
+						],
+						metadata: {
+							responseTime: responseTime
+								? parseInt(responseTime.replace(/[^0-9]/g, ''), 10)
+								: Date.now() - startTime2,
+							cacheStatus: cacheStatus?.toLowerCase(),
+							traceId,
+							xrayTrace: parsedXrayTrace,
+							statusCode: fetchResponse.status
+						}
+					};
 
 					// Extract text from MCP response
 					let result: any;
@@ -715,7 +873,8 @@ async function executeMCPCalls(
 						params: call.params,
 						duration: `${duration}ms`,
 						status: 200,
-						cacheStatus: 'n/a'
+						cacheStatus: response.metadata?.cacheStatus || 'n/a',
+						response: response // Include full MCP response with executed results (even on success)
 					});
 				} catch (error) {
 					const duration = Date.now() - startTime;
@@ -723,12 +882,40 @@ async function executeMCPCalls(
 						prompt: promptName,
 						error
 					});
+
+					// Try to extract full error details including response
+					const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+					let errorResponse: any = null;
+					let errorStatus: number | undefined = undefined;
+
+					// Check if error has response data (from SDK)
+					if (error && typeof error === 'object') {
+						// Check for common error response patterns
+						if ('response' in error && error.response) {
+							errorResponse = error.response;
+						}
+						if ('status' in error && typeof error.status === 'number') {
+							errorStatus = error.status;
+						}
+						if ('statusCode' in error && typeof error.statusCode === 'number') {
+							errorStatus = error.statusCode;
+						}
+						// Check if error has a data/body field with response content
+						if ('data' in error && error.data) {
+							errorResponse = error.data;
+						}
+						if ('body' in error && error.body) {
+							errorResponse = error.body;
+						}
+					}
+
 					apiCalls.push({
 						endpoint: `execute-prompt (${promptName})`,
 						params: call.params,
 						duration: `${duration}ms`,
-						status: 500,
-						error: error instanceof Error ? error.message : 'Unknown error'
+						status: errorStatus || 500,
+						error: errorMessage,
+						response: errorResponse // Include full response for debugging
 					});
 				}
 				continue;
@@ -763,11 +950,8 @@ async function executeMCPCalls(
 			}
 
 			// Chat interface needs JSON for structured data processing
-			// Don't set format - let endpoints default to JSON
-			// Remove format parameter if present to ensure JSON response
-			if (normalizedParams.format) {
-				delete normalizedParams.format;
-			}
+			// Explicitly set format to JSON to get structured response with all versions
+			normalizedParams.format = 'json';
 
 			logger.info('Executing MCP tool via SDK', { tool: toolName, params: normalizedParams });
 
@@ -799,7 +983,8 @@ async function executeMCPCalls(
 					params: normalizedParams,
 					duration: `${duration}ms`,
 					status: 200,
-					cacheStatus: 'n/a' // SDK doesn't expose cache status, could be enhanced
+					cacheStatus: 'n/a', // SDK doesn't expose cache status, could be enhanced
+					response: response // Include full MCP response for debugging (even on success)
 				});
 			} catch (error) {
 				const duration = Date.now() - startTime;
@@ -807,12 +992,40 @@ async function executeMCPCalls(
 					tool: toolName,
 					error
 				});
+
+				// Try to extract full error details including response
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				let errorResponse: any = null;
+				let errorStatus: number | undefined = undefined;
+
+				// Check if error has response data (from SDK)
+				if (error && typeof error === 'object') {
+					// Check for common error response patterns
+					if ('response' in error && error.response) {
+						errorResponse = error.response;
+					}
+					if ('status' in error && typeof error.status === 'number') {
+						errorStatus = error.status;
+					}
+					if ('statusCode' in error && typeof error.statusCode === 'number') {
+						errorStatus = error.statusCode;
+					}
+					// Check if error has a data/body field with response content
+					if ('data' in error && error.data) {
+						errorResponse = error.data;
+					}
+					if ('body' in error && error.body) {
+						errorResponse = error.body;
+					}
+				}
+
 				apiCalls.push({
 					endpoint: endpointName,
 					params: normalizedParams,
 					duration: `${duration}ms`,
-					status: 500,
-					error: error instanceof Error ? error.message : 'Unknown error'
+					status: errorStatus || 500,
+					error: errorMessage,
+					response: errorResponse // Include full response for debugging
 				});
 			}
 		} catch (error) {
@@ -820,11 +1033,38 @@ async function executeMCPCalls(
 				endpoint: (call.endpoint || '').toString(),
 				error
 			});
+
+			// Try to extract full error details including response
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			let errorResponse: any = null;
+			let errorStatus: number | undefined = undefined;
+
+			// Check if error has response data
+			if (error && typeof error === 'object') {
+				if ('response' in error && error.response) {
+					errorResponse = error.response;
+				}
+				if ('status' in error && typeof error.status === 'number') {
+					errorStatus = error.status;
+				}
+				if ('statusCode' in error && typeof error.statusCode === 'number') {
+					errorStatus = error.statusCode;
+				}
+				if ('data' in error && error.data) {
+					errorResponse = error.data;
+				}
+				if ('body' in error && error.body) {
+					errorResponse = error.body;
+				}
+			}
+
 			apiCalls.push({
 				endpoint: (call.endpoint || '').toString(),
 				params: { ...call.params },
 				duration: `${Date.now() - startTime}ms`,
-				error: error instanceof Error ? error.message : 'Unknown error'
+				status: errorStatus || 500,
+				error: errorMessage,
+				response: errorResponse // Include full response for debugging
 			});
 		}
 	}
@@ -850,12 +1090,60 @@ function formatDataForContext(data: any[]): string {
 		}
 
 		// Handle JSON responses with structure
-		if (item.type === 'fetch-scripture' && item.result.scripture) {
-			context += `Scripture for ${item.params.reference}:\n`;
-			for (const verse of item.result.scripture) {
-				context += `- ${verse.translation}: "${verse.text}"\n`;
+		if (item.type === 'fetch-scripture') {
+			// Handle different result structures from fetch_scripture tool
+			let scriptures: any[] = [];
+
+			// Check if result has scripture array directly
+			if (item.result?.scripture && Array.isArray(item.result.scripture)) {
+				scriptures = item.result.scripture;
 			}
-			context += '\n';
+			// Check if result has scriptures array (plural)
+			else if (item.result?.scriptures && Array.isArray(item.result.scriptures)) {
+				scriptures = item.result.scriptures;
+			}
+			// Check if result is a JSON string that needs parsing (when format="json" and multiple scriptures)
+			else if (typeof item.result === 'string') {
+				try {
+					const parsed = JSON.parse(item.result);
+					if (parsed.scriptures && Array.isArray(parsed.scriptures)) {
+						scriptures = parsed.scriptures;
+					} else if (parsed.scripture && Array.isArray(parsed.scripture)) {
+						scriptures = parsed.scripture;
+					}
+				} catch {
+					// Not JSON, might be text format with multiple versions joined
+					// In this case, the MCP tool already formatted it as "ULT: text\n\nUST: text"
+					context += `Scripture for ${item.params.reference}:\n${item.result}\n\n`;
+					continue;
+				}
+			}
+			// Check if result.content is an array (MCP response format)
+			else if (item.result?.content && Array.isArray(item.result.content)) {
+				// Try to parse JSON from content[0].text if format is JSON
+				if (format === 'json' && item.result.content[0]?.text) {
+					try {
+						const parsed = JSON.parse(item.result.content[0].text);
+						if (parsed.scriptures && Array.isArray(parsed.scriptures)) {
+							scriptures = parsed.scriptures;
+						}
+					} catch {
+						// Not JSON, use as-is
+					}
+				}
+			}
+
+			// If we found scriptures array, format all of them
+			if (scriptures.length > 0) {
+				context += `Scripture for ${item.params.reference}:\n`;
+				for (const verse of scriptures) {
+					context += `- ${verse.translation || verse.name || 'Unknown'}: "${verse.text}"\n`;
+				}
+				context += '\n';
+			} else if (item.result) {
+				// Fallback: include the result as-is
+				context += `Scripture for ${item.params.reference}:\n${JSON.stringify(item.result, null, 2)}\n\n`;
+			}
 		} else if (item.type === 'translation-notes' && item.result.items) {
 			const metadata = item.result.metadata || {};
 			const source = metadata.source || 'TN';
@@ -886,37 +1174,166 @@ function formatDataForContext(data: any[]): string {
 			}
 			context += '\n';
 		} else if (
-			item.type === 'get-translation-word' &&
+			(item.type === 'fetch-translation-word' || item.type === 'get-translation-word') &&
 			item.result &&
 			typeof item.result === 'object'
 		) {
-			// Pretty-print a single TW article
-			const w = item.result;
-			context += `Translation Word Article: ${w.term || '(unknown)'}\n`;
-			if (w.definition) context += `Definition: ${w.definition}\n`;
-			if (w.extendedDefinition) context += `Extended: ${w.extendedDefinition}\n`;
-			if (Array.isArray(w.facts) && w.facts.length) {
-				context += `Facts:\n`;
-				for (const f of w.facts) context += `- ${f}\n`;
+			// Handle translation word articles - can be single article or articles array
+			if (item.result.articles && Array.isArray(item.result.articles)) {
+				// Multiple articles (from fetch-translation-word MCP tool)
+				for (const article of item.result.articles) {
+					context += `\n=== Translation Word Article ===\n`;
+					context += `Title: ${article.title || '(no title)'}\n`;
+					if (article.subtitle) context += `Subtitle: ${article.subtitle}\n`;
+					if (article.id) context += `ID: ${article.id}\n`;
+					if (article.category) context += `Category: ${article.category}\n`;
+					if (article.url) context += `URL: ${article.url}\n`;
+					// CRITICAL: Include the FULL markdown content
+					if (article.content) {
+						context += `\n--- Full Article Content (Markdown) ---\n`;
+						context += `${article.content}\n`;
+						context += `--- End of Article Content ---\n`;
+					}
+					context += '\n';
+				}
+			} else if (item.result.word) {
+				// Single article from HTTP endpoint (legacy format)
+				const w = item.result.word;
+				context += `\n=== Translation Word Article ===\n`;
+				context += `Title: ${w.title || w.term || '(unknown)'}\n`;
+				if (w.subtitle) context += `Subtitle: ${w.subtitle}\n`;
+				if (w.id) context += `ID: ${w.id}\n`;
+				if (w.category) context += `Category: ${w.category}\n`;
+				// CRITICAL: Include the FULL markdown content
+				if (w.content) {
+					context += `\n--- Full Article Content (Markdown) ---\n`;
+					context += `${w.content}\n`;
+					context += `--- End of Article Content ---\n`;
+				}
+				context += '\n';
+			} else {
+				// Fallback: try to extract article data from result directly
+				const w = item.result;
+				context += `\n=== Translation Word Article ===\n`;
+				context += `Title: ${w.title || w.term || '(unknown)'}\n`;
+				if (w.subtitle) context += `Subtitle: ${w.subtitle}\n`;
+				if (w.id) context += `ID: ${w.id}\n`;
+				if (w.category) context += `Category: ${w.category}\n`;
+				// CRITICAL: Include the FULL markdown content
+				if (w.content) {
+					context += `\n--- Full Article Content (Markdown) ---\n`;
+					context += `${w.content}\n`;
+					context += `--- End of Article Content ---\n`;
+				}
+				context += '\n';
 			}
-			if (Array.isArray(w.examples) && w.examples.length) {
-				context += `Examples:\n`;
-				for (const ex of w.examples) context += `- ${ex.reference}: ${ex.text}\n`;
+		} else if (item.type?.startsWith('prompt:') && item.result) {
+			// Handle prompt results (e.g., translation-helps-for-passage)
+			// Prompt results can contain scripture, notes, questions, words, and academy articles
+
+			// Try to extract data from MCP response format: content[0].text
+			let promptData: any = null;
+
+			// First, check if result is already the parsed data (from executeMCPCalls)
+			if (item.result && typeof item.result === 'object' && !item.result.content) {
+				// Direct object format - already parsed
+				promptData = item.result;
+			} else if (
+				item.result.content &&
+				Array.isArray(item.result.content) &&
+				item.result.content[0]?.text
+			) {
+				// MCP response format: content[0].text
+				if (typeof item.result.content[0].text === 'string') {
+					try {
+						promptData = JSON.parse(item.result.content[0].text);
+					} catch {
+						// Not JSON, might be text format
+						promptData = item.result.content[0].text;
+					}
+				} else {
+					// Already an object
+					promptData = item.result.content[0].text;
+				}
+			} else if (item.result && typeof item.result === 'object') {
+				// Fallback: try direct object format
+				promptData = item.result;
 			}
-			if (Array.isArray(w.translationSuggestions) && w.translationSuggestions.length) {
-				context += `Translation Suggestions:\n`;
-				for (const s of w.translationSuggestions) context += `- ${s}\n`;
+
+			if (promptData) {
+				// Handle scripture
+				if (promptData.scripture?.text) {
+					context += `Scripture for ${item.params?.reference || 'passage'}:\n"${promptData.scripture.text}"\n\n`;
+				}
+
+				// Handle notes
+				if (promptData.notes?.items && Array.isArray(promptData.notes.items)) {
+					const metadata = promptData.notes.metadata || {};
+					const source = metadata.source || 'TN';
+					const version = metadata.version || '';
+					context += `Translation Notes for ${item.params?.reference || 'passage'} [${source} ${version}]:\n`;
+					for (const note of promptData.notes.items) {
+						const noteRef = note.Reference || item.params?.reference || 'passage';
+						context += `- ${note.Quote || 'General'}: ${note.Note} [${source} ${version} - ${noteRef}]\n`;
+					}
+					context += '\n';
+				}
+
+				// Handle questions
+				if (promptData.questions?.items && Array.isArray(promptData.questions.items)) {
+					const metadata = promptData.questions.metadata || {};
+					const source = metadata.source || 'TQ';
+					const version = metadata.version || '';
+					context += `Study Questions for ${item.params?.reference || 'passage'} [${source} ${version}]:\n`;
+					for (const q of promptData.questions.items) {
+						const qRef = q.Reference || item.params?.reference || 'passage';
+						context += `- Q: ${q.Question}\n  A: ${q.Response} [${source} ${version} - ${qRef}]\n`;
+					}
+					context += '\n';
+				}
+
+				// Handle translation words
+				if (promptData.words && Array.isArray(promptData.words)) {
+					context += `Translation Words:\n`;
+					for (const word of promptData.words) {
+						context += `\n=== Translation Word Article ===\n`;
+						context += `Title: ${word.title || word.term || '(no title)'}\n`;
+						if (word.category) context += `Category: ${word.category}\n`;
+						// CRITICAL: Include the FULL markdown content
+						if (word.content) {
+							context += `\n--- Full Article Content (Markdown) ---\n`;
+							context += `${word.content}\n`;
+							context += `--- End of Article Content ---\n`;
+						}
+						context += '\n';
+					}
+				}
+
+				// Handle academy articles - CRITICAL: Include FULL content
+				if (promptData.academyArticles && Array.isArray(promptData.academyArticles)) {
+					context += `\n🎓 Translation Academy Articles (${promptData.academyArticles.length} found):\n`;
+					for (const article of promptData.academyArticles) {
+						context += `\n=== Translation Academy Article ===\n`;
+						context += `Title: ${article.title || article.moduleId || '(no title)'}\n`;
+						if (article.moduleId) context += `Module ID: ${article.moduleId}\n`;
+						if (article.rcLink) context += `RC Link: ${article.rcLink}\n`;
+						if (article.path) context += `Path: ${article.path}\n`;
+						if (article.category) context += `Category: ${article.category}\n`;
+						// CRITICAL: Include the FULL markdown content - DO NOT SUMMARIZE
+						// The LLM MUST copy this entire section verbatim when asked for the complete article
+						if (article.content) {
+							context += `\n--- Full Article Content (Markdown) ---\n`;
+							context += `${article.content}\n`;
+							context += `--- End of Article Content ---\n`;
+							context += `\n⚠️ IMPORTANT: When the user asks for "the whole article" or "the complete article" about this concept, you MUST copy the ENTIRE content above (between "--- Full Article Content (Markdown) ---" and "--- End of Article Content ---") verbatim. Do NOT summarize, do NOT paraphrase, do NOT create your own explanation.\n`;
+						}
+						context += '\n';
+					}
+				}
+			} else {
+				// Fallback: include the result as-is
+				context += `[${item.type}]\n${JSON.stringify(item.result, null, 2)}\n\n`;
 			}
-			if (Array.isArray(w.relatedWords) && w.relatedWords.length) {
-				context += `Related: ${w.relatedWords.join(', ')}\n`;
-			}
-			if (Array.isArray(w.strongs) && w.strongs.length) {
-				context += `Strongs: ${w.strongs.join(', ')}\n`;
-			}
-			if (Array.isArray(w.aliases) && w.aliases.length) {
-				context += `Aliases: ${w.aliases.join(', ')}\n`;
-			}
-			context += '\n';
 		} else {
 			// Fallback for any other data type
 			context += `[${item.type}]\n${JSON.stringify(item.result, null, 2)}\n\n`;
@@ -927,14 +1344,26 @@ function formatDataForContext(data: any[]): string {
 }
 
 /**
+ * Calculate approximate token count (rough estimate: 1 token ≈ 4 characters)
+ */
+function estimateTokens(text: string): number {
+	return Math.ceil(text.length / 4);
+}
+
+/**
  * Call OpenAI with our data and rules
  */
 async function callOpenAI(
 	message: string,
 	context: string,
 	chatHistory: Array<{ role: string; content: string }> = [],
-	apiKey: string
-): Promise<{ response: string; error?: string }> {
+	apiKey: string,
+	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>
+): Promise<{
+	response: string;
+	error?: string;
+	metrics?: { promptTokens: number; totalTokens: number; promptType: string };
+}> {
 	if (!apiKey) {
 		return {
 			response: '',
@@ -943,12 +1372,31 @@ async function callOpenAI(
 	}
 
 	try {
+		// Build optimized prompt with contextual rules using SDK
+		const requestType = endpointCalls
+			? detectRequestType(endpointCalls as EndpointCall[], message)
+			: undefined;
+		const systemPrompt = USE_OPTIMIZED_PROMPT
+			? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
+			: SYSTEM_PROMPT_LEGACY;
+
 		const messages = [
-			{ role: 'system', content: SYSTEM_PROMPT },
+			{ role: 'system', content: systemPrompt },
 			{ role: 'system', content: context },
 			...chatHistory.slice(-6), // Keep last 6 messages for context
 			{ role: 'user', content: message }
 		];
+
+		// Calculate token metrics
+		const promptTokens = estimateTokens(
+			systemPrompt +
+				context +
+				message +
+				chatHistory
+					.slice(-6)
+					.map((m) => m.content)
+					.join('')
+		);
 
 		// Add timeout using AbortController
 		const controller = new AbortController();
@@ -981,8 +1429,31 @@ async function callOpenAI(
 			}
 
 			const data = await response.json();
+			const responseText = data.choices[0]?.message?.content || 'No response generated';
+			const responseTokens = estimateTokens(responseText);
+			const totalTokens = promptTokens + responseTokens;
+
+			// Log metrics
+			logger.info('OpenAI call metrics', {
+				promptType: USE_OPTIMIZED_PROMPT ? 'optimized' : 'legacy',
+				requestType,
+				promptTokens,
+				responseTokens,
+				totalTokens,
+				promptSize: systemPrompt.length,
+				contextSize: context.length,
+				tokenReduction: USE_OPTIMIZED_PROMPT
+					? `${Math.round((1 - promptTokens / estimateTokens(SYSTEM_PROMPT_LEGACY + context + message)) * 100)}%`
+					: '0%'
+			});
+
 			return {
-				response: data.choices[0]?.message?.content || 'No response generated'
+				response: responseText,
+				metrics: {
+					promptTokens,
+					totalTokens,
+					promptType: USE_OPTIMIZED_PROMPT ? 'optimized' : 'legacy'
+				}
 			};
 		} catch (error) {
 			clearTimeout(timeout);
@@ -1020,7 +1491,8 @@ async function callOpenAIStream(
 	apiKey: string,
 	xrayInit?: any,
 	preTimings?: Record<string, number>,
-	overallStartTime?: number
+	overallStartTime?: number,
+	endpointCalls?: Array<{ endpoint?: string; prompt?: string; params: Record<string, string> }>
 ): Promise<ReadableStream<Uint8Array>> {
 	const encoder = new TextEncoder();
 	const decoder = new TextDecoder();
@@ -1028,12 +1500,32 @@ async function callOpenAIStream(
 	const stream = new ReadableStream<Uint8Array>({
 		start: async (controller) => {
 			try {
+				// Build optimized prompt with contextual rules using SDK
+				const requestType = endpointCalls
+					? detectRequestType(endpointCalls as EndpointCall[], message)
+					: undefined;
+				const systemPrompt = USE_OPTIMIZED_PROMPT
+					? getSystemPrompt(requestType, endpointCalls as EndpointCall[] | undefined, message)
+					: SYSTEM_PROMPT_LEGACY;
+
 				const messages = [
-					{ role: 'system', content: SYSTEM_PROMPT },
+					{ role: 'system', content: systemPrompt },
 					{ role: 'system', content: context },
 					...chatHistory.slice(-6),
 					{ role: 'user', content: message }
 				];
+
+				// Calculate token metrics
+				const promptTokens = estimateTokens(
+					systemPrompt +
+						context +
+						message +
+						chatHistory
+							.slice(-6)
+							.map((m) => m.content)
+							.join('')
+				);
+				let responseTokens = 0;
 
 				// Helper to emit SSE data events
 				const emit = (event: string, data: unknown) => {
@@ -1125,6 +1617,7 @@ async function callOpenAIStream(
 							const event = JSON.parse(jsonStr);
 							const delta = event.choices?.[0]?.delta?.content;
 							if (typeof delta === 'string' && delta.length > 0) {
+								responseTokens += estimateTokens(delta);
 								emit('llm:delta', { text: delta });
 							}
 						} catch {
@@ -1139,12 +1632,36 @@ async function callOpenAIStream(
 						const event = JSON.parse(buffer.replace(/^data:\s*/, ''));
 						const delta = event.choices?.[0]?.delta?.content;
 						if (typeof delta === 'string' && delta.length > 0) {
+							responseTokens += estimateTokens(delta);
 							emit('llm:delta', { text: delta });
 						}
 					} catch {
 						// ignore
 					}
 				}
+
+				// Emit metrics
+				const totalTokens = promptTokens + responseTokens;
+				logger.info('OpenAI stream metrics', {
+					promptType: USE_OPTIMIZED_PROMPT ? 'optimized' : 'legacy',
+					requestType,
+					promptTokens,
+					responseTokens,
+					totalTokens,
+					promptSize: systemPrompt.length,
+					contextSize: context.length,
+					tokenReduction: USE_OPTIMIZED_PROMPT
+						? `${Math.round((1 - promptTokens / estimateTokens(SYSTEM_PROMPT_LEGACY + context + message)) * 100)}%`
+						: '0%'
+				});
+
+				emit('llm:metrics', {
+					promptType: USE_OPTIMIZED_PROMPT ? 'optimized' : 'legacy',
+					requestType,
+					promptTokens,
+					responseTokens,
+					totalTokens
+				});
 
 				emit('llm:done', { done: true });
 				controller.close();
@@ -1288,7 +1805,8 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 					cacheStatus: call.cacheStatus || 'miss',
 					params: call.params,
 					status: call.status,
-					error: call.error
+					error: call.error,
+					response: call.response // Include full MCP server response for debugging
 				})),
 				timings: {
 					endpointDiscovery: timings.endpointDiscovery || 0,
@@ -1310,7 +1828,8 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 					mcpExecution: timings.mcpExecution || 0,
 					contextFormatting: timings.contextFormatting || 0
 				},
-				startTime
+				startTime,
+				endpointCalls
 			);
 			const totalDuration = Date.now() - startTime;
 			return new Response(sseStream, {
@@ -1324,7 +1843,13 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		}
 
 		const llmResponseStart = Date.now();
-		const { response, error } = await callOpenAI(message, context, chatHistory, apiKey);
+		const { response, error, metrics } = await callOpenAI(
+			message,
+			context,
+			chatHistory,
+			apiKey,
+			endpointCalls
+		);
 		timings.llmResponse = Date.now() - llmResponseStart;
 
 		// Log the response for debugging
@@ -1332,7 +1857,8 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			hasResponse: !!response,
 			responseLength: response?.length || 0,
 			hasError: !!error,
-			contextLength: context.length
+			contextLength: context.length,
+			metrics: metrics || {}
 		});
 
 		if (error) {
@@ -1374,7 +1900,8 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			metadata: {
 				model: 'gpt-4o-mini',
 				streaming: false,
-				duration: totalDuration
+				duration: totalDuration,
+				metrics: metrics || {}
 			}
 		};
 
@@ -1398,7 +1925,8 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 					cacheStatus: call.cacheStatus || 'miss',
 					params: call.params,
 					status: call.status,
-					error: call.error
+					error: call.error,
+					response: call.response // Include full MCP server response for debugging
 				})),
 				// Add detailed timing breakdown
 				timings: {

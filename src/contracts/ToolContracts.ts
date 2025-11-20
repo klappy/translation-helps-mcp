@@ -42,18 +42,14 @@ export const ToolFormatters = {
     const scriptureArray = data.scripture || data.scriptures;
 
     if (scriptureArray && Array.isArray(scriptureArray)) {
-      const ult = scriptureArray.find((s: any) =>
-        s.translation?.includes("Literal Text"),
-      );
-      const ust = scriptureArray.find((s: any) =>
-        s.translation?.includes("Simplified Text"),
-      );
-      return (
-        ult?.text ||
-        ust?.text ||
-        scriptureArray[0]?.text ||
-        "Scripture not found"
-      );
+      // If multiple scriptures, return all of them formatted
+      if (scriptureArray.length > 1) {
+        return scriptureArray
+          .map((s: any) => `${s.translation || "Unknown"}: ${s.text || ""}`)
+          .join("\n\n");
+      }
+      // Single scripture - return just the text
+      return scriptureArray[0]?.text || "Scripture not found";
     }
     return data.text || data.ult || data.ust || "Scripture not found";
   },

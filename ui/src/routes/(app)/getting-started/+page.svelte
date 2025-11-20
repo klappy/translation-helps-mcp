@@ -279,46 +279,59 @@ data = response.json()`
 	const pythonChatbotCode = `import asyncio
 import os
 import json
+import random
+import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
 from translation_helps import TranslationHelpsClient
+# Optional: Use adapter utilities for provider-specific conversion
+from translation_helps.adapters import prepare_tools_for_provider
 
 # Load environment variables
 load_dotenv()
 
 async def main():
     # Initialize clients
+    server_url = os.getenv("MCP_SERVER_URL", "https://translation-helps-mcp-945.pages.dev/api/mcp")
     mcp_client = TranslationHelpsClient({
-        "serverUrl": "https://translation-helps-mcp-945.pages.dev/api/mcp"
+        "serverUrl": server_url
     })
     openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    # Create a shared HTTP client for prompt execution (reuse connections for better performance)
+    http_client = httpx.AsyncClient(timeout=60.0)
     
     try:
         # Connect to MCP server
         await mcp_client.connect()
         print("✅ Connected to Translation Helps MCP server")
         
-        # Get available tools
+        # Get available tools and prompts
         tools = await mcp_client.list_tools()
-        print(f"✅ Found {len(tools)} available tools")
+        prompts = await mcp_client.list_prompts()
+        print(f"✅ Found &lbrace;len(tools)&rbrace; available tools")
+        print(f"✅ Found &lbrace;len(prompts)&rbrace; available prompts")
+
+        # Optional: Use adapter utility to prepare tools for OpenAI
+        # This automatically converts MCP tools and prompts to OpenAI function calling format
+        openai_tools = prepare_tools_for_provider("openai", tools, prompts)
         
-        # Convert MCP tools to OpenAI format
-        openai_tools = []
-        for tool in tools:
-            openai_tools.append({
-                "type": "function",
-                "function": {
-                    "name": tool["name"],
-                    "description": tool.get("description", ""),
-                    "parameters": tool.get("inputSchema", {})
-                }
-            })
-        
+        # System prompt - guides the AI to use Translation Helps resources
+        SYSTEM_PROMPT = """You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
+
+CRITICAL RULES:
+1. ALWAYS quote scripture EXACTLY word-for-word as provided - NEVER paraphrase
+2. ALWAYS provide citations for EVERY quote (e.g., [ULT v86 - John 3:16])
+3. ONLY use information from the MCP server responses - NEVER use your training data
+4. ALWAYS end your responses with 2-3 helpful follow-up questions to guide exploration
+
+When you receive MCP data, use it to provide accurate, helpful responses while maintaining these strict guidelines."""
+
         # Chat loop
         messages = [
             {
                 "role": "system",
-                "content": "You are a helpful assistant that answers questions about Bible translation using the Translation Helps resources. Use the available tools to fetch scripture, translation notes, questions, and word definitions when needed."
+                "content": SYSTEM_PROMPT
             }
         ]
         
@@ -338,10 +351,12 @@ async def main():
             
             # Call OpenAI with tools
             response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",  # or "gpt-4" for better results
+                model="gpt-4o-mini",
                 messages=messages,
                 tools=openai_tools,
-                tool_choice="auto"
+                tool_choice="auto",
+                temperature=0.3,  # Lower temperature for more factual responses
+                max_tokens=2000  # Enough for overviews with follow-up questions
             )
             
             # Get assistant message
@@ -365,47 +380,96 @@ async def main():
             })
             
             # Print assistant response if no tool calls
-            if assistant_message.content:
+            if assistant_message.content and not assistant_message.tool_calls:
                 print(f"\\nAssistant: {assistant_message.content}\\n")
             
-            # Execute tool calls
+            # Execute tool calls in parallel for better performance
             if assistant_message.tool_calls:
-                print("\\n🔧 Executing tool calls...")
-                for tool_call in assistant_message.tool_calls:
+                # Show immediate polite response to user (better UX)
+                polite_messages = [
+                    "💭 Let me gather that information for you...",
+                    "🔍 I'll look that up for you right away...",
+                    "📚 Let me fetch the relevant translation resources..."
+                ]
+                print(f"\\nAssistant: {random.choice(polite_messages)}\\n")
+                
+                async def execute_tool_call(tool_call):
+                    """Execute a single tool call and return the result"""
                     tool_name = tool_call.function.name
-                    tool_args = json.loads(tool_call.function.arguments)  # Parse JSON string
-                    
-                    print(f"  → Calling {tool_name}...")
+                    tool_args = json.loads(tool_call.function.arguments)
                     
                     try:
-                        # Call tool via MCP SDK
+                        # Check if this is a prompt (starts with "prompt_")
+                        if tool_name.startswith("prompt_"):
+                            # Extract the actual prompt name
+                            prompt_name = tool_name.replace("prompt_", "")
+                            
+                            # Execute prompt via REST API
+                            prompt_response = await http_client.post(
+                                f"{server_url.replace('/api/mcp', '/api/execute-prompt')}",
+                                json={
+                                    "promptName": prompt_name,
+                                    "parameters": tool_args
+                                }
+                            )
+                            prompt_response.raise_for_status()
+                            prompt_data = prompt_response.json()
+                            
+                            # Convert structured data to readable format
+                            tool_result_text = json.dumps(prompt_data, indent=2)
+                            
+                            return {
+                                "tool_call_id": tool_call.id,
+                                "name": tool_name,
+                                "content": tool_result_text
+                            }
+                        
+                        # Regular tool call via MCP SDK
                         result = await mcp_client.call_tool(tool_name, tool_args)
                         
                         # Extract text from result
                         tool_result_text = ""
                         if result.get("content"):
-                            for item in result["content"]:
-                                if item.get("type") == "text":
-                                    tool_result_text += item.get("text", "")
+                            content_items = result["content"]
+                            if not isinstance(content_items, list):
+                                content_items = [content_items]
+                            
+                            for item in content_items:
+                                if isinstance(item, dict):
+                                    if "text" in item:
+                                        tool_result_text += str(item.get("text", ""))
+                                    elif item.get("type") == "text" and "text" in item:
+                                        tool_result_text += item.get("text", "")
+                                elif isinstance(item, str):
+                                    tool_result_text += item
                         
-                        # Add tool result to messages
-                        messages.append({
-                            "role": "tool",
+                        if not tool_result_text and result.get("text"):
+                            tool_result_text = result["text"]
+                        
+                        return {
                             "tool_call_id": tool_call.id,
                             "name": tool_name,
                             "content": tool_result_text
-                        })
-                        
-                        print(f"  ✅ {tool_name} completed")
+                        }
                     except Exception as e:
-                        error_msg = f"Error calling {tool_name}: {str(e)}"
-                        messages.append({
-                            "role": "tool",
+                        error_msg = f"[ERROR] The tool call failed: {str(e)}"
+                        return {
                             "tool_call_id": tool_call.id,
                             "name": tool_name,
                             "content": error_msg
-                        })
-                        print(f"  ❌ {error_msg}")
+                        }
+                
+                # Execute all tool calls in parallel using asyncio.gather
+                tool_results = await asyncio.gather(*[execute_tool_call(tc) for tc in assistant_message.tool_calls])
+                
+                # Add all tool results to messages
+                for result in tool_results:
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": result["tool_call_id"],
+                        "name": result["name"],
+                        "content": result["content"]
+                    })
                 
                 # Get final response from OpenAI with tool results
                 final_response = openai_client.chat.completions.create(
@@ -414,16 +478,38 @@ async def main():
                 )
                 
                 final_message = final_response.choices[0].message
+                final_content = final_message.content
+                
+                # Post-process: Ensure follow-up questions are present
+                content_lower = final_content.lower()
+                followup_indicators = ["would you like", "should we", "want to explore"]
+                has_followups = any(indicator in content_lower for indicator in followup_indicators)
+                
+                if not has_followups:
+                    # Extract reference if possible
+                    import re
+                    ref_match = re.search(r'\\b([1-3]?\\s?[a-z]+)\\s+(\\d+):(\\d+)', user_input.lower())
+                    if ref_match:
+                        book = ref_match.group(1).strip().title()
+                        chapter = ref_match.group(2)
+                        verse = ref_match.group(3)
+                        reference = f"{book} {chapter}:{verse}"
+                        final_content += f"\\n\\nWould you like to explore more? Would you like to see the translation notes for {reference}? Would you like to explore the key terms in {reference}? Or would you like to learn about the translation challenges in {reference}?"
+                    else:
+                        final_content += f"\\n\\nWould you like to explore more? Would you like to see the translation notes for this verse? Would you like to explore the key terms in this passage? Or would you like to learn about the translation challenges here?"
+                
                 messages.append({
                     "role": "assistant",
-                    "content": final_message.content
+                    "content": final_content
                 })
                 
-                print(f"\\nAssistant: {final_message.content}\\n")
+                print(f"\\nAssistant: {final_content}\\n")
         
     except Exception as e:
         print(f"❌ Error: {e}")
     finally:
+        # Clean up resources
+        await http_client.aclose()  # Close the shared HTTP client
         await mcp_client.close()
         print("\\n👋 Goodbye!")
 
@@ -1097,91 +1183,578 @@ if __name__ == "__main__":
 							</ul>
 						</div>
 
-						<!-- Step 1: Setup -->
-						<div class="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6">
-							<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-emerald-300">
-								<span
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-300"
-									>1</span
-								>
-								Setup Your Project
+						<!-- Section 1: Project Setup -->
+						<div class="mb-8 rounded-xl border border-blue-500/30 bg-blue-500/5 p-6">
+							<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-blue-300">
+								<Package class="h-5 w-5" />
+								Section 1: Project Setup
 							</h3>
-							<p class="mb-4 text-sm text-gray-300">
-								Create a new directory and install the required packages:
-							</p>
-							<pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code
-									>mkdir translation-helps-chatbot
+
+							<!-- Step 1.1: Install Dependencies -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 1.1:</span>
+									Install Dependencies
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Install the Python SDK and required libraries.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> The SDK provides the MCP client, adapter utilities convert MCP
+									tools to OpenAI format, and httpx enables async HTTP requests for prompt execution.
+								</p>
+								<pre class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code
+										>mkdir translation-helps-chatbot
 cd translation-helps-chatbot
 
-# Install the Python SDK and OpenAI
-pip install translation-helps-mcp-client openai python-dotenv</code
-								></pre>
+# Install the Python SDK and dependencies
+pip install translation-helps-mcp-client>=1.1.1 openai python-dotenv httpx</code
+									></pre>
+								<p class="mt-2 text-xs text-gray-400">
+									<strong>Note:</strong> Version 1.1.1+ includes optional adapter utilities for converting
+									MCP tools/prompts to provider formats.
+								</p>
+							</div>
+
+							<!-- Step 1.2: Configure Environment -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 1.2:</span>
+									Configure Environment Variables
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Create a
+									<code class="rounded bg-gray-800 px-1 py-0.5 text-cyan-300">.env</code> file with your
+									OpenAI API key.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> Keeps sensitive credentials out of your code. The
+									<code class="rounded bg-gray-800 px-1 py-0.5 text-gray-400">python-dotenv</code> library
+									loads these automatically.
+								</p>
+								<pre class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code
+										>OPENAI_API_KEY=your-openai-api-key-here</code
+									></pre>
+								<p class="mt-2 text-xs text-gray-400">
+									⚠️ Never commit your <code class="rounded bg-gray-800 px-1 py-0.5 text-gray-400"
+										>.env</code
+									>
+									file to version control. Add it to
+									<code class="rounded bg-gray-800 px-1 py-0.5 text-gray-400">.gitignore</code>.
+								</p>
+							</div>
 						</div>
 
-						<!-- Step 2: Environment -->
-						<div class="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6">
-							<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-emerald-300">
-								<span
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-300"
-									>2</span
-								>
-								Configure Environment Variables
+						<!-- Section 2: Code Structure Overview -->
+						<div class="mb-8 rounded-xl border border-purple-500/30 bg-purple-500/5 p-6">
+							<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-purple-300">
+								<FileCode class="h-5 w-5" />
+								Section 2: Understanding the Code Structure
 							</h3>
 							<p class="mb-4 text-sm text-gray-300">
-								Create a <code class="rounded bg-gray-800 px-2 py-0.5 text-cyan-300">.env</code> file
-								in your project directory:
+								Before diving into the code, let's understand the key components and their roles:
 							</p>
-							<pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code
-									>OPENAI_API_KEY=your-openai-api-key-here</code
-								></pre>
-							<p class="mt-3 text-xs text-gray-400">
-								⚠️ Never commit your <code class="rounded bg-gray-800 px-1 py-0.5 text-gray-400"
-									>.env</code
-								>
-								file to version control. Add it to
-								<code class="rounded bg-gray-800 px-1 py-0.5 text-gray-400">.gitignore</code>.
-							</p>
+							<div class="space-y-3 text-sm text-gray-300">
+								<div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+									<strong class="text-purple-300">1. Imports & Setup</strong>
+									<p class="mt-1 text-xs text-gray-400">
+										Import the MCP client, OpenAI client, adapter utilities, and HTTP client.
+										Initialize clients with configuration.
+									</p>
+								</div>
+								<div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+									<strong class="text-purple-300">2. Tool Discovery</strong>
+									<p class="mt-1 text-xs text-gray-400">
+										Connect to the MCP server and discover available tools and prompts dynamically.
+										This ensures your chatbot always has access to the latest resources.
+									</p>
+								</div>
+								<div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+									<strong class="text-purple-300">3. Adapter Preparation</strong>
+									<p class="mt-1 text-xs text-gray-400">
+										Use <code class="text-cyan-300">prepare_tools_for_provider()</code> to convert MCP
+										tools and prompts into OpenAI's function calling format. This is necessary because
+										OpenAI's API doesn't natively support MCP prompts.
+									</p>
+								</div>
+								<div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+									<strong class="text-purple-300">4. Main Loop</strong>
+									<p class="mt-1 text-xs text-gray-400">
+										Continuously prompt for user input, send to OpenAI with available tools, execute
+										tool calls in parallel, and return responses with follow-up questions.
+									</p>
+								</div>
+								<div class="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+									<strong class="text-purple-300">5. Tool Execution</strong>
+									<p class="mt-1 text-xs text-gray-400">
+										Handle both regular MCP tools (via SDK) and prompts (via REST API). Execute all
+										tool calls in parallel using <code class="text-cyan-300">asyncio.gather()</code>
+										for better performance.
+									</p>
+								</div>
+							</div>
 						</div>
 
-						<!-- Step 3: Create the Chatbot -->
-						<div class="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6">
+						<!-- Section 3: Implementation -->
+						<div class="mb-8 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6">
 							<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-emerald-300">
-								<span
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-300"
-									>3</span
-								>
-								Create Your Chatbot
+								<FileCode class="h-5 w-5" />
+								Section 3: Building the Code Step by Step
 							</h3>
 							<p class="mb-4 text-sm text-gray-300">
-								Create a file called <code class="rounded bg-gray-800 px-2 py-0.5 text-cyan-300"
-									>chatbot.py</code
-								>:
+								We'll build the chatbot incrementally. Create <code
+									class="rounded bg-gray-800 px-1 py-0.5 text-cyan-300">chatbot.py</code
+								> and add each section as we go.
 							</p>
-							<pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code
-									>{pythonChatbotCode}</code
-								></pre>
+
+							<!-- Step 3.1: Imports -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 3.1:</span>
+									Import Required Libraries
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Import all necessary libraries and load environment variables.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> We need asyncio for async operations, httpx for HTTP requests,
+									OpenAI client for AI responses, and the MCP SDK for accessing translation resources.
+								</p>
+								<pre class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code
+										>import asyncio
+import os
+import json
+import random
+import httpx
+from dotenv import load_dotenv
+from openai import OpenAI
+from translation_helps import TranslationHelpsClient
+from translation_helps.adapters import prepare_tools_for_provider
+
+# Load environment variables from .env file
+load_dotenv()</code
+									></pre>
+							</div>
+
+							<!-- Step 3.2: Client Initialization -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 3.2:</span>
+									Initialize Clients
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Create the main function and initialize MCP, OpenAI, and
+									HTTP clients.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> The MCP client connects to translation resources, OpenAI client
+									generates responses, and the shared HTTP client reuses connections for better performance
+									when executing prompts.
+								</p>
+								<pre class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code
+										>async def main():
+    # Get server URL from environment or use default
+    server_url = os.getenv("MCP_SERVER_URL", "https://translation-helps-mcp-945.pages.dev/api/mcp")
+    
+    # Initialize MCP client for accessing translation resources
+    mcp_client = TranslationHelpsClient({'{'}"serverUrl": server_url{'}'})
+    
+    # Initialize OpenAI client for AI responses
+    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    # Create shared HTTP client for prompt execution (reuses connections)
+    http_client = httpx.AsyncClient(timeout=60.0)
+    
+    try:
+        # ... rest of code goes here ...
+    finally:
+        await http_client.aclose()
+        await mcp_client.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())</code
+									></pre>
+							</div>
+
+							<!-- Step 3.3: Tool Discovery -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 3.3:</span>
+									Connect and Discover Tools
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Connect to the MCP server and discover available tools
+									and prompts, then convert them for OpenAI.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> We need to know what tools are available before we can use them.
+									The adapter converts MCP tools/prompts to OpenAI's function calling format since OpenAI
+									doesn't natively support MCP prompts.
+								</p>
+								<pre
+									class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code>    try:
+        # Connect to MCP server
+        await mcp_client.connect()
+        print("✅ Connected to Translation Helps MCP server")
+        
+        # Discover available tools and prompts
+        tools = await mcp_client.list_tools()
+        prompts = await mcp_client.list_prompts()
+        print(f"✅ Found {'{'}len(tools){'}'} available tools")
+        print(f"✅ Found {'{'}len(prompts){'}'} available prompts")
+        
+        # Convert MCP tools/prompts to OpenAI function calling format
+        openai_tools = prepare_tools_for_provider("openai", tools, prompts)
+        
+        # ... rest of code goes here ...</code
+									></pre>
+							</div>
+
+							<!-- Step 3.4: System Prompt -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 3.4:</span>
+									Define System Prompt
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Create a comprehensive system prompt that instructs the
+									AI on how to use translation resources.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> The system prompt defines the AI's behavior, explains available
+									resources, and ensures accurate, helpful responses. This is critical for getting good
+									results.
+								</p>
+								<pre
+									class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code>        # System prompt - defines AI behavior and available resources
+        SYSTEM_PROMPT = """You are a Bible study assistant that provides information EXCLUSIVELY from the Translation Helps MCP Server database. You have access to real-time data from unfoldingWord's translation resources.
+
+UNDERSTANDING TRANSLATION RESOURCES:
+1. **Scripture Texts** (ULT, UST) - The actual Bible text
+2. **Translation Notes** (TN) - Explains difficult phrases and cultural context
+3. **Translation Words** (TW) - Comprehensive biblical term definitions
+4. **Translation Questions** (TQ) - Comprehension questions
+5. **Translation Academy** (TA) - Training articles on translation concepts
+
+CRITICAL RULES:
+- ALWAYS use tools to fetch data before answering
+- Quote scripture EXACTLY as provided
+- Include citations for all information
+- Present complete translation word articles when asked
+- Always end responses with helpful follow-up questions
+
+... (full prompt continues with detailed instructions) ..."""
+        
+        # Initialize message history with system prompt
+        messages = [
+            {'{'}"role": "system", "content": SYSTEM_PROMPT{'}'}
+        ]
+        
+        print("\\n🤖 Chatbot ready! Type 'quit' to exit.\\n")</code
+									></pre>
+								<p class="mt-2 text-xs text-gray-400">
+									<strong>Note:</strong> The full system prompt is quite long (~260 lines). See the complete
+									code example for the full prompt.
+								</p>
+							</div>
+
+							<!-- Step 3.5: Main Loop -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 3.5:</span>
+									Create Main Chat Loop
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Create a loop that reads user input, sends it to OpenAI
+									with tools, and handles responses.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> This is the core interaction loop. It continuously processes
+									user questions, lets OpenAI decide which tools to call, and displays responses.
+								</p>
+								<pre
+									class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code>        while True:
+            # Get user input
+            user_input = input("You: ").strip()
+            if user_input.lower() in ['quit', 'exit', 'q']:
+                break
+            
+            if not user_input:
+                continue
+            
+            # Add user message to conversation history
+            messages.append({'{'}"role": "user", "content": user_input{'}'})
+            
+            # Call OpenAI with available tools
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                tools=openai_tools,
+                tool_choice="auto",  # Let OpenAI decide which tools to use
+                temperature=0.3,  # Lower temperature for more factual responses
+                max_tokens=2000
+            )
+            
+            # Get assistant's response
+            assistant_message = response.choices[0].message
+            
+            # Add assistant message to history (including tool calls if any)
+            messages.append({'{'}
+                "role": "assistant",
+                "content": assistant_message.content,
+                "tool_calls": [
+                    {'{'}
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {'{'}
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments
+                        {'}'}
+                    {'}'} for tc in (assistant_message.tool_calls or [])
+                ]
+            {'}'} if assistant_message.tool_calls else {'{'}
+                "role": "assistant",
+                "content": assistant_message.content
+            {'}'})
+            
+            # ... handle tool calls next ...</code
+									></pre>
+							</div>
+
+							<!-- Step 3.6: Tool Execution -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 3.6:</span>
+									Execute Tool Calls in Parallel
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Create a function to execute tool calls and run them all
+									in parallel.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> Parallel execution is much faster than sequential. We handle
+									two types: (1) Regular MCP tools via SDK, (2) Prompts via REST API (since OpenAI doesn't
+									support MCP prompts natively).
+								</p>
+								<pre
+									class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code>            # If OpenAI wants to call tools, execute them
+            if assistant_message.tool_calls:
+                # Show immediate feedback to user
+                polite_messages = [
+                    "💭 Let me gather that information for you...",
+                    "🔍 I'll look that up for you right away...",
+                    "📚 Let me fetch the relevant translation resources..."
+                ]
+                print(f"\\nAssistant: {'{'}random.choice(polite_messages){'}'}\\n")
+                
+                # Define function to execute a single tool call
+                async def execute_tool_call(tool_call):
+                    tool_name = tool_call.function.name
+                    tool_args = json.loads(tool_call.function.arguments)
+                    
+                    try:
+                        # Check if this is a prompt (starts with "prompt_")
+                        if tool_name.startswith("prompt_"):
+                            prompt_name = tool_name.replace("prompt_", "")
+                            
+                            # Execute prompt via REST API
+                            prompt_response = await http_client.post(
+                                f"{'{'}server_url.replace('/api/mcp', '/api/execute-prompt'){'}'}",
+                                json={'{'}
+                                    "promptName": prompt_name,
+                                    "parameters": tool_args
+                                {'}'}
+                            )
+                            prompt_response.raise_for_status()
+                            prompt_data = prompt_response.json()
+                            return {'{'}
+                                "tool_call_id": tool_call.id,
+                                "name": tool_name,
+                                "content": json.dumps(prompt_data, indent=2)
+                            {'}'}
+                        
+                        # Regular MCP tool call via SDK
+                        result = await mcp_client.call_tool(tool_name, tool_args)
+                        
+                        # Extract text from MCP response
+                        tool_result_text = ""
+                        if result.get("content"):
+                            for item in result["content"]:
+                                if isinstance(item, dict) and "text" in item:
+                                    tool_result_text += item.get("text", "")
+                        
+                        return {'{'}
+                            "tool_call_id": tool_call.id,
+                            "name": tool_name,
+                            "content": tool_result_text
+                        {'}'}
+                    except Exception as e:
+                        return {'{'}
+                            "tool_call_id": tool_call.id,
+                            "name": tool_name,
+                            "content": f"[ERROR] {'{'}str(e){'}'}"
+                        {'}'}
+                
+                # Execute all tool calls in parallel
+                tool_results = await asyncio.gather(*[
+                    execute_tool_call(tc) for tc in assistant_message.tool_calls
+                ])
+                
+                # Add tool results to conversation history
+                for result in tool_results:
+                    messages.append({'{'}
+                        "role": "tool",
+                        "tool_call_id": result["tool_call_id"],
+                        "name": result["name"],
+                        "content": result["content"]
+                    {'}'})
+                
+                # ... get final response next ...</code
+									></pre>
+							</div>
+
+							<!-- Step 3.7: Final Response -->
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 3.7:</span>
+									Get Final Response and Add Follow-up Questions
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Get OpenAI's final response with tool results, ensure
+									follow-up questions are present, and display it.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> After tool execution, OpenAI generates a response using the fetched
+									data. We post-process to ensure follow-up questions are always included for better
+									user engagement.
+								</p>
+								<pre
+									class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code>                # Get final response from OpenAI with tool results
+                final_response = openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=messages
+                )
+                
+                final_message = final_response.choices[0].message
+                final_content = final_message.content
+                
+                # Post-process: Ensure follow-up questions are present
+                content_lower = final_content.lower()
+                followup_indicators = ["would you like", "should we", "want to explore"]
+                has_followups = any(indicator in content_lower for indicator in followup_indicators)
+                
+                if not has_followups:
+                    # Extract Bible reference if present
+                    import re
+                    ref_match = re.search(r'\\b([1-3]?\\s?[a-z]+)\\s+(\\d+):(\\d+)', user_input.lower())
+                    if ref_match:
+                        book = ref_match.group(1).strip().title()
+                        chapter = ref_match.group(2)
+                        verse = ref_match.group(3)
+                        reference = f"{'{'}book{'}'} {'{'}chapter{'}'}:{'{'}verse{'}'}"
+                        final_content += f"\\n\\nWould you like to explore more? Would you like to see the translation notes for {'{'}reference{'}'}? Would you like to explore the key terms in {'{'}reference{'}'}? Or would you like to learn about the translation challenges in {'{'}reference{'}'}?"
+                    else:
+                        final_content += f"\\n\\nWould you like to explore more? Would you like to see the translation notes for this verse? Would you like to explore the key terms in this passage? Or would you like to learn about the translation challenges here?"
+                
+                # Add final response to history
+                messages.append({'{'}
+                    "role": "assistant",
+                    "content": final_content
+                {'}'})
+                
+                # Display response
+                print(f"\\nAssistant: {'{'}final_content{'}'}\\n")
+            
+            # If no tool calls, just display the response
+            elif assistant_message.content:
+                print(f"\\nAssistant: {'{'}assistant_message.content{'}'}\\n")</code
+									></pre>
+							</div>
+
+							<!-- Complete Code Reference -->
+							<div class="mt-6 rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-300">
+									<FileCode class="h-4 w-4" />
+									Complete Code Reference
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									For the complete working code with all features (CLI arguments, error handling,
+									etc.), see the full example:
+								</p>
+								<details class="mt-2">
+									<summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+										Click to view complete chatbot.py code
+									</summary>
+									<pre
+										class="mt-2 overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code
+											>{pythonChatbotCode}</code
+										></pre>
+								</details>
+							</div>
 						</div>
 
-						<!-- Step 4: Run -->
+						<!-- Section 4: Running and Testing -->
 						<div class="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6">
 							<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-emerald-300">
-								<span
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-300"
-									>4</span
-								>
-								Run Your Chatbot
+								<Zap class="h-5 w-5" />
+								Section 4: Running and Testing
 							</h3>
-							<p class="mb-4 text-sm text-gray-300">Run your chatbot:</p>
-							<pre class="overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-300"><code
-									>python chatbot.py</code
-								></pre>
-							<p class="mt-3 text-sm text-gray-300">Try asking questions like:</p>
-							<ul class="mt-2 space-y-1 text-sm text-gray-400">
-								<li>• "What does John 3:16 say?"</li>
-								<li>• "What are the translation notes for Ephesians 2:8-9?"</li>
-								<li>• "What does the word 'love' mean in the Bible?"</li>
-								<li>• "Get comprehensive translation help for Romans 1:1"</li>
-							</ul>
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 4.1:</span>
+									Run Your Chatbot
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Execute the chatbot script.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> This starts the interactive loop where you can ask questions
+									about Bible translation resources.
+								</p>
+								<pre class="overflow-x-auto rounded-lg bg-gray-950 p-3 text-xs text-gray-300"><code
+										>python chatbot.py</code
+									></pre>
+							</div>
+							<div class="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+								<h4 class="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-300">
+									<span class="text-emerald-400">Step 4.2:</span>
+									Test with Sample Questions
+								</h4>
+								<p class="mb-3 text-xs text-gray-300">
+									<strong>What we do:</strong> Try different types of questions to see how the chatbot
+									handles various requests.
+								</p>
+								<p class="mb-3 text-xs text-gray-400">
+									<strong>Why:</strong> Different question types trigger different tools, helping you
+									understand how the system works.
+								</p>
+								<ul class="mt-2 space-y-1 text-xs text-gray-400">
+									<li>
+										• <strong>"What does John 3:16 say?"</strong> → Triggers
+										<code class="text-cyan-300">fetch_scripture</code> tool
+									</li>
+									<li>
+										• <strong>"What are the translation notes for Ephesians 2:8-9?"</strong> →
+										Triggers <code class="text-cyan-300">fetch_translation_notes</code> tool
+									</li>
+									<li>
+										• <strong>"What does the word 'love' mean in the Bible?"</strong> → Triggers
+										<code class="text-cyan-300">fetch_translation_word</code> tool with term="love"
+									</li>
+									<li>
+										• <strong>"Teach me how to translate Romans 14:1"</strong> → Triggers
+										<code class="text-cyan-300">prompt_translation-helps-for-passage</code> for comprehensive
+										data
+									</li>
+								</ul>
+							</div>
+							<div class="mt-4 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
+								<p class="text-xs text-blue-300">
+									<strong>💡 Features:</strong> The chatbot includes parallel tool execution, immediate
+									user feedback, automatic follow-up questions, and support for MCP prompts via REST
+									API.
+								</p>
+							</div>
 						</div>
 
 						<!-- How It Works -->
@@ -1208,10 +1781,11 @@ pip install translation-helps-mcp-client openai python-dotenv</code
 									>
 									<div>
 										<strong class="text-purple-300"
-											>OpenAI receives question + available tools</strong
+											>Adapter utility prepares tools for OpenAI</strong
 										>
 										<p class="mt-1 text-xs text-gray-400">
-											OpenAI sees all MCP tools (fetch_scripture, fetch_translation_notes, etc.)
+											Uses <code class="text-cyan-300">prepare_tools_for_provider()</code> to convert
+											MCP tools and prompts to OpenAI function calling format
 										</p>
 									</div>
 								</div>
@@ -1221,9 +1795,12 @@ pip install translation-helps-mcp-client openai python-dotenv</code
 										>3</span
 									>
 									<div>
-										<strong class="text-purple-300">OpenAI decides which tools to call</strong>
+										<strong class="text-purple-300"
+											>OpenAI receives question + available tools</strong
+										>
 										<p class="mt-1 text-xs text-gray-400">
-											OpenAI might call fetch_scripture with reference="John 3:16"
+											OpenAI sees all MCP tools (fetch_scripture, fetch_translation_notes, etc.)
+											plus converted prompts
 										</p>
 									</div>
 								</div>
@@ -1233,9 +1810,11 @@ pip install translation-helps-mcp-client openai python-dotenv</code
 										>4</span
 									>
 									<div>
-										<strong class="text-purple-300">Python SDK executes tool calls</strong>
+										<strong class="text-purple-300">OpenAI decides which tools to call</strong>
 										<p class="mt-1 text-xs text-gray-400">
-											SDK calls the MCP server at /api/mcp which routes to the actual endpoint
+											OpenAI might call <code class="text-cyan-300">fetch_scripture</code> with
+											<code class="text-cyan-300">reference="John 3:16"</code>
+											or <code class="text-cyan-300">prompt_translation-helps-for-passage</code>
 										</p>
 									</div>
 								</div>
@@ -1245,9 +1824,13 @@ pip install translation-helps-mcp-client openai python-dotenv</code
 										>5</span
 									>
 									<div>
-										<strong class="text-purple-300">Tool results fed back to OpenAI</strong>
+										<strong class="text-purple-300"
+											>Python SDK executes tool calls in parallel</strong
+										>
 										<p class="mt-1 text-xs text-gray-400">
-											OpenAI receives the scripture text and generates a natural language response
+											All tool calls execute simultaneously using <code class="text-cyan-300"
+												>asyncio.gather()</code
+											> for better performance. Prompts execute via REST API.
 										</p>
 									</div>
 								</div>
@@ -1257,13 +1840,71 @@ pip install translation-helps-mcp-client openai python-dotenv</code
 										>6</span
 									>
 									<div>
+										<strong class="text-purple-300">Tool results fed back to OpenAI</strong>
+										<p class="mt-1 text-xs text-gray-400">
+											OpenAI receives the data and generates a natural language response with
+											follow-up questions
+										</p>
+									</div>
+								</div>
+								<div class="flex gap-3">
+									<span
+										class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs font-bold text-purple-300"
+										>7</span
+									>
+									<div>
 										<strong class="text-purple-300">User receives final answer</strong>
 										<p class="mt-1 text-xs text-gray-400">
-											OpenAI provides a comprehensive answer using the fetched data
+											OpenAI provides a comprehensive answer using the fetched data, always ending
+											with helpful follow-up questions
 										</p>
 									</div>
 								</div>
 							</div>
+						</div>
+
+						<!-- Key Features -->
+						<div class="mb-6 rounded-xl border border-purple-500/30 bg-purple-500/5 p-6">
+							<h3 class="mb-4 flex items-center gap-2 text-xl font-semibold text-purple-300">
+								<Zap class="h-5 w-5" />
+								Key Features
+							</h3>
+							<ul class="space-y-2 text-sm text-gray-300">
+								<li class="flex items-start gap-2">
+									<span class="text-purple-400">⚡</span>
+									<span
+										><strong>Parallel Tool Execution:</strong> All tool calls execute simultaneously
+										for faster responses</span
+									>
+								</li>
+								<li class="flex items-start gap-2">
+									<span class="text-purple-400">💬</span>
+									<span
+										><strong>Immediate Feedback:</strong> Shows polite messages while gathering information</span
+									>
+								</li>
+								<li class="flex items-start gap-2">
+									<span class="text-purple-400">🔧</span>
+									<span
+										><strong>Adapter Utilities:</strong> Automatically converts MCP tools/prompts to
+										OpenAI format</span
+									>
+								</li>
+								<li class="flex items-start gap-2">
+									<span class="text-purple-400">❓</span>
+									<span
+										><strong>Follow-up Questions:</strong> Every response includes helpful follow-up
+										questions to guide exploration</span
+									>
+								</li>
+								<li class="flex items-start gap-2">
+									<span class="text-purple-400">📚</span>
+									<span
+										><strong>Prompt Support:</strong> Supports MCP prompts via REST API for comprehensive
+										data gathering</span
+									>
+								</li>
+							</ul>
 						</div>
 
 						<!-- Next Steps -->
@@ -1275,19 +1916,19 @@ pip install translation-helps-mcp-client openai python-dotenv</code
 							<ul class="space-y-3 text-sm text-gray-300">
 								<li class="flex items-start gap-2">
 									<span class="text-blue-400">→</span>
+									<span>Add CLI arguments (--verbose, --debug, --quiet) for better control</span>
+								</li>
+								<li class="flex items-start gap-2">
+									<span class="text-blue-400">→</span>
 									<span>Customize the system prompt to better suit your use case</span>
 								</li>
 								<li class="flex items-start gap-2">
 									<span class="text-blue-400">→</span>
-									<span>Add error handling and retry logic for production use</span>
-								</li>
-								<li class="flex items-start gap-2">
-									<span class="text-blue-400">→</span>
 									<span
-										>Explore other tools like <code
+										>Explore the full example in <code
 											class="rounded bg-gray-800 px-1 py-0.5 text-cyan-300"
-											>fetch_translation_academy</code
-										> for training resources</span
+											>examples/python-chatbot/</code
+										></span
 									>
 								</li>
 								<li class="flex items-start gap-2">

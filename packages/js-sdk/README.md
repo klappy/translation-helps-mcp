@@ -289,6 +289,47 @@ const client = new TranslationHelpsClient({
 });
 ```
 
+## Optimized System Prompts
+
+The SDK includes optimized, contextual system prompts for AI interactions with Translation Helps data. These prompts reduce token usage by 60-70% while maintaining all critical functionality.
+
+### Usage
+
+```typescript
+import {
+  getSystemPrompt,
+  detectRequestType,
+} from "@translation-helps/mcp-client";
+
+// Auto-detect request type and get optimized prompt
+const prompt = getSystemPrompt(undefined, endpointCalls, message);
+
+// Or manually specify request type
+const prompt = getSystemPrompt("comprehensive");
+
+// Use in OpenAI call
+const messages = [
+  { role: "system", content: prompt },
+  { role: "user", content: message },
+];
+```
+
+### Request Types
+
+- `comprehensive`: Uses translation-helps-for-passage prompt
+- `list`: User wants concise lists
+- `explanation`: User wants detailed explanations
+- `term`: User asking about translation words
+- `concept`: User asking about translation concepts
+- `default`: Fallback
+
+### Benefits
+
+- **60-70% token reduction** compared to legacy prompts
+- **Contextual rules** injected based on request type
+- **Automatic detection** from endpoint calls and message patterns
+- **Type-safe** with full TypeScript support
+
 ## TypeScript Support
 
 This package includes full TypeScript definitions. All types are exported for your convenience:
@@ -299,6 +340,8 @@ import type {
   MCPPrompt,
   ClientOptions,
   FetchScriptureOptions,
+  RequestType,
+  EndpointCall,
   // ... other types
 } from "@translation-helps/mcp-client";
 ```

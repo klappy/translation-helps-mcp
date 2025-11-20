@@ -74,8 +74,20 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
         });
 
         // Check if we have multiple scriptures (when resource: "all")
+        // The service returns { scriptures: [...] } when multiple resources are fetched
+        // or { scripture: {...} } when a single resource is requested
         const hasMultipleScriptures =
-          result.scriptures && result.scriptures.length > 1;
+          result.scriptures &&
+          Array.isArray(result.scriptures) &&
+          result.scriptures.length > 1;
+
+        // Log for debugging
+        logger.debug("Scripture result structure", {
+          hasScripturesArray: !!result.scriptures,
+          scripturesLength: result.scriptures?.length || 0,
+          hasScriptureObject: !!result.scripture,
+          hasMultipleScriptures,
+        });
 
         // Extract scripture text - service returns either .scripture or .scriptures[]
         const scriptureText =
@@ -109,44 +121,56 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
           ...metadata,
         });
 
-        // If multiple scriptures requested (resource: "all"), return structured JSON with all resources
-        if (hasMultipleScriptures && args.format === "json") {
+        // If multiple scriptures were fetched (resource: "all" or multiple resources specified),
+        // ALWAYS return all of them, regardless of format
+        if (hasMultipleScriptures) {
+          // For JSON format, return structured JSON with all resources
+          if (args.format === "json") {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    success: true,
+                    reference: args.reference,
+                    scriptures: result.scriptures.map((s: any) => ({
+                      text: s.text,
+                      translation: s.translation,
+                      reference: args.reference,
+                    })),
+                    metadata: {
+                      count: result.scriptures.length,
+                      translations: result.scriptures.map(
+                        (s: any) => s.translation,
+                      ),
+                    },
+                  }),
+                },
+              ],
+              isError: false,
+            };
+          }
+
+          // For non-JSON formats, return all scriptures joined with newlines
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify({
-                  success: true,
-                  reference: args.reference,
-                  scriptures: result.scriptures.map((s: any) => ({
-                    text: s.text,
-                    translation: s.translation,
-                    reference: args.reference,
-                  })),
-                  metadata: {
-                    count: result.scriptures.length,
-                    translations: result.scriptures.map(
-                      (s: any) => s.translation,
-                    ),
-                  },
-                }),
+                text: result.scriptures
+                  .map((s: any) => `${s.translation}: ${s.text}`)
+                  .join("\n\n"),
               },
             ],
             isError: false,
           };
         }
 
-        // For single scripture or non-JSON format, return just the text
+        // For single scripture, return just the text
         return {
           content: [
             {
               type: "text",
-              text:
-                hasMultipleScriptures && args.format !== "json"
-                  ? result.scriptures
-                      .map((s: any) => `${s.translation}: ${s.text}`)
-                      .join("\n\n")
-                  : scriptureText,
+              text: scriptureText,
             },
           ],
           isError: false,

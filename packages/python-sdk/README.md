@@ -10,11 +10,11 @@ pip install translation-helps-mcp-client
 
 ## Quick Start
 
+### Basic MCP Client Usage
+
 ```python
 import asyncio
 from translation_helps import TranslationHelpsClient
-# Import your AI provider's SDK
-# from anthropic import Anthropic
 
 async def main():
     # Create a client instance
@@ -23,29 +23,47 @@ async def main():
         tools = await mcp_client.list_tools()
         prompts = await mcp_client.list_prompts()
 
-        # Convert to your AI provider's format
-        available_tools = [{
-            "name": tool["name"],
-            "description": tool.get("description"),
-            "input_schema": tool.get("inputSchema"),
-        } for tool in tools]
-
-        # Note: Prompts provide instructions/templates - refer to your provider's docs for usage
-
-        # Send user query to AI WITH available tools
-        # The AI will decide which tools to call!
-        # response = await ai_client.messages.create(
-        #     model="your-model",
-        #     messages=[{"role": "user", "content": "What does John 3:16 say?"}],
-        #     tools=available_tools
-        # )
-
-        # When AI requests a tool call, execute it via SDK:
-        # result = await mcp_client.call_tool(tool_name, tool_args)
-        # Feed result back to AI for final response
+        # Use tools/prompts directly with MCP-compatible interfaces
+        # (e.g., Claude Desktop, Cursor, OpenAI Agents SDK)
 
 asyncio.run(main())
 ```
+
+### Using with OpenAI Chat Completions API
+
+```python
+import asyncio
+from translation_helps import TranslationHelpsClient
+from translation_helps.adapters import prepare_tools_for_provider
+from openai import OpenAI
+
+async def main():
+    mcp_client = TranslationHelpsClient()
+    await mcp_client.connect()
+
+    # Get tools and prompts
+    tools = await mcp_client.list_tools()
+    prompts = await mcp_client.list_prompts()
+
+    # Optional: Use adapter utility to prepare tools for OpenAI
+    openai_client = OpenAI(api_key="your-api-key")
+    openai_tools = prepare_tools_for_provider("openai", tools, prompts)
+
+    # Use with OpenAI
+    response = openai_client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "What does John 3:16 say?"}],
+        tools=openai_tools
+    )
+
+    # When AI requests a tool call, execute it via SDK:
+    # result = await mcp_client.call_tool(tool_name, tool_args)
+    # Feed result back to AI for final response
+
+asyncio.run(main())
+```
+
+**Note:** The adapter utilities are **optional**. You can also write your own conversion logic or use MCP tools/prompts directly if your provider supports MCP natively.
 
 ## Usage with Context Manager
 
@@ -195,6 +213,96 @@ Call any MCP tool directly.
 ##### `async get_prompt(name: str, arguments: Optional[Dict[str, Any]] = None) -> Dict[str, Any]`
 
 Get a prompt template.
+
+##### `async check_prompts_support() -> bool`
+
+Dynamically check if the MCP server supports prompts.
+
+##### `async get_capabilities() -> Dict[str, Any]`
+
+Get the server's capabilities (tools and prompts support).
+
+## Optional Adapter Utilities
+
+The SDK includes **optional** adapter utilities for converting MCP tools and prompts to different AI provider formats. These are convenience helpers - you can use them, write your own conversion logic, or use MCP tools/prompts directly if your provider supports MCP natively.
+
+### Using Adapters
+
+```python
+from translation_helps import TranslationHelpsClient
+from translation_helps.adapters import (
+    prepare_tools_for_provider,
+    convert_all_to_openai,
+    provider_supports_prompts
+)
+
+# Declarative approach (recommended)
+tools = await client.list_tools()
+prompts = await client.list_prompts()
+openai_tools = prepare_tools_for_provider("openai", tools, prompts)
+
+# Low-level approach (more control)
+openai_tools = convert_all_to_openai(tools, prompts)
+
+# Check provider capabilities
+if provider_supports_prompts("claude-desktop"):
+    # Use prompts natively
+    prompt = await client.get_prompt("translation-helps-for-passage", {...})
+else:
+    # Convert prompts to tools
+    tools = prepare_tools_for_provider("openai", tools, prompts)
+```
+
+### Available Adapter Functions
+
+- `prepare_tools_for_provider(provider, tools, prompts)` - Declarative helper that automatically handles conversion
+- `convert_tools_to_openai(tools)` - Convert MCP tools to OpenAI format
+- `convert_prompts_to_openai(prompts)` - Convert MCP prompts to OpenAI format (workaround)
+- `convert_all_to_openai(tools, prompts)` - Convert both tools and prompts
+- `convert_tools_to_anthropic(tools)` - Convert MCP tools to Anthropic format
+- `provider_supports_prompts(provider)` - Check if provider supports MCP prompts natively
+- `get_prompt_strategy(provider, tools, prompts)` - Get conversion strategy
+- `detect_prompts_support_from_client(client)` - Dynamically detect prompts support
+
+See the [adapters module documentation](https://github.com/unfoldingWord/translation-helps-mcp) for more details.
+
+## Optimized System Prompts
+
+The SDK includes optimized, contextual system prompts for AI interactions with Translation Helps data. These prompts reduce token usage by 60-70% while maintaining all critical functionality.
+
+### Usage
+
+```python
+from translation_helps.prompts import get_system_prompt, detect_request_type
+
+# Auto-detect request type and get optimized prompt
+prompt = get_system_prompt(None, endpoint_calls, message)
+
+# Or manually specify request type
+prompt = get_system_prompt('comprehensive')
+
+# Use in OpenAI call
+messages = [
+    {"role": "system", "content": prompt},
+    {"role": "user", "content": message}
+]
+```
+
+### Request Types
+
+- `comprehensive`: Uses translation-helps-for-passage prompt
+- `list`: User wants concise lists
+- `explanation`: User wants detailed explanations
+- `term`: User asking about translation words
+- `concept`: User asking about translation concepts
+- `default`: Fallback
+
+### Benefits
+
+- **60-70% token reduction** compared to legacy prompts
+- **Contextual rules** injected based on request type
+- **Automatic detection** from endpoint calls and message patterns
+- **Type-hinted** with full Python type support
 
 ## Examples
 

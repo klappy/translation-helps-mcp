@@ -1,0 +1,22 @@
+{
+  "name": "@translation-helps/shared-prompts",
+  "version": "1.0.0",
+  "description": "Shared, optimized system prompts for Translation Helps MCP clients",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "translation-helps",
+    "prompts",
+    "ai",
+    "bible-study"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

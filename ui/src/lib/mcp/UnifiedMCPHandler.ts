@@ -26,6 +26,12 @@ export class UnifiedMCPHandler {
 			throw new Error(`Unknown tool: ${toolName}`);
 		}
 
+		// Log received parameters (before defaults are applied)
+		console.log(
+			`[UNIFIED HANDLER] Received parameters for ${toolName}:`,
+			JSON.stringify(args, null, 2)
+		);
+
 		// Validate required parameters
 		for (const param of tool.requiredParams) {
 			if (!args[param]) {
@@ -33,9 +39,22 @@ export class UnifiedMCPHandler {
 			}
 		}
 
-		// Build query parameters
+		// Build query parameters with defaults
 		const params = new URLSearchParams();
-		Object.entries(args).forEach(([key, value]) => {
+
+		// Apply defaults based on common parameter patterns
+		const finalArgs = { ...args };
+		if (!finalArgs.language) finalArgs.language = 'en';
+		if (!finalArgs.organization) finalArgs.organization = 'unfoldingWord';
+		if (!finalArgs.format) finalArgs.format = 'json'; // Default to JSON for structured data
+
+		// Log final parameters (after defaults)
+		console.log(
+			`[UNIFIED HANDLER] Final parameters (with defaults) for ${toolName}:`,
+			JSON.stringify(finalArgs, null, 2)
+		);
+
+		Object.entries(finalArgs).forEach(([key, value]) => {
 			if (value !== undefined && value !== null) {
 				params.set(key, String(value));
 			}
@@ -97,7 +116,9 @@ export class UnifiedMCPHandler {
 		}
 
 		// Check if format is JSON - if so, return raw structured data instead of formatting
-		const format = args.format || 'text';
+		// Use finalArgs.format which includes defaults
+		const format = finalArgs.format || 'json';
+		console.log(`[UNIFIED HANDLER] Format determined for ${toolName}:`, format);
 		if (format === 'json' || format === 'JSON') {
 			// Return raw JSON data structure with metadata
 			const result: MCPToolResponse = {
