@@ -84,4 +84,3 @@ py -3.11 -m pip show translation-helps-mcp-client
 py -3.11 chatbot.py
 # Should start the chatbot
 ```
-

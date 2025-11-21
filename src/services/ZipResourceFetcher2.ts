@@ -374,7 +374,25 @@ export class ZipResourceFetcher2 {
       });
 
       // 2. Prepare resources (prioritize common ones) and compute ingredients
-      const priorityOrder = ["ult", "ust", "t4t", "ueb"];
+      // Map resource type abbreviations to their equivalents
+      // ULT/GLT are equivalent (Literal Text), UST/GST are equivalent (Simplified Text)
+      const resourceTypeEquivalents: Record<string, string[]> = {
+        ult: ["ult", "glt"], // unfoldingWord Literal Text / Gateway Literal Text
+        glt: ["ult", "glt"],
+        ust: ["ust", "gst"], // unfoldingWord Simplified Text / Gateway Simplified Text
+        gst: ["ust", "gst"],
+        t4t: ["t4t"],
+        ueb: ["ueb"],
+      };
+
+      // Get equivalent types for the requested version
+      const requestedTypes = version
+        ? resourceTypeEquivalents[version.toLowerCase()] || [
+            version.toLowerCase(),
+          ]
+        : null;
+
+      const priorityOrder = ["ult", "glt", "ust", "gst", "t4t", "ueb"];
       const candidates = resources
         .filter(
           (r) =>
@@ -385,11 +403,19 @@ export class ZipResourceFetcher2 {
               r.name.includes("_twl")
             ),
         )
-        .filter((r) => (version ? r.name.includes(`_${version}`) : true))
+        .filter((r) => {
+          if (!version) return true; // No version specified, return all
+          if (!requestedTypes) return r.name.endsWith(`_${version}`);
+          // Check if resource name ends with any of the equivalent types
+          return requestedTypes.some((type) => r.name.endsWith(`_${type}`));
+        })
         .sort((a, b) => {
-          const as = priorityOrder.findIndex((p) => a.name.endsWith(`_${p}`));
-          const bs = priorityOrder.findIndex((p) => b.name.endsWith(`_${p}`));
-          return (as === -1 ? 999 : as) - (bs === -1 ? 999 : bs);
+          // Sort by priority, checking for any equivalent type
+          const aType = priorityOrder.find((p) => a.name.endsWith(`_${p}`));
+          const bType = priorityOrder.find((p) => b.name.endsWith(`_${p}`));
+          const as = aType ? priorityOrder.indexOf(aType) : 999;
+          const bs = bType ? priorityOrder.indexOf(bType) : 999;
+          return as - bs;
         });
 
       type ScriptureResult = { text: string; translation: string };

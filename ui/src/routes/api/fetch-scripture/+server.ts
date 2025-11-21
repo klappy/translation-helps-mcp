@@ -14,9 +14,11 @@ import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
  * Parse resource parameter
+ * Supports both standard types (ult, ust, t4t, ueb) and gateway equivalents (glt, gst)
  */
 function parseResources(resourceParam: string | undefined): string[] {
-	const availableResources = ['ult', 'ust', 't4t', 'ueb'];
+	// Include gateway equivalents: glt (equivalent to ult), gst (equivalent to ust)
+	const availableResources = ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'];
 
 	if (!resourceParam || resourceParam === 'all') {
 		return availableResources;
@@ -96,7 +98,8 @@ export const GET = createSimpleEndpoint({
 				if (!value) return true;
 				if (value === 'all') return true;
 				const resources = value.split(',').map((r) => r.trim());
-				return resources.every((r) => ['ult', 'ust', 't4t', 'ueb'].includes(r));
+				// Include gateway equivalents: glt (equivalent to ult), gst (equivalent to ust)
+				return resources.every((r) => ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'].includes(r));
 			}
 		}
 	],
