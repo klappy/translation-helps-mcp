@@ -68,8 +68,8 @@ Edit `.cursor/mcp.json` in your workspace:
     "translation-helps": {
       "command": "npx",
       "args": ["tsx", "src/index.ts"],
-      "cwd": "C:/path/to/translation-helps-mcp-2",
       "env": {}
+      // Note: 'cwd' is optional - when omitted, defaults to project root
     }
   }
 }

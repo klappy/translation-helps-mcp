@@ -77,8 +77,8 @@
 					'translation-helps': {
 						command: 'npx',
 						args: ['tsx', 'src/index.ts'],
-						cwd: 'C:/path/to/translation-helps-mcp',
 						env: {}
+						// Note: 'cwd' is optional - omitted to use project root (portable)
 					}
 				}
 			},
@@ -96,12 +96,12 @@
 				mcpServers: {
 					'translation-helps': {
 						command: 'npx',
-						args: ['tsx', 'src/index.ts'],
-						cwd: 'C:/path/to/translation-helps-mcp'
+						args: ['tsx', 'src/index.ts']
+						// Note: 'cwd' is optional - omitted to use project root (portable)
 					}
 				}
 			},
-			note: 'Replace C:/path/to/translation-helps-mcp with your actual clone path'
+			note: 'The server will run from the project root directory by default'
 		},
 		generic: {
 			name: 'Generic MCP Client',
