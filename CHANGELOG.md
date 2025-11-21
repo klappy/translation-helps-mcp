@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Features
 
+- **Optimized System Prompts in SDKs** - 60-70% token reduction for AI interactions
+  - JS SDK v1.1.0: Added `getSystemPrompt()` and `detectRequestType()` functions
+  - Python SDK v1.2.0: Added `get_system_prompt()` and `detect_request_type()` functions
+  - Contextual rules based on request type (comprehensive, list, explanation, term, concept)
+  - Automatic request type detection from endpoint calls and messages
+  - Integrated into Svelte UI chat-stream endpoint
+  - Single source of truth for prompt management across all clients
+  - Type-safe implementations (TypeScript + Python type hints)
+
 - **Offline-First CLI with Local AI** - Complete CLI application with Ollama integration
   - Interactive chat interface with streaming responses
   - MCP client connecting via stdio transport
