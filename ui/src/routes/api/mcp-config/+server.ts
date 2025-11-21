@@ -76,9 +76,83 @@ export const GET: RequestHandler = async () => {
 			experimental: enhanced.filter((e) => e.category === 'experimental')
 		};
 
+		// Add MCP Prompts (multi-step workflows)
+		const mcpPrompts = [
+			{
+				name: 'translation-helps-for-passage',
+				description:
+					'Get comprehensive translation help for a passage including scripture, questions, word articles with titles, notes, and academy articles',
+				parameters: [
+					{
+						name: 'reference',
+						type: 'string',
+						required: true,
+						description: 'Bible reference (e.g., John 3:16)'
+					},
+					{
+						name: 'language',
+						type: 'string',
+						required: false,
+						description: 'Language code (default: en)'
+					}
+				],
+				returns: {
+					scripture: 'Full scripture text',
+					questions: 'Translation questions with count',
+					words: 'Word articles with titles, terms, categories, and full content',
+					notes: 'Translation notes',
+					academyArticles: 'Translation Academy articles with titles and full content'
+				}
+			},
+			{
+				name: 'get-translation-words-for-passage',
+				description: 'Get translation word articles for a passage with full titles and content',
+				parameters: [
+					{
+						name: 'reference',
+						type: 'string',
+						required: true,
+						description: 'Bible reference (e.g., John 3:16)'
+					},
+					{
+						name: 'language',
+						type: 'string',
+						required: false,
+						description: 'Language code (default: en)'
+					}
+				],
+				returns: {
+					words: 'Word articles with titles, terms, categories, and full markdown content'
+				}
+			},
+			{
+				name: 'get-translation-academy-for-passage',
+				description: 'Get translation academy articles referenced in notes for a passage',
+				parameters: [
+					{
+						name: 'reference',
+						type: 'string',
+						required: true,
+						description: 'Bible reference (e.g., John 3:16)'
+					},
+					{
+						name: 'language',
+						type: 'string',
+						required: false,
+						description: 'Language code (default: en)'
+					}
+				],
+				returns: {
+					academyArticles:
+						'Translation Academy articles with titles, moduleIds, and full markdown content'
+				}
+			}
+		];
+
 		return json({
 			success: true,
 			data: categorizedEndpoints,
+			prompts: mcpPrompts,
 			timestamp: new Date().toISOString(),
 			registry: {
 				total: endpoints.length,
@@ -86,7 +160,8 @@ export const GET: RequestHandler = async () => {
 					core: categorizedEndpoints.core.length,
 					extended: categorizedEndpoints.extended.length,
 					experimental: categorizedEndpoints.experimental.length
-				}
+				},
+				prompts: mcpPrompts.length
 			}
 		});
 	} catch (error) {

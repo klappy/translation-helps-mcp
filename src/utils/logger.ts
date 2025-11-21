@@ -4,7 +4,9 @@ interface LogContext {
 
 class Logger {
   info(message: string, context?: LogContext): void {
-    console.info(`[INFO] ${message}`, context ? JSON.stringify(context) : "");
+    // MCP STDIO servers must write to stderr, not stdout
+    // Writing to stdout corrupts JSON-RPC messages
+    console.error(`[INFO] ${message}`, context ? JSON.stringify(context) : "");
   }
 
   error(message: string, context?: LogContext): void {

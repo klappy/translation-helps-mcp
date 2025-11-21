@@ -13,7 +13,7 @@ compatibility_flags = ["nodejs_compat"]
   # Duplicate bindings under production environment so Pages Functions get them
   [[env.production.kv_namespaces]]
   binding = "TRANSLATION_HELPS_CACHE"
-  id = "116847d7b0714a9c8d2882335b05d35a"
+  id = "a0b2bcf08829441e932230cb06cb5e07"
 
   [[env.production.r2_buckets]]
   binding = "ZIP_FILES"
@@ -23,12 +23,12 @@ compatibility_flags = ["nodejs_compat"]
   NODE_ENV = "development"
 
 # KV Namespace binding (you'll need to create this in Cloudflare dashboard)
-# Run: npx wrangler kv:namespace create "TRANSLATION_HELPS_CACHE"
+# Run: npx wrangler kv namespace create "TRANSLATION_HELPS_CACHE"
 # Then update the id below with the actual namespace ID
 [[kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
-id = "116847d7b0714a9c8d2882335b05d35a"
-preview_id = "550f39aa441a453aaf682eddbb97a618"
+id = "a0b2bcf08829441e932230cb06cb5e07"
+preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 
 # R2 bucket for ZIPs and extracted files
 [[r2_buckets]]

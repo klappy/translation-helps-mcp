@@ -22,7 +22,7 @@ Get the Translation Helps MCP Server running locally and integrated with your AI
 
 ```bash
 # Clone the repository
-git clone https://github.com/klappy/translation-helps-mcp.git
+git clone https://github.com/unfoldingWord/translation-helps-mcp.git
 cd translation-helps-mcp
 
 # Install dependencies

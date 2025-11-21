@@ -6,7 +6,7 @@
 
 import { EdgeXRayTracer } from "../functions/edge-xray";
 import { parseReference } from "../parsers/referenceParser";
-import { ZipResourceFetcher2 } from "../services/ZipResourceFetcher2";
+import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
 import { logger } from "../utils/logger.js";
 import { cache } from "./cache";
 
@@ -75,10 +75,16 @@ export async function fetchWordLinks(
 
   logger.info(`Processing fresh word links request`, { key: responseKey });
 
-  // Use ZIP + ingredients path via ZipResourceFetcher2
+  // Use ZIP + ingredients path via ZipFetcherFactory (pluggable system)
   const tracer = new EdgeXRayTracer(`twl-${Date.now()}`, "word-links-service");
-  const zipFetcher = new ZipResourceFetcher2(tracer);
-  const rows = (await zipFetcher.getTSVData(
+  const zipFetcherProvider = ZipFetcherFactory.create(
+    (options.zipFetcherProvider as "r2" | "fs" | "auto") ||
+      (process.env.ZIP_FETCHER_PROVIDER as "r2" | "fs" | "auto") ||
+      "auto",
+    process.env.CACHE_PATH,
+    tracer,
+  );
+  const rows = (await zipFetcherProvider.getTSVData(
     {
       book: reference.book,
       chapter: reference.chapter!,

@@ -223,7 +223,7 @@ export class MCPResponseAdapter {
 	/**
 	 * Format translation word definition
 	 */
-	static formatTranslationWord(response: MCPResponse, wordId: string): string {
+	static formatTranslationWord(response: MCPResponse, term: string): string {
 		const text = this.extractText(response);
 
 		if (text && text !== '' && !text.includes('Word definition not found')) {
@@ -249,7 +249,7 @@ export class MCPResponseAdapter {
 			}
 		}
 
-		return `Word definition not found for ${wordId}.`;
+		return `Word definition not found for ${term}.`;
 	}
 
 	/**

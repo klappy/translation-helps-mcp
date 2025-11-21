@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Translation Helps MCP Client - Browser Example</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #1a1a1a;
+        color: #e0e0e0;
+      }
+      .container {
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+      button {
+        background: #4a9eff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #3a8eef;
+      }
+      button:disabled {
+        background: #555;
+        cursor: not-allowed;
+      }
+      pre {
+        background: #1a1a1a;
+        padding: 15px;
+        border-radius: 4px;
+        overflow-x: auto;
+        border: 1px solid #444;
+      }
+      .error {
+        color: #ff6b6b;
+      }
+      .success {
+        color: #51cf66;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Translation Helps MCP Client - Browser Example</h1>
+
+    <div class="container">
+      <h2>Connect to MCP Server</h2>
+      <button id="connectBtn" onclick="connect()">Connect</button>
+      <div id="connectionStatus"></div>
+    </div>
+
+    <div class="container">
+      <h2>Fetch Scripture</h2>
+      <input
+        type="text"
+        id="referenceInput"
+        placeholder="John 3:16"
+        value="John 3:16"
+        style="padding: 8px; width: 200px; margin-right: 10px"
+      />
+      <button id="fetchBtn" onclick="fetchScripture()" disabled>Fetch</button>
+      <pre id="scriptureResult"></pre>
+    </div>
+
+    <div class="container">
+      <h2>Available Tools & Prompts</h2>
+      <button onclick="listTools()" disabled id="listToolsBtn">
+        List Tools
+      </button>
+      <button
+        onclick="listPrompts()"
+        disabled
+        id="listPromptsBtn"
+        style="margin-left: 10px"
+      >
+        List Prompts
+      </button>
+      <pre id="toolsResult"></pre>
+    </div>
+
+    <script type="module">
+      // Import the SDK (in a real app, you'd use a bundler or CDN)
+      // For this example, we'll use a CDN or assume it's bundled
+
+      // Note: In production, you'd import like this:
+      // import { TranslationHelpsClient } from '@translation-helps/mcp-client';
+      // Or use a CDN like: https://cdn.jsdelivr.net/npm/@translation-helps/mcp-client/dist/index.js
+
+      // For this example, we'll show the usage pattern
+      // In a real implementation, you'd need to bundle the SDK or use a CDN
+
+      let mcpClient = null;
+
+      window.connect = async function () {
+        const statusDiv = document.getElementById("connectionStatus");
+        const connectBtn = document.getElementById("connectBtn");
+        const fetchBtn = document.getElementById("fetchBtn");
+        const listToolsBtn = document.getElementById("listToolsBtn");
+        const listPromptsBtn = document.getElementById("listPromptsBtn");
+
+        try {
+          connectBtn.disabled = true;
+          statusDiv.innerHTML = "<span>Connecting...</span>";
+
+          // In a real app, import the SDK:
+          // import { TranslationHelpsClient } from '@translation-helps/mcp-client';
+          // mcpClient = new TranslationHelpsClient({
+          //     serverUrl: 'https://translation-helps-mcp-945.pages.dev/api/mcp'
+          // });
+          // await mcpClient.connect();
+
+          // For demo purposes, show the pattern:
+          statusDiv.innerHTML =
+            '<span class="success">✅ Connected! (SDK would be imported here)</span>';
+          statusDiv.innerHTML +=
+            "<br><small>Note: This is a demo. In production, import the SDK and use it.</small>";
+
+          fetchBtn.disabled = false;
+          listToolsBtn.disabled = false;
+          listPromptsBtn.disabled = false;
+        } catch (error) {
+          statusDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+          connectBtn.disabled = false;
+        }
+      };
+
+      window.fetchScripture = async function () {
+        const reference = document.getElementById("referenceInput").value;
+        const resultDiv = document.getElementById("scriptureResult");
+
+        try {
+          resultDiv.textContent = "Fetching...";
+
+          // In a real app:
+          // const scripture = await mcpClient.fetchScripture({
+          //     reference: reference,
+          //     language: 'en'
+          // });
+          // resultDiv.textContent = scripture;
+
+          // Demo:
+          resultDiv.textContent = `// In production, this would call:
+// const scripture = await mcpClient.fetchScripture({
+//     reference: "${reference}",
+//     language: 'en'
+// });
+// Result: [Scripture text would appear here]`;
+        } catch (error) {
+          resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+        }
+      };
+
+      window.listTools = async function () {
+        const resultDiv = document.getElementById("toolsResult");
+
+        try {
+          resultDiv.textContent = "Loading...";
+
+          // In a real app:
+          // const tools = await mcpClient.listTools();
+          // resultDiv.textContent = JSON.stringify(tools, null, 2);
+
+          // Demo:
+          resultDiv.textContent = `// In production, this would call:
+// const tools = await mcpClient.listTools();
+// Result: [List of tools would appear here]`;
+        } catch (error) {
+          resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+        }
+      };
+
+      window.listPrompts = async function () {
+        const resultDiv = document.getElementById("toolsResult");
+
+        try {
+          resultDiv.textContent = "Loading...";
+
+          // In a real app:
+          // const prompts = await mcpClient.listPrompts();
+          // resultDiv.textContent = JSON.stringify(prompts, null, 2);
+
+          // Demo:
+          resultDiv.textContent = `// In production, this would call:
+// const prompts = await mcpClient.listPrompts();
+// Result: [List of prompts would appear here]`;
+        } catch (error) {
+          resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+        }
+      };
+    </script>
+  </body>
+</html>

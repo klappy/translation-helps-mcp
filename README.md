@@ -38,6 +38,23 @@ See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for detailed migration instruc
 - **Translation Questions**: Comprehension questions from TSV data
 - **Translation Academy**: Training modules for translators
 
+### 🤖 MCP Prompts (NEW!)
+
+**Guided workflows that teach AI assistants to chain tools intelligently:**
+
+- **`translation-helps-for-passage`** - Get everything: scripture + notes + questions + words (with titles) + academy articles
+- **`get-translation-words-for-passage`** - Show dictionary entry titles (not technical IDs)
+- **`get-translation-academy-for-passage`** - Find training articles referenced in notes
+
+**📖 [Complete Usage Guide →](./HOW_TO_USE_PROMPTS.md)** | **📚 [Technical Docs →](./MCP_PROMPTS_GUIDE.md)**
+
+**Why prompts matter:**
+
+- One command replaces 6-10 tool calls
+- Shows human-readable titles instead of IDs
+- Standardizes best practices for translation workflows
+- Makes AI assistants much smarter about Bible translation
+
 ### Technical Excellence
 
 - **Real Data Only**: No mock data, no fake responses, no fallbacks

@@ -14,9 +14,11 @@ import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 /**
  * Parse resource parameter
+ * Supports both standard types (ult, ust, t4t, ueb) and gateway equivalents (glt, gst)
  */
 function parseResources(resourceParam: string | undefined): string[] {
-	const availableResources = ['ult', 'ust', 't4t', 'ueb'];
+	// Include gateway equivalents: glt (equivalent to ult), gst (equivalent to ust)
+	const availableResources = ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'];
 
 	if (!resourceParam || resourceParam === 'all') {
 		return availableResources;
@@ -57,8 +59,14 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		throw new Error(`Scripture not found for reference: ${reference}`);
 	}
 
+	// Log for debugging - verify all versions are being returned
+	console.log(
+		`[fetch-scripture-v2] Fetched ${results.length} scripture versions:`,
+		results.map((s: any) => s.translation || 'Unknown')
+	);
+
 	// Return in standard format with trace data
-	return {
+	const response = {
 		...createScriptureResponse(results, {
 			reference,
 			requestedResources,
@@ -66,6 +74,13 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		}),
 		_trace: fetcher.getTrace()
 	};
+
+	// Log the response structure to verify all scriptures are included
+	console.log(
+		`[fetch-scripture-v2] Response contains ${response.scripture?.length || 0} scriptures in response.scripture array`
+	);
+
+	return response;
 }
 
 // Create the endpoint with format support
@@ -83,7 +98,8 @@ export const GET = createSimpleEndpoint({
 				if (!value) return true;
 				if (value === 'all') return true;
 				const resources = value.split(',').map((r) => r.trim());
-				return resources.every((r) => ['ult', 'ust', 't4t', 'ueb'].includes(r));
+				// Include gateway equivalents: glt (equivalent to ult), gst (equivalent to ust)
+				return resources.every((r) => ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'].includes(r));
 			}
 		}
 	],

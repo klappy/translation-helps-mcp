@@ -10,15 +10,15 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ErrorCode,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
   ListToolsRequestSchema,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Import tool handlers with updated names
-import { handleBrowseTranslationWords } from "./tools/browseTranslationWords.js";
-import { handleExtractReferences } from "./tools/extractReferences.js";
-import { handleFetchResources } from "./tools/fetchResources.js";
 import {
   FetchScriptureArgs,
   handleFetchScripture,
@@ -31,14 +31,18 @@ import {
   FetchTranslationQuestionsArgs,
   handleFetchTranslationQuestions,
 } from "./tools/fetchTranslationQuestions.js";
-import { GetContextArgs, handleGetContext } from "./tools/getContext.js";
-import { GetLanguagesArgs, handleGetLanguages } from "./tools/getLanguages.js";
+import {
+  FetchTranslationWordLinksArgs,
+  handleFetchTranslationWordLinks,
+} from "./tools/fetchTranslationWordLinks.js";
+import {
+  FetchTranslationAcademyArgs,
+  handleFetchTranslationAcademy,
+} from "./tools/fetchTranslationAcademy.js";
 import {
   GetTranslationWordArgs,
   handleGetTranslationWord,
 } from "./tools/getTranslationWord.js";
-import { handleGetWordsForReference } from "./tools/getWordsForReference.js";
-import { handleSearchResources } from "./tools/searchResources.js";
 import { logger } from "./utils/logger.js";
 import { getVersion } from "./version.js";
 
@@ -80,100 +84,84 @@ const tools = [
     ),
   },
   {
-    name: "get_translation_word",
-    description: "Get translation words linked to a specific Bible reference",
-    inputSchema: GetTranslationWordArgs.omit({ reference: true }).extend({
-      reference: z
-        .string()
-        .describe(
-          'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
-        ),
-    }),
-  },
-  {
-    name: "get_context",
+    name: "fetch_translation_word_links",
     description:
-      "Get contextual information for a Bible reference including themes, cultural background, and theological concepts",
-    inputSchema: GetContextArgs.omit({ reference: true }).extend({
-      reference: z
-        .string()
-        .describe(
-          'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
-        ),
-    }),
+      "Fetch translation word links (TWL) for a specific Bible reference",
+    inputSchema: FetchTranslationWordLinksArgs.omit({ reference: true }).extend(
+      {
+        reference: z
+          .string()
+          .describe(
+            'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Matthew 5")',
+          ),
+      },
+    ),
   },
   {
-    name: "get_languages",
-    description: "Get available languages for translation resources",
-    inputSchema: GetLanguagesArgs,
-  },
-  {
-    name: "browse_translation_words",
-    description: "Browse and search translation words by category or term",
-    inputSchema: z.object({
-      language: z.string().optional().default("en"),
-      organization: z.string().optional().default("unfoldingWord"),
-      category: z
-        .string()
-        .optional()
-        .describe("Filter by category (kt, names, other)"),
-      search: z.string().optional().describe("Search term to filter words"),
-      limit: z
-        .number()
-        .optional()
-        .default(50)
-        .describe("Maximum number of results"),
-    }),
-  },
-  {
-    name: "extract_references",
-    description: "Extract and parse Bible references from text",
-    inputSchema: z.object({
-      text: z.string().describe("Text containing Bible references to extract"),
-      includeContext: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Include context around each reference"),
-    }),
-  },
-  {
-    name: "fetch_resources",
+    name: "fetch_translation_word",
     description:
-      "Fetch multiple types of translation resources for a reference",
-    inputSchema: z.object({
-      reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
-      language: z.string().optional().default("en"),
-      organization: z.string().optional().default("unfoldingWord"),
-      resources: z
-        .array(z.string())
-        .optional()
-        .default(["scripture", "notes", "questions", "words"]),
-    }),
+      "Fetch translation word articles for biblical terms. Can search by term name (e.g., 'grace', 'paul', 'god', 'faith'), path, rcLink, or Bible reference. Use term parameter for questions like 'Who is Paul?' or 'What is grace?'",
+    inputSchema: GetTranslationWordArgs,
   },
   {
-    name: "get_words_for_reference",
+    name: "fetch_translation_academy",
+    description: "Fetch translation academy (tA) modules and training content",
+    inputSchema: FetchTranslationAcademyArgs,
+  },
+];
+
+// Prompt definitions
+const prompts = [
+  {
+    name: "translation-helps-for-passage",
     description:
-      "Get translation words specifically linked to a Bible reference",
-    inputSchema: z.object({
-      reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
-      language: z.string().optional().default("en"),
-      organization: z.string().optional().default("unfoldingWord"),
-    }),
+      "Get comprehensive translation help for a Bible passage: scripture text, questions, word definitions (with titles), notes, and related academy articles",
+    arguments: [
+      {
+        name: "reference",
+        description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3")',
+        required: true,
+      },
+      {
+        name: "language",
+        description: 'Language code (default: "en")',
+        required: false,
+      },
+    ],
   },
   {
-    name: "search_resources",
-    description: "Search across multiple resource types for content",
-    inputSchema: z.object({
-      query: z.string().describe("Search query"),
-      resourceTypes: z
-        .array(z.string())
-        .optional()
-        .default(["notes", "questions", "words"]),
-      language: z.string().optional().default("en"),
-      organization: z.string().optional().default("unfoldingWord"),
-      limit: z.number().optional().default(50),
-    }),
+    name: "get-translation-words-for-passage",
+    description:
+      "Get all translation word definitions for a passage, showing dictionary entry titles (not technical term IDs)",
+    arguments: [
+      {
+        name: "reference",
+        description: 'Bible reference (e.g., "John 3:16")',
+        required: true,
+      },
+      {
+        name: "language",
+        description: 'Language code (default: "en")',
+        required: false,
+      },
+    ],
+  },
+  {
+    name: "get-translation-academy-for-passage",
+    description:
+      "Get Translation Academy training articles referenced in the translation notes for a passage",
+    arguments: [
+      {
+        name: "reference",
+        description: 'Bible reference (e.g., "John 3:16")',
+        required: true,
+      },
+      {
+        name: "language",
+        description: 'Language code (default: "en")',
+        required: false,
+      },
+    ],
   },
 ];
 
@@ -186,6 +174,7 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      prompts: {},
     },
   },
 );
@@ -196,7 +185,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: tools.map((tool) => ({
       name: tool.name,
       description: tool.description,
-      inputSchema: tool.inputSchema,
+      inputSchema: zodToJsonSchema(tool.inputSchema, { $refStrategy: "none" }),
     })),
   };
 });
@@ -222,33 +211,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           args as z.infer<typeof FetchTranslationQuestionsArgs>,
         );
 
-      case "get_translation_word":
+      case "fetch_translation_word_links":
+        return await handleFetchTranslationWordLinks(
+          args as z.infer<typeof FetchTranslationWordLinksArgs>,
+        );
+
+      case "fetch_translation_word":
         return await handleGetTranslationWord(
           args as z.infer<typeof GetTranslationWordArgs>,
         );
 
-      case "get_context":
-        return await handleGetContext(args as z.infer<typeof GetContextArgs>);
-
-      case "get_languages":
-        return await handleGetLanguages(
-          args as z.infer<typeof GetLanguagesArgs>,
+      case "fetch_translation_academy":
+        return await handleFetchTranslationAcademy(
+          args as z.infer<typeof FetchTranslationAcademyArgs>,
         );
-
-      case "browse_translation_words":
-        return await handleBrowseTranslationWords(args as any);
-
-      case "extract_references":
-        return await handleExtractReferences(args as any);
-
-      case "fetch_resources":
-        return await handleFetchResources(args as any);
-
-      case "get_words_for_reference":
-        return await handleGetWordsForReference(args as any);
-
-      case "search_resources":
-        return await handleSearchResources(args as any);
 
       default:
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
@@ -262,6 +238,163 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       ErrorCode.InternalError,
       `Error executing tool ${name}: ${error instanceof Error ? error.message : String(error)}`,
     );
+  }
+});
+
+// List prompts handler
+server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  return {
+    prompts: prompts.map((prompt) => ({
+      name: prompt.name,
+      description: prompt.description,
+      arguments: prompt.arguments,
+    })),
+  };
+});
+
+// Get prompt handler
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+
+  const prompt = prompts.find((p) => p.name === name);
+  if (!prompt) {
+    throw new McpError(ErrorCode.InvalidRequest, `Unknown prompt: ${name}`);
+  }
+
+  const language = (args?.language as string) || "en";
+  const reference = (args?.reference as string) || "";
+
+  switch (name) {
+    case "translation-helps-for-passage":
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please provide comprehensive translation help for ${reference} in ${language}.
+
+Follow these steps to gather all relevant information:
+
+1. **Get the Scripture Text:**
+   - Use fetch_scripture tool with reference="${reference}" and language="${language}"
+   - This provides the actual Bible text to work with
+
+2. **Get Translation Questions:**
+   - Use fetch_translation_questions with reference="${reference}" and language="${language}"
+   - These help check comprehension and guide translation decisions
+
+3. **Get Translation Word Links and Fetch Titles:**
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
+   - This returns a list of terms (e.g., [{term: "love", category: "kt", path: "..."}])
+   - For EACH term in the response, use fetch_translation_word tool with term=<term_value> to get the full article
+   - Extract the TITLE from each article (found in the first H1 heading or title field)
+   - Show the user these dictionary entry TITLES, not the technical term IDs
+   - Example: Show "Love, Beloved" not "love"; show "Son of God, Son" not "sonofgod"
+
+4. **Get Translation Notes:**
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - Notes contain supportReference fields that link to Translation Academy articles
+
+5. **Get Related Translation Academy Articles:**
+   - From the translation notes response, extract all supportReference values
+   - These are RC links like "rc://*/ta/man/translate/figs-metaphor"
+   - For each supportReference, use fetch_translation_academy tool with rcLink=<supportReference_value>
+   - Extract the TITLE from each academy article
+   - Show these training article titles to help the user understand translation concepts
+
+6. **Organize the Response:**
+   Present everything in a clear, structured way:
+   - Scripture text at the top
+   - List of translation word titles (dictionary entries)
+   - Translation questions for comprehension
+   - Translation notes with guidance
+   - Related academy article titles for deeper learning
+
+The goal is to provide EVERYTHING a translator needs for this passage in one comprehensive response.`,
+            },
+          },
+        ],
+      };
+
+    case "get-translation-words-for-passage":
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please show me all the translation word definitions for ${reference} in ${language}.
+
+Follow these steps:
+
+1. **Get Translation Word Links:**
+   - Use fetch_translation_word_links with reference="${reference}" and language="${language}"
+   - This returns links like: [{term: "love", category: "kt", ...}, {term: "god", ...}]
+
+2. **Fetch Full Articles and Extract Titles:**
+   - For EACH term in the links result, call fetch_translation_word with term=<term_value>
+   - From each article response, extract the TITLE (not the term ID)
+   - The title is usually in the first H1 heading or a dedicated title field
+   - Example: The term "love" might have title "Love, Beloved"
+   - Example: The term "sonofgod" might have title "Son of God, Son"
+
+3. **Present to User:**
+   - Show the dictionary entry TITLES in a clear list
+   - These are human-readable names, not technical IDs
+   - Optionally group by category (Key Terms, Names, Other Terms)
+   - Let the user know they can ask for the full definition of any term
+
+Focus on making the translation words accessible by showing their proper titles.`,
+            },
+          },
+        ],
+      };
+
+    case "get-translation-academy-for-passage":
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please find all the Translation Academy training articles related to ${reference} in ${language}.
+
+Follow these steps:
+
+1. **Get Translation Notes:**
+   - Use fetch_translation_notes with reference="${reference}" and language="${language}"
+   - Translation notes contain supportReference fields that link to academy articles
+
+2. **Extract Support References:**
+   - From the notes response, find all supportReference values
+   - These are RC links in format: "rc://*/ta/man/translate/figs-metaphor"
+   - Or they might be moduleIds like: "figs-metaphor", "translate-names"
+   - Collect all unique support references
+
+3. **Fetch Academy Articles:**
+   - For each supportReference, use fetch_translation_academy tool
+   - If it's an RC link: use rcLink=<supportReference_value>
+   - If it's a moduleId: use moduleId=<supportReference_value>
+   - Each call returns an academy article with training content
+
+4. **Extract Titles:**
+   - From each academy article response, extract the TITLE
+   - The title is in the first H1 heading or dedicated title field
+
+5. **Present to User:**
+   - Show the academy article titles
+   - Brief description of what each article teaches
+   - Let the user know they can request the full content of any article
+   
+The goal is to show what translation concepts and training materials are relevant to understanding this passage.`,
+            },
+          },
+        ],
+      };
+
+    default:
+      throw new McpError(ErrorCode.InvalidRequest, `Unknown prompt: ${name}`);
   }
 });
 

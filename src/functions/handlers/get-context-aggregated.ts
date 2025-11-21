@@ -139,7 +139,7 @@ export const getContextHandler: PlatformHandler = async (
         type: "translation-words",
         data: wordDetails,
         count: wordDetails.length,
-        note: "Use /api/get-translation-word to fetch full articles for each word",
+        note: "Use /api/fetch-translation-word to fetch full articles for each word",
       });
     }
 

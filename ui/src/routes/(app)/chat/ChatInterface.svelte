@@ -1,9 +1,10 @@
-<script>
+<script lang="ts">
 	import { browser } from '$app/environment';
 	import { Droplets, Eye, EyeOff, Send, TrendingUp, User } from 'lucide-svelte';
 	import { marked } from 'marked';
 	import { afterUpdate, onDestroy, onMount } from 'svelte';
 	import XRayPanel from './XRayPanel.svelte';
+	import DebugSidebar from './DebugSidebar.svelte';
 
 	// Configure marked for safe HTML rendering
 	marked.setOptions({
@@ -21,6 +22,29 @@
 	let currentXRayData = null;
 	let messagesContainer;
 	const USE_STREAM = true;
+
+	// Debug console state - logs all MCP responses (successful and failed)
+	let debugLogs: Array<{
+		id: string;
+		timestamp: Date;
+		type: 'mcp-tool' | 'mcp-prompt' | 'network' | 'llm' | 'other';
+		endpoint?: string;
+		params?: Record<string, any>;
+		error?: string;
+		status?: number;
+		duration?: number;
+		userMessage?: string;
+		response?: any; // Full MCP server response
+		llmResponse?: string; // LLM's final response for comparison
+		isError?: boolean; // Whether this is an error or successful response
+		requestId?: string; // ID of the request this log belongs to
+	}> = [];
+
+	// Track which MCP calls have already been logged to prevent duplicates
+	let loggedCallIds = new Set<string>();
+
+	// Track which request/streaming session each log belongs to
+	let currentRequestId: string | null = null;
 
 	// Rich starter suggestions (shown before conversation starts)
 	const suggestions = [
@@ -140,8 +164,8 @@
 		// Handle different types of RC links
 		if (href.includes('/tw/dict/') || href.includes('rc://words/')) {
 			// Translation Word link
-			const wordId = parts[parts.length - 1];
-			const word = wordId.replace(/-/g, ' ');
+			const term = parts[parts.length - 1];
+			const word = term.replace(/-/g, ' ');
 			prompt = `Define the biblical term "${word}" and explain its significance`;
 		} else if (href.includes('/ta/man/')) {
 			// Translation Academy article
@@ -210,6 +234,47 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		}
 	}
 
+	// Helper function to log MCP calls to debug console (both successful and failed)
+	function logMCPCall(
+		type: 'mcp-tool' | 'mcp-prompt' | 'network' | 'llm' | 'other',
+		details: {
+			endpoint?: string;
+			params?: Record<string, any>;
+			status?: number;
+			duration?: number;
+			response?: any; // Full MCP server response
+			error?: string; // Error message if failed
+		}
+	) {
+		// Get the last user message for context
+		const lastUserMessage =
+			messages
+				.slice()
+				.reverse()
+				.find((m) => m.role === 'user')?.content || '';
+
+		// Don't try to get LLM response here - it will be updated later when the response is ready
+		// This prevents getting the wrong response (like the welcome message)
+
+		const isError = Boolean(
+			details.error !== undefined || (details.status && details.status >= 400)
+		);
+
+		debugLogs = [
+			...debugLogs,
+			{
+				id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+				timestamp: new Date(),
+				type,
+				userMessage: lastUserMessage,
+				llmResponse: undefined, // Will be updated when LLM response is ready
+				isError: isError,
+				requestId: currentRequestId || undefined,
+				...details
+			}
+		];
+	}
+
 	// Send message
 	async function sendMessage() {
 		if (!inputValue.trim() || isLoading) return;
@@ -222,8 +287,13 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		};
 
 		messages = [...messages, userMessage];
+		const currentUserInput = inputValue.trim();
 		inputValue = '';
 		isLoading = true;
+
+		// Clear logged call IDs for the new request and set new request ID
+		loggedCallIds.clear();
+		currentRequestId = userMessage.id; // Use the user message ID as request ID
 
 		// Add loading message immediately
 		const loadingMessage = {
@@ -254,6 +324,12 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 				if (!response.ok) throw new Error('Failed to get response');
 				const data = await response.json();
 				if (data.error) {
+					// Log error to debug console
+					logMCPCall('llm', {
+						error: data.error,
+						duration: data.metadata?.duration
+					});
+
 					const errorMessage = {
 						id: (Date.now() + 1).toString(),
 						role: 'assistant',
@@ -263,6 +339,50 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 					};
 					messages = [...messages, errorMessage];
 				} else {
+					// Log all MCP calls (both successful and failed) to debug console
+					// Prefer apiCalls if available (has full response), otherwise use tools
+					const mcpCalls =
+						data.xrayData?.apiCalls && Array.isArray(data.xrayData.apiCalls)
+							? data.xrayData.apiCalls
+							: data.xrayData?.tools && Array.isArray(data.xrayData.tools)
+								? data.xrayData.tools
+								: [];
+
+					for (const call of mcpCalls) {
+						// Create a unique ID for this call based on endpoint and params
+						const callId = `${call.endpoint || call.name}-${JSON.stringify(call.params || {})}`;
+
+						// Only log if we haven't logged this call yet
+						if (!loggedCallIds.has(callId)) {
+							loggedCallIds.add(callId);
+							const toolType =
+								call.endpoint?.includes('prompt') || call.name?.includes('prompt')
+									? 'mcp-prompt'
+									: 'mcp-tool';
+							logMCPCall(toolType, {
+								endpoint: call.endpoint || call.name,
+								params: call.params,
+								status: call.status,
+								duration:
+									typeof call.duration === 'string'
+										? parseInt(call.duration.replace('ms', ''))
+										: call.duration,
+								response: call.response, // Full MCP server response
+								error: call.error // Error message if failed
+							});
+						}
+					}
+
+					// Update logs with the final LLM response
+					if (data.content && currentRequestId && debugLogs.length > 0) {
+						// Update all logs for this request with the final LLM response
+						debugLogs = debugLogs.map((log) => {
+							if (log.requestId === currentRequestId && !log.llmResponse) {
+								return { ...log, llmResponse: data.content };
+							}
+							return log;
+						});
+					}
 					const assistantMessage = {
 						id: (Date.now() + 1).toString(),
 						role: 'assistant',
@@ -277,14 +397,21 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 			}
 		} catch (error) {
 			console.error('Chat error:', error);
-			const errorMessage = {
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+			// Log to debug console
+			logMCPCall('network', {
+				error: errorMessage
+			});
+
+			const errorMessageObj = {
 				id: (Date.now() + 1).toString(),
 				role: 'assistant',
-				content: `❌ Network error: ${error.message}\n\nPlease check your connection and try again.`,
+				content: `❌ Network error: ${errorMessage}\n\nPlease check your connection and try again.`,
 				timestamp: new Date(),
 				isError: true
 			};
-			messages = [...messages, errorMessage];
+			messages = [...messages, errorMessageObj];
 		} finally {
 			isLoading = false;
 			scrollToBottom();
@@ -350,6 +477,41 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 				} else if (event === 'xray' || event === 'xray:final') {
 					try {
 						const json = JSON.parse(data);
+
+						// Log all MCP calls (both successful and failed) to debug console
+						// Prefer apiCalls if available (has full response), otherwise use tools
+						const mcpCalls =
+							json.apiCalls && Array.isArray(json.apiCalls)
+								? json.apiCalls
+								: json.tools && Array.isArray(json.tools)
+									? json.tools
+									: [];
+
+						for (const call of mcpCalls) {
+							// Create a unique ID for this call based on endpoint and params
+							const callId = `${call.endpoint || call.name}-${JSON.stringify(call.params || {})}`;
+
+							// Only log if we haven't logged this call yet
+							if (!loggedCallIds.has(callId)) {
+								loggedCallIds.add(callId);
+								const toolType =
+									call.endpoint?.includes('prompt') || call.name?.includes('prompt')
+										? 'mcp-prompt'
+										: 'mcp-tool';
+								logMCPCall(toolType, {
+									endpoint: call.endpoint || call.name,
+									params: call.params,
+									status: call.status,
+									duration:
+										typeof call.duration === 'string'
+											? parseInt(call.duration.replace('ms', ''))
+											: call.duration,
+									response: call.response, // Full MCP server response
+									error: call.error // Error message if failed
+								});
+							}
+						}
+
 						// Attach or update xray on the streaming message
 						messages[streamingMessageIndex] = {
 							...messages[streamingMessageIndex],
@@ -359,12 +521,38 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 							}
 						};
 						messages = [...messages];
-						// If final, also set panel data
+						// If final, also set panel data and update logs with LLM response
 						if (event === 'xray:final') {
 							currentXRayData = messages[streamingMessageIndex].xrayData;
+
+							// Update logs with the final LLM response when xray:final is received
+							// This ensures we have the complete response
+							const finalLlmResponse = messages[streamingMessageIndex]?.content;
+							if (finalLlmResponse && currentRequestId && debugLogs.length > 0) {
+								debugLogs = debugLogs.map((log) => {
+									if (log.requestId === currentRequestId && !log.llmResponse) {
+										return { ...log, llmResponse: finalLlmResponse };
+									}
+									return log;
+								});
+							}
 						}
 					} catch {}
 				} else if (event === 'error') {
+					// Log error to debug console
+					try {
+						const errorData = JSON.parse(data);
+						logMCPCall('llm', {
+							error: errorData.error || data,
+							duration:
+								Date.now() - (messages[streamingMessageIndex]?.timestamp?.getTime() || Date.now())
+						});
+					} catch {
+						logMCPCall('llm', {
+							error: data
+						});
+					}
+
 					messages[streamingMessageIndex] = {
 						...messages[streamingMessageIndex],
 						isLoading: false,
@@ -372,8 +560,34 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 					};
 					messages = [...messages];
 				} else if (event === 'llm:done') {
-					// finished
+					// LLM response is complete - update logs for this request with the final LLM response
+					// Use the message content from the messages array, which should be the complete response
+					const finalLlmResponse = messages[streamingMessageIndex]?.content || accumulated;
+					if (finalLlmResponse && currentRequestId && debugLogs.length > 0) {
+						// Update all logs for this request with the final LLM response
+						debugLogs = debugLogs.map((log) => {
+							// If this log belongs to the current request and doesn't have an LLM response yet
+							if (log.requestId === currentRequestId && !log.llmResponse) {
+								return { ...log, llmResponse: finalLlmResponse };
+							}
+							return log;
+						});
+					}
 				}
+			}
+		}
+
+		// After streaming is completely done, update logs with the final LLM response
+		// This ensures we have the complete, final response
+		if (currentRequestId && debugLogs.length > 0) {
+			const finalLlmResponse = messages[streamingMessageIndex]?.content;
+			if (finalLlmResponse) {
+				debugLogs = debugLogs.map((log) => {
+					if (log.requestId === currentRequestId && !log.llmResponse) {
+						return { ...log, llmResponse: finalLlmResponse };
+					}
+					return log;
+				});
 			}
 		}
 	}
@@ -398,125 +612,141 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 	}
 </script>
 
-<div class="flex h-full flex-col" style="background-color: #0f172a;">
-	<div
-		bind:this={messagesContainer}
-		class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6"
-	>
-		{#if messages.length === 1}
-			<!-- Starter suggestions area -->
-			<div class="mx-auto mb-6 max-w-4xl">
-				<div class="mb-3 text-sm text-gray-400">Try one of these to get started:</div>
-				<div class="grid gap-3 sm:grid-cols-2">
-					{#each suggestions as s (s.title)}
-						<button
-							class="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left text-gray-200 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
-							on:click={() => {
-								inputValue = s.prompt;
-								sendMessage();
-							}}
+<div class="relative flex h-full flex-col" style="background-color: #0f172a;">
+	<div class="flex min-h-0 flex-1 overflow-hidden">
+		<!-- Main Chat Content -->
+		<div
+			bind:this={messagesContainer}
+			class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6"
+		>
+			{#if messages.length === 1}
+				<!-- Starter suggestions area -->
+				<div class="mx-auto mb-6 max-w-4xl">
+					<div class="mb-3 flex items-center justify-between">
+						<div class="text-sm text-gray-400">Try one of these to get started:</div>
+						<a
+							href="/chat/sdk-integration"
+							class="text-xs text-blue-400 transition-colors hover:text-blue-300"
+							title="Learn how this chat integrates with the SDK"
 						>
-							<div class="mb-1 text-sm font-semibold">{s.title}</div>
-							<div class="text-xs text-gray-400">{s.description}</div>
-						</button>
-					{/each}
-				</div>
-			</div>
-		{/if}
-		{#each messages as message (message.id)}
-			<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4">
-				<div class="flex max-w-[80%] items-end space-x-2">
-					{#if message.role === 'assistant'}
-						<div class="flex-shrink-0">
-							<div
-								class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"
+							SDK Integration Study Case →
+						</a>
+					</div>
+					<div class="grid gap-3 sm:grid-cols-2">
+						{#each suggestions as s (s.title)}
+							<button
+								class="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left text-gray-200 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+								on:click={() => {
+									inputValue = s.prompt;
+									sendMessage();
+								}}
 							>
-								<Droplets class="h-5 w-5 text-white" />
-							</div>
-						</div>
-					{/if}
-
-					<div>
-						<div
-							class="rounded-2xl px-4 py-3 {message.role === 'user'
-								? 'bg-gray-700 text-white'
-								: message.isError
-									? 'border border-red-700/50 bg-red-900/30 text-red-100'
-									: 'bg-blue-600 text-white'}"
-						>
-							<div class="markdown-content">
-								{@html renderMarkdown(message.content)}
-							</div>
-						</div>
-
-						{#if message.xrayData}
-							<div class="mt-2 text-xs text-gray-400">
-								<button
-									class="flex items-center space-x-1 hover:text-gray-300"
-									on:click={() => showXRayData(message)}
+								<div class="mb-1 text-sm font-semibold">{s.title}</div>
+								<div class="text-xs text-gray-400">{s.description}</div>
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
+			{#each messages as message (message.id)}
+				<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4">
+					<div class="flex max-w-[80%] items-end space-x-2">
+						{#if message.role === 'assistant'}
+							<div class="flex-shrink-0">
+								<div
+									class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"
 								>
-									<TrendingUp class="h-3 w-3" />
-									<span>X-ray: {message.xrayData.totalTime}ms</span>
-								</button>
+									<Droplets class="h-5 w-5 text-white" />
+								</div>
+							</div>
+						{/if}
+
+						<div>
+							<div
+								class="rounded-2xl px-4 py-3 {message.role === 'user'
+									? 'bg-gray-700 text-white'
+									: message.isError
+										? 'border border-red-700/50 bg-red-900/30 text-red-100'
+										: 'bg-blue-600 text-white'}"
+							>
+								<div class="markdown-content">
+									{@html renderMarkdown(message.content)}
+								</div>
+							</div>
+
+							{#if message.xrayData}
+								<div class="mt-2 text-xs text-gray-400">
+									<button
+										class="flex items-center space-x-1 hover:text-gray-300"
+										on:click={() => showXRayData(message)}
+									>
+										<TrendingUp class="h-3 w-3" />
+										<span>X-ray: {message.xrayData.totalTime}ms</span>
+									</button>
+								</div>
+							{/if}
+						</div>
+
+						{#if message.role === 'user'}
+							<div class="flex-shrink-0">
+								<div class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-600">
+									<User class="h-5 w-5 text-white" />
+								</div>
 							</div>
 						{/if}
 					</div>
-
-					{#if message.role === 'user'}
-						<div class="flex-shrink-0">
-							<div class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-600">
-								<User class="h-5 w-5 text-white" />
-							</div>
-						</div>
-					{/if}
 				</div>
-			</div>
-		{/each}
+			{/each}
 
-		{#if messages.length <= 2}
-			<div class="mt-3 flex flex-wrap gap-2">
-				<button
-					on:click={() => {
-						inputValue = 'Show me John 3:16';
-						sendMessage();
-					}}
-					class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
-				>
-					📖 John 3:16
-				</button>
-				<button
-					on:click={() => {
-						inputValue = "What does 'love' mean in the Bible?";
-						sendMessage();
-					}}
-					class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
-				>
-					💝 Define "love"
-				</button>
-				<button
-					on:click={() => {
-						inputValue = 'Explain the notes on Ephesians 2:8-9';
-						sendMessage();
-					}}
-					class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
-				>
-					📝 Notes on grace
-				</button>
-				<button
-					on:click={() => {
-						inputValue = 'What questions should I consider for Genesis 1?';
-						sendMessage();
-					}}
-					class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
-				>
-					❓ Study questions
-				</button>
-			</div>
-		{/if}
+			{#if messages.length <= 2}
+				<div class="mt-3 flex flex-wrap gap-2">
+					<button
+						on:click={() => {
+							inputValue = 'Show me John 3:16';
+							sendMessage();
+						}}
+						class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
+					>
+						📖 John 3:16
+					</button>
+					<button
+						on:click={() => {
+							inputValue = "What does 'love' mean in the Bible?";
+							sendMessage();
+						}}
+						class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
+					>
+						💝 Define "love"
+					</button>
+					<button
+						on:click={() => {
+							inputValue = 'Explain the notes on Ephesians 2:8-9';
+							sendMessage();
+						}}
+						class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
+					>
+						📝 Notes on grace
+					</button>
+					<button
+						on:click={() => {
+							inputValue = 'What questions should I consider for Genesis 1?';
+							sendMessage();
+						}}
+						class="rounded-full border border-gray-600 px-3 py-1 text-sm text-gray-300 transition-all hover:border-blue-500 hover:text-blue-400"
+					>
+						❓ Study questions
+					</button>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Debug Sidebar (pushes content to the left when open) -->
+		<DebugSidebar logs={debugLogs} />
 	</div>
 
+	<!-- Input Area (stays at bottom) -->
 	<div
-		class="border-t border-gray-800 p-4 pb-[env(safe-area-inset-bottom)]"
+		class="flex-shrink-0 border-t border-gray-800 p-4 pb-[env(safe-area-inset-bottom)]"
 		style="background-color: #0f172a;"
 	>
 		<div class="mx-auto flex max-w-4xl items-end gap-3">

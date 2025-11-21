@@ -462,10 +462,7 @@ export const RESOLVE_RC_LINK_CONFIG: EndpointConfig = {
 /**
  * All Context Endpoint Configurations (Extended Tier)
  */
-export const CONTEXT_ENDPOINTS = [
-  GET_CONTEXT_CONFIG,
-  // GET_WORDS_FOR_REFERENCE_CONFIG, // Endpoint not implemented yet
-  RESOLVE_RC_LINK_CONFIG,
-] as const;
+// Context endpoints removed - not part of core 6 tools
+export const CONTEXT_ENDPOINTS = [] as const;
 
 export default CONTEXT_ENDPOINTS;

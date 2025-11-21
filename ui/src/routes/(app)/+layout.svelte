@@ -28,6 +28,12 @@
 			description: 'Overview and features'
 		},
 		{
+			href: '/getting-started',
+			label: 'Get Started',
+			icon: BookOpen,
+			description: 'Quick start guide and examples'
+		},
+		{
 			href: '/chat',
 			label: 'Chat',
 			icon: MessageSquare,
@@ -256,7 +262,7 @@
 
 					<!-- GitHub Link -->
 					<a
-						href="https://github.com/klappy/translation-helps-mcp"
+						href="https://github.com/unfoldingWord/translation-helps-mcp"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="hidden items-center space-x-2 rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-blue-200 backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:border-white/30 hover:bg-white/10 hover:text-white sm:flex"
@@ -331,7 +337,7 @@
 
 					<div class="border-t border-blue-500/30 pt-4">
 						<a
-							href="https://github.com/klappy/translation-helps-mcp"
+							href="https://github.com/unfoldingWord/translation-helps-mcp"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="flex items-center space-x-3 rounded-xl border border-transparent p-3 text-blue-200 backdrop-blur-xl transition-all duration-300 hover:border-white/10 hover:bg-white/10 hover:text-white"
@@ -383,7 +389,7 @@
 					</p>
 					<div class="flex items-center space-x-4">
 						<a
-							href="https://github.com/klappy/translation-helps-mcp"
+							href="https://github.com/unfoldingWord/translation-helps-mcp"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="inline-flex items-center space-x-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-blue-200 backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:border-white/30 hover:bg-white/10 hover:text-white"
@@ -454,7 +460,7 @@
 						</div>
 						<div class="flex items-center space-x-4 text-sm">
 							<a
-								href="https://github.com/klappy/translation-helps-mcp"
+								href="https://github.com/unfoldingWord/translation-helps-mcp"
 								target="_blank"
 								rel="noopener noreferrer"
 								class="text-gray-400 transition-colors hover:text-blue-300">GitHub</a

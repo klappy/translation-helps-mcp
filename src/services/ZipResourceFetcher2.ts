@@ -205,7 +205,7 @@ export class ZipResourceFetcher2 {
       // KV+memory cached catalog per (lang, org, stage=prod, subject)
       const catalogCacheKey = catalogUrl; // Use exact URL as KV key
       let catalogData: { data?: CatalogResource[] } | null = null;
-      const kvCatalogStart =
+      const cacheStart =
         typeof performance !== "undefined" ? performance.now() : Date.now();
 
       // Check if we should bypass cache
@@ -220,32 +220,82 @@ export class ZipResourceFetcher2 {
       const cachedCatalog = !forceRefresh
         ? await this.kvCache.get(catalogCacheKey)
         : null;
+      const cacheDuration = Math.max(
+        1,
+        Math.round(
+          (typeof performance !== "undefined"
+            ? performance.now()
+            : Date.now()) - cacheStart,
+        ),
+      );
+
       if (cachedCatalog) {
         try {
           const json =
             typeof cachedCatalog === "string"
               ? cachedCatalog
               : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
-          catalogData = JSON.parse(json);
+          const parsed = JSON.parse(json);
 
-          // Log synthetic cache hit for X-Ray
-          this.tracer.addApiCall({
-            url: `internal://kv/catalog/${language}/${organization}/Bible,Aligned Bible`,
-            duration: Math.max(
-              1,
-              Math.round(
-                (typeof performance !== "undefined"
-                  ? performance.now()
-                  : Date.now()) - kvCatalogStart,
-              ),
-            ),
-            status: 200,
-            size: json.length,
-            cached: true,
-          });
+          // Validate cached data structure - must have data array with items
+          if (
+            parsed &&
+            parsed.data &&
+            Array.isArray(parsed.data) &&
+            parsed.data.length > 0
+          ) {
+            catalogData = parsed;
+
+            // Determine cache source from duration: very fast (< 5ms) = memory, slower = KV
+            const cacheSource = cacheDuration < 5 ? "memory" : "kv";
+
+            console.log(`[CACHE TRACE] ✅ Catalog cache HIT:`, {
+              source: cacheSource,
+              duration: cacheDuration,
+              key: catalogCacheKey,
+              dataLength: parsed.data.length,
+            });
+
+            // Log synthetic cache hit for X-Ray
+            this.tracer.addApiCall({
+              url: `internal://${cacheSource}/catalog/${language}/${organization}/Bible,Aligned Bible`,
+              duration: cacheDuration,
+              status: 200,
+              size: json.length,
+              cached: true,
+            });
+
+            console.log(
+              `[CACHE TRACE] Added to tracer with cached=true, source=${cacheSource}`,
+            );
+          } else {
+            // Cached data is empty or invalid - treat as cache miss and clean up
+            logger.warn(
+              `Cached catalog data is empty or invalid, treating as cache miss`,
+              {
+                key: catalogCacheKey,
+                hasData: !!parsed?.data,
+                dataLength: parsed?.data?.length || 0,
+              },
+            );
+            // Clean up invalid cache entry to prevent future misses
+            try {
+              await this.kvCache.delete(catalogCacheKey);
+              logger.debug(
+                `Cleaned up invalid cache entry for ${catalogCacheKey}`,
+              );
+            } catch (err) {
+              // Best effort - ignore cleanup failures
+              logger.debug(`Failed to clean up invalid cache entry: ${err}`);
+            }
+            catalogData = null; // Force fetch from network
+          }
         } catch {
           // eslint-disable-next-line no-empty -- ignore corrupt cache JSON
-          void 0; // swallow JSON parse failure
+          logger.warn(
+            `Failed to parse cached catalog data, treating as cache miss`,
+          );
+          catalogData = null; // Force fetch from network
         }
       }
       // unified discovery uses KV+memory cache; no local flag needed
@@ -324,7 +374,25 @@ export class ZipResourceFetcher2 {
       });
 
       // 2. Prepare resources (prioritize common ones) and compute ingredients
-      const priorityOrder = ["ult", "ust", "t4t", "ueb"];
+      // Map resource type abbreviations to their equivalents
+      // ULT/GLT are equivalent (Literal Text), UST/GST are equivalent (Simplified Text)
+      const resourceTypeEquivalents: Record<string, string[]> = {
+        ult: ["ult", "glt"], // unfoldingWord Literal Text / Gateway Literal Text
+        glt: ["ult", "glt"],
+        ust: ["ust", "gst"], // unfoldingWord Simplified Text / Gateway Simplified Text
+        gst: ["ust", "gst"],
+        t4t: ["t4t"],
+        ueb: ["ueb"],
+      };
+
+      // Get equivalent types for the requested version
+      const requestedTypes = version
+        ? resourceTypeEquivalents[version.toLowerCase()] || [
+            version.toLowerCase(),
+          ]
+        : null;
+
+      const priorityOrder = ["ult", "glt", "ust", "gst", "t4t", "ueb"];
       const candidates = resources
         .filter(
           (r) =>
@@ -335,11 +403,19 @@ export class ZipResourceFetcher2 {
               r.name.includes("_twl")
             ),
         )
-        .filter((r) => (version ? r.name.includes(`_${version}`) : true))
+        .filter((r) => {
+          if (!version) return true; // No version specified, return all
+          if (!requestedTypes) return r.name.endsWith(`_${version}`);
+          // Check if resource name ends with any of the equivalent types
+          return requestedTypes.some((type) => r.name.endsWith(`_${type}`));
+        })
         .sort((a, b) => {
-          const as = priorityOrder.findIndex((p) => a.name.endsWith(`_${p}`));
-          const bs = priorityOrder.findIndex((p) => b.name.endsWith(`_${p}`));
-          return (as === -1 ? 999 : as) - (bs === -1 ? 999 : bs);
+          // Sort by priority, checking for any equivalent type
+          const aType = priorityOrder.find((p) => a.name.endsWith(`_${p}`));
+          const bType = priorityOrder.find((p) => b.name.endsWith(`_${p}`));
+          const as = aType ? priorityOrder.indexOf(aType) : 999;
+          const bs = bType ? priorityOrder.indexOf(bType) : 999;
+          return as - bs;
         });
 
       type ScriptureResult = { text: string; translation: string };
@@ -516,12 +592,20 @@ export class ZipResourceFetcher2 {
           continue;
         }
         try {
+          // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
+          const isCacheHit = source === "cache" || source === "r2";
+          console.log(`[CACHE TRACE] R2 file result:`, {
+            fileKey,
+            source,
+            isCacheHit,
+            duration: durationMs,
+          });
           this.tracer.addApiCall({
             url: `internal://${source}/file/${fileKey}`,
             duration: durationMs,
             status: 200,
             size,
-            cached: source === "cache",
+            cached: isCacheHit,
           });
         } catch {
           // ignore tracer issues
@@ -649,6 +733,50 @@ export class ZipResourceFetcher2 {
     } catch (error) {
       logger.error("Error in getScripture:", error as Error);
       return [];
+    }
+  }
+
+  /**
+   * Get raw USFM file content from ZIP (public method for scripture service)
+   * Downloads ZIP if needed (cached), extracts USFM file (cached extraction)
+   */
+  async getRawUSFMContent(
+    organization: string,
+    repository: string,
+    filePath: string,
+    ref?: string | null,
+    zipballUrl?: string | null,
+  ): Promise<string | null> {
+    try {
+      // Download ZIP (cached)
+      const zipData = await this.getOrDownloadZip(
+        organization,
+        repository,
+        ref,
+        zipballUrl,
+      );
+
+      if (!zipData) {
+        return null;
+      }
+
+      // Build cache key for extracted file
+      const zipCacheKey = ref
+        ? `zip:${organization}/${repository}:${ref}`
+        : `zip:${organization}/${repository}`;
+
+      // Extract USFM file from ZIP (cached extraction)
+      const usfmContent = await this.extractFileFromZip(
+        zipData,
+        filePath,
+        repository,
+        zipCacheKey,
+      );
+
+      return usfmContent;
+    } catch (error) {
+      logger.error("Error in getRawUSFMContent:", error as Error);
+      return null;
     }
   }
 
@@ -811,7 +939,16 @@ export class ZipResourceFetcher2 {
     organization: string,
     resourceType: "tw" | "ta",
     identifier?: string,
+    forceRefresh = false,
   ): Promise<unknown> {
+    logger.info(`[getMarkdownContent] START`, {
+      language,
+      organization,
+      resourceType,
+      identifier,
+      forceRefresh,
+    });
+
     try {
       // Map resource types to proper subject filters
       const subjectMap = {
@@ -820,13 +957,21 @@ export class ZipResourceFetcher2 {
       };
       const subject = subjectMap[resourceType];
 
+      logger.info(`[getMarkdownContent] Subject: ${subject}`);
+
       // 1) Catalog lookup with subject-specific filtering (KV + memory cached)
       const baseCatalog = `https://git.door43.org/api/v1/catalog/search`;
       const params = new URLSearchParams();
       params.set("lang", language);
       params.set("owner", organization);
       params.set("stage", "prod");
-      params.set("type", "text");
+
+      // Translation Academy uses flavor_type="gloss", not type="text"
+      // So we don't set type filter for TA
+      if (resourceType === "tw") {
+        params.set("type", "text");
+      }
+
       params.set("subject", subject);
       params.set("metadataType", "rc");
       params.set("includeMetadata", "true");
@@ -836,34 +981,77 @@ export class ZipResourceFetcher2 {
       const catalogCacheKey = catalogUrl; // Use exact URL as KV key
 
       let catalogData: { data?: CatalogResource[] } | null = null;
-      const kvStart =
-        typeof performance !== "undefined" ? performance.now() : Date.now();
-      const cachedCatalog = await this.kvCache.get(catalogCacheKey);
-      if (cachedCatalog) {
-        try {
-          const json =
-            typeof cachedCatalog === "string"
-              ? (cachedCatalog as string)
-              : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
-          catalogData = JSON.parse(json) as { data?: CatalogResource[] };
-          // Log synthetic cache hit for X-Ray
-          this.tracer.addApiCall({
-            url: `internal://kv/catalog/${language}/${organization}/${subject}`,
-            duration: Math.max(
-              1,
-              Math.round(
-                (typeof performance !== "undefined"
-                  ? performance.now()
-                  : Date.now()) - (kvStart as number),
-              ),
-            ),
-            status: 200,
-            size: json.length || 0,
-            cached: true,
-          });
-        } catch {
-          // fall through to network
+      let cachedCatalog: string | ArrayBuffer | null = null;
+
+      // Skip cache if force refresh is requested
+      if (!forceRefresh) {
+        const kvStart =
+          typeof performance !== "undefined" ? performance.now() : Date.now();
+        cachedCatalog = await this.kvCache.get(catalogCacheKey);
+        if (cachedCatalog) {
+          try {
+            const json =
+              typeof cachedCatalog === "string"
+                ? (cachedCatalog as string)
+                : new TextDecoder().decode(cachedCatalog as ArrayBuffer);
+            const parsed = JSON.parse(json) as { data?: CatalogResource[] };
+
+            // Validate cached data before using it
+            if (
+              parsed &&
+              parsed.data &&
+              Array.isArray(parsed.data) &&
+              parsed.data.length > 0
+            ) {
+              catalogData = parsed;
+              // Log synthetic cache hit for X-Ray
+              this.tracer.addApiCall({
+                url: `internal://kv/catalog/${language}/${organization}/${subject}`,
+                duration: Math.max(
+                  1,
+                  Math.round(
+                    (typeof performance !== "undefined"
+                      ? performance.now()
+                      : Date.now()) - (kvStart as number),
+                  ),
+                ),
+                status: 200,
+                size: json.length || 0,
+                cached: true,
+              });
+            } else {
+              // Cached data is empty or invalid - treat as cache miss and clean up
+              logger.warn(
+                `[getMarkdownContent] Cached catalog data is empty or invalid, treating as cache miss`,
+                {
+                  key: catalogCacheKey,
+                  hasData: !!parsed?.data,
+                  dataLength: parsed?.data?.length || 0,
+                },
+              );
+              // Clean up invalid cache entry to prevent future misses
+              try {
+                await this.kvCache.delete(catalogCacheKey);
+                logger.debug(
+                  `Cleaned up invalid catalog cache entry for ${catalogCacheKey}`,
+                );
+              } catch (err) {
+                // Best effort - ignore cleanup failures
+                logger.debug(
+                  `Failed to clean up invalid catalog cache entry: ${err}`,
+                );
+              }
+              catalogData = null; // Force fetch from network
+            }
+          } catch {
+            // Parse error - fall through to network
+            catalogData = null;
+          }
         }
+      } else {
+        logger.info(
+          `🚫 Force refresh requested - bypassing catalog cache for ${resourceType}`,
+        );
       }
 
       if (!catalogData) {
@@ -904,13 +1092,59 @@ export class ZipResourceFetcher2 {
       }
 
       const resource = (catalogData?.data || [])[0]; // API filtering already applied
-      if (!resource)
+
+      logger.info(`[getMarkdownContent] Catalog data:`, {
+        hasData: !!catalogData,
+        dataLength: catalogData?.data?.length || 0,
+        hasResource: !!resource,
+        resourceName: resource?.name,
+      });
+
+      // If cache yielded zero resources, delete the bad cache and retry fresh
+      if (
+        !resource &&
+        (!catalogData?.data || catalogData.data.length === 0) &&
+        !forceRefresh
+      ) {
+        logger.warn(
+          `[getMarkdownContent] Got empty catalog from cache, invalidating and retrying with force refresh`,
+          { key: catalogCacheKey },
+        );
+        // Delete the corrupted/empty cache from KV
+        try {
+          await this.kvCache.delete(catalogCacheKey);
+          logger.info(`🗑️ Deleted corrupt catalog from KV cache`);
+        } catch (err) {
+          logger.warn(`Failed to delete corrupt catalog cache: ${err}`);
+        }
+        // Retry with fresh fetch (bypass ALL caches with forceRefresh=true)
+        return this.getMarkdownContent(
+          language,
+          organization,
+          resourceType,
+          identifier,
+          true, // forceRefresh=true to bypass memory cache
+        );
+      }
+
+      if (!resource) {
+        logger.warn(
+          `[getMarkdownContent] No resource found in catalog for ${resourceType}`,
+        );
         return resourceType === "tw"
           ? { articles: [] }
           : { modules: [], categories: [] };
+      }
 
       // 2) Download ZIP (prefer catalog-provided ref and zipball URL)
       const { refTag, zipballUrl } = this.resolveRefAndZip(resource as unknown);
+
+      logger.info(`[getMarkdownContent] Resource details:`, {
+        name: resource.name,
+        owner: resource.owner,
+        refTag,
+        hasZipballUrl: !!zipballUrl,
+      });
 
       // We must have a tag - no fallback to master
       if (!refTag) {
@@ -1223,9 +1457,162 @@ export class ZipResourceFetcher2 {
       // TA
       const rawId = identifier ? String(identifier) : undefined;
       const moduleId = rawId ? rawId.toLowerCase() : undefined;
+
+      logger.info(`[getMarkdownContent] TA section:`, {
+        rawId,
+        moduleId,
+        hasModuleId: !!moduleId,
+      });
+
       if (moduleId) {
-        const looksLikePath = rawId?.includes("/") && moduleId.endsWith(".md");
-        let modulePath: string | null = looksLikePath ? rawId || null : null;
+        const looksLikeSingleFile =
+          rawId?.includes("/") && moduleId.endsWith(".md");
+        const looksLikeDirPath =
+          rawId?.includes("/") && !moduleId.endsWith(".md");
+
+        logger.info(`[getMarkdownContent] Path type:`, {
+          looksLikeSingleFile,
+          looksLikeDirPath,
+        });
+
+        // Handle directory path - concatenate all .md files in directory
+        if (looksLikeDirPath) {
+          const dirPath = rawId || "";
+          const allPaths = await this.listZipFiles(zipData);
+
+          logger.info(`[TA DIR SEARCH] Looking for directory: "${dirPath}"`);
+          logger.info(`[TA DIR SEARCH] Total files in ZIP: ${allPaths.length}`);
+
+          // Show sample paths to understand structure
+          const samplePaths = allPaths
+            .filter((p) => p.includes("translate") || p.includes("figs"))
+            .slice(0, 10);
+          logger.info(
+            `[TA DIR SEARCH] Sample paths containing 'translate' or 'figs':`,
+            samplePaths,
+          );
+
+          // Find all .md files in the specified directory
+          const dirFiles = allPaths
+            .filter((p) => {
+              const pLower = p.toLowerCase();
+              const dirPathLower = dirPath.toLowerCase();
+
+              // Try to match with or without repo prefix
+              const matchesDirect =
+                pLower.startsWith(dirPathLower) && pLower.endsWith(".md");
+              const matchesWithPrefix =
+                pLower.includes(`/${dirPathLower}`) && pLower.endsWith(".md");
+              const matches = matchesDirect || matchesWithPrefix;
+
+              if (matches) {
+                // Ensure it's directly in the directory (count slashes after the dir path)
+                const afterDir = matchesDirect
+                  ? p.substring(dirPath.length)
+                  : p.substring(p.indexOf(dirPath) + dirPath.length);
+                const isDirectChild = afterDir.split("/").length === 2; // /filename.md
+
+                if (isDirectChild) {
+                  logger.debug(`[TA DIR SEARCH] ✓ Matched file: ${p}`);
+                }
+
+                return isDirectChild;
+              }
+              return false;
+            })
+            .sort((a, b) => {
+              // Sort order: title.md, sub-title.md, 01.md, then alphabetically
+              const aName = a.substring(a.lastIndexOf("/") + 1).toLowerCase();
+              const bName = b.substring(b.lastIndexOf("/") + 1).toLowerCase();
+
+              // Define priority order
+              const getPriority = (name: string): number => {
+                if (name === "title.md") return 1;
+                if (name === "sub-title.md") return 2;
+                if (name.startsWith("01.")) return 3;
+                return 4;
+              };
+
+              const aPriority = getPriority(aName);
+              const bPriority = getPriority(bName);
+
+              if (aPriority !== bPriority) {
+                return aPriority - bPriority;
+              }
+
+              // Same priority - sort alphabetically
+              return aName.localeCompare(bName);
+            });
+
+          logger.info(
+            `[TA DIR SEARCH] Found ${dirFiles.length} matching files`,
+          );
+
+          if (dirFiles.length === 0) {
+            logger.warn(
+              `[TA DIR SEARCH] No files found for directory: "${dirPath}"`,
+            );
+            return { modules: [] };
+          }
+
+          // Extract and concatenate all files with proper markdown headers
+          const contentParts: string[] = [];
+
+          for (let i = 0; i < dirFiles.length; i++) {
+            const filePath = dirFiles[i];
+            const fileName = filePath
+              .substring(filePath.lastIndexOf("/") + 1)
+              .toLowerCase();
+
+            const content = await this.extractFileFromZip(
+              zipData,
+              filePath,
+              resource.name,
+              zipKeyForFiles,
+            );
+
+            if (content) {
+              const trimmedContent = content.trim();
+
+              // Add markdown headers based on file name
+              if (fileName === "title.md") {
+                // Title gets H1
+                const titleText = trimmedContent.replace(/^#+\s*/, ""); // Remove existing headers
+                contentParts.push(`# ${titleText}`);
+              } else if (fileName === "sub-title.md") {
+                // Subtitle gets H2
+                const subtitleText = trimmedContent.replace(/^#+\s*/, ""); // Remove existing headers
+                contentParts.push(`## ${subtitleText}`);
+              } else {
+                // Other files (01.md, etc.) - use as is
+                contentParts.push(trimmedContent);
+              }
+            }
+          }
+
+          if (contentParts.length === 0) {
+            return { modules: [] };
+          }
+
+          // Concatenate with newlines (no separators)
+          const combined = contentParts.join("\n\n");
+          const moduleIdFromPath = dirPath.split("/").pop() || dirPath;
+
+          return {
+            modules: [
+              {
+                id: moduleIdFromPath,
+                path: dirPath,
+                markdown: combined,
+              },
+            ],
+          };
+        }
+
+        // Handle single file path (.md extension)
+        let modulePath: string | null = looksLikeSingleFile
+          ? rawId || null
+          : null;
 
         // Prefer common TA module layout: <category>/<moduleId>/01.md
         if (!modulePath) {
@@ -1407,7 +1794,15 @@ export class ZipResourceFetcher2 {
 
       return { categories: Array.from(categoriesSet), modules };
     } catch (error) {
-      logger.error("Error in getMarkdownContent:", error as Error);
+      logger.error("Error in getMarkdownContent:", {
+        error: error as Error,
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        resourceType,
+        identifier,
+        language,
+        organization,
+      });
       return resourceType === "tw"
         ? { articles: [] }
         : { modules: [], categories: [] };
@@ -1494,9 +1889,9 @@ export class ZipResourceFetcher2 {
   }
 
   /**
-   * Get or download a ZIP file
+   * Get or download a ZIP file (public for scripture service)
    */
-  private async getOrDownloadZip(
+  async getOrDownloadZip(
     organization: string,
     repository: string,
     ref?: string | null,
@@ -1550,12 +1945,20 @@ export class ZipResourceFetcher2 {
               // Fall through to download fresh copy
             } else {
               try {
+                // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
+                const isCacheHit = source === "cache" || source === "r2";
+                console.log(`[CACHE TRACE] R2 ZIP result:`, {
+                  zipKey,
+                  source,
+                  isCacheHit,
+                  duration: durationMs,
+                });
                 this.tracer.addApiCall({
                   url: `internal://${source}/zip-url/${organization}/${repository}:${ref || "unknown"}`,
                   duration: durationMs,
                   status: 200,
                   size,
-                  cached: source === "cache",
+                  cached: isCacheHit,
                 });
               } catch {
                 // ignore trace add errors
@@ -1587,12 +1990,14 @@ export class ZipResourceFetcher2 {
               // Fall through to download fresh copy
             } else {
               try {
+                // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
+                const isCacheHit = source === "cache" || source === "r2";
                 this.tracer.addApiCall({
                   url: `internal://${source}/tar-url/${organization}/${repository}:${ref || "unknown"}`,
                   duration: durationMs,
                   status: 200,
                   size,
-                  cached: source === "cache",
+                  cached: isCacheHit,
                 });
               } catch {
                 // ignore trace add errors
@@ -1824,9 +2229,9 @@ export class ZipResourceFetcher2 {
   }
 
   /**
-   * Extract a file from ZIP using the exact path from ingredients
+   * Extract a file from ZIP using the exact path from ingredients (public for scripture service)
    */
-  private async extractFileFromZip(
+  async extractFileFromZip(
     zipData: Uint8Array,
     filePath: string,
     repository: string,
@@ -1853,12 +2258,14 @@ export class ZipResourceFetcher2 {
           );
           if (data !== null) {
             try {
+              // R2 is a cache layer - both "cache" (Cache API) and "r2" (R2 bucket) are cache hits
+              const isCacheHit = source === "cache" || source === "r2";
               this.tracer.addApiCall({
                 url: `internal://${source}/file/${fileKey}`,
                 duration: durationMs,
                 status: 200,
                 size,
-                cached: source === "cache",
+                cached: isCacheHit,
               });
             } catch {
               // ignore
@@ -2353,16 +2760,34 @@ export class ZipResourceFetcher2 {
   ): unknown[] {
     try {
       const lines = tsv.split("\n");
-      if (lines.length < 2) return [];
+      if (lines.length < 2) {
+        logger.debug("parseTSVForReference: TSV has less than 2 lines", {
+          lineCount: lines.length,
+        });
+        return [];
+      }
 
       // Parse header
       const headers = lines[0].split("\t");
+      logger.debug("parseTSVForReference: Parsing TSV", {
+        totalLines: lines.length,
+        reference:
+          reference.originalText ||
+          `${reference.book} ${reference.chapter}:${reference.verse}${reference.endVerse ? `-${reference.endVerse}` : ""}`,
+        chapter: reference.chapter,
+        verse: reference.verse,
+        endVerse: reference.endVerse || (reference as any).verseEnd,
+      });
 
       // Parse data rows
       const results: Record<string, string>[] = [];
+      let processedRows = 0;
+      let matchedRows = 0;
+
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split("\t");
         if (values.length !== headers.length) continue;
+        processedRows++;
 
         // Build object from headers and values
         const row: Record<string, string> = {};
@@ -2410,12 +2835,43 @@ export class ZipResourceFetcher2 {
               if (endVerse) {
                 // Check if verse is within range
                 if (verseNum >= reference.verse && verseNum <= endVerse) {
+                  matchedRows++;
                   results.push(row as Record<string, string>);
                 }
               } else {
                 // Exact verse match when no range provided
                 if (verseNum === reference.verse) {
+                  matchedRows++;
                   results.push(row as Record<string, string>);
+                }
+              }
+            }
+          } else {
+            // Handle verse ranges in TSV (e.g., "2:8-9" in Reference column)
+            const verseRangeMatch = refCv.match(/^(\d+):(\d+)-(\d+)$/);
+            if (verseRangeMatch) {
+              const chapterNum = parseInt(verseRangeMatch[1]);
+              const rangeStart = parseInt(verseRangeMatch[2]);
+              const rangeEnd = parseInt(verseRangeMatch[3]);
+
+              if (chapterNum === reference.chapter) {
+                const endVerse =
+                  reference.endVerse || (reference as any).verseEnd;
+                if (endVerse) {
+                  // Check if the TSV verse range overlaps with requested range
+                  if (rangeStart <= endVerse && rangeEnd >= reference.verse) {
+                    matchedRows++;
+                    results.push(row as Record<string, string>);
+                  }
+                } else {
+                  // Check if requested verse is within TSV range
+                  if (
+                    reference.verse >= rangeStart &&
+                    reference.verse <= rangeEnd
+                  ) {
+                    matchedRows++;
+                    results.push(row as Record<string, string>);
+                  }
                 }
               }
             }
@@ -2430,9 +2886,19 @@ export class ZipResourceFetcher2 {
           (refCv.startsWith(`${reference.chapter}:`) ||
             ref.includes(` ${reference.chapter}:`))
         ) {
+          matchedRows++;
           results.push(row as Record<string, string>);
         }
       }
+
+      logger.debug("parseTSVForReference: Filtering complete", {
+        processedRows,
+        matchedRows,
+        totalResults: results.length,
+        reference:
+          reference.originalText ||
+          `${reference.book} ${reference.chapter}:${reference.verse}${reference.endVerse ? `-${reference.endVerse}` : ""}`,
+      });
 
       return results;
     } catch (error) {

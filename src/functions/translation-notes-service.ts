@@ -10,6 +10,8 @@ import { proxyFetch } from "../utils/httpClient.js";
 import { cache } from "./cache";
 import { parseReference } from "./reference-parser";
 import { getResourceForBook } from "./resource-detector";
+import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
+import { EdgeXRayTracer } from "./edge-xray";
 
 export interface TranslationNote {
   id: string;
@@ -125,50 +127,82 @@ export async function fetchTranslationNotes(
     );
   }
 
-  // Enforce ingredients path via ZIP fetcher in new flow; avoid raw hardcoded URLs
-  const fileUrl = undefined as unknown as string;
+  // Use ZIP-based fetching via ZipFetcherFactory (pluggable system)
+  const tracer = new EdgeXRayTracer(
+    `tn-${Date.now()}`,
+    "translation-notes-service",
+  );
+  const zipFetcherProvider = ZipFetcherFactory.create(
+    (options.zipFetcherProvider as "r2" | "fs" | "auto") ||
+      (process.env.ZIP_FETCHER_PROVIDER as "r2" | "fs" | "auto") ||
+      "auto",
+    process.env.CACHE_PATH,
+    tracer,
+  );
 
-  // Try to get from cache first
-  const cacheKey = `tn:${fileUrl}`;
-  let tsvData = await cache.getFileContent(cacheKey);
+  // Get TSV rows from ZIP (already parsed and filtered by reference)
+  const rows = (await zipFetcherProvider.getTSVData(
+    {
+      book: parsedRef.book,
+      chapter: parsedRef.chapter!,
+      verse: parsedRef.verse,
+    },
+    language,
+    organization,
+    "tn",
+  )) as Array<Record<string, string>>;
 
-  if (!tsvData) {
-    logger.info(`Cache miss for TN file, downloading...`);
-    const fileResponse = await proxyFetch(fileUrl);
-    if (!fileResponse.ok) {
-      logger.error(`Failed to fetch TN file`, { status: fileResponse.status });
-      throw new Error(
-        `Failed to fetch translation notes content: ${fileResponse.status}`,
-      );
-    }
+  logger.info(`Fetched TSV rows from ZIP`, { count: rows.length });
 
-    tsvData = await fileResponse.text();
-    logger.info(`Downloaded TSV data`, { length: tsvData.length });
+  // Convert rows to TranslationNote format
+  // The rows are already filtered by reference, so we just need to map them
+  const notes: TranslationNote[] = rows.map((row) => {
+    const note: TranslationNote = {
+      id: row.ID || row.Id || "",
+      reference: row.Reference || row.reference || "",
+      note: row.Note || row.note || "",
+      quote: row.Quote || row.quote,
+      occurrence: row.Occurrence
+        ? parseInt(row.Occurrence, 10)
+        : row.occurrence
+          ? parseInt(row.occurrence, 10)
+          : undefined,
+      occurrences: row.Occurrences
+        ? parseInt(row.Occurrences, 10)
+        : row.occurrences
+          ? parseInt(row.occurrences, 10)
+          : undefined,
+      supportReference: row.SupportReference || row.supportReference,
+    };
+    return note;
+  });
 
-    // Cache the file content
-    await cache.setFileContent(cacheKey, tsvData);
-    logger.info(`Cached TN file`, { length: tsvData.length });
-  } else {
-    logger.info(`Cache hit for TN file`, { length: tsvData.length });
+  // Filter notes based on includeIntro and includeContext
+  let filteredNotes = notes;
+  if (!includeIntro && !includeContext) {
+    // Exclude intro notes
+    filteredNotes = notes.filter(
+      (note) =>
+        !note.reference.includes("intro") && !note.reference.includes("front:"),
+    );
+  } else if (!includeIntro) {
+    // Exclude only front:intro
+    filteredNotes = notes.filter((note) => !note.reference.includes("front:"));
+  } else if (!includeContext) {
+    // Exclude chapter intros
+    filteredNotes = notes.filter((note) => !note.reference.includes(":intro"));
   }
 
-  // Parse the TSV data - automatic parsing preserves exact structure
-  const notes = parseTNFromTSV(
-    tsvData,
-    parsedRef,
-    includeIntro,
-    includeContext,
-  );
-  logger.info(`Parsed translation notes`, { count: notes.length });
+  logger.info(`Parsed translation notes`, { count: filteredNotes.length });
 
   // Split notes into verse notes and context notes based on reference patterns
-  const verseNotes = notes.filter((note) => {
-    const ref = note.Reference || "";
+  const verseNotes = filteredNotes.filter((note) => {
+    const ref = note.reference || "";
     return ref.match(/\d+:\d+/) && !ref.includes("intro");
   });
 
-  const contextNotes = notes.filter((note) => {
-    const ref = note.Reference || "";
+  const contextNotes = filteredNotes.filter((note) => {
+    const ref = note.reference || "";
     return ref.includes("intro") || ref.includes("front:");
   });
 
@@ -187,7 +221,7 @@ export async function fetchTranslationNotes(
       version: "master",
     },
     metadata: {
-      sourceNotesCount: notes.length,
+      sourceNotesCount: filteredNotes.length,
       verseNotesCount: verseNotes.length,
       contextNotesCount: contextNotes.length,
       cached: false,

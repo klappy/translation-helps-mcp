@@ -1,0 +1,7 @@
+translation-helps-mcp-client>=1.1.1
+openai>=1.0.0
+python-dotenv>=1.0.0
+
+
+
+

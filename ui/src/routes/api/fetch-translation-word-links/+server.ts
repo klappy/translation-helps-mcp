@@ -35,19 +35,43 @@ async function fetchTranslationWordLinks(
 	const tsvData = await fetcher.fetchTranslationWordLinks(reference, language, organization);
 
 	// Transform TSV rows to expected format
-	const links = tsvData.map((row, index) => ({
-		id: `twl${index + 1}`,
-		reference: row.Reference || reference,
-		occurrence: parseInt(row.Occurrence || '1', 10),
-		quote: row.Quote || '',
-		word: row.TWLink || '',
-		// TSV doesn't have Strong's IDs in standard format
-		strongsId: row.StrongsId || '',
-		// TWLink already contains the full RC link like "rc://*/tw/dict/bible/kt/love"
-		rcLink: row.TWLink || '',
-		// TSV doesn't provide position data
-		position: null
-	}));
+	const links = tsvData.map((row, index) => {
+		const rcLink = row.TWLink || '';
+
+		// Parse RC link to extract category, term, and path
+		// Format: rc://*/tw/dict/bible/{category}/{term}
+		let category = '';
+		let term = '';
+		let path = '';
+
+		if (rcLink) {
+			// Extract everything after /dict/ and add .md extension
+			const pathMatch = rcLink.match(/rc:\/\/\*\/tw\/dict\/(.+)/);
+			if (pathMatch) {
+				path = pathMatch[1] + '.md'; // e.g., "bible/kt/love.md"
+			}
+
+			// Extract category and term
+			const match = rcLink.match(/rc:\/\/\*\/tw\/dict\/bible\/([^/]+)\/([^/]+)/);
+			if (match) {
+				category = match[1]; // e.g., "kt", "names", "other"
+				term = match[2]; // e.g., "love", "grace", "abraham"
+			}
+		}
+
+		return {
+			id: `twl${index + 1}`,
+			reference: row.Reference || reference,
+			occurrence: parseInt(row.Occurrence || '1', 10),
+			quote: row.Quote || '',
+			category, // Extracted: "kt", "names", "other"
+			term, // Extracted: "love", "grace", etc. - matches translation_word tool parameter
+			path, // Extracted: "bible/kt/love.md"
+			strongsId: row.StrongsId || '',
+			rcLink, // Full RC link
+			position: null
+		};
+	});
 
 	// Return formatted response with trace data
 	// The simpleEndpoint will extract _trace and put it in X-ray headers

@@ -12,16 +12,18 @@ import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
+import { parseTranslationAcademyRCLink, isTranslationAcademyRCLink } from '$lib/rcLinkParser.js';
 
 /**
  * Fetch a specific translation academy module
  * Uses real markdown content from DCS ZIP archives
+ * Supports moduleId, path, and rcLink parameters with priority: rcLink > path > moduleId
  */
 async function fetchTranslationAcademy(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { moduleId, language, organization } = params;
+	const { moduleId, path, rcLink, language = 'en', organization = 'unfoldingWord' } = params;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`ta-${Date.now()}`, 'fetch-translation-academy');
@@ -30,11 +32,31 @@ async function fetchTranslationAcademy(
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
-	// Fetch real TA module from markdown
-	const result = await fetcher.fetchTranslationAcademy(language, organization, moduleId);
+	// Determine path using priority: rcLink > path > moduleId
+	let finalPath: string | undefined;
 
-	// If no moduleId provided, return the table of contents
-	if (!moduleId) {
+	if (rcLink || isTranslationAcademyRCLink(moduleId)) {
+		const linkToParse = rcLink || moduleId;
+		const parsed = parseTranslationAcademyRCLink(linkToParse, language);
+		if (!parsed.isValid) {
+			throw new Error(
+				`Invalid RC link format: ${linkToParse}. Expected format: rc://*/ta/man/translate/figs-metaphor`
+			);
+		}
+		finalPath = parsed.dirPath;
+	} else if (path) {
+		finalPath = path;
+	}
+	// If only moduleId provided (and not an RC link), let fetchTranslationAcademy handle fallback search
+
+	// Determine if we're requesting TOC or specific content
+	const requestingTOC = !moduleId && !finalPath && !rcLink;
+
+	// Fetch real TA module from markdown
+	const result = await fetcher.fetchTranslationAcademy(language, organization, moduleId, finalPath);
+
+	// If we requested TOC (no specific identifier), return table of contents format
+	if (requestingTOC) {
 		return {
 			type: 'toc',
 			categories: result.categories || [],
@@ -53,7 +75,7 @@ async function fetchTranslationAcademy(
 		};
 	}
 
-	// Check if we got a specific module or TOC
+	// We requested specific content - check if we got it
 	if (result.modules && result.modules.length > 0) {
 		// Got specific module(s)
 		const module = result.modules[0];
@@ -61,32 +83,43 @@ async function fetchTranslationAcademy(
 		// Parse module ID from path if needed
 		const id = module.id || moduleId;
 		const category =
-			module.path.match(/\/(translate|checking|process|audio|gateway)\//)?.[1] || 'translate';
+			module.path.match(/\/(translate|checking|process|intro)\//)?.[1] || 'translate';
 
-		// Extract title from markdown (first H1)
-		const titleMatch = module.markdown?.match(/^#\s+(.+)$/m);
-		const title = titleMatch ? titleMatch[1] : id;
+		// Extract title from concatenated content
+		// Title is now at the beginning as # Title
+		const content = module.markdown || '';
+		let title = id;
 
+		// Extract title from first H1 heading
+		const titleMatch = content.match(/^#\s+(.+)$/m);
+		if (titleMatch) {
+			title = titleMatch[1].trim();
+		}
+
+		// Return article directly (not wrapped in type/module structure)
+		// This makes it consistent with fetch-translation-word endpoint
 		return {
-			type: 'module',
-			module: {
-				id,
-				title,
-				category,
-				path: module.path,
-				content: module.markdown || '',
-				supportReference: `rc://*/ta/man/${category}/${id}`
-			},
+			moduleId: id,
+			title,
+			category,
+			path: module.path,
+			content: module.markdown || '',
+			rcLink: `rc://*/ta/man/${category}/${id}`,
+			language,
+			organization,
 			metadata: {
-				language,
-				organization,
-				resourceType: 'ta'
-			},
-			_trace: fetcher.getTrace()
+				source: 'TA',
+				resourceType: 'ta',
+				license: 'CC BY-SA 4.0'
+			}
 		};
 	} else {
-		// No module found
-		throw new Error(`Translation Academy module not found: ${moduleId}`);
+		// We requested specific content but got empty results
+		const identifier = moduleId || finalPath || rcLink || 'unknown';
+		throw new Error(
+			`Translation Academy module not found: ${identifier}. ` +
+				`The fetcher returned empty results. This may indicate the module doesn't exist in the DCS repository.`
+		);
 	}
 }
 
@@ -94,14 +127,28 @@ async function fetchTranslationAcademy(
 export const GET = createSimpleEndpoint({
 	name: 'fetch-translation-academy-v2',
 
-	// Use common parameter validators + moduleId
+	// Use common parameter validators + moduleId, path, rcLink
 	params: [
 		{
 			name: 'moduleId',
 			type: 'string',
 			required: false,
 			description:
-				'Translation Academy module ID (e.g., "figs-metaphor", "translate/figs-metaphor"). If not provided, returns the table of contents.'
+				'Translation Academy module ID (e.g., "figs-metaphor"). Searches in order: translate, process, checking, intro. If not provided, returns table of contents.'
+		},
+		{
+			name: 'path',
+			type: 'string',
+			required: false,
+			description:
+				'Path to TA module. Can be directory path (e.g., "translate/figs-metaphor") to get all .md files concatenated, or file path (e.g., "translate/figs-metaphor/01.md") for a single file.'
+		},
+		{
+			name: 'rcLink',
+			type: 'string',
+			required: false,
+			description:
+				'RC link to TA module (e.g., "rc://*/ta/man/translate/figs-metaphor"). Supports wildcards for language, resource, and type segments.'
 		},
 		COMMON_PARAMS.language,
 		COMMON_PARAMS.organization

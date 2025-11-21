@@ -7,21 +7,21 @@
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
 import { fetchTranslationQuestions } from "../functions/translation-questions-service.js";
-import { estimateTokens } from "../utils/tokenCounter.js";
+import { buildMetadata } from "../utils/metadata-builder.js";
+import { handleMCPError } from "../utils/mcp-error-handler.js";
+import {
+  ReferenceParam,
+  LanguageParam,
+  OrganizationParam,
+  FormatParam,
+} from "../schemas/common-params.js";
 
-// Input schema
+// Input schema - using shared common parameters
 export const FetchTranslationQuestionsArgs = z.object({
-  reference: z.string().describe('Bible reference (e.g., "John 3:16")'),
-  language: z
-    .string()
-    .optional()
-    .default("en")
-    .describe('Language code (default: "en")'),
-  organization: z
-    .string()
-    .optional()
-    .default("unfoldingWord")
-    .describe('Organization (default: "unfoldingWord")'),
+  reference: ReferenceParam,
+  language: LanguageParam,
+  organization: OrganizationParam,
+  format: FormatParam,
 });
 
 export type FetchTranslationQuestionsArgs = z.infer<
@@ -50,41 +50,41 @@ export async function handleFetchTranslationQuestions(
       organization: args.organization,
     });
 
+    // Build metadata using shared utility
+    const metadata = buildMetadata({
+      startTime,
+      data: result,
+      serviceMetadata: result.metadata,
+      additionalFields: {
+        questionsFound: result.metadata.questionsFound,
+      },
+    });
+
     // Build enhanced response format for MCP
     const response = {
       translationQuestions: result.translationQuestions,
       citation: result.citation,
       language: args.language,
       organization: args.organization,
-      metadata: {
-        responseTime: Date.now() - startTime,
-        tokenEstimate: estimateTokens(JSON.stringify(result)),
-        timestamp: new Date().toISOString(),
-        questionsFound: result.metadata.questionsFound,
-        cached: result.metadata.cached,
-      },
+      metadata,
     };
 
     logger.info("Translation questions fetched successfully", {
       reference: args.reference,
-      questionsFound: result.metadata.questionsFound,
-      responseTime: response.metadata.responseTime,
-      cached: result.metadata.cached,
+      ...metadata,
     });
 
     return response;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error("Failed to fetch translation questions", {
-      reference: args.reference,
-      error: errorMessage,
-      responseTime: Date.now() - startTime,
+    return handleMCPError({
+      toolName: "fetch_translation_questions",
+      args: {
+        reference: args.reference,
+        language: args.language,
+        organization: args.organization,
+      },
+      startTime,
+      originalError: error,
     });
-
-    return {
-      error: errorMessage,
-      reference: args.reference,
-      timestamp: new Date().toISOString(),
-    };
   }
 }

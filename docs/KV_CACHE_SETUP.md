@@ -31,8 +31,8 @@ With KV enabled:
 # Login to Cloudflare (one-time)
 npx wrangler login
 
-# Create the KV namespace
-npx wrangler kv:namespace create "TRANSLATION_HELPS_CACHE"
+# Create the KV namespace (Wrangler v4+ syntax)
+npx wrangler kv namespace create "TRANSLATION_HELPS_CACHE"
 ```
 
 This will output something like:
@@ -59,7 +59,7 @@ id = "a1b2c3d4e5f6..."  # Use your actual ID from step 1
 For development/preview deployments:
 
 ```bash
-npx wrangler kv:namespace create "TRANSLATION_HELPS_CACHE" --preview
+npx wrangler kv namespace create "TRANSLATION_HELPS_CACHE" --preview
 ```
 
 Add the preview_id to your config:

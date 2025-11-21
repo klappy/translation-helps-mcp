@@ -1,18 +1,42 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { Activity, Beaker, Check, Copy, Database, Link } from 'lucide-svelte';
+	import { Activity, Beaker, Check, Copy, Database, Link, Workflow } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import ApiTester from '../../../lib/components/ApiTester.svelte';
 	import PerformanceMetrics from '../../../lib/components/PerformanceMetrics.svelte';
 	import XRayTraceView from '../../../lib/components/XRayTraceView.svelte';
+	import {
+		callTool,
+		getPrompt,
+		executePrompt as executePromptViaSDK
+	} from '../../../lib/mcp/client.js';
 
-	// Three main categories
-	type MainCategory = 'core' | 'extended' | 'experimental' | 'health';
+	// Three main categories - Core tools, MCP Prompts, and Health status
+	type MainCategory = 'core' | 'prompts' | 'health';
+
+	// Helper: Convert endpoint name (kebab-case) to MCP tool name (snake_case)
+	function endpointToToolName(endpointName: string): string {
+		return endpointName.replace(/-/g, '_');
+	}
+
+	// Helper: Extract data from MCP response format
+	function extractMCPResponseData(mcpResponse: any): any {
+		// MCP responses have content array with text fields containing JSON
+		if (mcpResponse.content && mcpResponse.content[0]?.text) {
+			try {
+				return JSON.parse(mcpResponse.content[0].text);
+			} catch (e) {
+				// If not JSON, return as text
+				return { data: mcpResponse.content[0].text };
+			}
+		}
+		// Fallback to direct response
+		return mcpResponse;
+	}
 	const categoryConfig = {
 		core: { name: 'Core Tools', icon: Database },
-		extended: { name: 'Extended Features', icon: Link },
-		experimental: { name: 'Experimental Lab', icon: Beaker },
+		prompts: { name: 'MCP Prompts', icon: Workflow },
 		health: { name: 'Health Status', icon: Activity }
 	} as const;
 
@@ -20,8 +44,6 @@
 	let selectedCategory: MainCategory = 'core';
 	let selectedEndpoint: any = null;
 	let coreEndpoints: any[] = [];
-	let extendedEndpoints: any[] = [];
-	let experimentalEndpoints: any[] = [];
 	let loadingError: string | null = null;
 	let isLoading = false;
 	let apiResult: any = null;
@@ -38,6 +60,117 @@
 		{ status: 'pending' | 'success' | 'warning' | 'error'; message?: string }
 	> = {};
 	let isTestingAll = false;
+
+	// MCP Prompts state
+	let selectedPrompt: any = null;
+	let promptParameters: Record<string, any> = {};
+	let isExecutingPrompt = false;
+	let promptWorkflowSteps: Array<{
+		step: number;
+		description: string;
+		status: 'pending' | 'running' | 'complete' | 'error';
+		duration?: number;
+		data?: any;
+	}> = [];
+	let promptResults: any = null;
+	let showRawResponse = false;
+
+	// MCP Prompts definitions
+	const mcpPrompts = [
+		{
+			id: 'translation-helps-for-passage',
+			title: 'Complete Translation Help',
+			icon: '📖',
+			description:
+				'Get comprehensive help: scripture, notes, questions, word articles (with titles), and training resources',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'text',
+					required: true,
+					placeholder: 'e.g., John 3:16',
+					description: 'Bible reference to get help for'
+				},
+				{
+					name: 'language',
+					type: 'text',
+					required: false,
+					default: 'en',
+					placeholder: 'Language code (default: en)',
+					description: 'Language for the resources'
+				}
+			],
+			workflow: [
+				{ step: 1, tool: 'fetch_scripture', description: 'Fetch scripture text' },
+				{ step: 2, tool: 'fetch_translation_questions', description: 'Get translation questions' },
+				{ step: 3, tool: 'fetch_translation_word_links', description: 'Get word links' },
+				{
+					step: 4,
+					tool: 'fetch_translation_word',
+					description: 'Fetch word articles (multiple calls)',
+					multiple: true
+				},
+				{ step: 5, tool: 'fetch_translation_notes', description: 'Get translation notes' },
+				{
+					step: 6,
+					tool: 'fetch_translation_academy',
+					description: 'Get academy articles (multiple calls)',
+					multiple: true
+				}
+			]
+		},
+		{
+			id: 'get-translation-words-for-passage',
+			title: 'Dictionary Entries',
+			icon: '📚',
+			description:
+				'Get translation word definitions with human-readable titles (not technical IDs)',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'text',
+					required: true,
+					placeholder: 'e.g., Romans 1:1',
+					description: 'Bible reference'
+				},
+				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' }
+			],
+			workflow: [
+				{ step: 1, tool: 'fetch_translation_word_links', description: 'Get word links' },
+				{
+					step: 2,
+					tool: 'fetch_translation_word',
+					description: 'Fetch word articles and extract titles',
+					multiple: true
+				}
+			]
+		},
+		{
+			id: 'get-translation-academy-for-passage',
+			title: 'Training Articles',
+			icon: '🎓',
+			description: 'Find Translation Academy articles referenced in translation notes',
+			parameters: [
+				{
+					name: 'reference',
+					type: 'text',
+					required: true,
+					placeholder: 'e.g., Matthew 5:13',
+					description: 'Bible reference'
+				},
+				{ name: 'language', type: 'text', required: false, default: 'en', placeholder: 'en' }
+			],
+			workflow: [
+				{ step: 1, tool: 'fetch_translation_notes', description: 'Get translation notes' },
+				{
+					step: 2,
+					tool: 'fetch_translation_academy',
+					description: 'Fetch academy articles from supportReferences',
+					multiple: true
+				}
+			]
+		}
+	];
 
 	// Load endpoints from configuration
 	onMount(async () => {
@@ -56,14 +189,6 @@
 			coreEndpoints = configData.data.core || [];
 			console.log(`✅ Loaded ${coreEndpoints.length} core endpoints`);
 
-			// Load extended endpoints (category: 'extended')
-			extendedEndpoints = configData.data.extended || [];
-			console.log(`✅ Loaded ${extendedEndpoints.length} extended endpoints`);
-
-			// Load experimental endpoints (category: 'experimental')
-			experimentalEndpoints = configData.data.experimental || [];
-			console.log(`✅ Loaded ${experimentalEndpoints.length} experimental endpoints`);
-
 			console.log('🎉 MCP Tools successfully connected to configuration system!');
 			isInitialized = true;
 
@@ -72,14 +197,13 @@
 			const toolParam = urlParams.get('tool');
 			const categoryParam = $page.url.hash.replace('#', '') || 'core';
 
-			if (categoryParam && ['core', 'extended', 'experimental'].includes(categoryParam)) {
-				selectedCategory = categoryParam as MainCategory;
+			if (categoryParam && categoryParam === 'core') {
+				selectedCategory = 'core';
 			}
 
 			if (toolParam) {
 				// Find the endpoint and focus it
-				const allEndpoints = [...coreEndpoints, ...extendedEndpoints, ...experimentalEndpoints];
-				const endpoint = allEndpoints.find((e) => e.name === toolParam);
+				const endpoint = coreEndpoints.find((e) => e.name === toolParam);
 				if (endpoint) {
 					selectEndpoint(endpoint);
 				}
@@ -93,15 +217,151 @@
 
 	// Get endpoints by category from our loaded state
 	function getEndpointsByCategory(category: MainCategory) {
-		switch (category) {
-			case 'core':
-				return coreEndpoints;
-			case 'extended':
-				return extendedEndpoints;
-			case 'experimental':
-				return experimentalEndpoints;
-			default:
-				return [];
+		if (category === 'core') {
+			return coreEndpoints;
+		}
+		if (category === 'prompts') {
+			return mcpPrompts;
+		}
+		return [];
+	}
+
+	// Select a prompt
+	function selectPrompt(prompt: any) {
+		selectedPrompt = prompt;
+		selectedCategory = 'prompts';
+		promptParameters = {};
+
+		// Try to load saved values from localStorage first
+		const savedKey = `mcp-prompt-${prompt.id}`;
+		const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(savedKey) : null;
+
+		if (saved) {
+			try {
+				const savedParams = JSON.parse(saved);
+				// Restore saved values
+				prompt.parameters.forEach((param: any) => {
+					if (savedParams[param.name] !== undefined) {
+						promptParameters[param.name] = savedParams[param.name];
+					} else if (param.default) {
+						promptParameters[param.name] = param.default;
+					}
+				});
+			} catch (e) {
+				// If parsing fails, fall back to defaults
+				prompt.parameters.forEach((param: any) => {
+					if (param.default) {
+						promptParameters[param.name] = param.default;
+					}
+				});
+			}
+		} else {
+			// Set default values (including sensible defaults for reference)
+			prompt.parameters.forEach((param: any) => {
+				if (param.default) {
+					promptParameters[param.name] = param.default;
+				} else if (param.name === 'reference') {
+					// Set a common test reference for each prompt
+					if (prompt.id === 'translation-helps-for-passage') {
+						promptParameters[param.name] = 'John 3:16';
+					} else if (prompt.id === 'get-translation-words-for-passage') {
+						promptParameters[param.name] = 'Romans 1:1';
+					} else if (prompt.id === 'get-translation-academy-for-passage') {
+						promptParameters[param.name] = 'Matthew 5:13';
+					}
+				}
+			});
+		}
+
+		promptWorkflowSteps = [];
+		promptResults = null;
+	}
+
+	// Execute prompt workflow
+	async function executePrompt() {
+		if (!selectedPrompt) return;
+
+		// Save current parameters to localStorage for next time
+		if (typeof localStorage !== 'undefined') {
+			const savedKey = `mcp-prompt-${selectedPrompt.id}`;
+			localStorage.setItem(savedKey, JSON.stringify(promptParameters));
+		}
+
+		isExecutingPrompt = true;
+		promptResults = null;
+
+		// Initialize workflow steps
+		promptWorkflowSteps = selectedPrompt.workflow.map((w: any) => ({
+			step: w.step,
+			description: w.description,
+			status: 'pending' as const
+		}));
+
+		try {
+			const startTime = Date.now();
+
+			// Execute prompt via SDK (which internally calls /api/execute-prompt)
+			console.log(`🚀 Executing prompt via SDK: ${selectedPrompt.id}`, promptParameters);
+
+			const mcpResponse = await executePromptViaSDK(
+				selectedPrompt.id,
+				promptParameters,
+				true // enableMetrics = true
+			);
+
+			console.log(`✅ MCP prompt response received:`, mcpResponse);
+			console.log(`📊 SDK Metadata (prompt):`, {
+				cacheStatus: mcpResponse.metadata?.cacheStatus,
+				responseTime: mcpResponse.metadata?.responseTime,
+				traceId: mcpResponse.metadata?.traceId,
+				xrayTrace: mcpResponse.metadata?.xrayTrace,
+				hasXrayTrace: !!mcpResponse.metadata?.xrayTrace,
+				hasCacheStats: !!mcpResponse.metadata?.xrayTrace?.cacheStats,
+				fullMetadata: mcpResponse.metadata
+			});
+
+			// Extract data from MCP response format
+			const data = extractMCPResponseData(mcpResponse);
+			promptResults = data;
+
+			// Create response with diagnostics from SDK metadata
+			const responseWithDiagnostics = {
+				...data,
+				metadata: {
+					...(data.metadata || {}),
+					// Use SDK metadata if available
+					xrayTrace: mcpResponse.metadata?.xrayTrace,
+					responseTime: mcpResponse.metadata?.responseTime || Date.now() - startTime,
+					cacheStatus: mcpResponse.metadata?.cacheStatus,
+					traceId: mcpResponse.metadata?.traceId,
+					statusCode: mcpResponse.metadata?.statusCode
+				}
+			};
+
+			console.log(`[CLIENT DEBUG] Prompt response with diagnostics:`, {
+				cacheStatus: responseWithDiagnostics.metadata.cacheStatus,
+				hasXrayTrace: !!responseWithDiagnostics.metadata.xrayTrace,
+				xrayTraceCacheStats: responseWithDiagnostics.metadata.xrayTrace?.cacheStats,
+				responseTime: responseWithDiagnostics.metadata.responseTime
+			});
+
+			// Store performance data for prompts (using prompt ID as key)
+			handleApiResponse({ name: selectedPrompt.id }, responseWithDiagnostics);
+
+			// Mark all steps as complete
+			promptWorkflowSteps = promptWorkflowSteps.map((step) => ({
+				...step,
+				status: 'complete' as const
+			}));
+		} catch (error) {
+			console.error('Prompt execution failed:', error);
+			// Mark the last step as error
+			if (promptWorkflowSteps.length > 0) {
+				const lastIndex = promptWorkflowSteps.length - 1;
+				promptWorkflowSteps[lastIndex].status = 'error';
+			}
+		} finally {
+			isExecutingPrompt = false;
 		}
 	}
 
@@ -124,21 +384,17 @@
 			}
 			// Verse Referenced Data
 			else if (
-				name === 'translation-notes' ||
-				name === 'translation-questions' ||
+				name === 'fetch-translation-notes' ||
+				name === 'fetch-translation-questions' ||
 				name === 'fetch-translation-word-links'
 			) {
 				groups.verseReferenced.push(endpoint);
 			}
 			// RC Linked Data
-			else if (name === 'get-translation-word' || name === 'fetch-translation-academy') {
+			else if (name === 'fetch-translation-word' || name === 'fetch-translation-academy') {
 				groups.rcLinked.push(endpoint);
 			}
-			// Browsing Helpers
-			else if (name === 'browse-translation-words' || name === 'browse-translation-academy') {
-				groups.browsingHelpers.push(endpoint);
-			}
-			// Discovery
+			// Everything else goes to discovery (should be none for core)
 			else {
 				groups.discovery.push(endpoint);
 			}
@@ -147,13 +403,12 @@
 		// Custom sort order for each group
 		const sortOrder = {
 			verseReferenced: [
-				'translation-notes',
-				'translation-questions',
+				'fetch-translation-notes',
+				'fetch-translation-questions',
 				'fetch-translation-word-links'
 			],
-			rcLinked: ['get-translation-word', 'fetch-translation-academy'],
-			browsingHelpers: ['browse-translation-words', 'browse-translation-academy'],
-			discovery: ['simple-languages', 'list-available-resources', 'get-available-books']
+			rcLinked: ['fetch-translation-word', 'fetch-translation-academy'],
+			discovery: [] // No discovery endpoints in core
 		};
 
 		// Sort each group according to custom order
@@ -176,24 +431,13 @@
 			'Verse Referenced Data': {
 				icon: '📚',
 				description:
-					'Translation helps organized by scripture reference (Notes ✅, Questions ✅, Word Links ✅)',
+					'Translation helps organized by scripture reference (Notes, Questions, Word Links)',
 				endpoints: groups.verseReferenced
 			},
 			'RC Linked Data': {
 				icon: '🔗',
-				description:
-					'Resources accessed via RC links (Words ❌, Academy ⚠️) - Note: RC Resolver is in Extended tab',
+				description: 'Resources accessed via RC links (Translation Words, Translation Academy)',
 				endpoints: groups.rcLinked
-			},
-			'Browsing Helpers': {
-				icon: '📂',
-				description: 'Browse available words and academy articles (Both not implemented yet)',
-				endpoints: groups.browsingHelpers
-			},
-			Discovery: {
-				icon: '🔍',
-				description: 'Find available languages ✅, resources ✅, and books ⚠️ (returns empty)',
-				endpoints: groups.discovery
 			}
 		};
 	}
@@ -220,15 +464,15 @@
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'translation-notes') {
+		} else if (endpoint.name === 'fetch-translation-notes') {
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'translation-questions') {
+		} else if (endpoint.name === 'fetch-translation-questions') {
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'get-translation-word') {
+		} else if (endpoint.name === 'fetch-translation-word') {
 			testParams.term = 'faith';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
@@ -236,52 +480,29 @@
 			testParams.reference = 'John 3:16';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'get-context') {
-			testParams.reference = 'John 3:16';
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'browse-translation-academy') {
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'get-available-books') {
-			testParams.resource = 'tn';
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'resolve-rc-link') {
-			testParams.rcLink = 'rc://*/tw/dict/bible/kt/love';
 		} else if (endpoint.name === 'fetch-translation-academy') {
-			testParams.language = 'en';
-			testParams.organization = 'unfoldingWord';
-		} else if (endpoint.name === 'simple-languages') {
-			// No params needed
-		} else if (endpoint.name === 'list-available-resources') {
-			// No params needed
-		} else if (endpoint.name === 'browse-translation-words') {
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
 		}
 
-		// Build query string
-		const params = new URLSearchParams();
-		Object.entries(testParams).forEach(([key, value]) => {
-			if (value !== null && value !== undefined && value !== '') {
-				params.append(key, String(value));
-			}
-		});
-
-		const queryString = params.toString();
-		const url = `/api${endpoint.path}${queryString ? '?' + queryString : ''}`;
+		// Convert endpoint name to MCP tool name
+		const toolName = endpointToToolName(endpoint.name);
+		const serverUrl = '/api/mcp'; // Use local MCP server
 
 		try {
 			endpointTestResults[endpoint.name] = { status: 'pending' };
 
-			const response = await fetch(url);
-			const data = await response.json();
+			// Call tool via SDK with metrics enabled
+			const mcpResponse = await callTool(toolName, testParams, serverUrl, true); // enableMetrics = true
 
-			if (!response.ok) {
+			// Extract data from MCP response
+			const data = extractMCPResponseData(mcpResponse);
+
+			// Check if response is successful
+			if (mcpResponse.error) {
 				endpointTestResults[endpoint.name] = {
 					status: 'error',
-					message: `HTTP ${response.status}: ${data.error || data.message || 'Unknown error'}`
+					message: mcpResponse.error.message || 'MCP tool execution failed'
 				};
 			} else if (data.error) {
 				endpointTestResults[endpoint.name] = {
@@ -319,11 +540,8 @@
 		// Clear previous results
 		endpointTestResults = {};
 
-		// Get all endpoints
-		const allEndpoints = [...coreEndpoints, ...extendedEndpoints];
-
-		// Test each endpoint
-		for (const endpoint of allEndpoints) {
+		// Test each core endpoint
+		for (const endpoint of coreEndpoints) {
 			await testEndpoint(endpoint);
 			// Small delay to avoid overwhelming the server
 			await new Promise((resolve) => setTimeout(resolve, 100));
@@ -393,6 +611,14 @@
 		const metadata = response.metadata || {};
 		const xrayTrace = metadata.xrayTrace || {};
 
+		console.log(`[HANDLER DEBUG] Extracted metadata:`, {
+			cacheStatus: metadata.cacheStatus,
+			hasXrayTrace: !!metadata.xrayTrace,
+			xrayTraceKeys: metadata.xrayTrace ? Object.keys(metadata.xrayTrace) : [],
+			xrayTraceCacheStats: metadata.xrayTrace?.cacheStats,
+			xrayTraceApiCalls: metadata.xrayTrace?.apiCalls?.length || 0
+		});
+
 		performanceData[endpoint.name] = {
 			// Basic performance
 			responseTime: metadata.responseTime,
@@ -451,6 +677,17 @@
 			performanceData[endpoint.name]
 		);
 
+		// Debug cache status specifically
+		console.log(`[HANDLER DEBUG] Cache status in performanceData:`, {
+			cacheStatus: performanceData[endpoint.name].cacheStatus,
+			cacheStats: performanceData[endpoint.name].cacheStats,
+			hasCacheStats: !!performanceData[endpoint.name].cacheStats,
+			internalCalls:
+				performanceData[endpoint.name].calls?.filter((c: any) =>
+					c.url?.startsWith('internal://')
+				) || []
+		});
+
 		// Debug X-ray data specifically
 		console.log(`🔍 X-ray trace data:`, {
 			traceId: performanceData[endpoint.name].traceId,
@@ -467,7 +704,7 @@
 	async function handleApiTest(event: any) {
 		const { endpoint, formData } = event.detail;
 
-		console.log(`🧪 Testing endpoint: ${endpoint.name}`, formData);
+		console.log(`🧪 Testing endpoint via MCP: ${endpoint.name}`, formData);
 
 		// Set loading state
 		isLoading = true;
@@ -475,119 +712,67 @@
 		const startTime = Date.now();
 
 		try {
-			// Build query string from formData
-			const params = new URLSearchParams();
-			Object.entries(formData).forEach(([key, value]) => {
-				if (value !== null && value !== undefined && value !== '') {
-					params.append(key, String(value));
-				}
+			// Convert endpoint name to MCP tool name
+			const toolName = endpointToToolName(endpoint.name);
+			const serverUrl = '/api/mcp'; // Use local MCP server
+
+			console.log(`🚀 Calling MCP tool: ${toolName}`, formData);
+
+			// Call tool via SDK with metrics enabled
+			const mcpResponse = await callTool(toolName, formData, serverUrl, true); // enableMetrics = true
+
+			// Extract actual data from MCP response format
+			const responseData = extractMCPResponseData(mcpResponse);
+
+			console.log(`✅ MCP response received:`, responseData);
+			console.log(`📊 SDK Metadata (raw):`, {
+				cacheStatus: mcpResponse.metadata?.cacheStatus,
+				responseTime: mcpResponse.metadata?.responseTime,
+				traceId: mcpResponse.metadata?.traceId,
+				xrayTrace: mcpResponse.metadata?.xrayTrace,
+				hasXrayTrace: !!mcpResponse.metadata?.xrayTrace,
+				hasCacheStats: !!mcpResponse.metadata?.xrayTrace?.cacheStats,
+				xrayTraceKeys: mcpResponse.metadata?.xrayTrace
+					? Object.keys(mcpResponse.metadata.xrayTrace)
+					: [],
+				fullMetadata: mcpResponse.metadata
 			});
 
-			const queryString = params.toString();
-			const url = `/api${endpoint.path}${queryString ? `?${queryString}` : ''}`;
-
-			console.log(`🚀 Making request to: ${url}`);
-
-			const response = await fetch(url, {
-				method: 'GET',
-				headers: {
-					Accept: 'application/json',
-					'Content-Type': 'application/json'
-				}
-			});
-
-			// Check content type to determine how to parse response
-			const contentType = response.headers.get('content-type') || '';
-			let responseData;
-
-			if (contentType.includes('application/json')) {
-				responseData = await response.json();
-			} else if (contentType.includes('text/markdown') || contentType.includes('text/plain')) {
-				// For markdown/text responses, wrap in a simple object
-				const text = await response.text();
-				responseData = {
-					success: true,
-					data: text,
-					metadata: {
-						format: 'markdown',
-						contentType: contentType
-					}
-				};
-			} else {
-				// Default to JSON parsing
-				responseData = await response.json();
-			}
-
-			// Extract diagnostic data from headers WITHOUT polluting the response body
-			let headerDiagnostics = {
-				xrayTrace: null as any,
-				responseTime: undefined as number | undefined,
-				cacheStatus: undefined as string | undefined,
-				traceId: undefined as string | undefined
-			};
-
-			try {
-				// X-ray trace (case-sensitive header name)
-				const xrayHeader =
-					response.headers.get('X-XRay-Trace') || response.headers.get('x-xray-trace');
-				if (xrayHeader) {
-					const cleaned = xrayHeader.replace(/\s+/g, '');
-					headerDiagnostics.xrayTrace = JSON.parse(atob(cleaned));
-				}
-
-				// Response time
-				const rt = response.headers.get('X-Response-Time');
-				if (rt) {
-					const rtNum = parseInt(rt.replace(/[^0-9]/g, ''), 10);
-					if (!isNaN(rtNum)) {
-						headerDiagnostics.responseTime = rtNum;
-					}
-				}
-
-				// Cache status
-				const cacheStatus = response.headers.get('X-Cache-Status');
-				if (cacheStatus) {
-					headerDiagnostics.cacheStatus = cacheStatus.toLowerCase();
-				}
-
-				// Trace ID
-				const traceId = response.headers.get('X-Trace-Id');
-				if (traceId) {
-					headerDiagnostics.traceId = traceId;
-				}
-			} catch (e) {
-				console.warn('Failed to extract diagnostic headers', e);
-			}
-
-			console.log(`✅ Response received:`, responseData);
-
-			// Set the result for display (clean, without injected headers)
+			// Set the result for display
 			apiResult = responseData;
 
-			// Create a separate object for performance tracking that includes diagnostic data from headers
+			// Create response with diagnostics from SDK metadata
 			const responseWithDiagnostics = {
 				...responseData,
 				metadata: {
 					...(responseData.metadata || {}),
-					// Add header diagnostics ONLY for performance tracking UI
-					xrayTrace: headerDiagnostics.xrayTrace,
-					responseTime: responseData.metadata?.responseTime || headerDiagnostics.responseTime,
-					cacheStatus: responseData.metadata?.cacheStatus || headerDiagnostics.cacheStatus,
-					traceId: responseData.metadata?.traceId || headerDiagnostics.traceId
+					// Use SDK metadata if available
+					xrayTrace: mcpResponse.metadata?.xrayTrace,
+					responseTime: mcpResponse.metadata?.responseTime || Date.now() - startTime,
+					cacheStatus: mcpResponse.metadata?.cacheStatus,
+					traceId: mcpResponse.metadata?.traceId,
+					statusCode: mcpResponse.metadata?.statusCode
 				}
 			};
+
+			console.log(`[CLIENT DEBUG] Response with diagnostics:`, {
+				cacheStatus: responseWithDiagnostics.metadata.cacheStatus,
+				hasXrayTrace: !!responseWithDiagnostics.metadata.xrayTrace,
+				xrayTraceCacheStats: responseWithDiagnostics.metadata.xrayTrace?.cacheStats,
+				responseTime: responseWithDiagnostics.metadata.responseTime
+			});
 
 			// Process response and extract performance data
 			handleApiResponse(endpoint, responseWithDiagnostics);
 		} catch (error: any) {
-			console.error(`❌ API test failed for ${endpoint.name}:`, error);
+			console.error(`❌ MCP tool call failed for ${endpoint.name}:`, error);
 
-			// Even for network errors, try to create a minimal error response
+			// Create error response
 			apiResult = {
-				error: error.message || 'Network or request error',
+				error: error.message || 'MCP tool execution error',
 				details: {
 					endpoint: endpoint.name,
-					path: endpoint.path,
+					toolName: endpointToToolName(endpoint.name),
 					timestamp: new Date().toISOString()
 				},
 				status: 0
@@ -633,41 +818,25 @@
 			) {
 				testParams.reference = 'John 3:16';
 				testParams.outputFormat = 'text';
-			} else if (endpoint.name === 'translation-notes') {
+			} else if (endpoint.name === 'fetch-translation-notes') {
 				testParams.reference = 'John 3:16';
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'fetch-translation-words') {
-				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'translation-questions') {
+			} else if (endpoint.name === 'fetch-translation-questions') {
 				testParams.reference = 'John 3:16';
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'get-translation-word') {
+			} else if (endpoint.name === 'fetch-translation-word') {
 				testParams.term = 'faith';
+				testParams.language = 'en';
+				testParams.organization = 'unfoldingWord';
 			} else if (endpoint.name === 'fetch-translation-word-links') {
 				testParams.reference = 'John 3:16';
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'get-context') {
-				testParams.reference = 'John 3:16';
+			} else if (endpoint.name === 'fetch-translation-academy') {
 				testParams.language = 'en';
 				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'get-words-for-reference') {
-				testParams.reference = 'John 3:16';
-			} else if (endpoint.name === 'browse-translation-words') {
-				// No params needed
-			} else if (endpoint.name === 'browse-translation-academy') {
-				testParams.language = 'en';
-				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'extract-references') {
-				testParams.text = 'Check John 3:16';
-			} else if (endpoint.name === 'get-available-books') {
-				testParams.resource = 'tn';
-				testParams.language = 'en';
-				testParams.organization = 'unfoldingWord';
-			} else if (endpoint.name === 'resolve-rc-link') {
-				testParams.rcLink = 'rc://*/tw/dict/bible/kt/love';
 			}
 
 			// Build query string
@@ -678,26 +847,20 @@
 				}
 			});
 
-			// Force JSON format for endpoints that support multiple formats
-			if (endpoint.name === 'browse-translation-academy' && !params.has('format')) {
-				params.append('format', 'json');
-			}
+			// Convert endpoint name to MCP tool name
+			const toolName = endpointToToolName(endpoint.name);
+			const serverUrl = '/api/mcp'; // Use local MCP server
 
-			// Ensure endpoint path starts with /api
-			const apiPath = endpoint.path.startsWith('/api') ? endpoint.path : `/api${endpoint.path}`;
-			const queryString = params.toString();
-			const url = `${apiPath}${queryString ? `?${queryString}` : ''}`;
+			// Call tool via SDK with metrics enabled
+			const mcpResponse = await callTool(toolName, testParams, serverUrl, true); // enableMetrics = true
 
-			const response = await fetch(url, {
-				method: 'GET',
-				headers: {
-					Accept: 'application/json'
-				}
-			});
+			// Extract data from MCP response
+			const data = extractMCPResponseData(mcpResponse);
 
-			if (response.ok) {
-				const data = await response.json(); // Everything returns JSON now
+			// Check if response is successful (MCP doesn't use HTTP status, check for errors)
+			const isOk = !mcpResponse.error && !data.error && data.success !== false;
 
+			if (isOk) {
 				// Antifragile error detection: recursively search entire response for ANY error indicators
 				function hasAnyErrors(
 					obj: any,
@@ -828,16 +991,12 @@
 						message: data.error || data.message || 'Endpoint returned error'
 					};
 				}
-			} else if (response.status === 500) {
-				// Skip unimplemented endpoints
-				const data = await response.json().catch(() => ({}));
-				if (data.error && data.error.includes('not yet implemented')) {
-					healthStatus[healthKey] = { status: 'warning', message: 'Feature not yet implemented' };
-				} else {
-					healthStatus[healthKey] = { status: 'error', message: `HTTP ${response.status}` };
-				}
 			} else {
-				healthStatus[healthKey] = { status: 'error', message: `HTTP ${response.status}` };
+				// MCP tool execution failed
+				healthStatus[healthKey] = {
+					status: 'error',
+					message: mcpResponse.error?.message || data.error || 'MCP tool execution failed'
+				};
 			}
 		} catch (error) {
 			healthStatus[healthKey] = {
@@ -853,10 +1012,9 @@
 	// Check all endpoints health
 	async function checkAllEndpointsHealth() {
 		isCheckingHealth = true;
-		const allEndpoints = [...coreEndpoints, ...extendedEndpoints, ...experimentalEndpoints];
 
-		// Check all endpoints in parallel
-		await Promise.all(allEndpoints.map((endpoint) => checkEndpointHealth(endpoint)));
+		// Check all core endpoints in parallel
+		await Promise.all(coreEndpoints.map((endpoint) => checkEndpointHealth(endpoint)));
 
 		isCheckingHealth = false;
 	}
@@ -883,7 +1041,7 @@
 		</p>
 	</div>
 
-	<!-- Three Main Tabs -->
+	<!-- Two Main Tabs -->
 	<div class="mb-6 flex space-x-1 rounded-lg bg-gray-800 p-1">
 		<button
 			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
@@ -891,29 +1049,21 @@
 			on:click={() => {
 				selectedCategory = 'core';
 				selectedEndpoint = null;
+				selectedPrompt = null;
 			}}
 		>
 			Core Tools
 		</button>
 		<button
 			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
-			class:active={selectedCategory === 'extended'}
+			class:active={selectedCategory === 'prompts'}
 			on:click={() => {
-				selectedCategory = 'extended';
+				selectedCategory = 'prompts';
 				selectedEndpoint = null;
+				selectedPrompt = null;
 			}}
 		>
-			Extended Features
-		</button>
-		<button
-			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
-			class:active={selectedCategory === 'experimental'}
-			on:click={() => {
-				selectedCategory = 'experimental';
-				selectedEndpoint = null;
-			}}
-		>
-			🧪 Experimental Lab
+			✨ MCP Prompts
 		</button>
 		<button
 			class="tab-button touch-friendly flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
@@ -921,6 +1071,7 @@
 			on:click={() => {
 				selectedCategory = 'health';
 				selectedEndpoint = null;
+				selectedPrompt = null;
 			}}
 		>
 			💪 Health Status
@@ -928,7 +1079,7 @@
 	</div>
 
 	<!-- Test All Endpoints Button -->
-	{#if selectedCategory === 'core' || selectedCategory === 'extended'}
+	{#if selectedCategory === 'core'}
 		<div class="mb-4 flex justify-end">
 			<button
 				class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
@@ -980,93 +1131,70 @@
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-			{#if selectedEndpoint && (selectedCategory === 'core' || selectedCategory === 'extended')}
+			{#if selectedEndpoint && selectedCategory === 'core'}
 				<!-- Persistent Sidebar + Endpoint Details View -->
-				{#if selectedCategory === 'core'}
-					{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
-					<!-- Left Sidebar -->
-					<div class="lg:col-span-1">
-						<div class="sticky top-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
-							<h3 class="mb-4 text-lg font-semibold text-white">Core Endpoints</h3>
-							<div class="space-y-3">
-								{#each Object.entries(groupedEndpoints) as [groupName, group]}
-									<div>
-										<h4 class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-400">
-											<span>{group.icon}</span>
-											{groupName}
-										</h4>
-										<div class="space-y-1">
-											{#each group.endpoints as endpoint}
-												<button
-													class="w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 {selectedEndpoint &&
-													selectedEndpoint.name === endpoint.name
-														? 'border-blue-500/50 bg-blue-900/30'
-														: 'border-gray-700/50 bg-gray-900/30'}"
-													on:click={() => selectEndpoint(endpoint)}
-												>
-													<div class="flex items-start justify-between gap-2">
-														<div>
-															<div class="font-medium text-white">
-																{endpoint.title || endpoint.name}
-															</div>
-															<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
+				{@const groupedEndpoints = groupCoreEndpoints(coreEndpoints)}
+				<!-- Left Sidebar -->
+				<div class="lg:col-span-1">
+					<div class="sticky top-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
+						<h3 class="mb-4 text-lg font-semibold text-white">Core Endpoints</h3>
+						<div class="space-y-3">
+							{#each Object.entries(groupedEndpoints) as [groupName, group]}
+								<div>
+									<h4 class="mb-2 flex items-center gap-2 text-sm font-medium text-gray-400">
+										<span>{group.icon}</span>
+										{groupName}
+									</h4>
+									<div class="space-y-1">
+										{#each group.endpoints as endpoint}
+											<button
+												class="w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 {selectedEndpoint &&
+												selectedEndpoint.name === endpoint.name
+													? 'border-blue-500/50 bg-blue-900/30'
+													: 'border-gray-700/50 bg-gray-900/30'}"
+												on:click={() => selectEndpoint(endpoint)}
+											>
+												<div class="flex items-start justify-between gap-2">
+													<div>
+														<div class="font-medium text-white">
+															{endpoint.title || endpoint.name}
 														</div>
-														{#if endpointTestResults[endpoint.name]}
-															<div class="mt-1 flex-shrink-0">
-																{#if endpointTestResults[endpoint.name].status === 'pending'}
-																	<span
-																		class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
-																		title="Testing..."
-																	></span>
-																{:else if endpointTestResults[endpoint.name].status === 'success'}
-																	<span
-																		class="block h-2 w-2 rounded-full bg-green-500"
-																		title="Working"
-																	></span>
-																{:else if endpointTestResults[endpoint.name].status === 'warning'}
-																	<span
-																		class="block h-2 w-2 rounded-full bg-yellow-500"
-																		title={endpointTestResults[endpoint.name].message || 'Warning'}
-																	></span>
-																{:else if endpointTestResults[endpoint.name].status === 'error'}
-																	<span
-																		class="block h-2 w-2 rounded-full bg-red-500"
-																		title={endpointTestResults[endpoint.name].message || 'Error'}
-																	></span>
-																{/if}
-															</div>
-														{/if}
+														<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
 													</div>
-												</button>
-											{/each}
-										</div>
+													{#if endpointTestResults[endpoint.name]}
+														<div class="mt-1 flex-shrink-0">
+															{#if endpointTestResults[endpoint.name].status === 'pending'}
+																<span
+																	class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
+																	title="Testing..."
+																></span>
+															{:else if endpointTestResults[endpoint.name].status === 'success'}
+																<span
+																	class="block h-2 w-2 rounded-full bg-green-500"
+																	title="Working"
+																></span>
+															{:else if endpointTestResults[endpoint.name].status === 'warning'}
+																<span
+																	class="block h-2 w-2 rounded-full bg-yellow-500"
+																	title={endpointTestResults[endpoint.name].message || 'Warning'}
+																></span>
+															{:else if endpointTestResults[endpoint.name].status === 'error'}
+																<span
+																	class="block h-2 w-2 rounded-full bg-red-500"
+																	title={endpointTestResults[endpoint.name].message || 'Error'}
+																></span>
+															{/if}
+														</div>
+													{/if}
+												</div>
+											</button>
+										{/each}
 									</div>
-								{/each}
-							</div>
+								</div>
+							{/each}
 						</div>
 					</div>
-				{:else if selectedCategory === 'extended'}
-					<!-- Left Sidebar -->
-					<div class="lg:col-span-1">
-						<div class="sticky top-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
-							<h3 class="mb-4 text-lg font-semibold text-white">Extended Endpoints</h3>
-							<div class="space-y-1">
-								{#each extendedEndpoints as endpoint}
-									<button
-										class="w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 {selectedEndpoint &&
-										selectedEndpoint.name === endpoint.name
-											? 'border-blue-500/50 bg-blue-900/30'
-											: 'border-gray-700/50 bg-gray-900/30'}"
-										on:click={() => selectEndpoint(endpoint)}
-									>
-										<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
-										<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
-									</button>
-								{/each}
-							</div>
-						</div>
-					</div>
-				{/if}
+				</div>
 
 				<!-- Endpoint Testing Interface (Right Panel) -->
 				<div class="space-y-6 lg:col-span-2">
@@ -1475,153 +1603,449 @@
 						<p class="text-gray-400">Loading core endpoints...</p>
 					</div>
 				{/if}
-			{:else if selectedCategory === 'extended'}
-				<!-- Extended Endpoints with Sidebar -->
-				<!-- Left Sidebar -->
-				<div class="lg:col-span-1">
-					<div class="sticky top-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
-						<h3 class="mb-4 text-lg font-semibold text-white">Extended Endpoints</h3>
-						<div class="space-y-1">
-							{#each extendedEndpoints as endpoint}
+			{:else if selectedCategory === 'prompts'}
+				<!-- MCP Prompts View -->
+				{#if !selectedPrompt}
+					<!-- Prompts List -->
+					<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
+						<h2 class="mb-4 text-2xl font-bold text-white">✨ MCP Prompts</h2>
+						<p class="mb-6 text-gray-300">
+							Guided workflows that chain multiple tools together for comprehensive translation help
+						</p>
+
+						<div class="grid gap-4 md:grid-cols-3">
+							{#each mcpPrompts as prompt}
 								<button
-									class={`w-full rounded border p-2 text-left text-sm transition-all hover:border-blue-500/50 hover:bg-gray-800/50 ${
-										selectedEndpoint?.name === endpoint.name
-											? 'border-blue-500/50 bg-blue-900/30'
-											: 'border-gray-700/50 bg-gray-900/30'
-									}`}
-									on:click={() => selectEndpoint(endpoint)}
+									class="group rounded-lg border border-gray-700 bg-gray-900/50 p-6 text-left transition-all hover:border-blue-500/50 hover:bg-gray-900"
+									on:click={() => selectPrompt(prompt)}
 								>
-									<div class="flex items-start justify-between gap-2">
+									<div class="mb-3 flex items-center gap-3">
+										<span class="text-3xl">{prompt.icon}</span>
 										<div>
-											<div class="font-medium text-white">{endpoint.title || endpoint.name}</div>
-											<div class="truncate text-xs text-gray-500">{endpoint.path}</div>
+											<h3 class="text-lg font-semibold text-white group-hover:text-blue-400">
+												{prompt.title}
+											</h3>
 										</div>
-										{#if endpointTestResults[endpoint.name]}
-											<div class="mt-1 flex-shrink-0">
-												{#if endpointTestResults[endpoint.name].status === 'pending'}
-													<span
-														class="block h-2 w-2 animate-pulse rounded-full bg-gray-400"
-														title="Testing..."
-													></span>
-												{:else if endpointTestResults[endpoint.name].status === 'success'}
-													<span class="block h-2 w-2 rounded-full bg-green-500" title="Working"
-													></span>
-												{:else if endpointTestResults[endpoint.name].status === 'warning'}
-													<span
-														class="block h-2 w-2 rounded-full bg-yellow-500"
-														title={endpointTestResults[endpoint.name].message || 'Warning'}
-													></span>
-												{:else if endpointTestResults[endpoint.name].status === 'error'}
-													<span
-														class="block h-2 w-2 rounded-full bg-red-500"
-														title={endpointTestResults[endpoint.name].message || 'Error'}
-													></span>
-												{/if}
-											</div>
-										{/if}
+									</div>
+									<p class="mb-4 text-sm text-gray-400">{prompt.description}</p>
+									<div class="text-xs text-gray-500">
+										{prompt.workflow.length} steps • {prompt.parameters.length} parameters
 									</div>
 								</button>
 							{/each}
 						</div>
+
+						<div class="mt-6 rounded-lg border border-blue-500/30 bg-blue-900/10 p-4">
+							<h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-400">
+								<span>ℹ️</span>
+								About MCP Prompts
+							</h3>
+							<p class="text-sm text-gray-300">
+								Prompts are guided workflows that help AI assistants chain multiple tool calls
+								together intelligently. Click any prompt above to try it out!
+							</p>
+						</div>
 					</div>
-				</div>
-
-				<!-- Main Content -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-2">
-					<h2 class="mb-4 text-2xl font-bold text-white">Extended Features</h2>
-					<p class="mb-6 text-gray-300">
-						Intelligent features that combine resources for enhanced workflows
-					</p>
-
-					{#if extendedEndpoints.length > 0}
-						<div class="grid gap-4 sm:grid-cols-2">
-							{#each extendedEndpoints as endpoint}
-								<div
-									class="endpoint-card cursor-pointer transition-all"
-									on:click={() => selectEndpoint(endpoint)}
-									on:keydown={(e) => e.key === 'Enter' && selectEndpoint(endpoint)}
-									tabindex="0"
-									role="button"
-								>
-									<div class="mb-2 flex items-start justify-between">
-										<h3 class="font-semibold text-white">{endpoint.title || endpoint.name}</h3>
-										<span class="text-xs text-blue-400">{endpoint.path}</span>
+				{:else}
+					<!-- Prompt Executor -->
+					<div class="lg:col-span-3">
+						<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6">
+							<!-- Header -->
+							<div class="mb-6 flex items-start justify-between">
+								<div>
+									<div class="mb-2 flex items-center gap-3">
+										<span class="text-3xl">{selectedPrompt.icon}</span>
+										<h2 class="text-2xl font-bold text-white">{selectedPrompt.title}</h2>
 									</div>
-									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
-									<div class="flex items-center justify-between text-xs">
-										<span class="text-gray-500"
-											>{Object.keys(endpoint.params || {}).length} parameters</span
-										>
-										{#if endpoint.examples?.length > 0}
-											<span class="text-green-400"
-												>{endpoint.examples.length} example{endpoint.examples.length !== 1
-													? 's'
-													: ''}</span
-											>
-										{/if}
-									</div>
+									<p class="text-gray-300">{selectedPrompt.description}</p>
 								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-gray-400">Loading extended endpoints...</p>
-					{/if}
-				</div>
-			{:else if selectedCategory === 'experimental'}
-				<!-- Experimental Endpoints (Full Width for Safety) -->
-				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
-					<h2 class="mb-4 text-2xl font-bold text-white">🧪 Experimental Lab</h2>
-					<p class="mb-6 text-gray-300">
-						Test cutting-edge features in a separate, clearly marked section
-					</p>
-
-					{#if experimentalEndpoints.length > 0}
-						<div class="grid gap-4 sm:grid-cols-2">
-							{#each experimentalEndpoints as endpoint}
-								<div
-									class="endpoint-card cursor-pointer border-purple-500/30 transition-all"
-									on:click={() => selectEndpoint(endpoint)}
-									on:keydown={(e) => e.key === 'Enter' && selectEndpoint(endpoint)}
-									tabindex="0"
-									role="button"
+								<button
+									class="rounded-lg border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-600"
+									on:click={() => {
+										selectedPrompt = null;
+										promptResults = null;
+										promptWorkflowSteps = [];
+									}}
 								>
-									<div class="mb-2 flex items-start justify-between">
-										<h3 class="font-semibold text-white">🧪 {endpoint.title || endpoint.name}</h3>
-										<span class="text-xs text-purple-400">{endpoint.path}</span>
-									</div>
-									<p class="mb-3 text-sm text-gray-400">{endpoint.description}</p>
-									{#if endpoint.experimental}
-										<div class="rounded bg-purple-900/20 p-2 text-xs text-purple-300">
-											⚠️ {endpoint.experimental.warning ||
-												'Experimental feature - use with caution'}
+									← Back to Prompts
+								</button>
+							</div>
+
+							<!-- Parameter Form -->
+							<div class="mb-6 rounded-lg border border-gray-700 bg-gray-900/50 p-4">
+								<h3 class="mb-4 text-lg font-semibold text-white">Parameters</h3>
+								<form on:submit|preventDefault={executePrompt} class="space-y-4">
+									{#each selectedPrompt.parameters as param}
+										<div>
+											<label class="mb-1 block text-sm font-medium text-gray-300">
+												{param.name}
+												{#if param.required}
+													<span class="text-red-400">*</span>
+												{/if}
+											</label>
+											<input
+												type={param.type}
+												bind:value={promptParameters[param.name]}
+												placeholder={param.placeholder}
+												required={param.required}
+												class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+											/>
+											{#if param.description}
+												<p class="mt-1 text-xs text-gray-500">{param.description}</p>
+											{/if}
 										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							{#each experimentalEndpoints as endpoint}
-								<div
-									class="group rounded-lg border border-purple-700/30 bg-purple-900/10 p-4 transition-colors hover:bg-purple-900/20"
-								>
-									<h3 class="flex items-center gap-2 font-semibold text-purple-200">
-										<span class="text-lg">{endpoint.title}</span>
-										{#if !endpoint.enabled}
-											<span
-												class="rounded-full bg-purple-700/30 px-2 py-0.5 text-xs text-purple-300"
-											>
-												Coming Soon
+									{/each}
+									<button
+										type="submit"
+										disabled={isExecutingPrompt}
+										class="rounded-lg bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+									>
+										{#if isExecutingPrompt}
+											<span class="flex items-center gap-2">
+												<span
+													class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+												></span>
+												Executing Workflow...
 											</span>
+										{:else}
+											Execute Prompt
 										{/if}
-									</h3>
-									<p class="mt-2 text-sm text-purple-400">{endpoint.description}</p>
-									<p class="mt-2 font-mono text-xs text-purple-500/70">{endpoint.path}</p>
+									</button>
+								</form>
+							</div>
+
+							<!-- Workflow Progress -->
+							{#if promptWorkflowSteps.length > 0}
+								<div class="mb-6 rounded-lg border border-gray-700 bg-gray-900/50 p-4">
+									<h3 class="mb-4 text-lg font-semibold text-white">Workflow Progress</h3>
+									<div class="space-y-2">
+										{#each promptWorkflowSteps as step}
+											<div
+												class="flex items-center gap-3 rounded-lg p-3 {step.status === 'complete'
+													? 'bg-green-900/20'
+													: step.status === 'running'
+														? 'bg-blue-900/20'
+														: step.status === 'error'
+															? 'bg-red-900/20'
+															: 'bg-gray-800/50'}"
+											>
+												<div class="flex-shrink-0">
+													{#if step.status === 'complete'}
+														<span class="text-green-400">✅</span>
+													{:else if step.status === 'running'}
+														<span
+															class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
+														></span>
+													{:else if step.status === 'error'}
+														<span class="text-red-400">❌</span>
+													{:else}
+														<span class="text-gray-500">⏹️</span>
+													{/if}
+												</div>
+												<div class="flex-1">
+													<div class="text-sm font-medium text-gray-200">
+														Step {step.step}: {step.description}
+													</div>
+													{#if step.duration}
+														<div class="text-xs text-gray-500">({step.duration}ms)</div>
+													{/if}
+												</div>
+											</div>
+										{/each}
+									</div>
 								</div>
-							{/each}
+							{/if}
+
+							<!-- Performance Metrics -->
+							{#if performanceData[selectedPrompt.id]}
+								<PerformanceMetrics data={performanceData[selectedPrompt.id]} />
+							{/if}
+
+							<!-- Results -->
+							{#if promptResults}
+								<div class="rounded-lg border border-gray-700 bg-gray-900/50 p-4">
+									<div class="mb-4 flex items-center justify-between">
+										<h3 class="text-lg font-semibold text-white">Results</h3>
+										<button
+											on:click={() => (showRawResponse = !showRawResponse)}
+											class="rounded-lg border border-gray-600 bg-gray-700 px-3 py-1 text-sm text-gray-300 hover:bg-gray-600"
+										>
+											{showRawResponse ? '✨ Show Formatted' : '📋 Show Raw JSON'}
+										</button>
+									</div>
+									<div class="space-y-4">
+										{#if showRawResponse}
+											<!-- Raw JSON Response -->
+											<pre
+												class="overflow-x-auto rounded-lg bg-gray-800 p-4 text-xs text-gray-300">{JSON.stringify(
+													promptResults,
+													null,
+													2
+												)}</pre>
+										{:else if selectedPrompt.id === 'translation-helps-for-passage' && promptResults.words}
+											<!-- Comprehensive Results -->
+											<div class="space-y-4">
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														📖 Scripture Text
+													</h4>
+													<div class="rounded-lg bg-gray-800 p-3 text-sm text-gray-300">
+														{promptResults.scripture?.text || 'No scripture found'}
+													</div>
+												</div>
+
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														📚 Key Terms ({promptResults.words?.length || 0})
+													</h4>
+													<div class="space-y-3">
+														{#each promptResults.words || [] as word}
+															<div
+																class="rounded-lg bg-gray-800 p-4 {word.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
+																<div class="mb-2 flex items-start justify-between">
+																	<div>
+																		<div class="font-medium text-white">{word.title}</div>
+																		<div class="text-xs text-gray-500">
+																			{word.term} • {word.category}
+																			{#if word.error}
+																				<span class="text-red-400">• Error loading</span>
+																			{/if}
+																		</div>
+																	</div>
+																</div>
+																{#if word.content}
+																	<details class="mt-2">
+																		<summary
+																			class="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
+																		>
+																			Show content
+																		</summary>
+																		<div
+																			class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs"
+																		>
+																			{@html word.content
+																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+																				.replace(/\n\n/g, '</p><p>')
+																				.replace(/^(.+)$/gm, '<p>$1</p>')}
+																		</div>
+																	</details>
+																{/if}
+															</div>
+														{/each}
+													</div>
+												</div>
+
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														❓ Translation Questions ({promptResults.questions?.count || 0})
+													</h4>
+													<div class="space-y-2">
+														{#each promptResults.questions?.items || [] as question}
+															<div class="rounded-lg bg-gray-800 p-3">
+																<div class="mb-1 text-sm font-medium text-white">
+																	{question.Question}
+																</div>
+																<div class="text-xs text-gray-400">{question.Response}</div>
+															</div>
+														{/each}
+													</div>
+												</div>
+
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														📝 Translation Notes ({promptResults.notes?.notes?.length ||
+															promptResults.notes?.items?.length ||
+															0})
+													</h4>
+													<div class="space-y-2">
+														{#each promptResults.notes?.notes || promptResults.notes?.items || [] as note}
+															<div class="rounded-lg bg-gray-800 p-3">
+																<div class="mb-1 flex items-start justify-between gap-2">
+																	<div class="text-sm font-medium text-white">
+																		{note.Quote || 'General note'}
+																	</div>
+																	{#if note.SupportReference}
+																		<div class="flex-shrink-0 text-xs text-blue-400">
+																			{note.SupportReference.split('/').pop()}
+																		</div>
+																	{/if}
+																</div>
+																<div class="text-xs text-gray-400">
+																	{note.Note?.substring(0, 200)}{note.Note?.length > 200
+																		? '...'
+																		: ''}
+																</div>
+															</div>
+														{/each}
+													</div>
+												</div>
+
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														🎓 Academy Articles ({promptResults.academyArticles?.length || 0})
+													</h4>
+													<div class="space-y-3">
+														{#each promptResults.academyArticles || [] as article}
+															<div
+																class="rounded-lg bg-gray-800 p-4 {article.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
+																<div class="mb-2 flex items-start justify-between">
+																	<div>
+																		<div class="font-medium text-white">{article.title}</div>
+																		<div class="text-xs text-gray-500">
+																			{article.moduleId}
+																			{#if article.category}• {article.category}{/if}
+																			{#if article.error}
+																				<span class="text-red-400">• Error loading</span>
+																			{/if}
+																		</div>
+																	</div>
+																</div>
+																{#if article.content}
+																	<details class="mt-2">
+																		<summary
+																			class="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
+																		>
+																			Show content
+																		</summary>
+																		<div
+																			class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs"
+																		>
+																			{@html article.content
+																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+																				.replace(/\n\n/g, '</p><p>')
+																				.replace(/^(.+)$/gm, '<p>$1</p>')}
+																		</div>
+																	</details>
+																{/if}
+															</div>
+														{/each}
+													</div>
+												</div>
+											</div>
+										{:else if selectedPrompt.id === 'get-translation-words-for-passage' && promptResults.words}
+											<!-- Translation Words Only Results -->
+											<div class="space-y-4">
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														📚 Key Terms ({promptResults.words?.length || 0})
+													</h4>
+													<div class="space-y-3">
+														{#each promptResults.words || [] as word}
+															<div
+																class="rounded-lg bg-gray-800 p-4 {word.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
+																<div class="mb-2 flex items-start justify-between">
+																	<div>
+																		<div class="font-medium text-white">{word.title}</div>
+																		<div class="text-xs text-gray-500">
+																			{word.term} • {word.category}
+																			{#if word.error}
+																				<span class="text-red-400">• Error loading</span>
+																			{/if}
+																		</div>
+																	</div>
+																</div>
+																{#if word.content}
+																	<details class="mt-2">
+																		<summary
+																			class="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
+																		>
+																			Show content
+																		</summary>
+																		<div
+																			class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs"
+																		>
+																			{@html word.content
+																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+																				.replace(/\n\n/g, '</p><p>')
+																				.replace(/^(.+)$/gm, '<p>$1</p>')}
+																		</div>
+																	</details>
+																{/if}
+															</div>
+														{/each}
+													</div>
+												</div>
+											</div>
+										{:else if selectedPrompt.id === 'get-translation-academy-for-passage' && promptResults.academyArticles}
+											<!-- Translation Academy Only Results -->
+											<div class="space-y-4">
+												<div>
+													<h4 class="mb-2 text-sm font-semibold text-blue-400">
+														🎓 Academy Articles ({promptResults.academyArticles?.length || 0})
+													</h4>
+													<div class="space-y-3">
+														{#each promptResults.academyArticles || [] as article}
+															<div
+																class="rounded-lg bg-gray-800 p-4 {article.error
+																	? 'border border-red-500/30'
+																	: ''}"
+															>
+																<div class="mb-2 flex items-start justify-between">
+																	<div>
+																		<div class="font-medium text-white">{article.title}</div>
+																		<div class="text-xs text-gray-500">
+																			{article.moduleId}
+																			{#if article.category}• {article.category}{/if}
+																			{#if article.error}
+																				<span class="text-red-400">• Error loading</span>
+																			{/if}
+																		</div>
+																	</div>
+																</div>
+																{#if article.content}
+																	<details class="mt-2">
+																		<summary
+																			class="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
+																		>
+																			Show content
+																		</summary>
+																		<div
+																			class="prose prose-invert prose-sm mt-2 max-w-none overflow-auto rounded border border-gray-700 bg-gray-900 p-3 text-xs"
+																		>
+																			{@html article.content
+																				.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+																				.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+																				.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+																				.replace(/\n\n/g, '</p><p>')
+																				.replace(/^(.+)$/gm, '<p>$1</p>')}
+																		</div>
+																	</details>
+																{/if}
+															</div>
+														{/each}
+													</div>
+												</div>
+											</div>
+										{:else}
+											<!-- Generic JSON Results -->
+											<pre
+												class="overflow-x-auto rounded-lg bg-gray-800 p-4 text-xs text-gray-300">{JSON.stringify(
+													promptResults,
+													null,
+													2
+												)}</pre>
+										{/if}
+									</div>
+								</div>
+							{/if}
 						</div>
-					{/if}
-				</div>
+					</div>
+				{/if}
 			{:else if selectedCategory === 'health'}
 				<!-- Health Status (Full Width) -->
 				<div class="rounded-lg border border-gray-700 bg-gray-800/50 p-6 lg:col-span-3">
@@ -1684,82 +2108,6 @@
 								{/each}
 							</div>
 						</div>
-
-						<!-- Extended Endpoints Health -->
-						<div class="rounded-lg border border-gray-700 bg-gray-900/30 p-4">
-							<h3 class="mb-3 text-lg font-semibold text-white">Extended Endpoints</h3>
-							<div class="grid gap-2">
-								{#each extendedEndpoints as endpoint}
-									{@const health = healthStatus[endpoint.path] || { status: 'unknown' }}
-									<div class="flex items-center justify-between rounded-lg bg-gray-800/50 p-3">
-										<div class="flex items-center gap-2">
-											<span class="text-sm font-medium text-gray-300">{endpoint.name}</span>
-											<code class="text-xs text-gray-500">{endpoint.path}</code>
-										</div>
-										<div class="flex items-center gap-2">
-											{#if health.status === 'checking'}
-												<div
-													class="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
-												></div>
-												<span class="text-xs text-blue-400">Checking...</span>
-											{:else if health.status === 'healthy'}
-												<Check class="h-4 w-4 text-green-400" />
-												<span class="text-xs text-green-400">Healthy</span>
-											{:else if health.status === 'error'}
-												<span class="text-red-400">❌</span>
-												<span class="text-xs text-red-400">{health.message || 'Error'}</span>
-											{:else if health.status === 'warning'}
-												<span class="text-yellow-400">⚠️</span>
-												<span class="text-xs text-yellow-400">{health.message || 'Warning'}</span>
-											{:else}
-												<span class="text-gray-500">⚫</span>
-												<span class="text-xs text-gray-500">Not tested</span>
-											{/if}
-										</div>
-									</div>
-								{/each}
-							</div>
-						</div>
-
-						<!-- Experimental Endpoints Health -->
-						{#if experimentalEndpoints.length > 0}
-							<div class="rounded-lg border border-purple-700/30 bg-purple-900/10 p-4">
-								<h3 class="mb-3 text-lg font-semibold text-purple-300">
-									🧪 Experimental Endpoints
-								</h3>
-								<div class="grid gap-2">
-									{#each experimentalEndpoints as endpoint}
-										{@const health = healthStatus[endpoint.path] || { status: 'unknown' }}
-										<div class="flex items-center justify-between rounded-lg bg-purple-800/20 p-3">
-											<div class="flex items-center gap-2">
-												<span class="text-sm font-medium text-purple-300">{endpoint.name}</span>
-												<code class="text-xs text-purple-500">{endpoint.path}</code>
-											</div>
-											<div class="flex items-center gap-2">
-												{#if health.status === 'checking'}
-													<div
-														class="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent"
-													></div>
-													<span class="text-xs text-purple-400">Checking...</span>
-												{:else if health.status === 'healthy'}
-													<Check class="h-4 w-4 text-green-400" />
-													<span class="text-xs text-green-400">Healthy</span>
-												{:else if health.status === 'error'}
-													<span class="text-red-400">❌</span>
-													<span class="text-xs text-red-400">{health.message || 'Error'}</span>
-												{:else if health.status === 'warning'}
-													<span class="text-yellow-400">⚠️</span>
-													<span class="text-xs text-yellow-400">{health.message || 'Warning'}</span>
-												{:else}
-													<span class="text-gray-500">⚫</span>
-													<span class="text-xs text-gray-500">Not tested</span>
-												{/if}
-											</div>
-										</div>
-									{/each}
-								</div>
-							</div>
-						{/if}
 					</div>
 				</div>
 			{/if}

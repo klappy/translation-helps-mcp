@@ -53,30 +53,21 @@ export const ENDPOINT_CATEGORIES: Record<EndpointStability, EndpointCategory> =
  * Endpoint categorization based on stability and use case
  */
 export const ENDPOINT_CLASSIFICATION = {
-  // Core endpoints - Essential for basic functionality
+  // Core endpoints - Essential for basic functionality (6 total)
   core: [
     "fetch-scripture",
-    "translation-notes",
-    "translation-questions",
-    "get-translation-word",
-    "simple-languages",
-    "get-available-books",
+    "fetch-translation-notes",
+    "fetch-translation-questions",
+    "fetch-translation-word-links",
+    "fetch-translation-word",
+    "fetch-translation-academy",
   ],
 
   // Extended endpoints - Advanced features
-  extended: [
-    "fetch-translation-academy",
-    "browse-translation-academy",
-    "fetch-translation-word-links",
-    "fetch-translation-words",
-    "browse-translation-words",
-    "get-context",
-    "list-available-resources",
-    "resource-catalog",
-  ],
+  extended: [],
 
   // Experimental endpoints - Beta/testing
-  experimental: ["extract-references", "resolve-rc-link"],
+  experimental: [],
 };
 
 /**

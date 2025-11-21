@@ -251,15 +251,63 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 
 			// Add X-ray trace headers if available
 			if (traceData) {
-				// Calculate cache status
-				const cacheStats = traceData.cacheStats || { hits: 0, misses: 0 };
+				// Calculate cache status based on internal cache calls only
+				// External API calls (to DCS, etc.) shouldn't affect cache status
+				const apiCalls = traceData.apiCalls || [];
+				const internalCalls = apiCalls.filter((call: any) => call.url?.startsWith('internal://'));
+				const externalCalls = apiCalls.filter((call: any) => !call.url?.startsWith('internal://'));
+
+				// Calculate cache stats for internal calls only
+				const internalHits = internalCalls.filter((call: any) => call.cached).length;
+				const internalMisses = internalCalls.filter((call: any) => call.cached === false).length;
+				const totalInternal = internalCalls.length;
+
+				// DEBUG: Log cache calculation details
+				console.log(`[CACHE DEBUG] Calculating cache status for ${config.name}:`, {
+					totalApiCalls: apiCalls.length,
+					internalCalls: internalCalls.length,
+					externalCalls: externalCalls.length,
+					internalHits,
+					internalMisses,
+					internalCallDetails: internalCalls.map((c: any) => ({
+						url: c.url,
+						cached: c.cached,
+						duration: c.duration
+					})),
+					overallCacheStats: traceData.cacheStats
+				});
+
 				let cacheStatus = 'miss';
-				if (cacheStats.hits > 0 && cacheStats.misses === 0) {
+				if (totalInternal === 0) {
+					// No internal cache calls - check overall stats
+					const cacheStats = traceData.cacheStats || { hits: 0, misses: 0 };
+					console.log(`[CACHE DEBUG] No internal calls, using overall stats:`, cacheStats);
+					if (cacheStats.hits > 0 && cacheStats.misses === 0) {
+						cacheStatus = 'hit';
+					} else if (cacheStats.hits > 0 && cacheStats.misses > 0) {
+						cacheStatus = 'partial';
+					}
+				} else if (internalHits > 0 && internalMisses === 0) {
+					// All internal cache calls were hits
 					cacheStatus = 'hit';
-				} else if (cacheStats.hits > 0 && cacheStats.misses > 0) {
+					console.log(
+						`[CACHE DEBUG] ✅ All internal caches hit (${internalHits}/${totalInternal})`
+					);
+				} else if (internalHits > 0 && internalMisses > 0) {
+					// Some internal cache hits, some misses
 					cacheStatus = 'partial';
+					console.log(
+						`[CACHE DEBUG] ⚠️ Partial cache (${internalHits} hits, ${internalMisses} misses)`
+					);
+				} else if (internalHits === 0 && totalInternal > 0) {
+					// All internal cache calls were misses
+					cacheStatus = 'miss';
+					console.log(
+						`[CACHE DEBUG] ❌ All internal caches missed (${internalMisses}/${totalInternal})`
+					);
 				}
 
+				console.log(`[CACHE DEBUG] Final cache status: ${cacheStatus}`);
 				headers['X-Cache-Status'] = cacheStatus;
 
 				// Add full trace as base64 encoded JSON

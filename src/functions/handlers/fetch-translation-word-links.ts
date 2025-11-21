@@ -21,7 +21,7 @@ interface WordLink {
   lemma?: string;
   occurrence: number;
   totalOccurrences: number;
-  translationWordId: string;
+  translationWordTerm: string;
   translationWordTitle: string;
   confidence: number;
   position: {
@@ -256,7 +256,7 @@ async function fetchTWLData(
           totalOccurrences: parseInt(
             alignment.attributes["x-occurrences"] || "1",
           ),
-          translationWordId:
+          translationWordTerm:
             alignment.attributes["x-tw"] ||
             alignment.attributes["x-strong"] ||
             "",

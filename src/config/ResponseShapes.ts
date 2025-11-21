@@ -652,14 +652,34 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
     arrayItems: {
       dataType: "translation-word-links",
       structure: {
-        required: ["word", "reference", "strong"],
-        optional: ["originalWord", "occurrence", "occurrences"],
+        required: ["term", "category", "path", "rcLink", "reference"],
+        optional: ["quote", "occurrence", "strongsId", "position"],
         fieldDescriptions: [
           {
-            name: "word",
+            name: "category",
             type: "string",
-            description: "The translation word found in the verse",
+            description: "Translation word category (kt, names, or other)",
+            example: "kt",
+          },
+          {
+            name: "term",
+            type: "string",
+            description:
+              "Translation word term identifier. Use this with the translation_word tool's term parameter.",
             example: "love",
+          },
+          {
+            name: "path",
+            type: "string",
+            description:
+              "Full repository path to the word article markdown file",
+            example: "bible/kt/love.md",
+          },
+          {
+            name: "rcLink",
+            type: "string",
+            description: "Full RC link to the translation word article",
+            example: "rc://*/tw/dict/bible/kt/love",
           },
           {
             name: "reference",
@@ -668,19 +688,10 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
             example: "John 3:16",
           },
           {
-            name: "strong",
+            name: "quote",
             type: "string",
-            description:
-              "Strong's number linking to the original language lexicon entry",
-            example: "G25",
-          },
-          {
-            name: "originalWord",
-            type: "string",
-            description:
-              "The original language word corresponding to the translation word",
-            example: "ἠγάπησεν",
-            semantics: { language: "Greek", isOriginalText: true },
+            description: "The quoted text from the verse",
+            example: "loved",
           },
           {
             name: "occurrence",
@@ -689,10 +700,16 @@ export const TRANSLATION_WORD_LINKS_SHAPE: ResponseShape = {
             example: 1,
           },
           {
-            name: "occurrences",
-            type: "number",
-            description: "Total occurrences of this word in the verse",
-            example: 1,
+            name: "strongsId",
+            type: "string",
+            description: "Strong's concordance number (if available)",
+            example: "G25",
+          },
+          {
+            name: "position",
+            type: "object|null",
+            description: "Position data in the verse (currently null)",
+            example: null,
           },
         ],
       },

@@ -8,11 +8,14 @@ import {
   parseUSFMAlignment,
   type WordAlignment,
 } from "../experimental/usfm-alignment-parser.js";
-import { DCSApiClient } from "../services/DCSApiClient.js";
 import { logger } from "../utils/logger.js";
 import { parseReference } from "./reference-parser.js";
 import { discoverAvailableResources } from "./resource-detector.js";
 import { CacheBypassOptions } from "./unified-cache.js";
+import { EdgeXRayTracer } from "./edge-xray.js";
+import { ZipFetcherFactory } from "../services/zip-fetcher-provider.js";
+import * as os from "os";
+import * as path from "path";
 import {
   extractChapterRange,
   extractChapterRangeWithNumbers,
@@ -178,7 +181,27 @@ export async function fetchScripture(
       specific: specificTranslations?.join(", "),
     });
 
-    const scriptures = [] as ScriptureResult["scriptures"];
+    // 🚀 Use ZIP-based downloads and caching with configurable provider
+    logger.info(`🚀 Starting fresh scripture fetch...`);
+    const tracer = new EdgeXRayTracer("scripture-service", "fetchScripture");
+
+    // Use configurable ZIP fetcher provider (from config or environment)
+    const providerName =
+      (options as any).zipFetcherProvider ||
+      process.env.ZIP_FETCHER_PROVIDER ||
+      "auto";
+
+    const cacheDir =
+      typeof process !== "undefined" && process.env.CACHE_PATH
+        ? process.env.CACHE_PATH
+        : path.join(os.homedir(), ".translation-helps-mcp", "cache");
+
+    const zipFetcher = ZipFetcherFactory.create(providerName, cacheDir, tracer);
+    logger.info(`📦 Using ZIP fetcher provider: ${zipFetcher.name}`);
+
+    const scriptures: NonNullable<ScriptureResult["scriptures"]> = [];
+
+    // Process each resource using ZIP-based approach
     for (const resource of resourcesToProcess) {
       logger.debug(`Processing resource`, {
         name: resource.name,
@@ -199,28 +222,39 @@ export async function fetchScripture(
         continue;
       }
 
-      // Do not build raw paths; rely on ZIP + ingredients in ZipResourceFetcher2
-
       try {
-        // Get USFM data using the cached DCS client
-        logger.debug(`Fetching USFM file via DCS client...`);
-        const dcsClient = new DCSApiClient();
-        const fileResponse = await dcsClient.getRawFileContent(
-          organization,
-          resource.name,
-          filePath,
-          "master",
+        // Use ZipResourceFetcher2 to get raw USFM from ZIP (cached)
+        // This downloads ZIP once, caches it, and extracts the USFM file
+        const ingredientPath = ingredient.path.replace(/^\.\//, "");
+
+        // Get catalog data to find ref tag and zipball URL
+        // ZipResourceFetcher2 will fetch catalog internally, but we need it for refTag/zipballUrl
+        // For now, use "master" as default ref - ZipResourceFetcher2 will handle catalog fetching
+        const refTag = "master"; // Default, ZipResourceFetcher2 will resolve actual ref from catalog
+        const zipballUrl = null; // ZipResourceFetcher2 will get from catalog
+
+        logger.info(
+          `📦 Using ZIP-based download for ${resource.name} (ref: ${refTag})`,
         );
 
-        if (!fileResponse.success || !fileResponse.data) {
-          logger.error(`Failed to fetch scripture content`, {
-            error: fileResponse.error || "Unknown",
-          });
+        // Download ZIP (cached in R2) and extract USFM file (cached extraction)
+        // ZipResourceFetcher2.getRawUSFMContent will fetch catalog if needed to get refTag/zipballUrl
+        const usfmData = await zipFetcher.getRawUSFMContent(
+          organization,
+          resource.name,
+          ingredientPath,
+          refTag,
+          zipballUrl,
+        );
+
+        if (!usfmData) {
+          logger.warn(`Failed to get USFM from ZIP for ${resource.name}`);
           continue;
         }
 
-        const usfmData = fileResponse.data;
-        logger.debug(`Retrieved USFM data`, { length: usfmData.length });
+        logger.info(`✅ Got USFM data from ZIP: ${usfmData.length} characters`);
+
+        logger.info(`🔧 Extracting verses from USFM...`);
 
         // Choose extraction method based on format and includeVerseNumbers
         const extractionStart = Date.now();
@@ -283,7 +317,11 @@ export async function fetchScripture(
           }
         }
 
+        logger.info(`✅ Extracted text: ${text.length} characters`);
+
         if (text.trim()) {
+          logger.info(`📝 Text extraction successful for ${resource.name}`);
+
           // Process alignment data if requested
           let alignmentData:
             | {
@@ -297,6 +335,7 @@ export async function fetchScripture(
             | undefined;
 
           if (includeAlignment && format !== "usfm") {
+            logger.info(`🔗 Processing alignment data...`);
             try {
               logger.debug(`Processing alignment data`, {
                 resource: resource.name,
@@ -331,6 +370,8 @@ export async function fetchScripture(
             }
           }
 
+          logger.info(`➕ Adding scripture result for ${resource.name}`);
+
           scriptures.push({
             text: text.trim(),
             translation: resource.title,
@@ -344,29 +385,32 @@ export async function fetchScripture(
             alignment: alignmentData,
           });
           const extractionTime = Date.now() - extractionStart;
-          logger.debug(`Extracted scripture text`, {
-            resource: resource.name,
-            ms: extractionTime,
-            length: text.length,
-          });
+          logger.info(
+            `✅ Successfully processed ${resource.name} in ${extractionTime}ms - ${text.length} chars`,
+          );
         }
       } catch (error) {
-        logger.warn(`Failed to process resource`, {
-          resource: resource.name,
+        logger.error(`❌ Exception processing ${resource.name}:`, {
           error: String(error),
+          stack:
+            error instanceof Error ? error.stack?.substring(0, 200) : undefined,
         });
         continue;
       }
     }
 
-    if (!scriptures || scriptures.length === 0) {
+    logger.info(
+      `🏁 Loop complete. Processed ${scriptures.length} scriptures out of ${resourcesToProcess.length} resources`,
+    );
+
+    if (scriptures.length === 0) {
       throw new Error(`No scripture text found for ${referenceParam}`);
     }
 
     const result: ScriptureResult =
       specificTranslations && specificTranslations.length === 1
         ? {
-            scripture: scriptures[0],
+            scripture: scriptures[0]!,
             metadata: {
               responseTime: Date.now() - startTime,
               cached: false,
@@ -374,7 +418,6 @@ export async function fetchScripture(
               includeVerseNumbers,
               format,
               translationsFound: scriptures.length,
-              cacheKey: responseKey,
               hasAlignmentData:
                 includeAlignment && scriptures[0]?.alignment !== undefined,
             },
@@ -388,17 +431,21 @@ export async function fetchScripture(
               includeVerseNumbers,
               format,
               translationsFound: scriptures.length,
-              cacheKey: responseKey,
               hasAlignmentData:
                 includeAlignment &&
                 scriptures.some((s) => s.alignment !== undefined),
             },
           };
 
+    logger.info(
+      `📤 Returning scripture result with ${scriptures.length} translations`,
+    );
     return result;
   }
 
+  logger.info(`🚀 Starting fresh scripture fetch...`);
   const result = await fetchFreshScripture();
+  logger.info(`✅ fetchScripture completed successfully`);
   return result;
 }
 

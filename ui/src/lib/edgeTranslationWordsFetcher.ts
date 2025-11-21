@@ -93,10 +93,10 @@ function getBookCode(bookName: string): string {
 /**
  * Parse markdown content into structured word definition
  */
-export function parseWordMarkdown(content: string, wordId: string): TranslationWord | null {
+export function parseWordMarkdown(content: string, term: string): TranslationWord | null {
 	// Extract the main term from the first heading
 	const termMatch = content.match(/^#\s+(.+)$/m);
-	const term = termMatch ? termMatch[1].trim() : wordId;
+	const extractedTerm = termMatch ? termMatch[1].trim() : term;
 
 	// Extract definition - look for content after "## Definition:" or similar
 	const definitionMatch = content.match(/##\s*Definition:?\s*\n\n([\s\S]+?)(?=\n##|$)/i);
@@ -140,8 +140,8 @@ export function parseWordMarkdown(content: string, wordId: string): TranslationW
 	}
 
 	return {
-		id: wordId,
-		term,
+		id: term,
+		term: extractedTerm,
 		definition,
 		...(related.length > 0 && { related }),
 		...(references.length > 0 && { references })
@@ -164,11 +164,11 @@ function _getWordsForReference(
 		// Skip empty lines and headers
 		if (!line.trim() || line.startsWith('#')) continue;
 
-		// Parse index line format: word_id | references
+		// Parse index line format: term | references
 		const parts = line.split('|');
 		if (parts.length < 2) continue;
 
-		const wordId = parts[0].trim();
+		const term = parts[0].trim();
 		const refs = parts[1].trim();
 
 		// Check if this word is used in our reference
@@ -178,7 +178,7 @@ function _getWordsForReference(
 			: new RegExp(`\\b${book}\\s+${chapter}:\\d+\\b`, 'i');
 
 		if (refPattern.test(refs)) {
-			words.add(wordId);
+			words.add(term);
 		}
 	}
 
@@ -239,13 +239,13 @@ export async function fetchTranslationWordsFromDCS(
 		// In a real implementation, we'd have a proper index or search capability
 		const commonWords = ['god', 'love', 'faith', 'sin', 'grace', 'holy', 'spirit', 'eternal'];
 
-		for (const wordId of commonWords) {
+		for (const term of commonWords) {
 			try {
 				// Try to fetch the word file
-				const wordPath = `bible/kt/${wordId}.md`; // Key terms are usually in kt folder
+				const wordPath = `bible/kt/${term}.md`; // Key terms are usually in kt folder
 				const endpoint = `/api/v1/repos/${owner}/${repoName}/contents/${wordPath}`;
 
-				logger.debug(`Trying to fetch word: ${wordId}`);
+				logger.debug(`Trying to fetch word: ${term}`);
 
 				const fileData = await fetchFromDCS(endpoint);
 
@@ -254,14 +254,14 @@ export async function fetchTranslationWordsFromDCS(
 					const mdContent = decodeBase64Unicode(fileData.content);
 
 					// Parse the markdown
-					const word = parseWordMarkdown(mdContent, wordId);
+					const word = parseWordMarkdown(mdContent, term);
 					if (word) {
 						words.push(word);
 					}
 				}
 			} catch (_error) {
 				// Word not found, continue with others
-				logger.debug(`Word ${wordId} not found`);
+				logger.debug(`Word ${term} not found`);
 			}
 		}
 
