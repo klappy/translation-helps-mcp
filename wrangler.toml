@@ -13,7 +13,7 @@ compatibility_flags = ["nodejs_compat"]
   # Duplicate bindings under production environment so Pages Functions get them
   [[env.production.kv_namespaces]]
   binding = "TRANSLATION_HELPS_CACHE"
-  id = "a0b2bcf08829441e932230cb06cb5e07"
+  id = "116847d7b0714a9c8d2882335b05d35a"
 
   [[env.production.r2_buckets]]
   binding = "ZIP_FILES"
@@ -27,7 +27,7 @@ compatibility_flags = ["nodejs_compat"]
 # Then update the id below with the actual namespace ID
 [[kv_namespaces]]
 binding = "TRANSLATION_HELPS_CACHE"
-id = "a0b2bcf08829441e932230cb06cb5e07"
+id = "116847d7b0714a9c8d2882335b05d35a"
 preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 
 # R2 bucket for ZIPs and extracted files
