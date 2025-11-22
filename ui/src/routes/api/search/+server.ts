@@ -170,16 +170,20 @@ function getFallbackResources(language: string, owner: string): ResourceDescript
 async function fanOutSearch(
 	resources: ResourceDescriptor[],
 	query: string,
-	reference?: string
+	reference?: string,
+	baseUrl?: string
 ): Promise<SearchHit[]> {
 	const startTime = Date.now();
+
+	// In Workers, use relative URLs for internal subrequests
+	const internalUrl = baseUrl
+		? `${baseUrl}/api/internal/search-resource`
+		: '/api/internal/search-resource';
 
 	// Create fetch promises for all resources
 	const searchPromises = resources.map(async (resource) => {
 		try {
-			const url = new URL('/internal/search-resource', 'http://localhost');
-
-			const response = await fetch(url.toString(), {
+			const response = await fetch(internalUrl, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -189,7 +193,7 @@ async function fanOutSearch(
 					reference,
 					type: resource.type
 				}),
-				signal: AbortSignal.timeout(800) // 800ms timeout per resource
+				signal: AbortSignal.timeout(10000) // 10s timeout per resource (for ZIP fetch+process)
 			});
 
 			if (!response.ok) {
@@ -237,10 +241,13 @@ function reRankResults(hits: SearchHit[], limit: number): SearchHit[] {
  * POST /api/search
  * Main search orchestrator endpoint
  */
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, url }) => {
 	const startTime = Date.now();
 
 	try {
+		// Get base URL for internal requests
+		const BASE_URL = url.origin;
+
 		// Parse request body
 		const body: SearchRequest = await request.json();
 
@@ -285,7 +292,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Step 2: Fan out to resource-specific searches
-		const hits = await fanOutSearch(resources, query, reference);
+		const hits = await fanOutSearch(resources, query, reference, BASE_URL);
 
 		// Step 3: Re-rank and limit results
 		const rankedHits = reRankResults(hits, limit);

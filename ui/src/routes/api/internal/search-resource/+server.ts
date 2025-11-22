@@ -69,13 +69,14 @@ function getFileExtensions(type: string): string[] {
  * Filter files by extension and optional reference
  */
 function filterFiles(
-	entries: Map<string, any>,
+	entries: Record<string, any>,
 	extensions: string[],
 	reference?: string
 ): string[] {
 	const filtered: string[] = [];
 
-	for (const [path, entry] of entries) {
+	// entries is an object, not a Map
+	for (const [path, entry] of Object.entries(entries)) {
 		// Skip directories
 		if (entry.isDirectory) {
 			continue;
@@ -160,7 +161,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const unzipTime = Date.now();
 		logger.debug('[Search:Resource] ZIP listed', {
 			resource,
-			fileCount: entries.size,
+			fileCount: Object.keys(entries).length,
 			elapsed: unzipTime - fetchTime
 		});
 
@@ -170,7 +171,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const filterTime = Date.now();
 		logger.debug('[Search:Resource] Files filtered', {
 			resource,
-			totalFiles: entries.size,
+			totalFiles: Object.keys(entries).length,
 			filteredFiles: filePaths.length,
 			elapsed: filterTime - unzipTime
 		});
@@ -188,7 +189,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const documents: SearchDocument[] = [];
 
 		for (const path of filePaths) {
-			const entry = entries.get(path);
+			const entry = entries[path];
 			if (!entry) continue;
 
 			const content = await extractContent(entry);
@@ -232,7 +233,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			hits: results,
 			stats: {
 				zipBytes: zipBuffer.byteLength,
-				totalFiles: entries.size,
+				totalFiles: Object.keys(entries).length,
 				filteredFiles: filePaths.length,
 				indexedDocs: documents.length,
 				timing: {
