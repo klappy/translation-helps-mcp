@@ -238,19 +238,12 @@ function reRankResults(hits: SearchHit[], limit: number): SearchHit[] {
 }
 
 /**
- * POST /api/search
- * Main search orchestrator endpoint
+ * Execute search logic (shared by GET and POST)
  */
-export const POST: RequestHandler = async ({ request, url }) => {
+async function executeSearch(params: SearchRequest, baseUrl: string): Promise<Response> {
 	const startTime = Date.now();
 
 	try {
-		// Get base URL for internal requests
-		const BASE_URL = url.origin;
-
-		// Parse request body
-		const body: SearchRequest = await request.json();
-
 		const {
 			query,
 			language = 'en',
@@ -258,7 +251,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			reference,
 			limit = 50,
 			includeHelps = true
-		} = body;
+		} = params;
 
 		// Validate required fields
 		if (!query || query.trim().length === 0) {
@@ -292,7 +285,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 
 		// Step 2: Fan out to resource-specific searches
-		const hits = await fanOutSearch(resources, query, reference, BASE_URL);
+		const hits = await fanOutSearch(resources, query, reference, baseUrl);
 
 		// Step 3: Re-rank and limit results
 		const rankedHits = reRankResults(hits, limit);
@@ -327,4 +320,39 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			{ status: 500 }
 		);
 	}
+}
+
+/**
+ * POST /api/search
+ * Main search orchestrator endpoint (JSON body)
+ */
+export const POST: RequestHandler = async ({ request, url }) => {
+	const body: SearchRequest = await request.json();
+	return executeSearch(body, url.origin);
+};
+
+/**
+ * GET /api/search
+ * Main search orchestrator endpoint (Query params)
+ */
+export const GET: RequestHandler = async ({ url }) => {
+	const query = url.searchParams.get('query') || '';
+	const language = url.searchParams.get('language') || 'en';
+	const owner = url.searchParams.get('owner') || 'unfoldingWord';
+	const reference = url.searchParams.get('reference') || undefined;
+	const limitParam = url.searchParams.get('limit');
+	const limit = limitParam ? parseInt(limitParam, 10) : 50;
+	const includeHelpsParam = url.searchParams.get('includeHelps');
+	const includeHelps = includeHelpsParam !== 'false';
+
+	const params: SearchRequest = {
+		query,
+		language,
+		owner,
+		reference,
+		limit,
+		includeHelps
+	};
+
+	return executeSearch(params, url.origin);
 };
