@@ -13,7 +13,7 @@
 
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { unzip } from 'unzipit';
+import * as fflate from 'fflate';
 import { SearchService, type SearchDocument } from '$lib/../../../src/services/SearchService.js';
 import { logger } from '$lib/../../../src/utils/logger.js';
 
@@ -23,6 +23,25 @@ interface ResourceSearchRequest {
 	query: string;
 	reference?: string;
 	type: 'bible' | 'notes' | 'words' | 'academy' | 'questions' | 'obs';
+}
+
+/**
+ * Fetch ZIP data
+ */
+async function fetchZip(zipUrl: string): Promise<ArrayBuffer> {
+	const response = await fetch(zipUrl, {
+		headers: {
+			'User-Agent':
+				'translation-helps-mcp/7.3.0 (https://github.com/unfoldingWord/translation-helps-mcp)'
+		},
+		signal: AbortSignal.timeout(5000) // 5s timeout for ZIP fetch
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch ZIP: HTTP ${response.status}`);
+	}
+
+	return response.arrayBuffer();
 }
 
 /**
@@ -56,10 +75,10 @@ function filterFiles(
 ): string[] {
 	const filtered: string[] = [];
 
-	// entries is an object, not a Map
-	for (const [path, entry] of Object.entries(entries)) {
-		// Skip directories
-		if (entry.isDirectory) {
+	// entries is an object from fflate.unzipSync
+	for (const path of Object.keys(entries)) {
+		// Skip directories (fflate paths ending in / are dirs usually, but unzipSync returns files)
+		if (path.endsWith('/')) {
 			continue;
 		}
 
@@ -112,17 +131,25 @@ export const POST: RequestHandler = async ({ request }) => {
 			query
 		});
 
-		// Step 1: Unzip directly from URL (streaming/lazy)
-		// unzipit handles fetching internally using Range requests
-		const { entries } = await unzip(zipUrl);
-		const unzipTime = Date.now();
-		logger.debug('[Search:Resource] ZIP listed', {
+		// Step 1: Fetch ZIP
+		const zipBuffer = await fetchZip(zipUrl);
+		const fetchTime = Date.now();
+		logger.debug('[Search:Resource] ZIP fetched', {
 			resource,
-			fileCount: Object.keys(entries).length,
-			elapsed: unzipTime - startTime
+			bytes: zipBuffer.byteLength,
+			elapsed: fetchTime - startTime
 		});
 
-		// Step 2: Filter relevant files
+		// Step 2: Unzip with fflate
+		const entries = fflate.unzipSync(new Uint8Array(zipBuffer));
+		const unzipTime = Date.now();
+		logger.debug('[Search:Resource] ZIP unzipped', {
+			resource,
+			fileCount: Object.keys(entries).length,
+			elapsed: unzipTime - fetchTime
+		});
+
+		// Step 3: Filter relevant files
 		const extensions = getFileExtensions(type);
 		const filePaths = filterFiles(entries, extensions, reference);
 		const filterTime = Date.now();
@@ -141,16 +168,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
-		// Step 3: Extract and index content
+		// Step 4: Extract and index content
 		const searchService = new SearchService();
 		const documents: SearchDocument[] = [];
+		const decoder = new TextDecoder('utf-8');
 
 		for (const path of filePaths) {
-			const entry = entries[path];
-			if (!entry) continue;
+			const entryData = entries[path];
+			if (!entryData) continue;
 
 			try {
-				const content = await entry.text();
+				const content = decoder.decode(entryData);
 				if (!content || content.trim().length === 0) {
 					continue;
 				}
@@ -163,7 +191,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					type
 				});
 			} catch (e) {
-				logger.warn('[Search:Resource] Failed to extract file', {
+				logger.warn('[Search:Resource] Failed to decode file', {
 					path,
 					error: String(e)
 				});
@@ -196,13 +224,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			took_ms: searchTime - startTime,
 			hits: results,
 			stats: {
-				zipBytes: 0, // Streaming mode, size unknown/irrelevant
+				zipBytes: zipBuffer.byteLength,
 				totalFiles: Object.keys(entries).length,
 				filteredFiles: filePaths.length,
 				indexedDocs: documents.length,
 				timing: {
-					fetch: 0, // Streaming
-					unzip: unzipTime - startTime,
+					fetch: fetchTime - startTime,
+					unzip: unzipTime - fetchTime,
 					filter: filterTime - unzipTime,
 					index: indexTime - filterTime,
 					search: searchTime - indexTime

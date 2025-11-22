@@ -1,7 +1,7 @@
 {
 	"name": "translation-helps-ui",
 	"type": "module",
-	"version": "7.4.9",
+	"version": "7.4.10",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "node ../scripts/sync-version.js && vite build",
@@ -62,7 +62,6 @@
 		"minisearch": "^7.2.0",
 		"prismjs": "^1.30.0",
 		"tailwindcss": "^4.0.0",
-		"unzipit": "^1.4.3",
 		"zod": "^4.0.10"
 	}
 }
