@@ -2,119 +2,44 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## [Unreleased]
+## [7.4.0](https://github.com/klappy/translation-helps-mcp/compare/v7.1.3...v7.4.0) (2025-11-22)
 
 ### Features
 
-- **Optimized System Prompts in SDKs** - 60-70% token reduction for AI interactions
-  - JS SDK v1.1.0: Added `getSystemPrompt()` and `detectRequestType()` functions
-  - Python SDK v1.2.0: Added `get_system_prompt()` and `detect_request_type()` functions
-  - Contextual rules based on request type (comprehensive, list, explanation, term, concept)
-  - Automatic request type detection from endpoint calls and messages
-  - Integrated into Svelte UI chat-stream endpoint
-  - Single source of truth for prompt management across all clients
-  - Type-safe implementations (TypeScript + Python type hints)
+**🔍 Ad-Hoc Search Feature (NEW)**
 
-- **Offline-First CLI with Local AI** - Complete CLI application with Ollama integration
-  - Interactive chat interface with streaming responses
-  - MCP client connecting via stdio transport
-  - AI provider abstraction (Ollama + OpenAI fallback)
-  - Configuration management system
-  - Full offline capability with local Ollama AI
-  - Special commands: /help, /status, /config, /providers, /model, /offline, /clear, /exit
+- Added high-performance BM25-ranked search across all Door43 translation resources
+- Search scripture, translation notes, words, questions, and academy articles in any language
+- Supports fuzzy matching and prefix search for flexible term matching
+- Micro-recursive architecture with parallel processing for sub-10s response times
+- New MCP tool: `search_biblical_resources` for integration with AI assistants
+- Fully stateless design with graceful failure handling
 
-- **Pluggable Cache Provider System** - Flexible, configurable caching architecture
-  - CacheProvider interface for custom implementations
-  - 4 built-in providers: Memory, File System, Cloudflare KV, Door43
-  - CacheChain manager with dynamic add/remove/reorder
-  - Configurable provider priority and fallback chain
-  - Automatic filtering of unavailable providers
-  - Cache warming between tiers
+**Other Improvements**
 
-- **Offline Resource Management** - Download and share translation helps offline
-  - ResourceSync service for downloading from Door43
-  - ResourceTransfer service for import/export
-  - Share package format with manifests and checksums
-  - Network detection with graceful offline fallback
-  - File system cache in ~/.translation-helps-mcp/cache/
+- Added configurable timeouts for long-running MCP tools
+- Enhanced chat with contextual follow-up patterns and intent mapping
+- Improved dynamic resource mapping for scripture endpoint
+- Added Getting Started page and comprehensive debugging tools
 
-- **Peer-to-Peer Resource Sharing** - Share translation helps via USB/Bluetooth
-  - Export resources as portable ZIP packages
-  - Import share packages with integrity verification
-  - Custom bundles (select specific resources)
-  - Split large exports for limited storage
-  - Complete offline workflow support
+### Bug Fixes
+
+- Fixed internal API routing and unzipit entries handling for search feature
+- Removed hardcoded absolute paths from MCP configuration
+- Resolved undefined variable bugs in MCP tools
+- Fixed circular reference in vite.config.ts
+- Improved error handling across endpoints
 
 ### Documentation
 
-- **Cache Architecture Guide** - Detailed cache provider system documentation
-- **Offline Architecture Guide** - Offline-first design principles and flows
-- **Resource Sharing Guide** - Complete guide for offline sharing workflows
-- **Offline Getting Started** - Quick start guide for offline setup
-- **CLI README** - Comprehensive CLI installation and usage guide
-- **Clients README** - Overview of client architecture
-- **Implementation Summary** - Technical summary of offline implementation
-
-### Files Added
-
-**Server Infrastructure:**
-
-- `src/functions/caches/cache-provider.ts` - Base provider interface
-- `src/functions/caches/memory-cache-provider.ts` - Memory cache implementation
-- `src/functions/caches/kv-cache-provider.ts` - Cloudflare KV implementation
-- `src/functions/caches/fs-cache-provider.ts` - File system implementation
-- `src/functions/caches/door43-provider.ts` - Door43 upstream provider
-- `src/functions/caches/cache-chain.ts` - Configurable cache chain manager
-- `src/functions/unified-cache-v2.ts` - New unified cache with pluggable providers
-- `src/services/ResourceSync.ts` - Resource download service
-- `src/services/ResourceTransfer.ts` - Import/export service
-- `src/utils/network-detector.ts` - Online/offline detection
-
-**CLI Client:**
-
-- `clients/cli/src/index.ts` - Main entry point
-- `clients/cli/src/mcp-client.ts` - MCP protocol client
-- `clients/cli/src/ai-provider.ts` - AI provider abstraction
-- `clients/cli/src/chat-interface.ts` - Interactive REPL
-- `clients/cli/src/config.ts` - Configuration management
-- `clients/cli/package.json` - CLI package configuration
-- `clients/cli/tsconfig.json` - TypeScript configuration
-- `clients/cli/README.md` - CLI documentation
-
-**Documentation:**
-
-- `docs/CACHE_ARCHITECTURE.md`
-- `docs/OFFLINE_ARCHITECTURE.md`
-- `docs/OFFLINE_GETTING_STARTED.md`
-- `docs/SHARING_GUIDE.md`
-- `clients/README.md`
-- `OFFLINE_CLI_IMPLEMENTATION_SUMMARY.md`
-
-### Technical Details
-
-**Lines of Code:** ~9,200 lines added across 26 files
-
-**Capabilities Enabled:**
-
-- Bible translation work completely offline
-- Zero API costs with local Ollama AI
-- Complete privacy (no cloud dependencies)
-- Resource sharing via USB/Bluetooth
-- Configurable cache providers (add/remove/reorder)
-- Cross-platform support (Windows/Mac/Linux)
-
-**Storage Requirements:**
-
-- Ollama + Mistral 7B: ~4.6GB
-- English resources: ~600MB
-- Total: ~5.2GB for complete offline setup
-
-**Future Roadmap:**
-
-- Implement CLI commands (sync, import, export, cache)
-- Desktop app with Electron/Tauri
-- Mobile support (iOS/Android)
-- Background sync and updates
+- Added comprehensive search integration test results and performance analysis
+- Added Ollama setup guides and OpenAI chat setup guide
+- Improved MCP debugging documentation
+- Updated API documentation and examples
+- prepare changelog for release ([ea85af3](https://github.com/klappy/translation-helps-mcp/commit/ea85af38f2e47af8c8e48ad13af5b2782ef6fa22))
+- simplify chat setup ([a37ebaa](https://github.com/klappy/translation-helps-mcp/commit/a37ebaa48f026471a1766766b72e2197bf88a50e))
+- update ANGELOG for offline-first L ([5274d16](https://github.com/klappy/translation-helps-mcp/commit/5274d1663b1335cb2b8c718cad08de1455b8d9c7))
+- update chat setup guide ([ddac97f](https://github.com/klappy/translation-helps-mcp/commit/ddac97f6875b06b53da53ad6650884e4ee0623fc))
 
 ## [7.3.0](https://github.com/klappy/translation-helps-mcp/compare/v7.2.0...v7.3.0) (2025-11-12)
 

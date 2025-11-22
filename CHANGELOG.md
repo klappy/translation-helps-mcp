@@ -6,78 +6,36 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Features
 
-- add configurable timeouts for long-running M tools ([5ad4112](https://github.com/klappy/translation-helps-mcp/commit/5ad41123ab0be18b3b41dd6992add226b6d33415))
-- add contextual conversational follow-up patterns to chat ([30334bb](https://github.com/klappy/translation-helps-mcp/commit/30334bb35cd3d30641bd473b647386f8d74c13ec))
-- add dotenv support for chat in Vite dev mode ([54f2c27](https://github.com/klappy/translation-helps-mcp/commit/54f2c27ff9efc5d6e8414cc4bc9f0bf09c899feb))
-- Add dynamic resource mapping for scripture endpoint ([401e62b](https://github.com/klappy/translation-helps-mcp/commit/401e62b702d67bd939f57dc937c0801b8a2acc2d))
-- add full content to other two prompts for consistency ([adaff82](https://github.com/klappy/translation-helps-mcp/commit/adaff820d403025a0b6f69671be544382b7d9451))
-- add Getting Started page ([de1dc16](https://github.com/klappy/translation-helps-mcp/commit/de1dc1653e95b5e2fc5c8ac12ffae7cd5447564c))
-- add intelligent intent mapping to chat system prompt ([06a5152](https://github.com/klappy/translation-helps-mcp/commit/06a51520e704719f0935dd851e99b4ec1e884d51))
-- add M server debugging tools and guide ([c2445c5](https://github.com/klappy/translation-helps-mcp/commit/c2445c56441ebb13401444ee251af44dcbd81e99))
-- add rcLink/moduled fallback for failed fetches ([57c94b5](https://github.com/klappy/translation-helps-mcp/commit/57c94b57cb081fb7dfaf5ddcbc0fcd800d8b25c6))
-- add translation notes and raw JSON toggle ([e27dde3](https://github.com/klappy/translation-helps-mcp/commit/e27dde3c59faf9c978a466da4a8d1af55081672f))
-- Eliminate duplication between and M implementations ([f6898b9](https://github.com/klappy/translation-helps-mcp/commit/f6898b96ebc1ddf90e41e3f7e481e89b37312e4b))
-- implement ad-hoc search feature with BM25 ranking ([90348d3](https://github.com/klappy/translation-helps-mcp/commit/90348d3f04e28954e2a8cbcef39ecf1bbf382982))
-- implement offline-first L with pluggable cache system ([5b935a8](https://github.com/klappy/translation-helps-mcp/commit/5b935a8ff0f62a5ae882cf7b5be22b22fffd9e6f))
-- implement two-phase learning approach in chat ([15f99a7](https://github.com/klappy/translation-helps-mcp/commit/15f99a7ae1009e2f58ae3e12f004236385166f72))
-- integrate M prompts into chat assistant ([1931868](https://github.com/klappy/translation-helps-mcp/commit/1931868e4b1e96711ae52842fa34b35878b5ff99))
-- normalize A response shapes for single articles ([a4db0fe](https://github.com/klappy/translation-helps-mcp/commit/a4db0fecac1304d0008f0dee5f644da6959d8614))
-- require ranslation Academy section and follow-up questions in chat ([cf22cff](https://github.com/klappy/translation-helps-mcp/commit/cf22cff48eb9fb42e6fcb86d5d1a97c2ed40ece4))
-- show English phrases instead of Greek/ebrew in translation notes overview ([5a24f83](https://github.com/klappy/translation-helps-mcp/commit/5a24f83b1661c3fa47a688ebe7f94da97ae28d8d))
-- streamline to 6 core M tools with enhanced ranslation Academy ([292d4d2](https://github.com/klappy/translation-helps-mcp/commit/292d4d2dc4985255bfe4c48d04132a81c6e3a75b))
-- Support B 47 language codes and flexible organization names ([aecc56e](https://github.com/klappy/translation-helps-mcp/commit/aecc56e3faec21b31125a9c2d70776aa5b2bd5e9))
-- transform chat into guided multi-turn learning conversation ([7b69ea0](https://github.com/klappy/translation-helps-mcp/commit/7b69ea02733c98ab7cfb48f81c212deba33fb8f7))
-- Update ython SK and chatbot to handle empty responses and fix endpoint URLs ([b185943](https://github.com/klappy/translation-helps-mcp/commit/b185943651c69b2280b6568273bdad68dd0bc521))
+**🔍 Ad-Hoc Search Feature (NEW)**
+
+- Added high-performance BM25-ranked search across all Door43 translation resources
+- Search scripture, translation notes, words, questions, and academy articles in any language
+- Supports fuzzy matching and prefix search for flexible term matching
+- Micro-recursive architecture with parallel processing for sub-10s response times
+- New MCP tool: `search_biblical_resources` for integration with AI assistants
+- Fully stateless design with graceful failure handling
+
+**Other Improvements**
+
+- Added configurable timeouts for long-running MCP tools
+- Enhanced chat with contextual follow-up patterns and intent mapping
+- Improved dynamic resource mapping for scripture endpoint
+- Added Getting Started page and comprehensive debugging tools
 
 ### Bug Fixes
 
-- add forceRefresh to bypass all caches ([90493c4](https://github.com/klappy/translation-helps-mcp/commit/90493c44a2cf575a4ea6c35d2a615fab18a48814))
-- correct internal API route path and unzipit entries handling ([c7b5b8e](https://github.com/klappy/translation-helps-mcp/commit/c7b5b8e57ec415187e865781ec64d9322001af44))
-- detect and invalidate empty catalog cache ([7821996](https://github.com/klappy/translation-helps-mcp/commit/7821996f2614b5dff24512d0d6ec372e9912b57a))
-- enforce listing ALL items in comprehensive overview response ([9d40226](https://github.com/klappy/translation-helps-mcp/commit/9d402264bc517858c0b6a5bdd86f43b24857dc99))
-- increase max_tokens for comprehensive chat responses ([f8f774d](https://github.com/klappy/translation-helps-mcp/commit/f8f774d09e570c64f3a98de84d372f4676caa06a))
-- remove circular reference in vite.config.ts test configuration ([feee1ff](https://github.com/klappy/translation-helps-mcp/commit/feee1ffeceb845b1487bd6f324758e93001995c0))
-- Remove hardcoded absolute paths from MCP configuration ([47255c9](https://github.com/klappy/translation-helps-mcp/commit/47255c923e3fc38c004b6e80e84c4c857ee7a08c))
-- remove invalid requestimeout from Server options ([8e55b18](https://github.com/klappy/translation-helps-mcp/commit/8e55b18fd325fbef59184751a7f25e81ecba0ba1))
-- remove unsupported --config flag from wrangler command ([dcafa8d](https://github.com/klappy/translation-helps-mcp/commit/dcafa8ddc71a541bf16bdcf4421f1597275a1849))
-- resolve undefined variable bugs in M tools ([196416b](https://github.com/klappy/translation-helps-mcp/commit/196416bee033df98820d4af88ff4e71ebb25e1ad))
-- update all URLs to unfoldingWord organization and correct deployment ([07e6210](https://github.com/klappy/translation-helps-mcp/commit/07e62102b66d42521324daa2dbd3cf968237c440))
-- update M setup instructions with local repository path ([6ba4f98](https://github.com/klappy/translation-helps-mcp/commit/6ba4f98693d041c309ee84ed510de20001378924))
-- use path parameter and handle errors gracefully in prompts ([dd4200b](https://github.com/klappy/translation-helps-mcp/commit/dd4200bae35416c5b1f38de5b3f0abca219cf461))
-- use Svelte 4 reactivity syntax in getting-started page ([8217876](https://github.com/klappy/translation-helps-mcp/commit/82178767631a1f0a77291e0a66ae54a1c570a63b))
-- use SvelteKit env for loudflare compatibility ([438c73a](https://github.com/klappy/translation-helps-mcp/commit/438c73ae773f4dc42ecf709787ab57384e9c4ab1))
-
-### Refactoring
-
-- mplement shared utilities for M tools ([d04def0](https://github.com/klappy/translation-helps-mcp/commit/d04def0aa8c55ff1e2d391f902a3dd5d95206689))
-- rename wordd to term in translation_word_links for consistency ([a59fac0](https://github.com/klappy/translation-helps-mcp/commit/a59fac06b03e32106dfb18022e59f87694191a54))
-- reuse main prompt logic for word and academy prompts ([7233c64](https://github.com/klappy/translation-helps-mcp/commit/7233c64cd72dda65ee8951badfb4f96a47107001))
-
-### Chores
-
-- add M debug status checker script ([099c490](https://github.com/klappy/translation-helps-mcp/commit/099c490f9fb3363d4f298f252944544cff0f0191))
-- apply code formatting ([1388c2d](https://github.com/klappy/translation-helps-mcp/commit/1388c2df0d929a366f15dc8fdaa3b547fc3bf080))
-- **release:** 7.2.0 ([285bc33](https://github.com/klappy/translation-helps-mcp/commit/285bc336df3f30a60db34d57914d4a3f9dbe6e25))
-- Update @translation-helps/mcp-client dependency to version 1.1.0 in package.json and package-lock.json ([f0331e7](https://github.com/klappy/translation-helps-mcp/commit/f0331e7adcf42b1272a4bc4f4399df122e592b00))
-- Update documentation for KV namespace and cache setup ([79714cf](https://github.com/klappy/translation-helps-mcp/commit/79714cfb5d73c67a3e7e6293f1b22a3983f4cf45))
-- Update KV namespace creation syntax in wrangler.toml and KV_CACHE_SETUP.md ([c110aef](https://github.com/klappy/translation-helps-mcp/commit/c110aefe4c8f2aa039e8839c9d91a242e1c8702d))
+- Fixed internal API routing and unzipit entries handling for search feature
+- Removed hardcoded absolute paths from MCP configuration
+- Resolved undefined variable bugs in MCP tools
+- Fixed circular reference in vite.config.ts
+- Improved error handling across endpoints
 
 ### Documentation
 
-- Add ANGELOG entries for SK prompts feature ([09328e3](https://github.com/klappy/translation-helps-mcp/commit/09328e30364a716d8008df8f80f232b79a334abc))
-- Add architecture analysis and shared components documentation ([d2be24c](https://github.com/klappy/translation-helps-mcp/commit/d2be24cc00ea919be9b423d12544b4c34fe5c255))
-- Add completion summary for duplication elimination ([8c312d4](https://github.com/klappy/translation-helps-mcp/commit/8c312d46bcec2e587b16f1f78e2aa353940d47f9))
-- add comprehensive search integration test results ([826971f](https://github.com/klappy/translation-helps-mcp/commit/826971fd281e66ffd36673328e7a354388824a01))
-- add L working status and next steps ([a871ef4](https://github.com/klappy/translation-helps-mcp/commit/a871ef49a4cdc71dee3d34f2bc3cd077cc0bfe88))
-- add Ollama setup guides ([cb0a05f](https://github.com/klappy/translation-helps-mcp/commit/cb0a05fb240274f3923c871febf349b073ce66c5))
-- add OpenA chat setup guide ([5e41dd7](https://github.com/klappy/translation-helps-mcp/commit/5e41dd72c382a79e8a59d4ff8ad46cd3062dd590))
-- Add re-evaluation of remaining duplication ([7d12189](https://github.com/klappy/translation-helps-mcp/commit/7d12189fb0d4106ea9d486b9ef056dcb3e0385ea))
-- add test plan ([5824c57](https://github.com/klappy/translation-helps-mcp/commit/5824c571f3594be5bc55c4514bcc44247f288239))
-- add test report and implementation summary ([8fade57](https://github.com/klappy/translation-helps-mcp/commit/8fade57e5621a1bf2ef8405ddd49176d5957db71))
-- add U completion summary ([5e9b93e](https://github.com/klappy/translation-helps-mcp/commit/5e9b93e9f37fd5030bad5b0c146ddab81687e270))
-- comprehensive status and next steps ([a506bc3](https://github.com/klappy/translation-helps-mcp/commit/a506bc3d69e0520468d4b939bb48973b35e8fff7))
-- comprehensive testing summary and options ([f715ab0](https://github.com/klappy/translation-helps-mcp/commit/f715ab029bffc52c754f3f02039140cb5558663f))
-- explain A hallucination fix ([11b526c](https://github.com/klappy/translation-helps-mcp/commit/11b526c22b1feba87c5b6cac941fc3c310d2a091))
+- Added comprehensive search integration test results and performance analysis
+- Added Ollama setup guides and OpenAI chat setup guide
+- Improved MCP debugging documentation
+- Updated API documentation and examples
 - prepare changelog for release ([ea85af3](https://github.com/klappy/translation-helps-mcp/commit/ea85af38f2e47af8c8e48ad13af5b2782ef6fa22))
 - simplify chat setup ([a37ebaa](https://github.com/klappy/translation-helps-mcp/commit/a37ebaa48f026471a1766766b72e2197bf88a50e))
 - update ANGELOG for offline-first L ([5274d16](https://github.com/klappy/translation-helps-mcp/commit/5274d1663b1335cb2b8c718cad08de1455b8d9c7))
