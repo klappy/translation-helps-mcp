@@ -371,6 +371,7 @@
 			scripture: [],
 			verseReferenced: [],
 			rcLinked: [],
+			search: [],
 			browsingHelpers: [],
 			discovery: []
 		};
@@ -381,6 +382,10 @@
 			// Scripture Resources (separate category)
 			if (name.includes('scripture') || name.includes('ult') || name.includes('ust')) {
 				groups.scripture.push(endpoint);
+			}
+			// Search Tools
+			else if (name.includes('search')) {
+				groups.search.push(endpoint);
 			}
 			// Verse Referenced Data
 			else if (
@@ -402,6 +407,7 @@
 
 		// Custom sort order for each group
 		const sortOrder = {
+			search: ['search-biblical-resources'],
 			verseReferenced: [
 				'fetch-translation-notes',
 				'fetch-translation-questions',
@@ -427,6 +433,11 @@
 				icon: '📖',
 				description: 'Access Bible texts in original and simplified languages',
 				endpoints: groups.scripture
+			},
+			'Search Tools': {
+				icon: '🔍',
+				description: 'Ad-hoc search across all biblical resources',
+				endpoints: groups.search
 			},
 			'Verse Referenced Data': {
 				icon: '📚',
@@ -483,6 +494,11 @@
 		} else if (endpoint.name === 'fetch-translation-academy') {
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
+		} else if (endpoint.name === 'search-biblical-resources') {
+			testParams.query = 'grace';
+			testParams.language = 'en';
+			testParams.organization = 'unfoldingWord';
+			testParams.limit = 5;
 		}
 
 		// Convert endpoint name to MCP tool name
