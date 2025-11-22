@@ -2,17 +2,146 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## Unreleased
+## [Unreleased]
+
+### Features
+
+- **Optimized System Prompts in SDKs** - 60-70% token reduction for AI interactions
+  - JS SDK v1.1.0: Added `getSystemPrompt()` and `detectRequestType()` functions
+  - Python SDK v1.2.0: Added `get_system_prompt()` and `detect_request_type()` functions
+  - Contextual rules based on request type (comprehensive, list, explanation, term, concept)
+  - Automatic request type detection from endpoint calls and messages
+  - Integrated into Svelte UI chat-stream endpoint
+  - Single source of truth for prompt management across all clients
+  - Type-safe implementations (TypeScript + Python type hints)
+
+- **Offline-First CLI with Local AI** - Complete CLI application with Ollama integration
+  - Interactive chat interface with streaming responses
+  - MCP client connecting via stdio transport
+  - AI provider abstraction (Ollama + OpenAI fallback)
+  - Configuration management system
+  - Full offline capability with local Ollama AI
+  - Special commands: /help, /status, /config, /providers, /model, /offline, /clear, /exit
+
+- **Pluggable Cache Provider System** - Flexible, configurable caching architecture
+  - CacheProvider interface for custom implementations
+  - 4 built-in providers: Memory, File System, Cloudflare KV, Door43
+  - CacheChain manager with dynamic add/remove/reorder
+  - Configurable provider priority and fallback chain
+  - Automatic filtering of unavailable providers
+  - Cache warming between tiers
+
+- **Offline Resource Management** - Download and share translation helps offline
+  - ResourceSync service for downloading from Door43
+  - ResourceTransfer service for import/export
+  - Share package format with manifests and checksums
+  - Network detection with graceful offline fallback
+  - File system cache in ~/.translation-helps-mcp/cache/
+
+- **Peer-to-Peer Resource Sharing** - Share translation helps via USB/Bluetooth
+  - Export resources as portable ZIP packages
+  - Import share packages with integrity verification
+  - Custom bundles (select specific resources)
+  - Split large exports for limited storage
+  - Complete offline workflow support
+
+### Documentation
+
+- **Cache Architecture Guide** - Detailed cache provider system documentation
+- **Offline Architecture Guide** - Offline-first design principles and flows
+- **Resource Sharing Guide** - Complete guide for offline sharing workflows
+- **Offline Getting Started** - Quick start guide for offline setup
+- **CLI README** - Comprehensive CLI installation and usage guide
+- **Clients README** - Overview of client architecture
+- **Implementation Summary** - Technical summary of offline implementation
+
+### Files Added
+
+**Server Infrastructure:**
+
+- `src/functions/caches/cache-provider.ts` - Base provider interface
+- `src/functions/caches/memory-cache-provider.ts` - Memory cache implementation
+- `src/functions/caches/kv-cache-provider.ts` - Cloudflare KV implementation
+- `src/functions/caches/fs-cache-provider.ts` - File system implementation
+- `src/functions/caches/door43-provider.ts` - Door43 upstream provider
+- `src/functions/caches/cache-chain.ts` - Configurable cache chain manager
+- `src/functions/unified-cache-v2.ts` - New unified cache with pluggable providers
+- `src/services/ResourceSync.ts` - Resource download service
+- `src/services/ResourceTransfer.ts` - Import/export service
+- `src/utils/network-detector.ts` - Online/offline detection
+
+**CLI Client:**
+
+- `clients/cli/src/index.ts` - Main entry point
+- `clients/cli/src/mcp-client.ts` - MCP protocol client
+- `clients/cli/src/ai-provider.ts` - AI provider abstraction
+- `clients/cli/src/chat-interface.ts` - Interactive REPL
+- `clients/cli/src/config.ts` - Configuration management
+- `clients/cli/package.json` - CLI package configuration
+- `clients/cli/tsconfig.json` - TypeScript configuration
+- `clients/cli/README.md` - CLI documentation
+
+**Documentation:**
+
+- `docs/CACHE_ARCHITECTURE.md`
+- `docs/OFFLINE_ARCHITECTURE.md`
+- `docs/OFFLINE_GETTING_STARTED.md`
+- `docs/SHARING_GUIDE.md`
+- `clients/README.md`
+- `OFFLINE_CLI_IMPLEMENTATION_SUMMARY.md`
+
+### Technical Details
+
+**Lines of Code:** ~9,200 lines added across 26 files
+
+**Capabilities Enabled:**
+
+- Bible translation work completely offline
+- Zero API costs with local Ollama AI
+- Complete privacy (no cloud dependencies)
+- Resource sharing via USB/Bluetooth
+- Configurable cache providers (add/remove/reorder)
+- Cross-platform support (Windows/Mac/Linux)
+
+**Storage Requirements:**
+
+- Ollama + Mistral 7B: ~4.6GB
+- English resources: ~600MB
+- Total: ~5.2GB for complete offline setup
+
+**Future Roadmap:**
+
+- Implement CLI commands (sync, import, export, cache)
+- Desktop app with Electron/Tauri
+- Mobile support (iOS/Android)
+- Background sync and updates
+
+## [7.3.0](https://github.com/klappy/translation-helps-mcp/compare/v7.2.0...v7.3.0) (2025-11-12)
+
+### Features
+
+- add contextual conversational follow-up patterns to chat ([30334bb](https://github.com/klappy/translation-helps-mcp/commit/30334bb35cd3d30641bd473b647386f8d74c13ec))
+- add dotenv support for chat in Vite dev mode ([54f2c27](https://github.com/klappy/translation-helps-mcp/commit/54f2c27ff9efc5d6e8414cc4bc9f0bf09c899feb))
+- add intelligent intent mapping to chat system prompt ([06a5152](https://github.com/klappy/translation-helps-mcp/commit/06a51520e704719f0935dd851e99b4ec1e884d51))
+- add M server debugging tools and guide ([c2445c5](https://github.com/klappy/translation-helps-mcp/commit/c2445c56441ebb13401444ee251af44dcbd81e99))
+- implement two-phase learning approach in chat ([15f99a7](https://github.com/klappy/translation-helps-mcp/commit/15f99a7ae1009e2f58ae3e12f004236385166f72))
+- integrate M prompts into chat assistant ([1931868](https://github.com/klappy/translation-helps-mcp/commit/1931868e4b1e96711ae52842fa34b35878b5ff99))
+- require ranslation Academy section and follow-up questions in chat ([cf22cff](https://github.com/klappy/translation-helps-mcp/commit/cf22cff48eb9fb42e6fcb86d5d1a97c2ed40ece4))
+- show English phrases instead of Greek/ebrew in translation notes overview ([5a24f83](https://github.com/klappy/translation-helps-mcp/commit/5a24f83b1661c3fa47a688ebe7f94da97ae28d8d))
+- transform chat into guided multi-turn learning conversation ([7b69ea0](https://github.com/klappy/translation-helps-mcp/commit/7b69ea02733c98ab7cfb48f81c212deba33fb8f7))
 
 ### Bug Fixes
 
-- **MCP Tools**: Fixed critical undefined variable bugs preventing tools from working in Cursor
-  - **Scripture Service**: Fixed `ReferenceError: filePath is not defined` by using `ingredient.path` from resource discovery
-  - **Translation Notes Service**: Fixed `Failed to parse URL from undefined` by building URL from `ingredient.path`
-  - **Translation Questions Service**: Fixed `Failed to parse URL from undefined` by building URL from `ingredient.path`
-  - **Translation Words Service**: Fixed `linksUrl undefined` by building URL from `linksIngredient.path`
-  - All services now correctly construct DCS raw file URLs from discovered ingredient paths
-  - MCP server now successfully responds to all tool calls from Cursor and other MCP clients
+- enforce listing ALL items in comprehensive overview response ([9d40226](https://github.com/klappy/translation-helps-mcp/commit/9d402264bc517858c0b6a5bdd86f43b24857dc99))
+- increase max_tokens for comprehensive chat responses ([f8f774d](https://github.com/klappy/translation-helps-mcp/commit/f8f774d09e570c64f3a98de84d372f4676caa06a))
+- resolve undefined variable bugs in M tools ([196416b](https://github.com/klappy/translation-helps-mcp/commit/196416bee033df98820d4af88ff4e71ebb25e1ad))
+- use SvelteKit env for loudflare compatibility ([438c73a](https://github.com/klappy/translation-helps-mcp/commit/438c73ae773f4dc42ecf709787ab57384e9c4ab1))
+
+### Documentation
+
+- add OpenA chat setup guide ([5e41dd7](https://github.com/klappy/translation-helps-mcp/commit/5e41dd72c382a79e8a59d4ff8ad46cd3062dd590))
+- simplify chat setup ([a37ebaa](https://github.com/klappy/translation-helps-mcp/commit/a37ebaa48f026471a1766766b72e2197bf88a50e))
+- update chat setup guide ([ddac97f](https://github.com/klappy/translation-helps-mcp/commit/ddac97f6875b06b53da53ad6650884e4ee0623fc))
 
 ## 7.2.0 (2025-11-11)
 
