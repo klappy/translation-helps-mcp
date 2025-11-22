@@ -170,20 +170,18 @@ function getFallbackResources(language: string, owner: string): ResourceDescript
 async function fanOutSearch(
 	resources: ResourceDescriptor[],
 	query: string,
-	reference?: string,
-	baseUrl?: string
+	reference: string | undefined,
+	fetchFn: typeof fetch
 ): Promise<SearchHit[]> {
 	const startTime = Date.now();
 
-	// In Workers, use relative URLs for internal subrequests
-	const internalUrl = baseUrl
-		? `${baseUrl}/api/internal/search-resource`
-		: '/api/internal/search-resource';
+	// Use relative URL with SvelteKit's fetch
+	const internalUrl = '/api/internal/search-resource';
 
 	// Create fetch promises for all resources
 	const searchPromises = resources.map(async (resource) => {
 		try {
-			const response = await fetch(internalUrl, {
+			const response = await fetchFn(internalUrl, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -240,7 +238,7 @@ function reRankResults(hits: SearchHit[], limit: number): SearchHit[] {
 /**
  * Execute search logic (shared by GET and POST)
  */
-async function executeSearch(params: SearchRequest, baseUrl: string): Promise<Response> {
+async function executeSearch(params: SearchRequest, fetchFn: typeof fetch): Promise<Response> {
 	const startTime = Date.now();
 
 	try {
@@ -285,7 +283,7 @@ async function executeSearch(params: SearchRequest, baseUrl: string): Promise<Re
 		}
 
 		// Step 2: Fan out to resource-specific searches
-		const hits = await fanOutSearch(resources, query, reference, baseUrl);
+		const hits = await fanOutSearch(resources, query, reference, fetchFn);
 
 		// Step 3: Re-rank and limit results
 		const rankedHits = reRankResults(hits, limit);
@@ -326,16 +324,16 @@ async function executeSearch(params: SearchRequest, baseUrl: string): Promise<Re
  * POST /api/search
  * Main search orchestrator endpoint (JSON body)
  */
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request, fetch }) => {
 	const body: SearchRequest = await request.json();
-	return executeSearch(body, url.origin);
+	return executeSearch(body, fetch);
 };
 
 /**
  * GET /api/search
  * Main search orchestrator endpoint (Query params)
  */
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, fetch }) => {
 	const query = url.searchParams.get('query') || '';
 	const language = url.searchParams.get('language') || 'en';
 	const owner = url.searchParams.get('owner') || 'unfoldingWord';
@@ -354,5 +352,5 @@ export const GET: RequestHandler = async ({ url }) => {
 		includeHelps
 	};
 
-	return executeSearch(params, url.origin);
+	return executeSearch(params, fetch);
 };
