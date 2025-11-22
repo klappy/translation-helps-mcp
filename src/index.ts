@@ -43,6 +43,10 @@ import {
   GetTranslationWordArgs,
   handleGetTranslationWord,
 } from "./tools/getTranslationWord.js";
+import {
+  SearchBiblicalResourcesArgs,
+  handleSearchBiblicalResources,
+} from "./tools/searchBiblicalResources.js";
 import { logger } from "./utils/logger.js";
 import { getVersion } from "./version.js";
 
@@ -107,6 +111,12 @@ const tools = [
     name: "fetch_translation_academy",
     description: "Fetch translation academy (tA) modules and training content",
     inputSchema: FetchTranslationAcademyArgs,
+  },
+  {
+    name: "search_biblical_resources",
+    description:
+      "Search biblical translation resources (scripture, notes, questions, words) using BM25 scoring algorithm. Returns ranked results with citations for deterministic retrieval.",
+    inputSchema: SearchBiblicalResourcesArgs,
   },
 ];
 
@@ -224,6 +234,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "fetch_translation_academy":
         return await handleFetchTranslationAcademy(
           args as z.infer<typeof FetchTranslationAcademyArgs>,
+        );
+
+      case "search_biblical_resources":
+        return await handleSearchBiblicalResources(
+          args as z.infer<typeof SearchBiblicalResourcesArgs>,
         );
 
       default:

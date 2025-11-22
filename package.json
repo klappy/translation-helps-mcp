@@ -65,7 +65,9 @@
   "dependencies": {
     "@upstash/redis": "^1.28.0",
     "fflate": "^0.8.2",
+    "minisearch": "^7.2.0",
     "node-fetch": "^3.3.2",
+    "unzipit": "^1.4.3",
     "yaml": "^2.8.1",
     "zod": "^3.22.4"
   },

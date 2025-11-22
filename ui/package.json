@@ -59,8 +59,10 @@
 		"lucide-svelte": "^0.525.0",
 		"marked": "^16.1.1",
 		"mdsvex": "^0.12.3",
+		"minisearch": "^7.2.0",
 		"prismjs": "^1.30.0",
 		"tailwindcss": "^4.0.0",
+		"unzipit": "^1.4.3",
 		"zod": "^4.0.10"
 	}
 }
