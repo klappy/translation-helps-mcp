@@ -12,6 +12,7 @@ import { CONTEXT_ENDPOINTS } from "./ContextEndpoints.js";
 import { DISCOVERY_ENDPOINTS } from "./DiscoveryEndpoints.js";
 import { ExperimentalEndpoints } from "./ExperimentalEndpoints.js";
 import { SCRIPTURE_ENDPOINTS } from "./ScriptureEndpoints.js";
+import { SEARCH_ENDPOINTS } from "./SearchEndpoints.js";
 import { TRANSLATION_HELPS_ENDPOINTS } from "./TranslationHelpsEndpoints.js";
 
 /**
@@ -96,9 +97,36 @@ function registerDiscoveryEndpoints(): void {
 }
 
 /**
+ * Register all search endpoints
+ */
+function registerSearchEndpoints(): void {
+  logger.info("Registering Search endpoints...");
+
+  for (const config of SEARCH_ENDPOINTS) {
+    try {
+      endpointRegistry.register(config);
+      logger.info(`Registered endpoint`, {
+        name: config.name,
+        path: config.path,
+      });
+    } catch (error) {
+      logger.error(`Failed to register endpoint`, {
+        name: config.name,
+        error: String(error),
+      });
+      throw error;
+    }
+  }
+
+  logger.info(`Search endpoints registered`, {
+    count: SEARCH_ENDPOINTS.length,
+  });
+}
+
+/**
  * Register all context endpoints (Extended tier)
  */
-function registerContextEndpoints(): void {
+function _registerContextEndpoints(): void {
   logger.info("Registering Context endpoints (Extended tier)...");
 
   for (const config of CONTEXT_ENDPOINTS) {
@@ -126,7 +154,7 @@ function registerContextEndpoints(): void {
 /**
  * Register all experimental endpoints
  */
-function registerExperimentalEndpoints(): void {
+function _registerExperimentalEndpoints(): void {
   logger.info("Registering Experimental endpoints...");
 
   for (const config of ExperimentalEndpoints) {
@@ -162,6 +190,7 @@ export function initializeAllEndpoints(): void {
     registerScriptureEndpoints();
     registerTranslationHelpsEndpoints();
     registerDiscoveryEndpoints();
+    registerSearchEndpoints();
 
     // Extended and Experimental endpoints removed - only core tools supported
 
@@ -249,6 +278,7 @@ export {
   DISCOVERY_ENDPOINTS,
   ExperimentalEndpoints,
   SCRIPTURE_ENDPOINTS,
+  SEARCH_ENDPOINTS,
   TRANSLATION_HELPS_ENDPOINTS,
 };
 

@@ -1060,6 +1060,79 @@ export const HEALTH_SHAPE: ResponseShape = {
   },
 };
 
+// Search Response Shape
+export const SEARCH_SHAPE: ResponseShape = {
+  dataType: "search",
+  structure: {
+    required: [
+      "query",
+      "language",
+      "owner",
+      "resourceCount",
+      "hits",
+      "took_ms",
+    ],
+    optional: ["_metadata"],
+    arrayItems: {
+      dataType: "search",
+      structure: {
+        required: ["resource", "type", "path", "score", "preview"],
+        fieldDescriptions: [
+          {
+            name: "resource",
+            type: "string",
+            description: "Name of the resource where the match was found",
+            example: "en_ult",
+          },
+          {
+            name: "type",
+            type: "string",
+            description: "Type of the resource",
+            example: "bible",
+            semantics: {
+              options: [
+                "bible",
+                "notes",
+                "words",
+                "questions",
+                "academy",
+                "obs",
+              ],
+            },
+          },
+          {
+            name: "path",
+            type: "string",
+            description: "File path within the resource",
+            example: "43-JHN.usfm",
+          },
+          {
+            name: "score",
+            type: "number",
+            description: "Relevance score of the match",
+            example: 12.84,
+          },
+          {
+            name: "preview",
+            type: "string",
+            description: "Contextual preview of the match",
+            example: "Jesus said... peace...",
+          },
+        ],
+      },
+      performance: {
+        maxResponseTime: 5,
+        cacheable: false,
+      },
+    },
+  },
+  performance: {
+    maxResponseTime: 3000,
+    cacheable: false,
+    expectedCacheHitRate: 0,
+  },
+};
+
 // Response Shape Registry
 export const RESPONSE_SHAPES = {
   scripture: SCRIPTURE_SHAPE,
@@ -1073,6 +1146,7 @@ export const RESPONSE_SHAPES = {
   references: REFERENCES_SHAPE,
   context: CONTEXT_SHAPE,
   health: HEALTH_SHAPE,
+  search: SEARCH_SHAPE,
 } as const;
 
 // Utility function to get response shape by data type
