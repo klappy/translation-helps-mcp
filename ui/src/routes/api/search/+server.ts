@@ -203,7 +203,15 @@ async function fanOutSearch(
 			});
 
 			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}`);
+				const errorText = await response.text();
+				let errorMessage = `HTTP ${response.status}`;
+				try {
+					const errorJson = JSON.parse(errorText);
+					if (errorJson.message) errorMessage += `: ${errorJson.message}`;
+				} catch {
+					errorMessage += `: ${errorText.substring(0, 100)}`;
+				}
+				throw new Error(errorMessage);
 			}
 
 			const data = await response.json();
