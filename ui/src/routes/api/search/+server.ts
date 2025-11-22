@@ -164,6 +164,11 @@ function getFallbackResources(language: string, owner: string): ResourceDescript
 	];
 }
 
+interface SearchResult {
+	hits: SearchHit[];
+	failures: Array<{ resource: string; error: string }>;
+}
+
 /**
  * Fan out search to per-resource endpoints
  */
@@ -172,7 +177,7 @@ async function fanOutSearch(
 	query: string,
 	reference: string | undefined,
 	baseUrl: string
-): Promise<SearchHit[]> {
+): Promise<SearchResult> {
 	const startTime = Date.now();
 
 	// Use absolute URL to force new isolate creation (CPU fan-out)
@@ -202,29 +207,43 @@ async function fanOutSearch(
 			}
 
 			const data = await response.json();
-			return data.hits || [];
+			return { hits: data.hits || [], error: null, resource: resource.name };
 		} catch (error) {
 			logger.warn('[Search:FanOut] Resource search failed', {
 				resource: resource.name,
 				error: error instanceof Error ? error.message : String(error)
 			});
-			return []; // Partial failure - return empty for this resource
+			return {
+				hits: [],
+				error: error instanceof Error ? error.message : String(error),
+				resource: resource.name
+			};
 		}
 	});
 
 	// Wait for all searches (or timeouts)
 	const results = await Promise.all(searchPromises);
 
-	// Flatten and merge results
-	const allHits = results.flat();
+	// Aggregate results
+	const allHits: SearchHit[] = [];
+	const failures: Array<{ resource: string; error: string }> = [];
+
+	for (const result of results) {
+		if (result.error) {
+			failures.push({ resource: result.resource, error: result.error });
+		} else {
+			allHits.push(...result.hits);
+		}
+	}
 
 	logger.info('[Search:FanOut] Fan-out completed', {
 		resourceCount: resources.length,
 		hitCount: allHits.length,
+		failureCount: failures.length,
 		elapsed: Date.now() - startTime
 	});
 
-	return allHits;
+	return { hits: allHits, failures };
 }
 
 /**
@@ -286,7 +305,7 @@ async function executeSearch(params: SearchRequest, baseUrl: string): Promise<Re
 		}
 
 		// Step 2: Fan out to resource-specific searches
-		const hits = await fanOutSearch(resources, query, reference, baseUrl);
+		const { hits, failures } = await fanOutSearch(resources, query, reference, baseUrl);
 
 		// Step 3: Re-rank and limit results
 		const rankedHits = reRankResults(hits, limit);
@@ -298,7 +317,8 @@ async function executeSearch(params: SearchRequest, baseUrl: string): Promise<Re
 			language,
 			owner,
 			resourceCount: resources.length,
-			hits: rankedHits
+			hits: rankedHits,
+			failures // Include failures for debugging
 		};
 
 		logger.info('[Search:Orchestrator] Search completed', {
