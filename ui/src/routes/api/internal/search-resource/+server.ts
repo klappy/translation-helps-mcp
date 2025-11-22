@@ -26,25 +26,6 @@ interface ResourceSearchRequest {
 }
 
 /**
- * Fetch ZIP data
- */
-async function fetchZip(zipUrl: string): Promise<ArrayBuffer> {
-	const response = await fetch(zipUrl, {
-		headers: {
-			'User-Agent':
-				'translation-helps-mcp/7.3.0 (https://github.com/unfoldingWord/translation-helps-mcp)'
-		},
-		signal: AbortSignal.timeout(5000) // 5s timeout for ZIP fetch
-	});
-
-	if (!response.ok) {
-		throw new Error(`Failed to fetch ZIP: HTTP ${response.status}`);
-	}
-
-	return response.arrayBuffer();
-}
-
-/**
  * Determine file extensions to search based on resource type
  */
 function getFileExtensions(type: string): string[] {
@@ -114,22 +95,6 @@ function filterFiles(
 }
 
 /**
- * Extract text content from file
- */
-async function extractContent(entry: any): Promise<string> {
-	try {
-		const text = await entry.text();
-		return text;
-	} catch (error) {
-		logger.warn('[Search:Resource] Failed to extract file content', {
-			path: entry.name,
-			error: error instanceof Error ? error.message : String(error)
-		});
-		return '';
-	}
-}
-
-/**
  * POST /internal/search-resource
  * Per-resource search worker
  */
@@ -147,25 +112,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			query
 		});
 
-		// Step 1: Fetch ZIP
-		const zipBuffer = await fetchZip(zipUrl);
-		const fetchTime = Date.now();
-		logger.debug('[Search:Resource] ZIP fetched', {
-			resource,
-			bytes: zipBuffer.byteLength,
-			elapsed: fetchTime - startTime
-		});
-
-		// Step 2: List files with unzipit
-		const { entries } = await unzip(zipBuffer);
+		// Step 1: Unzip directly from URL (streaming/lazy)
+		// unzipit handles fetching internally using Range requests
+		const { entries } = await unzip(zipUrl);
 		const unzipTime = Date.now();
 		logger.debug('[Search:Resource] ZIP listed', {
 			resource,
 			fileCount: Object.keys(entries).length,
-			elapsed: unzipTime - fetchTime
+			elapsed: unzipTime - startTime
 		});
 
-		// Step 3: Filter relevant files
+		// Step 2: Filter relevant files
 		const extensions = getFileExtensions(type);
 		const filePaths = filterFiles(entries, extensions, reference);
 		const filterTime = Date.now();
@@ -184,7 +141,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
-		// Step 4: Extract and index content
+		// Step 3: Extract and index content
 		const searchService = new SearchService();
 		const documents: SearchDocument[] = [];
 
@@ -192,18 +149,25 @@ export const POST: RequestHandler = async ({ request }) => {
 			const entry = entries[path];
 			if (!entry) continue;
 
-			const content = await extractContent(entry);
-			if (!content || content.trim().length === 0) {
-				continue;
-			}
+			try {
+				const content = await entry.text();
+				if (!content || content.trim().length === 0) {
+					continue;
+				}
 
-			documents.push({
-				id: `${resource}:${path}`,
-				content,
-				path,
-				resource,
-				type
-			});
+				documents.push({
+					id: `${resource}:${path}`,
+					content,
+					path,
+					resource,
+					type
+				});
+			} catch (e) {
+				logger.warn('[Search:Resource] Failed to extract file', {
+					path,
+					error: String(e)
+				});
+			}
 		}
 
 		await searchService.indexDocuments(documents);
@@ -232,13 +196,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			took_ms: searchTime - startTime,
 			hits: results,
 			stats: {
-				zipBytes: zipBuffer.byteLength,
+				zipBytes: 0, // Streaming mode, size unknown/irrelevant
 				totalFiles: Object.keys(entries).length,
 				filteredFiles: filePaths.length,
 				indexedDocs: documents.length,
 				timing: {
-					fetch: fetchTime - startTime,
-					unzip: unzipTime - fetchTime,
+					fetch: 0, // Streaming
+					unzip: unzipTime - startTime,
 					filter: filterTime - unzipTime,
 					index: indexTime - filterTime,
 					search: searchTime - indexTime
