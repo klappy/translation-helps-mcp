@@ -253,6 +253,21 @@ export const ToolFormatters = {
     }
     return "No translation academy content found";
   },
+
+  search: (data: any): string => {
+    if (!data.hits || !Array.isArray(data.hits) || data.hits.length === 0) {
+      return "No results found.";
+    }
+
+    return (
+      `Found ${data.hits.length} results across ${data.resourceCount || 0} resources (took ${data.took_ms || 0}ms):\n\n` +
+      data.hits
+        .map((hit: any) => {
+          return `**${hit.resource}** (${hit.type}) - ${hit.path} (Score: ${hit.score.toFixed(2)})\n> ${hit.preview.replace(/\n/g, " ")}`;
+        })
+        .join("\n\n")
+    );
+  },
 };
 
 // Tool registry with endpoint mappings
@@ -286,5 +301,10 @@ export const ToolRegistry = {
     endpoint: "/api/fetch-translation-academy",
     formatter: ToolFormatters.academy,
     requiredParams: [], // At least one of moduleId, path, or rcLink should be provided, but we don't enforce it here
+  },
+  search_biblical_resources: {
+    endpoint: "/api/search",
+    formatter: ToolFormatters.search,
+    requiredParams: ["query"],
   },
 };

@@ -185,20 +185,18 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							}
 						},
 						{
-							name: 'search_resources',
-							description: 'Search across multiple resource types for content',
+							name: 'search_biblical_resources',
+							description:
+								'Search biblical translation resources (scripture, notes, questions, words) using BM25 scoring algorithm',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									query: { type: 'string', description: 'Search query' },
-									resourceTypes: {
-										type: 'array',
-										items: { type: 'string' },
-										default: ['notes', 'questions', 'words']
-									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' },
-									limit: { type: 'number', default: 50, description: 'Maximum number of results' }
+									reference: { type: 'string', description: 'Optional Bible reference filter' },
+									limit: { type: 'number', default: 50 },
+									includeHelps: { type: 'boolean', default: true }
 								},
 								required: ['query']
 							}

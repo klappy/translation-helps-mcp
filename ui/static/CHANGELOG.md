@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.4.1](https://github.com/klappy/translation-helps-mcp/compare/v7.4.0...v7.4.1) (2025-11-22)
+
+### Features
+
+- register search endpoint in UI registry ([f1c71b6](https://github.com/klappy/translation-helps-mcp/commit/f1c71b6135afbc8aef6897d1d3d49697676c2383))
+
+### Bug Fixes
+
+- restore correct KV namespace ID after merge conflict ([e654f68](https://github.com/klappy/translation-helps-mcp/commit/e654f683994ccffdab90f831a89b659f48c0a057))
+
+### Documentation
+
+- clean up changelog for v7.4.0 release ([da742be](https://github.com/klappy/translation-helps-mcp/commit/da742be246b04c2d78a7fb1afc880f1b4d93dd4f))
+
 ## [7.4.0](https://github.com/klappy/translation-helps-mcp/compare/v7.1.3...v7.4.0) (2025-11-22)
 
 ### Features
