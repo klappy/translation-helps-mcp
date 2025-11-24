@@ -30,8 +30,144 @@ async function fetchTranslationNotes(params: Record<string, any>, request: Reque
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
+	let results: any[] = [];
+
+	// If no reference but has search, search across all books
+	if (!reference && search) {
+		console.log(
+			'[fetch-translation-notes-v2] No reference provided, searching all books for:',
+			search
+		);
+
+		const booksToSearch = [
+			'Genesis',
+			'Exodus',
+			'Leviticus',
+			'Numbers',
+			'Deuteronomy',
+			'Joshua',
+			'Judges',
+			'Ruth',
+			'1 Samuel',
+			'2 Samuel',
+			'1 Kings',
+			'2 Kings',
+			'1 Chronicles',
+			'2 Chronicles',
+			'Ezra',
+			'Nehemiah',
+			'Esther',
+			'Job',
+			'Psalms',
+			'Proverbs',
+			'Ecclesiastes',
+			'Song of Solomon',
+			'Isaiah',
+			'Jeremiah',
+			'Lamentations',
+			'Ezekiel',
+			'Daniel',
+			'Hosea',
+			'Joel',
+			'Amos',
+			'Obadiah',
+			'Jonah',
+			'Micah',
+			'Nahum',
+			'Habakkuk',
+			'Zephaniah',
+			'Haggai',
+			'Zechariah',
+			'Malachi',
+			'Matthew',
+			'Mark',
+			'Luke',
+			'John',
+			'Acts',
+			'Romans',
+			'1 Corinthians',
+			'2 Corinthians',
+			'Galatians',
+			'Ephesians',
+			'Philippians',
+			'Colossians',
+			'1 Thessalonians',
+			'2 Thessalonians',
+			'1 Timothy',
+			'2 Timothy',
+			'Titus',
+			'Philemon',
+			'Hebrews',
+			'James',
+			'1 Peter',
+			'2 Peter',
+			'1 John',
+			'2 John',
+			'3 John',
+			'Jude',
+			'Revelation'
+		];
+
+		const allNotes: any[] = [];
+		let booksSearched = 0;
+		let booksFailed = 0;
+
+		// Process books in batches
+		const batchSize = 10;
+		for (let i = 0; i < booksToSearch.length; i += batchSize) {
+			const batch = booksToSearch.slice(i, i + batchSize);
+
+			const batchPromises = batch.map(async (book) => {
+				try {
+					const bookNotes = await fetcher.fetchTranslationNotes(book, language, organization);
+					if (bookNotes && bookNotes.length > 0) {
+						// Search these notes
+						const matches = await applySearch(
+							bookNotes,
+							search,
+							'notes',
+							(item: any, index: number): SearchDocument => ({
+								id: `${book}-note-${index}`,
+								content: `${item.quote || ''} ${item.note || item.Note || item.text || ''}`.trim(),
+								path: item.Reference || book,
+								resource: 'translation-notes',
+								type: 'notes'
+							})
+						);
+						return { success: true, matches };
+					}
+					return { success: true, matches: [] };
+				} catch (error) {
+					console.warn(`[fetch-translation-notes-v2] Failed to fetch ${book}:`, error);
+					return { success: false, matches: [] };
+				}
+			});
+
+			const batchResults = await Promise.all(batchPromises);
+			for (const result of batchResults) {
+				if (result.success) {
+					booksSearched++;
+					allNotes.push(...result.matches);
+				} else {
+					booksFailed++;
+				}
+			}
+		}
+
+		console.log(
+			`[fetch-translation-notes-v2] Search complete: ${allNotes.length} matches from ${booksSearched} books`
+		);
+
+		return createTranslationHelpsResponse(allNotes, 'all', language, organization, 'tn', {
+			searchQuery: search,
+			searchApplied: true,
+			booksSearched,
+			booksFailed
+		});
+	}
+
 	// Fetch using unified fetcher
-	let results = await fetcher.fetchTranslationNotes(reference, language, organization);
+	results = await fetcher.fetchTranslationNotes(reference, language, organization);
 
 	if (!results || results.length === 0) {
 		throw new Error(`No translation notes found for ${reference}`);

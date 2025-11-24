@@ -307,8 +307,11 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 
 		// Process books in parallel batches for better performance
 		const batchSize = 10; // Process 10 books at a time
+		const startTime = Date.now();
+
 		for (let i = 0; i < booksToSearch.length; i += batchSize) {
 			const batch = booksToSearch.slice(i, i + batchSize);
+			const batchStartTime = Date.now();
 
 			console.log(
 				`[fetch-scripture-v2] Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(booksToSearch.length / batchSize)} (books ${i + 1}-${Math.min(i + batchSize, booksToSearch.length)})`
@@ -373,16 +376,18 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 				}
 			}
 
+			const batchEndTime = Date.now();
 			console.log(
-				`[fetch-scripture-v2] Batch complete: ${allSearchResults.length} total matches so far`
+				`[fetch-scripture-v2] Batch ${Math.floor(i / batchSize) + 1} complete in ${batchEndTime - batchStartTime}ms: ${allSearchResults.length} total matches so far`
 			);
 		}
 
 		// Sort all results by score (relevance)
 		allSearchResults.sort((a, b) => (b.score || 0) - (a.score || 0));
 
+		const totalTime = Date.now() - startTime;
 		console.log(
-			`[fetch-scripture-v2] Search complete: ${allSearchResults.length} total matches from ${booksSearched} books (${booksFailed} failed)`
+			`[fetch-scripture-v2] Search complete in ${totalTime}ms (${(totalTime / booksSearched).toFixed(0)}ms avg/book): ${allSearchResults.length} total matches from ${booksSearched} books (${booksFailed} failed)`
 		);
 
 		return {

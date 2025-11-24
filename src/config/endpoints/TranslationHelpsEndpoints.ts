@@ -20,9 +20,9 @@ import {
 const REFERENCE_PARAMS = {
   reference: {
     type: "string" as const,
-    required: true,
+    required: false, // Optional when search is provided
     description:
-      'Scripture reference (e.g., "John", "John 3", "John 3:16", "Genesis 1:1-5", "Psalm 23")',
+      'Scripture reference (e.g., "John", "John 3", "John 3:16", "Genesis 1:1-5", "Psalm 23"). Optional when using search parameter.',
     example: "John 3:16",
     pattern:
       "^[1-3]?\\s?[A-Za-z]+(?:\\s+\\d+(?::\\d+(?:-\\d+)?)?(?:-\\d+(?::\\d+)?)?)?$",
