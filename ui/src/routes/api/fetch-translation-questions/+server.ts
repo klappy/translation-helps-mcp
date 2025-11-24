@@ -10,7 +10,7 @@
 
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
-import { COMMON_PARAMS } from '$lib/commonValidators.js';
+import { COMMON_PARAMS, isValidReference } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { createTranslationHelpsResponse, addSearchMetadata } from '$lib/standardResponses.js';
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
@@ -97,7 +97,11 @@ export const GET = createSimpleEndpoint({
 
 	// Use common parameter validators + search
 	params: [
-		COMMON_PARAMS.reference,
+		{
+			name: 'reference',
+			required: false, // Optional when search is provided
+			validate: (value) => !value || isValidReference(value)
+		},
 		COMMON_PARAMS.language,
 		COMMON_PARAMS.organization,
 		COMMON_PARAMS.search

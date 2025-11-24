@@ -111,7 +111,7 @@ async function discoverResources(
 		logger.error('[Search:Discover] Discovery failed', {
 			error: error instanceof Error ? error.message : String(error)
 		});
-		return getFallbackResources(language, owner);
+		return getFallbackResources(language, owner, includeHelps);
 	}
 }
 
@@ -135,10 +135,14 @@ function mapSubjectToType(subject?: string): ResourceDescriptor['type'] {
 /**
  * Fallback resources if catalog fails
  */
-function getFallbackResources(language: string, owner: string): ResourceDescriptor[] {
+function getFallbackResources(
+	language: string,
+	owner: string,
+	includeHelps: boolean = true
+): ResourceDescriptor[] {
 	const baseUrl = `https://git.door43.org/${owner}`;
 
-	return [
+	const resources: ResourceDescriptor[] = [
 		{
 			name: `${language}_ult`,
 			type: 'bible',
@@ -152,22 +156,30 @@ function getFallbackResources(language: string, owner: string): ResourceDescript
 			zipUrl: `${baseUrl}/${language}_ust/archive/master.zip`,
 			owner,
 			language
-		},
-		{
-			name: `${language}_tn`,
-			type: 'notes',
-			zipUrl: `${baseUrl}/${language}_tn/archive/master.zip`,
-			owner,
-			language
-		},
-		{
-			name: `${language}_tw`,
-			type: 'words',
-			zipUrl: `${baseUrl}/${language}_tw/archive/master.zip`,
-			owner,
-			language
 		}
 	];
+
+	// Only include helps if requested
+	if (includeHelps) {
+		resources.push(
+			{
+				name: `${language}_tn`,
+				type: 'notes',
+				zipUrl: `${baseUrl}/${language}_tn/archive/master.zip`,
+				owner,
+				language
+			},
+			{
+				name: `${language}_tw`,
+				type: 'words',
+				zipUrl: `${baseUrl}/${language}_tw/archive/master.zip`,
+				owner,
+				language
+			}
+		);
+	}
+
+	return resources;
 }
 
 interface SearchResult {
@@ -205,7 +217,7 @@ async function fanOutSearch(
 					reference,
 					type: resource.type
 				}),
-				signal: AbortSignal.timeout(10000) // 10s timeout per resource (for ZIP fetch+process)
+				signal: AbortSignal.timeout(15000) // 15s timeout per resource (Bible ZIPs are large)
 			});
 
 			if (!response.ok) {

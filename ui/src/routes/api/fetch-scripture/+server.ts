@@ -219,64 +219,92 @@ function parseRawUSFMIntoVerses(
 async function fetchScripture(params: Record<string, any>, request: Request): Promise<any> {
 	const { reference, language, organization, resource: resourceParam, search } = params;
 
-	// If no reference but has search, redirect to search endpoint
-	if (!reference && search) {
-		// Build search URL relative to current origin
-		const url = new URL(request.url);
-		const searchUrl = `${url.origin}/api/search?query=${encodeURIComponent(search)}&language=${encodeURIComponent(language || 'en')}&organization=${encodeURIComponent(organization || 'unfoldingWord')}&limit=50`;
-
-		console.log('[fetch-scripture-v2] Redirecting to search endpoint:', searchUrl);
-
-		try {
-			const searchResponse = await fetch(searchUrl, {
-				headers: {
-					Accept: 'application/json',
-					'User-Agent': request.headers.get('user-agent') || 'fetch-scripture'
-				}
-			});
-
-			if (!searchResponse.ok) {
-				const errorText = await searchResponse.text();
-				console.error('[fetch-scripture-v2] Search failed:', searchResponse.status, errorText);
-				throw new Error(`Search failed: ${searchResponse.status} ${errorText}`);
-			}
-
-			const searchData = await searchResponse.json();
-			console.log('[fetch-scripture-v2] Search returned', searchData.hits?.length || 0, 'results');
-
-			// Transform search results to scripture format
-			return {
-				scripture: searchData.hits || [],
-				reference: 'all',
-				language: language || 'en',
-				organization: organization || 'unfoldingWord',
-				metadata: {
-					totalCount: searchData.hits?.length || 0,
-					searchQuery: search,
-					searchApplied: true,
-					took_ms: searchData.took_ms
-				}
-			};
-		} catch (error) {
-			console.error('[fetch-scripture-v2] Error calling search:', error);
-			throw error;
-		}
-	}
-
-	// Require reference if not searching
-	if (!reference) {
-		throw new Error('Reference is required when not searching');
-	}
-
-	// Create tracer for this request
+	// Create tracer and fetcher FIRST - needed by all code paths
 	const tracer = new EdgeXRayTracer(`scripture-${Date.now()}`, 'fetch-scripture');
-
-	// Initialize fetcher with request headers
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
 	// Get requested resources
 	const requestedResources = parseResources(resourceParam);
+
+	// If no reference but has search, search across all books
+	if (!reference && search) {
+		console.log('[fetch-scripture-v2] No reference provided, searching all books for:', search);
+
+		// Set a broad reference to search all books
+		// We'll fetch multiple books and search through them
+		const booksToSearch = ['Matthew', 'John', 'Romans', 'Genesis']; // Start with a few common books
+		const allResults: any[] = [];
+
+		for (const book of booksToSearch) {
+			try {
+				const bookResults = await fetcher.fetchScripture(
+					book,
+					language,
+					organization,
+					requestedResources
+				);
+
+				if (bookResults && bookResults.length > 0) {
+					// Parse book text into verses
+					for (const result of bookResults) {
+						const verses = parseUSFMIntoVerses(result.text, book, result.translation);
+						allResults.push(...verses);
+					}
+				}
+			} catch (error) {
+				console.warn(`[fetch-scripture-v2] Failed to fetch ${book}:`, error);
+				// Continue with other books
+			}
+		}
+
+		if (allResults.length === 0) {
+			return {
+				scripture: [],
+				reference: 'all',
+				language: language || 'en',
+				organization: organization || 'unfoldingWord',
+				metadata: {
+					totalCount: 0,
+					searchQuery: search,
+					searchApplied: true,
+					message: 'No scripture data available for search'
+				}
+			};
+		}
+
+		// Apply search to all collected verses
+		const searchResults = await applySearch(
+			allResults,
+			search,
+			'scripture',
+			(item: any, index: number): SearchDocument => ({
+				id: `${item.translation}-${item.reference}-${index}`,
+				content: item.text,
+				path: item.reference,
+				resource: item.translation,
+				type: 'bible'
+			})
+		);
+
+		return {
+			scripture: searchResults,
+			reference: 'all',
+			language: language || 'en',
+			organization: organization || 'unfoldingWord',
+			metadata: {
+				totalCount: searchResults.length,
+				searchQuery: search,
+				searchApplied: true,
+				searchedBooks: booksToSearch
+			}
+		};
+	}
+
+	// Require reference if not searching
+	if (!reference && !search) {
+		throw new Error('Reference is required when not searching');
+	}
 
 	// Parse reference to check if it's book-only or chapter-only
 	const parsedRef = parseReference(reference);
