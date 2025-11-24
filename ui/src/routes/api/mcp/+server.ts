@@ -62,26 +62,33 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						},
 						{
 							name: 'fetch_scripture',
-							description: 'Fetch Bible scripture text for a specific reference',
+							description:
+								'Fetch Bible scripture text for a specific reference. Supports optional search parameter to filter results.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									reference: { type: 'string', description: "Bible reference (e.g., 'John 3:16')" },
 									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
+									organization: { type: 'string', default: 'unfoldingWord' },
+									search: {
+										type: 'string',
+										description: 'Optional: Filter scripture by search query'
+									}
 								},
 								required: ['reference']
 							}
 						},
 						{
 							name: 'fetch_translation_notes',
-							description: 'Fetch translation notes for a specific Bible reference',
+							description:
+								'Fetch translation notes for a specific Bible reference. Supports optional search parameter to filter results.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									reference: { type: 'string', description: 'Bible reference' },
 									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
+									organization: { type: 'string', default: 'unfoldingWord' },
+									search: { type: 'string', description: 'Optional: Filter notes by search query' }
 								},
 								required: ['reference']
 							}
@@ -96,13 +103,18 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						},
 						{
 							name: 'fetch_translation_questions',
-							description: 'Fetch translation questions for a specific Bible reference',
+							description:
+								'Fetch translation questions for a specific Bible reference. Supports optional search parameter to filter results.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									reference: { type: 'string', description: 'Bible reference' },
 									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' }
+									organization: { type: 'string', default: 'unfoldingWord' },
+									search: {
+										type: 'string',
+										description: 'Optional: Filter questions by search query'
+									}
 								},
 								required: ['reference']
 							}

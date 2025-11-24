@@ -37,6 +37,12 @@ export interface StandardMetadata {
 	filteredBy?: Record<string, any>;
 	/** Circuit breaker state if applicable */
 	circuitBreakerState?: string;
+	/** Search query if search was performed */
+	searchQuery?: string;
+	/** Total matches before limiting if search was performed */
+	totalMatches?: number;
+	/** Search applied flag */
+	searchApplied?: boolean;
 }
 
 /**
@@ -161,5 +167,24 @@ export function createListResponse<T>(
 			totalCount: items.length,
 			...metadata
 		}
+	};
+}
+
+/**
+ * Add search metadata to a response
+ *
+ * Use this to enhance responses with search-specific metadata
+ * when a search query was applied to filter/rank results
+ */
+export function addSearchMetadata(
+	metadata: StandardMetadata,
+	query: string,
+	totalMatches: number
+): StandardMetadata {
+	return {
+		...metadata,
+		searchQuery: query,
+		totalMatches,
+		searchApplied: true
 	};
 }

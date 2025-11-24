@@ -8,6 +8,12 @@
  *
  * KISS: Simple fan-out pattern
  * Antifragile: Partial failures return available results
+ *
+ * USE THIS FOR: Broad discovery searches across all resources
+ *   Example: "Find everything about 'baptism'"
+ *
+ * USE ENDPOINT SEARCH PARAMS FOR: Focused searches within a reference
+ *   Example: "/api/fetch-scripture?reference=John 3&search=born again"
  */
 
 import type { RequestHandler } from '@sveltejs/kit';

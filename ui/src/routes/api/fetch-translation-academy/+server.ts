@@ -5,6 +5,7 @@
  *
  * Returns a specific translation academy module by ID or path.
  * Academy articles are linked from Translation Notes via RC links.
+ * Optional search parameter for filtering content relevance.
  */
 
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
@@ -13,6 +14,7 @@ import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 import { parseTranslationAcademyRCLink, isTranslationAcademyRCLink } from '$lib/rcLinkParser.js';
+import { SearchService } from '$lib/../../../src/services/SearchService.js';
 
 /**
  * Fetch a specific translation academy module
@@ -23,7 +25,14 @@ async function fetchTranslationAcademy(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { moduleId, path, rcLink, language = 'en', organization = 'unfoldingWord' } = params;
+	const {
+		moduleId,
+		path,
+		rcLink,
+		language = 'en',
+		organization = 'unfoldingWord',
+		search
+	} = params;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`ta-${Date.now()}`, 'fetch-translation-academy');
@@ -96,9 +105,8 @@ async function fetchTranslationAcademy(
 			title = titleMatch[1].trim();
 		}
 
-		// Return article directly (not wrapped in type/module structure)
-		// This makes it consistent with fetch-translation-word endpoint
-		return {
+		// Create article object
+		const article = {
 			moduleId: id,
 			title,
 			category,
@@ -110,9 +118,46 @@ async function fetchTranslationAcademy(
 			metadata: {
 				source: 'TA',
 				resourceType: 'ta',
-				license: 'CC BY-SA 4.0'
+				license: 'CC BY-SA 4.0',
+				...(search && { searchQuery: search, searchApplied: true })
 			}
 		};
+
+		// Apply search relevance check if search parameter provided
+		if (search && search.trim().length > 0) {
+			// Create ephemeral search service to check relevance
+			const searchService = new SearchService();
+			await searchService.indexDocuments([
+				{
+					id: id,
+					content: `${title} ${content}`,
+					path: module.path || '',
+					resource: 'translation-academy',
+					type: 'academy'
+				}
+			]);
+
+			const results = await searchService.search(search, { maxResults: 1 });
+
+			if (results.length === 0) {
+				// Search term not found in this article
+				throw new Error(
+					`Translation Academy module "${id}" does not match search query "${search}"`
+				);
+			}
+
+			// Add search score to metadata
+			article.metadata.searchScore = results[0].score;
+			article.metadata.matchedTerms = results[0].match.terms;
+
+			console.log(
+				`[fetch-translation-academy-v2] Search "${search}" matched "${id}" with score ${results[0].score}`
+			);
+		}
+
+		// Return article directly (not wrapped in type/module structure)
+		// This makes it consistent with fetch-translation-word endpoint
+		return article;
 	} else {
 		// We requested specific content but got empty results
 		const identifier = moduleId || finalPath || rcLink || 'unknown';
@@ -127,7 +172,7 @@ async function fetchTranslationAcademy(
 export const GET = createSimpleEndpoint({
 	name: 'fetch-translation-academy-v2',
 
-	// Use common parameter validators + moduleId, path, rcLink
+	// Use common parameter validators + moduleId, path, rcLink, search
 	params: [
 		{
 			name: 'moduleId',
@@ -151,13 +196,27 @@ export const GET = createSimpleEndpoint({
 				'RC link to TA module (e.g., "rc://*/ta/man/translate/figs-metaphor"). Supports wildcards for language, resource, and type segments.'
 		},
 		COMMON_PARAMS.language,
-		COMMON_PARAMS.organization
+		COMMON_PARAMS.organization,
+		COMMON_PARAMS.search
 	],
 
 	fetch: fetchTranslationAcademy,
 
 	// Use standard error handler
-	onError: createStandardErrorHandler(),
+	onError: createStandardErrorHandler({
+		'Translation Academy module not found': {
+			status: 404,
+			message: 'The requested Translation Academy module was not found in the repository.'
+		},
+		'does not match search query': {
+			status: 404,
+			message: 'The requested Translation Academy module does not contain the search query.'
+		},
+		'Invalid RC link format': {
+			status: 400,
+			message: 'Invalid RC link format. Expected: rc://*/ta/man/[category]/[moduleId]'
+		}
+	}),
 
 	// Support passthrough for markdown
 	supportsFormats: ['json', 'md', 'markdown']

@@ -22,10 +22,11 @@ const REFERENCE_PARAMS = {
     type: "string" as const,
     required: true,
     description:
-      'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23")',
+      'Scripture reference (e.g., "John", "John 3", "John 3:16", "Genesis 1:1-5", "Psalm 23")',
     example: "John 3:16",
-    pattern: "^[1-3]?\\s?[A-Za-z]+\\s+\\d+(?::\\d+(?:-\\d+)?)?$",
-    min: 3,
+    pattern:
+      "^[1-3]?\\s?[A-Za-z]+(?:\\s+\\d+(?::\\d+(?:-\\d+)?)?(?:-\\d+(?::\\d+)?)?)?$",
+    min: 2,
     max: 50,
   },
   language: {
@@ -43,6 +44,15 @@ const REFERENCE_PARAMS = {
     description: "Organization providing the translation helps",
     example: "unfoldingWord",
     options: ["unfoldingWord", "Door43-Catalog"],
+  },
+  search: {
+    type: "string" as const,
+    required: false,
+    description:
+      'Optional: Filter results by search query (e.g., "born", "believe"). Returns only items matching the query.',
+    example: "born",
+    min: 2,
+    max: 100,
   },
   format: {
     type: "string" as const,
@@ -85,6 +95,15 @@ const TERM_PARAMS = {
     pattern: "^rc://.*",
     min: 10,
     max: 200,
+  },
+  search: {
+    type: "string" as const,
+    required: false,
+    description:
+      'Optional: Validate article contains search query (e.g., "undeserved"). Returns 404 if no match.',
+    example: "undeserved",
+    min: 2,
+    max: 100,
   },
   language: REFERENCE_PARAMS.language,
   organization: REFERENCE_PARAMS.organization,
@@ -307,6 +326,15 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       pattern: "^rc://.*",
       min: 10,
       max: 200,
+    },
+    search: {
+      type: "string" as const,
+      required: false,
+      description:
+        'Optional: Validate module contains search query (e.g., "metaphor"). Returns 404 if no match.',
+      example: "metaphor",
+      min: 2,
+      max: 100,
     },
     language: REFERENCE_PARAMS.language,
     organization: REFERENCE_PARAMS.organization,

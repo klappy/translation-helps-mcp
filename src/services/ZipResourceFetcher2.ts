@@ -687,7 +687,15 @@ export class ZipResourceFetcher2 {
           t.name,
           r2Key,
         );
-        if (!fileContent) continue;
+        if (!fileContent) {
+          console.log(
+            `[getScripture] No file content for ${t.name} at ${t.ingredientPath}`,
+          );
+          continue;
+        }
+        console.log(
+          `[getScripture] Got file content for ${t.name}, length: ${fileContent.length}`,
+        );
 
         // Extract text
         let verseText: string;
@@ -701,7 +709,13 @@ export class ZipResourceFetcher2 {
           // Chapter range: verseEnd is being used to store end chapter
           verseText = this.extractChapterRangeFromUSFM(fileContent, reference);
         } else if (reference.chapter && !reference.verse) {
+          console.log(
+            `[getScripture] Extracting chapter ${reference.chapter} from ${t.name}`,
+          );
           verseText = this.extractVerseFromUSFM(fileContent, reference);
+          console.log(
+            `[getScripture] Extracted text length: ${verseText?.length || 0}`,
+          );
         } else {
           verseText = this.extractVerseFromUSFM(fileContent, reference);
         }
@@ -731,7 +745,14 @@ export class ZipResourceFetcher2 {
 
       return results;
     } catch (error) {
-      logger.error("Error in getScripture:", error as Error);
+      logger.error("Error in getScripture:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        reference,
+        language,
+        organization,
+        version,
+      });
       return [];
     }
   }
@@ -2809,7 +2830,9 @@ export class ZipResourceFetcher2 {
         const introMatch = ref.match(/^(\d+):intro$/);
         if (introMatch) {
           const introChapter = parseInt(introMatch[1]);
-          if (introChapter === reference.chapter) {
+          // If no chapter specified (book-only), include all chapter intros
+          // Otherwise, only include if it matches the requested chapter
+          if (!reference.chapter || introChapter === reference.chapter) {
             results.push(row as Record<string, string>);
             continue;
           }
@@ -2881,13 +2904,23 @@ export class ZipResourceFetcher2 {
 
         // Chapter-only: allow any verse in that chapter via chapter prefix match (works for both
         // "3:16" and "John 3:16")
-        if (
-          reference.chapter &&
-          (refCv.startsWith(`${reference.chapter}:`) ||
-            ref.includes(` ${reference.chapter}:`))
-        ) {
-          matchedRows++;
-          results.push(row as Record<string, string>);
+        // Book-only: if no chapter specified, include all notes (any chapter:verse pattern)
+        if (reference.chapter) {
+          // Chapter specified - match only that chapter
+          if (
+            refCv.startsWith(`${reference.chapter}:`) ||
+            ref.includes(` ${reference.chapter}:`)
+          ) {
+            matchedRows++;
+            results.push(row as Record<string, string>);
+          }
+        } else {
+          // Book-only - include all notes that have a chapter:verse pattern
+          // This matches any reference like "3:16", "John 3:16", etc.
+          if (matchCv) {
+            matchedRows++;
+            results.push(row as Record<string, string>);
+          }
         }
       }
 

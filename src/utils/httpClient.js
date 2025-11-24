@@ -1,5 +1,6 @@
 // Version is injected at build time or use a default
-const VERSION = process.env.npm_package_version || "5.2.0";
+// Use a static version for Cloudflare Workers compatibility
+const VERSION = "7.4.10";
 // Core MCP server identity
 const MCP_NAME = "Translation-Helps-MCP";
 const MCP_ROLE = "Bible translation resource aggregator for LLM tools";

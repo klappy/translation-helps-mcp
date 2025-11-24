@@ -82,9 +82,15 @@ export class UnifiedResourceFetcher {
 		// Fetch all requested resources
 		for (const resource of resources) {
 			try {
+				console.log(`[UnifiedResourceFetcher] Fetching ${resource} for ${reference}`);
 				const data = await this.zipFetcher.getScripture(parsed, language, organization, resource);
+				console.log(`[UnifiedResourceFetcher] Got ${data.length} results for ${resource}`);
 				results.push(...data);
 			} catch (error) {
+				console.error(
+					`[UnifiedResourceFetcher] Failed to fetch ${resource} for ${reference}:`,
+					error
+				);
 				logger.warn(`Failed to fetch ${resource} for ${reference}`, { error });
 				// Continue with other resources instead of failing completely
 			}

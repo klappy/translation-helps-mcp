@@ -51,6 +51,15 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       example: "all",
       options: ["ult", "ust", "t4t", "ueb", "all", "ult,ust", "t4t,ueb"],
     },
+    search: {
+      type: "string",
+      required: false,
+      description:
+        "Optional: Filter scripture by search query (e.g., 'love', 'believe'). Returns only verses matching the query.",
+      example: "love",
+      min: 2,
+      max: 100,
+    },
     format: {
       type: "string",
       required: false,

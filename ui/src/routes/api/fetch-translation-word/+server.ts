@@ -6,6 +6,7 @@
  * Retrieves detailed information about a specific translation word/term.
  * Supports RC links from TWL, direct terms, and paths.
  * Provides Table of Contents when no specific term is requested.
+ * Optional search parameter for filtering content relevance.
  */
 
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
@@ -15,6 +16,7 @@ import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js'
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 import { UnifiedResourceFetcher, type TWArticleResult } from '$lib/unifiedResourceFetcher.js';
 import { parseRCLink, extractTerm, isRCLink } from '$lib/rcLinkParser.js';
+import { SearchService } from '$lib/../../../src/services/SearchService.js';
 
 /**
  * Generate Table of Contents when no specific term is requested
@@ -58,7 +60,7 @@ function generateTableOfContents(language: string, organization: string) {
 }
 
 async function getTranslationWord(params: Record<string, any>, request: Request): Promise<any> {
-	const { term, path, rcLink, language = 'en', organization = 'unfoldingWord' } = params;
+	const { term, path, rcLink, language = 'en', organization = 'unfoldingWord', search } = params;
 
 	// Create tracer for this request (moved up for debug use)
 	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'fetch-translation-word');
@@ -242,9 +244,40 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 			metadata: {
 				source: 'TW',
 				resourceType: 'tw',
-				license: 'CC BY-SA 4.0'
+				license: 'CC BY-SA 4.0',
+				...(search && { searchQuery: search, searchApplied: true })
 			}
 		};
+
+		// Apply search relevance check if search parameter provided
+		if (search && search.trim().length > 0) {
+			// Create ephemeral search service to check relevance
+			const searchService = new SearchService();
+			await searchService.indexDocuments([
+				{
+					id: wordKey,
+					content: `${termTitle} ${definition} ${mdContent}`,
+					path: result.path || '',
+					resource: 'translation-words',
+					type: 'words'
+				}
+			]);
+
+			const results = await searchService.search(search, { maxResults: 1 });
+
+			if (results.length === 0) {
+				// Search term not found in this article
+				throw new Error(`Translation word "${wordKey}" does not match search query "${search}"`);
+			}
+
+			// Add search score to metadata
+			article.metadata.searchScore = results[0].score;
+			article.metadata.matchedTerms = results[0].match.terms;
+
+			console.log(
+				`[fetch-translation-word-v2] Search "${search}" matched "${wordKey}" with score ${results[0].score}`
+			);
+		}
 
 		return article;
 	} catch (error) {
@@ -286,7 +319,8 @@ export const GET = createSimpleEndpoint({
 			}
 		},
 		COMMON_PARAMS.language,
-		COMMON_PARAMS.organization
+		COMMON_PARAMS.organization,
+		COMMON_PARAMS.search
 	],
 
 	fetch: getTranslationWord,
@@ -300,6 +334,10 @@ export const GET = createSimpleEndpoint({
 		'Translation word not found': {
 			status: 404,
 			message: 'The requested translation word was not found in the source repository.'
+		},
+		'does not match search query': {
+			status: 404,
+			message: 'The requested translation word does not contain the search query.'
 		},
 		'Invalid RC link format': {
 			status: 400,

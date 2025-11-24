@@ -7,14 +7,25 @@
 
 /**
  * Validate a Bible reference string
+ * Supports: Book only, Book Chapter, Book Chapter:Verse, Book Chapter:Verse-Verse, Book Chapter-Chapter
+ * Examples: "John", "John 3", "John 3:16", "Genesis 1:1-5", "1 Corinthians 13", "Psalm 23"
  */
 export function isValidReference(value: string): boolean {
 	if (!value || typeof value !== 'string') return false;
 
-	// Basic pattern: Book Chapter:Verse
+	const trimmed = value.trim();
+
+	// Allow book-only references (e.g., "John", "Genesis")
+	// Must be at least 2 characters and contain letters
+	const bookOnlyPattern = /^[1-3]?\s?[A-Za-z]+$/;
+	if (bookOnlyPattern.test(trimmed)) {
+		return trimmed.length >= 2; // At least 2 chars for book name
+	}
+
+	// Pattern for references with chapter/verse: Book Chapter:Verse
 	// Examples: "John 3:16", "Genesis 1:1-5", "1 Corinthians 13", "Psalm 23"
-	const pattern = /^[1-3]?\s?[A-Za-z]+\s+\d+(?::\d+(?:-\d+)?)?$/;
-	return pattern.test(value.trim());
+	const withChapterPattern = /^[1-3]?\s?[A-Za-z]+\s+\d+(?::\d+(?:-\d+)?)?(?:-\d+(?::\d+)?)?$/;
+	return withChapterPattern.test(trimmed);
 }
 
 /**
@@ -103,6 +114,22 @@ export function isValidSubject(value: string): boolean {
 }
 
 /**
+ * Validate a search query string
+ */
+export function isValidSearchQuery(value: string): boolean {
+	if (!value || typeof value !== 'string') return false;
+
+	// Must be between 2 and 100 characters
+	const trimmed = value.trim();
+	if (trimmed.length < 2 || trimmed.length > 100) return false;
+
+	// Allow any Unicode characters, spaces, and common punctuation
+	// Just prevent extremely long queries or control characters
+	// eslint-disable-next-line no-control-regex
+	return !/[\x00-\x1F\x7F]/.test(trimmed);
+}
+
+/**
  * Common parameter schemas for reuse
  */
 export const COMMON_PARAMS = {
@@ -132,5 +159,12 @@ export const COMMON_PARAMS = {
 	subject: {
 		name: 'subject',
 		validate: isValidSubject
+	},
+
+	search: {
+		name: 'search',
+		required: false,
+		type: 'string',
+		validate: isValidSearchQuery
 	}
 };
