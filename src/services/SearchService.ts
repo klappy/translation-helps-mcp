@@ -112,12 +112,29 @@ export class SearchService {
         contextLength = 150,
       } = options;
 
-      // Execute search
-      const results = this.miniSearch.search(query, {
-        fuzzy,
+      // Execute search - first try exact match, then fuzzy
+      let results = this.miniSearch.search(query, {
+        fuzzy: false, // First, try exact match only
         prefix,
-        boost,
+        boost: { ...boost, content: (boost.content || 2) * 2 }, // Double boost for exact matches
       });
+
+      // If we don't have enough exact matches, add fuzzy results
+      if (results.length < maxResults) {
+        const fuzzyResults = this.miniSearch.search(query, {
+          fuzzy,
+          prefix,
+          boost,
+        });
+
+        // Add fuzzy results that aren't already in exact results
+        const exactIds = new Set(results.map((r) => r.id));
+        const uniqueFuzzy = fuzzyResults.filter((r) => !exactIds.has(r.id));
+        results = [...results, ...uniqueFuzzy];
+      }
+
+      // Sort by score (exact matches will naturally score higher)
+      results.sort((a, b) => b.score - a.score);
 
       // Limit results
       const limited = results.slice(0, maxResults);

@@ -30,9 +30,9 @@ export type ResourceType =
  */
 const RESOURCE_CONFIGS: Record<ResourceType, SearchOptions> = {
   scripture: {
-    fuzzy: 0.2,
+    fuzzy: 0.1, // Reduced from 0.2 - only allow 10% character difference
     prefix: true,
-    boost: { content: 3 }, // High boost for scripture text
+    boost: { content: 5 }, // Increased boost for exact matches
     maxResults: 100,
     contextLength: 200, // Show more context for scripture
   },

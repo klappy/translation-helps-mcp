@@ -232,30 +232,119 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		console.log('[fetch-scripture-v2] No reference provided, searching all books for:', search);
 
 		// Set a broad reference to search all books
-		// We'll fetch multiple books and search through them
-		const booksToSearch = ['Matthew', 'John', 'Romans', 'Genesis']; // Start with a few common books
+		// All 66 books of the Bible (in canonical order)
+		const booksToSearch = [
+			// Old Testament
+			'Genesis',
+			'Exodus',
+			'Leviticus',
+			'Numbers',
+			'Deuteronomy',
+			'Joshua',
+			'Judges',
+			'Ruth',
+			'1 Samuel',
+			'2 Samuel',
+			'1 Kings',
+			'2 Kings',
+			'1 Chronicles',
+			'2 Chronicles',
+			'Ezra',
+			'Nehemiah',
+			'Esther',
+			'Job',
+			'Psalms',
+			'Proverbs',
+			'Ecclesiastes',
+			'Song of Solomon',
+			'Isaiah',
+			'Jeremiah',
+			'Lamentations',
+			'Ezekiel',
+			'Daniel',
+			'Hosea',
+			'Joel',
+			'Amos',
+			'Obadiah',
+			'Jonah',
+			'Micah',
+			'Nahum',
+			'Habakkuk',
+			'Zephaniah',
+			'Haggai',
+			'Zechariah',
+			'Malachi',
+			// New Testament
+			'Matthew',
+			'Mark',
+			'Luke',
+			'John',
+			'Acts',
+			'Romans',
+			'1 Corinthians',
+			'2 Corinthians',
+			'Galatians',
+			'Ephesians',
+			'Philippians',
+			'Colossians',
+			'1 Thessalonians',
+			'2 Thessalonians',
+			'1 Timothy',
+			'2 Timothy',
+			'Titus',
+			'Philemon',
+			'Hebrews',
+			'James',
+			'1 Peter',
+			'2 Peter',
+			'1 John',
+			'2 John',
+			'3 John',
+			'Jude',
+			'Revelation'
+		];
 		const allResults: any[] = [];
 
-		for (const book of booksToSearch) {
-			try {
-				const bookResults = await fetcher.fetchScripture(
-					book,
-					language,
-					organization,
-					requestedResources
-				);
+		// Process books in parallel batches to improve performance
+		const batchSize = 5; // Process 5 books at a time
+		for (let i = 0; i < booksToSearch.length; i += batchSize) {
+			const batch = booksToSearch.slice(i, i + batchSize);
 
-				if (bookResults && bookResults.length > 0) {
-					// Parse book text into verses
-					for (const result of bookResults) {
-						const verses = parseUSFMIntoVerses(result.text, book, result.translation);
-						allResults.push(...verses);
+			const batchPromises = batch.map(async (book) => {
+				try {
+					const bookResults = await fetcher.fetchScripture(
+						book,
+						language,
+						organization,
+						requestedResources
+					);
+
+					if (bookResults && bookResults.length > 0) {
+						// Parse book text into verses
+						const verses: any[] = [];
+						for (const result of bookResults) {
+							const parsedVerses = parseUSFMIntoVerses(result.text, book, result.translation);
+							verses.push(...parsedVerses);
+						}
+						return verses;
 					}
+					return [];
+				} catch (error) {
+					console.warn(`[fetch-scripture-v2] Failed to fetch ${book}:`, error);
+					return []; // Return empty array on error
 				}
-			} catch (error) {
-				console.warn(`[fetch-scripture-v2] Failed to fetch ${book}:`, error);
-				// Continue with other books
+			});
+
+			// Wait for batch to complete
+			const batchResults = await Promise.all(batchPromises);
+			for (const verses of batchResults) {
+				allResults.push(...verses);
 			}
+
+			// Log progress
+			console.log(
+				`[fetch-scripture-v2] Processed ${Math.min(i + batchSize, booksToSearch.length)} of ${booksToSearch.length} books`
+			);
 		}
 
 		if (allResults.length === 0) {
@@ -273,9 +362,20 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 			};
 		}
 
-		// Apply search to all collected verses
+		// Limit the total verses to prevent memory issues
+		// (Bible has ~31,000 verses total)
+		const maxVersesToSearch = 5000; // Reasonable limit for in-memory search
+		const versesToSearch = allResults.slice(0, maxVersesToSearch);
+
+		if (allResults.length > maxVersesToSearch) {
+			console.log(
+				`[fetch-scripture-v2] Limited search to first ${maxVersesToSearch} verses out of ${allResults.length} total`
+			);
+		}
+
+		// Apply search to collected verses
 		const searchResults = await applySearch(
-			allResults,
+			versesToSearch,
 			search,
 			'scripture',
 			(item: any, index: number): SearchDocument => ({
