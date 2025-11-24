@@ -305,52 +305,77 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		let booksSearched = 0;
 		let booksFailed = 0;
 
-		// Process each book sequentially
-		for (const book of booksToSearch) {
-			try {
-				// Fetch the book
-				const bookResults = await fetcher.fetchScripture(
-					book,
-					language,
-					organization,
-					requestedResources
-				);
+		// Process books in parallel batches for better performance
+		const batchSize = 10; // Process 10 books at a time
+		for (let i = 0; i < booksToSearch.length; i += batchSize) {
+			const batch = booksToSearch.slice(i, i + batchSize);
 
-				if (bookResults && bookResults.length > 0) {
-					// Parse book into verses
-					const verses: any[] = [];
-					for (const result of bookResults) {
-						const parsedVerses = parseUSFMIntoVerses(result.text, book, result.translation);
-						verses.push(...parsedVerses);
+			console.log(
+				`[fetch-scripture-v2] Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(booksToSearch.length / batchSize)} (books ${i + 1}-${Math.min(i + batchSize, booksToSearch.length)})`
+			);
+
+			// Fetch and search each book in the batch in parallel
+			const batchPromises = batch.map(async (book) => {
+				try {
+					// Fetch the book
+					const bookResults = await fetcher.fetchScripture(
+						book,
+						language,
+						organization,
+						requestedResources
+					);
+
+					if (bookResults && bookResults.length > 0) {
+						// Parse book into verses
+						const verses: any[] = [];
+						for (const result of bookResults) {
+							const parsedVerses = parseUSFMIntoVerses(result.text, book, result.translation);
+							verses.push(...parsedVerses);
+						}
+
+						// Search this book's verses immediately
+						if (verses.length > 0) {
+							const bookMatches = await applySearch(
+								verses,
+								search,
+								'scripture',
+								(item: any, index: number): SearchDocument => ({
+									id: `${item.translation}-${book}-${item.reference}-${index}`,
+									content: item.text,
+									path: item.reference,
+									resource: item.translation,
+									type: 'bible'
+								})
+							);
+
+							console.log(`[fetch-scripture-v2] ${book}: found ${bookMatches.length} matches`);
+							return { success: true, matches: bookMatches };
+						}
 					}
 
-					// Search this book's verses
-					if (verses.length > 0) {
-						const bookMatches = await applySearch(
-							verses,
-							search,
-							'scripture',
-							(item: any, index: number): SearchDocument => ({
-								id: `${item.translation}-${book}-${item.reference}-${index}`,
-								content: item.text,
-								path: item.reference,
-								resource: item.translation,
-								type: 'bible'
-							})
-						);
-
-						// Add all matches from this book
-						allSearchResults.push(...bookMatches);
-						console.log(`[fetch-scripture-v2] ${book}: found ${bookMatches.length} matches`);
-					}
+					return { success: true, matches: [] };
+				} catch (error) {
+					console.warn(`[fetch-scripture-v2] Failed to search ${book}:`, error);
+					return { success: false, matches: [] };
 				}
+			});
 
-				booksSearched++;
-			} catch (error) {
-				console.warn(`[fetch-scripture-v2] Failed to search ${book}:`, error);
-				booksFailed++;
-				// Continue with next book
+			// Wait for batch to complete
+			const batchResults = await Promise.all(batchPromises);
+
+			// Collect results
+			for (const result of batchResults) {
+				if (result.success) {
+					booksSearched++;
+					allSearchResults.push(...result.matches);
+				} else {
+					booksFailed++;
+				}
 			}
+
+			console.log(
+				`[fetch-scripture-v2] Batch complete: ${allSearchResults.length} total matches so far`
+			);
 		}
 
 		// Sort all results by score (relevance)
