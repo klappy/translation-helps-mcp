@@ -121,7 +121,7 @@ export const ToolFormatters = {
 
         // Pattern 3: Markdown style links [text](rc://...)
         unescapedContent = unescapedContent.replace(
-          /\[([^\]]+)\]\(rc:\/\/[^\/]*\/ta\/man\/([^\)]+)\)/g,
+          /\[([^\]]+)\]\(rc:\/\/[^/]*\/ta\/man\/([^)]+)\)/g,
           (match, text, path) => {
             const articleId = path.replace(/^translate\//, "");
             return `📚 *[${text}](rc:${articleId})*`;
@@ -275,7 +275,7 @@ export const ToolRegistry = {
   fetch_scripture: {
     endpoint: "/api/fetch-scripture",
     formatter: ToolFormatters.scripture,
-    requiredParams: ["reference"],
+    requiredParams: [], // Reference is optional when search is provided
   },
   fetch_translation_notes: {
     endpoint: "/api/fetch-translation-notes",

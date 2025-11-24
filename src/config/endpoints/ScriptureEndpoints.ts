@@ -18,9 +18,9 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
   params: {
     reference: {
       type: "string",
-      required: true,
+      required: false, // Optional when search is provided
       description:
-        'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23", "John 3-4", "Matthew")',
+        'Scripture reference (e.g., "John 3:16", "Genesis 1:1-5", "Psalm 23", "John 3-4", "Matthew"). Optional when using search parameter.',
       example: "John 3:16",
       pattern: "^[1-3]?\\s?[A-Za-z]+.*$",
       min: 3,
