@@ -227,14 +227,12 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 	// Get requested resources
 	const requestedResources = parseResources(resourceParam);
 
-	// If no reference but has search, search across all books
+	// If no reference but has search, search across all books sequentially
 	if (!reference && search) {
 		console.log('[fetch-scripture-v2] No reference provided, searching all books for:', search);
 
-		// Set a broad reference to search all books
-		// All 66 books of the Bible (in canonical order)
+		// All 66 canonical books - fetcher will gracefully skip ones that don't exist
 		const booksToSearch = [
-			// Old Testament
 			'Genesis',
 			'Exodus',
 			'Leviticus',
@@ -274,7 +272,6 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 			'Haggai',
 			'Zechariah',
 			'Malachi',
-			// New Testament
 			'Matthew',
 			'Mark',
 			'Luke',
@@ -303,100 +300,78 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 			'Jude',
 			'Revelation'
 		];
-		const allResults: any[] = [];
 
-		// Process books in parallel batches to improve performance
-		const batchSize = 5; // Process 5 books at a time
-		for (let i = 0; i < booksToSearch.length; i += batchSize) {
-			const batch = booksToSearch.slice(i, i + batchSize);
+		const allSearchResults: any[] = [];
+		let booksSearched = 0;
+		let booksFailed = 0;
 
-			const batchPromises = batch.map(async (book) => {
-				try {
-					const bookResults = await fetcher.fetchScripture(
-						book,
-						language,
-						organization,
-						requestedResources
-					);
+		// Process each book sequentially
+		for (const book of booksToSearch) {
+			try {
+				// Fetch the book
+				const bookResults = await fetcher.fetchScripture(
+					book,
+					language,
+					organization,
+					requestedResources
+				);
 
-					if (bookResults && bookResults.length > 0) {
-						// Parse book text into verses
-						const verses: any[] = [];
-						for (const result of bookResults) {
-							const parsedVerses = parseUSFMIntoVerses(result.text, book, result.translation);
-							verses.push(...parsedVerses);
-						}
-						return verses;
+				if (bookResults && bookResults.length > 0) {
+					// Parse book into verses
+					const verses: any[] = [];
+					for (const result of bookResults) {
+						const parsedVerses = parseUSFMIntoVerses(result.text, book, result.translation);
+						verses.push(...parsedVerses);
 					}
-					return [];
-				} catch (error) {
-					console.warn(`[fetch-scripture-v2] Failed to fetch ${book}:`, error);
-					return []; // Return empty array on error
-				}
-			});
 
-			// Wait for batch to complete
-			const batchResults = await Promise.all(batchPromises);
-			for (const verses of batchResults) {
-				allResults.push(...verses);
+					// Search this book's verses
+					if (verses.length > 0) {
+						const bookMatches = await applySearch(
+							verses,
+							search,
+							'scripture',
+							(item: any, index: number): SearchDocument => ({
+								id: `${item.translation}-${book}-${item.reference}-${index}`,
+								content: item.text,
+								path: item.reference,
+								resource: item.translation,
+								type: 'bible'
+							})
+						);
+
+						// Add all matches from this book
+						allSearchResults.push(...bookMatches);
+						console.log(`[fetch-scripture-v2] ${book}: found ${bookMatches.length} matches`);
+					}
+				}
+
+				booksSearched++;
+			} catch (error) {
+				console.warn(`[fetch-scripture-v2] Failed to search ${book}:`, error);
+				booksFailed++;
+				// Continue with next book
 			}
-
-			// Log progress
-			console.log(
-				`[fetch-scripture-v2] Processed ${Math.min(i + batchSize, booksToSearch.length)} of ${booksToSearch.length} books`
-			);
 		}
 
-		if (allResults.length === 0) {
-			return {
-				scripture: [],
-				reference: 'all',
-				language: language || 'en',
-				organization: organization || 'unfoldingWord',
-				metadata: {
-					totalCount: 0,
-					searchQuery: search,
-					searchApplied: true,
-					message: 'No scripture data available for search'
-				}
-			};
-		}
+		// Sort all results by score (relevance)
+		allSearchResults.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-		// Limit the total verses to prevent memory issues
-		// (Bible has ~31,000 verses total)
-		const maxVersesToSearch = 5000; // Reasonable limit for in-memory search
-		const versesToSearch = allResults.slice(0, maxVersesToSearch);
-
-		if (allResults.length > maxVersesToSearch) {
-			console.log(
-				`[fetch-scripture-v2] Limited search to first ${maxVersesToSearch} verses out of ${allResults.length} total`
-			);
-		}
-
-		// Apply search to collected verses
-		const searchResults = await applySearch(
-			versesToSearch,
-			search,
-			'scripture',
-			(item: any, index: number): SearchDocument => ({
-				id: `${item.translation}-${item.reference}-${index}`,
-				content: item.text,
-				path: item.reference,
-				resource: item.translation,
-				type: 'bible'
-			})
+		console.log(
+			`[fetch-scripture-v2] Search complete: ${allSearchResults.length} total matches from ${booksSearched} books (${booksFailed} failed)`
 		);
 
 		return {
-			scripture: searchResults,
+			scripture: allSearchResults,
 			reference: 'all',
 			language: language || 'en',
 			organization: organization || 'unfoldingWord',
 			metadata: {
-				totalCount: searchResults.length,
+				totalCount: allSearchResults.length,
 				searchQuery: search,
 				searchApplied: true,
-				searchedBooks: booksToSearch
+				booksSearched,
+				booksFailed,
+				searchedBooks: booksToSearch.slice(0, booksSearched)
 			}
 		};
 	}

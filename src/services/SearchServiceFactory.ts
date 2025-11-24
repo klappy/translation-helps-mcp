@@ -33,8 +33,8 @@ const RESOURCE_CONFIGS: Record<ResourceType, SearchOptions> = {
     fuzzy: 0.1, // Reduced from 0.2 - only allow 10% character difference
     prefix: true,
     boost: { content: 5 }, // Increased boost for exact matches
-    maxResults: 100,
-    contextLength: 200, // Show more context for scripture
+    maxResults: 500, // Increase from 100 to handle all results
+    contextLength: 150, // Reduce from 200 to save memory
   },
 
   notes: {
