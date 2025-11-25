@@ -4,27 +4,22 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### [7.4.11](https://github.com/klappy/translation-helps-mcp/compare/v7.4.10...v7.4.11) (2025-11-25)
 
-### Features
-
-- add search-all-books support to notes and questions endpoints ([be8f053](https://github.com/klappy/translation-helps-mcp/commit/be8f053f8934e6027026c3299dd18210a55abc7c))
-- implement simple sequential search across all books ([6cc3509](https://github.com/klappy/translation-helps-mcp/commit/6cc350933f25fb66a84ffde37635b6f4a91fc5bd))
-- improve scripture search quality and coverage ([8fbb598](https://github.com/klappy/translation-helps-mcp/commit/8fbb598db0044043c43ac71d0e9cd14a2cf7b96a))
-- optimize with parallel batch processing (10 books at a time) ([9924ac4](https://github.com/klappy/translation-helps-mcp/commit/9924ac4d35e89125e134e42b1d3c821a7cd99302))
+**Search Performance and Reliability Improvements**
 
 ### Bug Fixes
 
-- make reference parameter optional in MCP tool configuration ([9a61718](https://github.com/klappy/translation-helps-mcp/commit/9a61718aaf8eed7f2e72f16ef624039f316301f6))
-- scripture search now properly handles book-level and no-reference searches ([11e64ac](https://github.com/klappy/translation-helps-mcp/commit/11e64ace482d06aba352d0a42dab532d12dfea9f))
-- scripture search now works without reference parameter ([9226e8e](https://github.com/klappy/translation-helps-mcp/commit/9226e8e05faf022082b39eba37244842583019b4))
-- **search:** pass includeHelps param to getFallbackResources ([3b4bc2a](https://github.com/klappy/translation-helps-mcp/commit/3b4bc2af655548e360d4aeb284c3fd18b9745d16))
-
-### Documentation
-
-- add search success log for v7.4.10 ([4abe8fa](https://github.com/klappy/translation-helps-mcp/commit/4abe8faa1b4d171e65b1cc5d66e3363195238d51))
+- **Scripture search now returns all results**: Fixed a critical bug where Bible-only searches (via `fetch-scripture?search=`) were returning only 8 results instead of the expected 50. The issue was caused by notes/words resources being incorrectly included when they should have been filtered out, then outranking Bible results.
 
 ### Performance
 
-- optimize search to meet 2.5s target with index caching ([abf6462](https://github.com/klappy/translation-helps-mcp/commit/abf6462516dedd93e55ed3929bc0cb2f48365fe2))
+- **Search optimization with R2-backed index caching**: Individual file indexes are now cached in R2, reducing repeated search times from 8-40s to under 2.5s
+- **Parallel batch processing**: Search now processes 10 books at a time for faster broad searches
+- **File list caching**: ZIP file listings are cached to avoid repeated unzipping operations
+
+### Features
+
+- **Search all books**: Scripture, notes, and questions endpoints now support searching across all 66 books without requiring a specific reference
+- **Improved search quality**: Better relevance ranking with fuzzy matching and prefix search support
 
 ### [7.4.10](https://github.com/klappy/translation-helps-mcp/compare/v7.4.9...v7.4.10) (2025-11-22)
 

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.4.11](https://github.com/klappy/translation-helps-mcp/compare/v7.4.10...v7.4.11) (2025-11-25)
+
+**Search Performance and Reliability Improvements**
+
+### Bug Fixes
+
+- **Scripture search now returns all results**: Fixed a critical bug where Bible-only searches (via `fetch-scripture?search=`) were returning only 8 results instead of the expected 50. The issue was caused by notes/words resources being incorrectly included when they should have been filtered out, then outranking Bible results.
+
+### Performance
+
+- **Search optimization with R2-backed index caching**: Individual file indexes are now cached in R2, reducing repeated search times from 8-40s to under 2.5s
+- **Parallel batch processing**: Search now processes 10 books at a time for faster broad searches
+- **File list caching**: ZIP file listings are cached to avoid repeated unzipping operations
+
+### Features
+
+- **Search all books**: Scripture, notes, and questions endpoints now support searching across all 66 books without requiring a specific reference
+- **Improved search quality**: Better relevance ranking with fuzzy matching and prefix search support
+
 ### [7.4.10](https://github.com/klappy/translation-helps-mcp/compare/v7.4.9...v7.4.10) (2025-11-22)
 
 ### [7.4.9](https://github.com/klappy/translation-helps-mcp/compare/v7.4.8...v7.4.9) (2025-11-22)
