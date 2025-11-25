@@ -70,9 +70,10 @@ async function discoverResources(
 		if (!response.success || !response.data) {
 			logger.warn('[Search:Discover] Catalog query failed, using fallbacks', {
 				language,
-				owner
+				owner,
+				includeHelps
 			});
-			return getFallbackResources(language, owner);
+			return getFallbackResources(language, owner, includeHelps);
 		}
 
 		const resources: ResourceDescriptor[] = [];
@@ -103,6 +104,8 @@ async function discoverResources(
 
 		logger.info('[Search:Discover] Resources discovered', {
 			count: resources.length,
+			includeHelps,
+			resourceNames: resources.map((r) => `${r.name}(${r.type})`),
 			elapsed: Date.now() - startTime
 		});
 

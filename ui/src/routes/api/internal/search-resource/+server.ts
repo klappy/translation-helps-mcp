@@ -2,27 +2,27 @@
  * Per-Resource Search Endpoint
  *
  * CPU-bound worker that processes a single resource:
- * 1. Fetches ZIP (using shared cache infrastructure)
- * 2. Lists/filters files with fflate
- * 3. Indexes content with MiniSearch
+ * 1. Gets file list (R2 cached - may skip ZIP entirely!)
+ * 2. Filters files by extension/reference
+ * 3. Gets indexed files with MiniSearch (R2-cached per-file - may skip ZIP!)
  * 4. Returns ranked hits
  *
  * KISS: One resource, one isolate
- * Performance: <2.5s with cache, sharing cache with all endpoints
+ * DRY: Uses ZipResourceFetcher2 for all caching (ZIP, files, file lists, AND indexes)
+ * Performance: <100ms with all caches warm, sharing cache with all endpoints
  */
 
+import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
+import { r2KeyFromUrl } from '$lib/../../../src/functions/r2-keys.js';
+import { type SearchDocument } from '$lib/../../../src/services/SearchService.js';
+import {
+	ZipResourceFetcher2,
+	type FileWithIndex
+} from '$lib/../../../src/services/ZipResourceFetcher2.js';
+import { logger } from '$lib/../../../src/utils/logger.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import * as fflate from 'fflate';
 import MiniSearch from 'minisearch';
-import { type SearchDocument } from '$lib/../../../src/services/SearchService.js';
-import { ZipResourceFetcher2 } from '$lib/../../../src/services/ZipResourceFetcher2.js';
-import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
-import { logger } from '$lib/../../../src/utils/logger.js';
-
-// In-memory index cache (survives within same worker instance)
-const INDEX_CACHE = new Map<string, { index: string; timestamp: number; docCount: number }>();
-const INDEX_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface ResourceSearchRequest {
 	resource: string;
@@ -371,30 +371,31 @@ function filterFiles(
 		return filtered.slice(0, 500);
 	}
 
-	// For broad searches on Bible resources, limit to priority books + some others
-	// This keeps indexing time manageable while covering common searches
-	if (resourceType === 'bible') {
-		// Priority books first, then fill with others up to limit
-		const maxBooks = 15; // ~15 books keeps indexing under 2s
-		const result = [...priorityFiles.slice(0, maxBooks)];
-		if (result.length < maxBooks) {
-			result.push(...otherFiles.slice(0, maxBooks - result.length));
-		}
-		return result;
-	}
-
-	// For non-Bible resources (notes, words, etc.), return all but capped
-	return [...priorityFiles, ...otherFiles].slice(0, 100);
+	// For broad searches, return ALL files (priority first, then others)
+	// Caching handles performance - don't artificially limit results
+	return [...priorityFiles, ...otherFiles];
 }
 
 /**
  * POST /internal/search-resource
  * Per-resource search worker
  */
-export const POST: RequestHandler = async ({ request, platform: _platform }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	const startTime = Date.now();
 
 	try {
+		// Initialize R2 env from platform bindings (required for index caching)
+		const r2 = (platform as any)?.env?.ZIP_FILES;
+		const caches: CacheStorage | undefined = (platform as any)?.caches;
+		if (r2 || caches) {
+			const { initializeR2Env } = await import('$lib/../../../src/functions/r2-env.js');
+			initializeR2Env(r2, caches);
+			logger.debug('[Search:Resource] R2 env initialized', {
+				hasBucket: !!r2,
+				hasCaches: !!caches
+			});
+		}
+
 		// Parse request
 		const body: ResourceSearchRequest = await request.json();
 		const { resource, zipUrl, query, reference, type, owner: _owner } = body;
@@ -416,37 +417,48 @@ export const POST: RequestHandler = async ({ request, platform: _platform }) => 
 		const tracer = new EdgeXRayTracer(`search-${Date.now()}`, 'search-resource');
 		const zipFetcher = new ZipResourceFetcher2(tracer);
 
-		// Get ZIP from cache or download (uses R2/KV caching)
-		const zipData = await zipFetcher.getOrDownloadZip(parsed.org, parsed.repo, parsed.ref, zipUrl);
+		// Generate zipCacheKey FIRST for R2 lookups
+		const { key: zipCacheKey } = r2KeyFromUrl(zipUrl);
 
-		if (!zipData) {
-			throw new Error(`Failed to get ZIP for ${resource} from ${zipUrl}`);
+		// LAZY ZIP LOADING: Only fetch/unzip if caches miss
+		let zipData: Uint8Array | null = null;
+		let fetchTime = startTime;
+		let unzipTime = startTime;
+		let fileListFromCache = false;
+
+		// Step 2: Get file list with caching (may skip ZIP entirely!)
+		const fileListResult = await zipFetcher.getZipFileList(
+			parsed.org,
+			parsed.repo,
+			parsed.ref,
+			zipUrl,
+			zipCacheKey
+		);
+
+		fileListFromCache = fileListResult.fromCache;
+		if (fileListResult.zipData) {
+			zipData = fileListResult.zipData; // Reuse ZIP if we had to unzip
 		}
 
-		const fetchTime = Date.now();
-		logger.debug('[Search:Resource] ZIP fetched (cached)', {
-			resource,
-			bytes: zipData.byteLength,
-			elapsed: fetchTime - startTime,
-			cacheKey: `${parsed.org}/${parsed.repo}/${parsed.ref}`
-		});
-
-		// Step 2: Unzip with fflate
-		const entries = fflate.unzipSync(zipData);
-		const unzipTime = Date.now();
-		logger.debug('[Search:Resource] ZIP unzipped', {
-			resource,
-			fileCount: Object.keys(entries).length,
-			elapsed: unzipTime - fetchTime
-		});
-
-		// Step 3: Filter relevant files
+		// Filter to relevant files
 		const extensions = getFileExtensions(type);
-		const filePaths = filterFiles(entries, extensions, reference, type);
+
+		// Convert file list to minimal entries for filterFiles (only need keys)
+		const fileEntries: Record<string, Uint8Array> = {};
+		for (const path of fileListResult.files) {
+			fileEntries[path] = new Uint8Array(0); // Dummy - filterFiles only uses keys
+		}
+		const filePaths = filterFiles(fileEntries, extensions, reference, type);
+
+		if (!fileListFromCache) {
+			fetchTime = Date.now(); // Approximate - ZIP was fetched and unzipped
+			unzipTime = Date.now();
+		}
 		const filterTime = Date.now();
 		logger.debug('[Search:Resource] Files filtered', {
 			resource,
-			totalFiles: Object.keys(entries).length,
+			fileListFromCache,
+			totalFiles: fileListResult.files.length,
 			filteredFiles: filePaths.length,
 			elapsed: filterTime - unzipTime
 		});
@@ -459,125 +471,116 @@ export const POST: RequestHandler = async ({ request, platform: _platform }) => 
 			});
 		}
 
-		// Step 4: Extract and index content (with caching)
-		// Generate cache key based on resource + ref + type + file count
-		const indexCacheKey = `${resource}:${parsed.ref}:${type}:${reference || 'all'}:${filePaths.length}`;
-		const cachedIndex = INDEX_CACHE.get(indexCacheKey);
-		const now = Date.now();
+		// Step 3: Get indexed files with LAZY ZIP loading
+		// If indexes are cached in R2, the ZIP won't be touched at all!
+		const BATCH_SIZE = 10;
+		const indexedFiles: (FileWithIndex | null)[] = [];
+		let cacheHits = 0;
+		let cacheBuilds = 0;
+		let zipSkipped = fileListFromCache; // True if we got file list from cache
 
-		let miniSearch: MiniSearch<SearchDocument>;
-		let indexSource = 'built';
+		// Lazy ZIP provider - reuses ZIP data if we already have it from file list
+		const getZipData = async (): Promise<Uint8Array | null> => {
+			if (zipData) return zipData;
 
-		if (cachedIndex && now - cachedIndex.timestamp < INDEX_CACHE_TTL) {
-			// Use cached index
-			try {
-				miniSearch = MiniSearch.loadJSON(cachedIndex.index, {
-					fields: ['content'],
-					storeFields: ['path', 'resource', 'type', 'content']
-				});
-				indexSource = 'cache';
-				logger.debug('[Search:Resource] Index loaded from cache', {
-					resource,
-					cacheKey: indexCacheKey,
-					docCount: cachedIndex.docCount,
-					elapsed: Date.now() - filterTime
-				});
-			} catch (e) {
-				// Cache corrupted, rebuild
-				logger.warn('[Search:Resource] Failed to load cached index, rebuilding', {
-					error: String(e)
-				});
-				INDEX_CACHE.delete(indexCacheKey);
-				miniSearch = new MiniSearch({
-					fields: ['content'],
-					storeFields: ['path', 'resource', 'type', 'content'],
-					searchOptions: {
-						fuzzy: 0.2,
-						prefix: true,
-						boost: { content: 2 },
-						combineWith: 'AND'
-					}
-				});
+			zipData = await zipFetcher.getOrDownloadZip(parsed.org, parsed.repo, parsed.ref, zipUrl);
+			if (!zipData) {
+				throw new Error(`Failed to get ZIP for ${resource} from ${zipUrl}`);
 			}
-		} else {
-			// Build new index
-			miniSearch = new MiniSearch({
-				fields: ['content'],
-				storeFields: ['path', 'resource', 'type', 'content'],
-				searchOptions: {
-					fuzzy: 0.2,
-					prefix: true,
-					boost: { content: 2 },
-					combineWith: 'AND'
-				}
+			fetchTime = Date.now();
+			logger.debug('[Search:Resource] ZIP fetched (on-demand for content)', {
+				resource,
+				bytes: zipData.byteLength,
+				elapsed: fetchTime - startTime
 			});
+			return zipData;
+		};
+
+		for (let i = 0; i < filePaths.length; i += BATCH_SIZE) {
+			const batch = filePaths.slice(i, i + BATCH_SIZE);
+			const batchResults = await Promise.all(
+				batch.map((filePath) =>
+					zipFetcher.getIndexedFile(
+						filePath,
+						resource,
+						zipCacheKey,
+						{ buildIndex: true, resourceType: type === 'obs' ? 'bible' : type },
+						// Lazy provider - returns ZIP data only if needed
+						async () => {
+							zipSkipped = false;
+							return await getZipData();
+						}
+					)
+				)
+			);
+			indexedFiles.push(...batchResults);
 		}
 
-		// If we need to build the index (not from cache)
-		let documentCount = 0;
-		if (indexSource !== 'cache') {
-			const documents: SearchDocument[] = [];
-			const decoder = new TextDecoder('utf-8');
+		logger.debug('[Search:Resource] Index fetch complete', {
+			resource,
+			zipSkipped,
+			message: zipSkipped
+				? 'All indexes from cache - ZIP not needed for content!'
+				: 'ZIP was used for some files'
+		});
 
-			for (const path of filePaths) {
-				const entryData = entries[path];
-				if (!entryData) continue;
+		// Count cache stats and collect documents
+		const allDocuments: SearchDocument[] = [];
+		let fileIndex = 0;
+		for (const result of indexedFiles) {
+			if (!result) continue;
 
-				try {
-					const content = decoder.decode(entryData);
-					if (!content || content.trim().length === 0) {
-						continue;
+			if (result.indexSource === 'cache') {
+				cacheHits++;
+			} else if (result.indexSource === 'built') {
+				cacheBuilds++;
+			}
+
+			// Extract documents from the index to merge into master search
+			if (result.index) {
+				// Get all indexed document IDs
+				const indexJson = result.index.toJSON() as any;
+				if (indexJson.storedFields) {
+					for (const [docId, storedFields] of Object.entries(indexJson.storedFields)) {
+						const fields = storedFields as any;
+						// Use unique ID: combine fileIndex with docId to avoid duplicates across files
+						const uniqueId = `${fileIndex}-${docId}`;
+						allDocuments.push({
+							id: uniqueId,
+							content: fields.content || '',
+							path: fields.path || '',
+							resource: fields.resource || resource,
+							type: fields.type || type
+						});
 					}
-
-					documents.push({
-						id: `${resource}:${path}`,
-						content,
-						path,
-						resource,
-						type
-					});
-				} catch (e) {
-					logger.warn('[Search:Resource] Failed to decode file', {
-						path,
-						error: String(e)
-					});
 				}
 			}
+			fileIndex++;
+		}
 
-			// Index documents
-			if (documents.length > 0) {
-				miniSearch.addAll(documents);
-				documentCount = documents.length;
-
-				// Cache the index for future requests
-				try {
-					const serialized = JSON.stringify(miniSearch.toJSON());
-					INDEX_CACHE.set(indexCacheKey, {
-						index: serialized,
-						timestamp: now,
-						docCount: documentCount
-					});
-					logger.debug('[Search:Resource] Index cached', {
-						resource,
-						cacheKey: indexCacheKey,
-						docCount: documentCount,
-						indexSize: serialized.length
-					});
-				} catch (e) {
-					logger.warn('[Search:Resource] Failed to cache index', {
-						error: String(e)
-					});
-				}
+		// Create master index from all documents
+		const miniSearch = new MiniSearch<SearchDocument>({
+			fields: ['content'],
+			storeFields: ['path', 'resource', 'type', 'content'],
+			searchOptions: {
+				fuzzy: 0.2,
+				prefix: true,
+				boost: { content: 2 },
+				combineWith: 'AND'
 			}
-		} else {
-			documentCount = cachedIndex?.docCount || 0;
+		});
+
+		if (allDocuments.length > 0) {
+			miniSearch.addAll(allDocuments);
 		}
 
 		const indexTime = Date.now();
-		logger.info('[Search:Resource] Documents indexed', {
+		logger.info('[Search:Resource] Per-file indexes loaded/built', {
 			resource,
-			documentCount,
-			source: indexSource,
+			fileCount: filePaths.length,
+			documentCount: allDocuments.length,
+			cacheHits,
+			cacheBuilds,
 			elapsed: indexTime - filterTime
 		});
 
@@ -641,6 +644,7 @@ export const POST: RequestHandler = async ({ request, platform: _platform }) => 
 		});
 
 		// Return results
+		const indexSource = cacheHits > 0 ? 'r2-cache' : 'built';
 		const response = {
 			resource,
 			type,
@@ -648,11 +652,17 @@ export const POST: RequestHandler = async ({ request, platform: _platform }) => 
 			took_ms: searchTime - startTime,
 			hits: results,
 			stats: {
-				zipBytes: zipData.byteLength,
-				totalFiles: Object.keys(entries).length,
+				zipBytes: zipData?.byteLength ?? 0,
+				totalFiles: fileListResult.files.length,
 				filteredFiles: filePaths.length,
-				indexedDocs: documentCount,
+				indexedDocs: allDocuments.length,
 				indexSource,
+				zipSkipped,
+				fileListFromCache,
+				cacheStats: {
+					hits: cacheHits,
+					builds: cacheBuilds
+				},
 				timing: {
 					fetch: fetchTime - startTime,
 					unzip: unzipTime - fetchTime,
@@ -667,7 +677,9 @@ export const POST: RequestHandler = async ({ request, platform: _platform }) => 
 			resource,
 			took_ms: response.took_ms,
 			hitCount: results.length,
-			indexSource
+			indexSource,
+			cacheHits,
+			cacheBuilds
 		});
 
 		return json(response);

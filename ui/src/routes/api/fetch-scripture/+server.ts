@@ -227,183 +227,69 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 	// Get requested resources
 	const requestedResources = parseResources(resourceParam);
 
-	// If no reference but has search, search across all books sequentially
+	// If no reference but has search, delegate to /api/search (DRY - uses cached indexes)
 	if (!reference && search) {
-		console.log('[fetch-scripture-v2] No reference provided, searching all books for:', search);
-
-		// All 66 canonical books - fetcher will gracefully skip ones that don't exist
-		const booksToSearch = [
-			'Genesis',
-			'Exodus',
-			'Leviticus',
-			'Numbers',
-			'Deuteronomy',
-			'Joshua',
-			'Judges',
-			'Ruth',
-			'1 Samuel',
-			'2 Samuel',
-			'1 Kings',
-			'2 Kings',
-			'1 Chronicles',
-			'2 Chronicles',
-			'Ezra',
-			'Nehemiah',
-			'Esther',
-			'Job',
-			'Psalms',
-			'Proverbs',
-			'Ecclesiastes',
-			'Song of Solomon',
-			'Isaiah',
-			'Jeremiah',
-			'Lamentations',
-			'Ezekiel',
-			'Daniel',
-			'Hosea',
-			'Joel',
-			'Amos',
-			'Obadiah',
-			'Jonah',
-			'Micah',
-			'Nahum',
-			'Habakkuk',
-			'Zephaniah',
-			'Haggai',
-			'Zechariah',
-			'Malachi',
-			'Matthew',
-			'Mark',
-			'Luke',
-			'John',
-			'Acts',
-			'Romans',
-			'1 Corinthians',
-			'2 Corinthians',
-			'Galatians',
-			'Ephesians',
-			'Philippians',
-			'Colossians',
-			'1 Thessalonians',
-			'2 Thessalonians',
-			'1 Timothy',
-			'2 Timothy',
-			'Titus',
-			'Philemon',
-			'Hebrews',
-			'James',
-			'1 Peter',
-			'2 Peter',
-			'1 John',
-			'2 John',
-			'3 John',
-			'Jude',
-			'Revelation'
-		];
-
-		const allSearchResults: any[] = [];
-		let booksSearched = 0;
-		let booksFailed = 0;
-
-		// Process books in parallel batches for better performance
-		const batchSize = 10; // Process 10 books at a time
-		const startTime = Date.now();
-
-		for (let i = 0; i < booksToSearch.length; i += batchSize) {
-			const batch = booksToSearch.slice(i, i + batchSize);
-			const batchStartTime = Date.now();
-
-			console.log(
-				`[fetch-scripture-v2] Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(booksToSearch.length / batchSize)} (books ${i + 1}-${Math.min(i + batchSize, booksToSearch.length)})`
-			);
-
-			// Fetch and search each book in the batch in parallel
-			const batchPromises = batch.map(async (book) => {
-				try {
-					// Fetch the book
-					const bookResults = await fetcher.fetchScripture(
-						book,
-						language,
-						organization,
-						requestedResources
-					);
-
-					if (bookResults && bookResults.length > 0) {
-						// Parse book into verses
-						const verses: any[] = [];
-						for (const result of bookResults) {
-							const parsedVerses = parseUSFMIntoVerses(result.text, book, result.translation);
-							verses.push(...parsedVerses);
-						}
-
-						// Search this book's verses immediately
-						if (verses.length > 0) {
-							const bookMatches = await applySearch(
-								verses,
-								search,
-								'scripture',
-								(item: any, index: number): SearchDocument => ({
-									id: `${item.translation}-${book}-${item.reference}-${index}`,
-									content: item.text,
-									path: item.reference,
-									resource: item.translation,
-									type: 'bible'
-								})
-							);
-
-							console.log(`[fetch-scripture-v2] ${book}: found ${bookMatches.length} matches`);
-							return { success: true, matches: bookMatches };
-						}
-					}
-
-					return { success: true, matches: [] };
-				} catch (error) {
-					console.warn(`[fetch-scripture-v2] Failed to search ${book}:`, error);
-					return { success: false, matches: [] };
-				}
-			});
-
-			// Wait for batch to complete
-			const batchResults = await Promise.all(batchPromises);
-
-			// Collect results
-			for (const result of batchResults) {
-				if (result.success) {
-					booksSearched++;
-					allSearchResults.push(...result.matches);
-				} else {
-					booksFailed++;
-				}
-			}
-
-			const batchEndTime = Date.now();
-			console.log(
-				`[fetch-scripture-v2] Batch ${Math.floor(i / batchSize) + 1} complete in ${batchEndTime - batchStartTime}ms: ${allSearchResults.length} total matches so far`
-			);
-		}
-
-		// Sort all results by score (relevance)
-		allSearchResults.sort((a, b) => (b.score || 0) - (a.score || 0));
-
-		const totalTime = Date.now() - startTime;
 		console.log(
-			`[fetch-scripture-v2] Search complete in ${totalTime}ms (${(totalTime / booksSearched).toFixed(0)}ms avg/book): ${allSearchResults.length} total matches from ${booksSearched} books (${booksFailed} failed)`
+			'[fetch-scripture-v2] No reference provided, delegating to /api/search for:',
+			search
 		);
 
-		return {
-			scripture: allSearchResults,
-			reference: 'all',
-			language: language || 'en',
-			organization: organization || 'unfoldingWord',
-			metadata: {
-				totalCount: allSearchResults.length,
-				searchQuery: search,
-				searchApplied: true,
-				booksSearched,
-				booksFailed,
-				searchedBooks: booksToSearch.slice(0, booksSearched)
+		const startTime = Date.now();
+
+		// Build the search URL - use internal fetch to the search endpoint
+		const searchUrl = new URL('/api/search', request.url);
+		searchUrl.searchParams.set('query', search);
+		searchUrl.searchParams.set('language', language || 'en');
+		searchUrl.searchParams.set('owner', organization || 'unfoldingWord');
+		// Only search Bible resources for scripture endpoint
+		searchUrl.searchParams.set('includeHelps', 'false');
+
+		try {
+			// Call the search endpoint internally (shares cached indexes!)
+			const searchResponse = await fetch(searchUrl.toString(), {
+				headers: request.headers
+			});
+
+			if (!searchResponse.ok) {
+				throw new Error(`Search endpoint returned ${searchResponse.status}`);
 			}
-		};
+
+			const searchData = await searchResponse.json();
+			const totalTime = Date.now() - startTime;
+
+			console.log(
+				`[fetch-scripture-v2] Search via /api/search complete in ${totalTime}ms: ${searchData.hits?.length || 0} hits`
+			);
+
+			// Transform search results to scripture format
+			const scriptureResults = (searchData.hits || [])
+				.filter((hit: any) => hit.type === 'bible')
+				.map((hit: any) => ({
+					text: hit.preview?.replace(/\*\*/g, '') || hit.content || '',
+					reference: hit.path || '',
+					translation: hit.resource || '',
+					searchScore: hit.score,
+					matchedTerms: hit.match?.terms
+				}));
+
+			return {
+				scripture: scriptureResults,
+				reference: 'all',
+				language: language || 'en',
+				organization: organization || 'unfoldingWord',
+				metadata: {
+					totalCount: scriptureResults.length,
+					searchQuery: search,
+					searchApplied: true,
+					searchTime: totalTime,
+					delegatedTo: '/api/search',
+					resourcesSearched: searchData.resourceCount || 0
+				}
+			};
+		} catch (error) {
+			console.error('[fetch-scripture-v2] Failed to delegate to /api/search:', error);
+			throw new Error(`Search failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
 	}
 
 	// Require reference if not searching
