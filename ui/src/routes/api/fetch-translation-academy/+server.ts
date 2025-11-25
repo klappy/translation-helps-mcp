@@ -14,7 +14,7 @@ import { COMMON_PARAMS } from '$lib/commonValidators.js';
 import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js';
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 import { parseTranslationAcademyRCLink, isTranslationAcademyRCLink } from '$lib/rcLinkParser.js';
-import { SearchService } from '$lib/../../../src/services/SearchService.js';
+import { createSearchService } from '$lib/../../../src/services/SearchServiceFactory.js';
 
 /**
  * Fetch a specific translation academy module
@@ -126,7 +126,7 @@ async function fetchTranslationAcademy(
 		// Apply search relevance check if search parameter provided
 		if (search && search.trim().length > 0) {
 			// Create ephemeral search service to check relevance
-			const searchService = new SearchService();
+			const searchService = createSearchService('academy');
 			await searchService.indexDocuments([
 				{
 					id: id,

@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.5.1](https://github.com/klappy/translation-helps-mcp/compare/v7.5.0...v7.5.1) (2025-11-25)
+
+### Bug Fixes
+
+- **Duplicate prevention**: Added server-side post-filtering to ensure only clean content from `/clean/` R2 prefix is returned, preventing duplicates from raw content files that AI Search may also index
+- **Response metadata**: Added `total_hits` field to search response showing total matches after filtering
+
+### Documentation
+
+- Updated `docs/HYBRID_SEARCH_FEATURE.md` with duplicate prevention details
+
+## [7.5.0](https://github.com/klappy/translation-helps-mcp/compare/v7.4.11...v7.5.0) (2025-11-25)
+
+**AI Search Migration - Cloudflare AI Search Integration**
+
+### Features
+
+- **Cloudflare AI Search**: Migrated from MiniSearch to Cloudflare AI Search for semantic search capabilities
+- **Rich metadata extraction**: Content now includes book, chapter, verse, article ID, and title metadata
+- **Enhanced search filtering**: Filter by language, organization, resource type, reference, and article ID
+- **Contextual results**: Search results include formatted references and contextual previews
+- **Clean content pipeline**: USFM, TSV, and Markdown content automatically cleaned and stored in R2 for indexing
+
+### New Files
+
+- `src/utils/metadata-extractors.ts` - Centralized metadata extraction utilities
+- `tests/metadata-extractors.test.ts` - Comprehensive tests for metadata extraction
+
+### Improvements
+
+- Search endpoint now returns rich metadata including book, chapter, verse for scripture
+- Translation Words and Academy articles include article ID, category, and title
+- R2 storage structure enhanced with comprehensive metadata fields
+- MCP tools page updated to showcase AI Search capabilities
+
+### Documentation
+
+- Updated `docs/HYBRID_SEARCH_FEATURE.md` with AI Search architecture and API reference
+- Enhanced search endpoint configuration with new filter parameters
+
 ### [7.4.11](https://github.com/klappy/translation-helps-mcp/compare/v7.4.10...v7.4.11) (2025-11-25)
 
 **Search Performance and Reliability Improvements**

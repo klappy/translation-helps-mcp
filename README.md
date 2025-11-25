@@ -1,18 +1,24 @@
-# Translation Helps MCP Server v6.6.3
+# Translation Helps MCP Server v7.5.0
 
-**🚨 MAJOR UPDATE: 100% Real Data - Zero Mock Fallbacks**
+**🔍 NEW: Cloudflare AI Search Integration**
 
 A comprehensive MCP (Model Context Protocol) server that provides AI agents with access to Bible translation resources from Door43's Content Service (DCS). This server enables AI assistants to fetch, process, and intelligently work with translation helps including scripture texts, translation notes, translation words, and translation questions.
 
-## 🎉 What's New in v6.6.3
+## 🎉 What's New in v7.5.0
 
-### Complete Architecture Overhaul
+### AI Search Migration
+
+- **🔍 Cloudflare AI Search** - Semantic search across all biblical resources
+- **📊 Rich Metadata** - Book, chapter, verse, article ID extraction for filtering
+- **🎯 Smart Filtering** - Filter by language, organization, resource type, reference
+- **📝 Contextual Results** - Formatted references with preview snippets
+
+### Technical Excellence
 
 - **✅ 100% Real Data** - All mock data removed, every endpoint fetches from DCS
 - **✅ Unified Architecture** - Single `UnifiedResourceFetcher` class handles all data
 - **✅ Markdown Support Everywhere** - All endpoints support `format=md` for LLMs
-- **✅ Wrangler-Only Testing** - Standardized on port 8787 with real KV/R2 bindings
-- **✅ No Mock Fallbacks** - Real errors instead of fake success
+- **✅ Clean Content Pipeline** - USFM, TSV, and Markdown automatically cleaned for indexing
 
 ### Breaking Changes
 
@@ -55,11 +61,36 @@ See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for detailed migration instruc
 - Standardizes best practices for translation workflows
 - Makes AI assistants much smarter about Bible translation
 
+### 🔍 AI-Powered Search (NEW!)
+
+**Semantic search across all biblical resources:**
+
+```bash
+# Search for love in Translation Words
+curl "https://api.translation.helps/api/search?query=what+does+love+mean&resource=tw"
+
+# Search within John chapter 3
+curl "https://api.translation.helps/api/search?query=believe&reference=John+3"
+
+# Search specific article
+curl "https://api.translation.helps/api/search?query=salvation&articleId=save"
+```
+
+**Search Features:**
+
+- **Semantic Understanding** - AI understands context and synonyms
+- **Multi-filter Support** - Language, organization, resource, reference, article
+- **Rich Results** - Formatted references like "John 3:16" or "Grace (Key Term)"
+- **Contextual Previews** - See matching content in context
+
+📖 **[Search Documentation →](./docs/HYBRID_SEARCH_FEATURE.md)**
+
 ### Technical Excellence
 
 - **Real Data Only**: No mock data, no fake responses, no fallbacks
 - **Unified Fetcher**: Single class (`UnifiedResourceFetcher`) for all resources
 - **Smart Caching**: KV for catalogs, R2 for ZIPs, Cache API for extracted files
+- **AI Search**: Cloudflare AI Search with automatic R2 indexing
 - **Format Support**: JSON, Markdown, Text, and TSV (where applicable)
 - **Cloudflare Pages**: Global edge deployment with sub-100ms response times
 

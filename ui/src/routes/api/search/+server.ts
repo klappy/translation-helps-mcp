@@ -1,304 +1,343 @@
 /**
- * Search Orchestrator Endpoint
+ * Search Endpoint - Cloudflare AI Search
  *
- * I/O-bound orchestrator that:
- * 1. Discovers resources via DCS catalog
- * 2. Fans out to per-resource search endpoints
- * 3. Merges and re-ranks results
+ * Enhanced search using Cloudflare AI Search with rich metadata filtering.
+ * AI Search automatically indexes content stored in /clean/ prefix of R2.
  *
- * KISS: Simple fan-out pattern
- * Antifragile: Partial failures return available results
+ * Features:
+ * - Filter by language, organization, resource type
+ * - Scripture reference filtering (book, chapter, verse)
+ * - Article ID filtering for Translation Words/Academy
+ * - Contextual results with formatted references
  *
- * USE THIS FOR: Broad discovery searches across all resources
- *   Example: "Find everything about 'baptism'"
- *
- * USE ENDPOINT SEARCH PARAMS FOR: Focused searches within a reference
- *   Example: "/api/fetch-scripture?reference=John 3&search=born again"
+ * KISS: Single AI Search call replaces complex fan-out pattern
+ * DRY: Clean content populated by normal data fetching operations
+ * Antifragile: Graceful fallback if AI Search unavailable
  */
 
+import { logger } from '$lib/../../../src/utils/logger.js';
+import {
+	BOOK_CODES,
+	formatScriptureReference,
+	formatTAReference,
+	formatTWReference
+} from '$lib/../../../src/utils/metadata-extractors.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { logger } from '$lib/../../../src/utils/logger.js';
-import { DCSApiClient } from '$lib/../../../src/services/DCSApiClient.js';
+
+// AI Search index name - created in Cloudflare dashboard
+const AI_SEARCH_INDEX = 'translation-helps-search';
+
+// =============================================================================
+// TYPE DEFINITIONS
+// =============================================================================
 
 interface SearchRequest {
 	query: string;
 	language?: string;
-	owner?: string;
-	reference?: string;
+	organization?: string;
+	resource?: string; // "ult", "tn", "tw", "ta", "tq"
+	reference?: string; // "John 3:16", "Genesis 1"
+	articleId?: string; // For TW/TA: "grace", "figs-metaphor"
 	limit?: number;
 	includeHelps?: boolean;
 }
 
-interface ResourceDescriptor {
-	name: string;
-	type: 'bible' | 'notes' | 'words' | 'academy' | 'questions' | 'obs';
-	zipUrl: string;
-	owner: string;
-	language: string;
-}
-
+/**
+ * Enhanced SearchHit with rich metadata and contextual content
+ */
 interface SearchHit {
+	// Unique identifier
+	id: string;
+
+	// Formatted reference for display
+	reference: string; // "John 3:16" or "Grace (Key Term)"
+
+	// Content
+	preview: string; // Matching snippet with context
+	context: string; // Surrounding paragraph/verse
+
+	// Metadata for filtering
 	resource: string;
-	type: string;
+	language: string;
+	organization: string;
 	path: string;
+
+	// Scripture-specific
+	book?: string;
+	chapter?: number;
+	verse?: number;
+
+	// Article-specific
+	articleId?: string;
+	articleCategory?: string;
+	title?: string;
+
+	// Scoring
 	score: number;
-	preview: string;
+	highlights: string[];
 }
 
+interface SearchResponse {
+	took_ms: number;
+	query: string;
+	language: string;
+	organization: string;
+	resource?: string;
+	reference?: string;
+	resourceCount: number;
+	total_hits?: number; // Total matches after filtering (before limit applied)
+	hits: SearchHit[];
+	message?: string;
+	error?: string;
+}
+
+// =============================================================================
+// REFERENCE PARSING
+// =============================================================================
+
 /**
- * Discover available resources from DCS catalog
+ * Parse a reference string into components
+ * Handles: "John 3:16", "Genesis 1", "JHN", "1 Corinthians 13:4-7"
  */
-async function discoverResources(
-	language: string,
-	owner: string,
-	includeHelps: boolean,
-	_reference?: string
-): Promise<ResourceDescriptor[]> {
-	const startTime = Date.now();
-	const client = new DCSApiClient();
+function parseReference(reference: string): {
+	book?: string;
+	chapter?: number;
+	verseStart?: number;
+	verseEnd?: number;
+} {
+	// First try to extract book code
+	const bookMatch = reference.match(/^(\d?\s*[A-Za-z]+)/);
+	if (!bookMatch) return {};
 
-	try {
-		// Query DCS catalog
-		const response = await client.getResources({
-			lang: language,
-			owner: owner,
-			stage: 'prod',
-			limit: 100
-		});
+	const bookName = bookMatch[1].replace(/\s+/g, '').toLowerCase();
+	const book = BOOK_CODES[bookName];
 
-		if (!response.success || !response.data) {
-			logger.warn('[Search:Discover] Catalog query failed, using fallbacks', {
-				language,
-				owner,
-				includeHelps
-			});
-			return getFallbackResources(language, owner, includeHelps);
+	if (!book) return {};
+
+	// Try to parse chapter:verse
+	const refMatch = reference.match(/(\d+)(?::(\d+)(?:-(\d+))?)?/);
+	if (!refMatch) return { book };
+
+	return {
+		book,
+		chapter: parseInt(refMatch[1], 10),
+		verseStart: refMatch[2] ? parseInt(refMatch[2], 10) : undefined,
+		verseEnd: refMatch[3] ? parseInt(refMatch[3], 10) : undefined
+	};
+}
+
+// =============================================================================
+// FILTER BUILDING
+// =============================================================================
+
+/**
+ * Build AI Search filters from request parameters
+ * Uses R2 metadata stored during content cleaning
+ */
+function buildFilters(params: SearchRequest): Record<string, string> {
+	const filters: Record<string, string> = {};
+	const { language = 'en', organization, resource, reference, articleId } = params;
+
+	// Build path prefix filter
+	// Path structure: /clean/{language}/{organization}/{resource}/{version}/{file}
+	let pathPrefix = `clean/${language}/`;
+
+	if (organization) {
+		pathPrefix += `${organization}/`;
+		if (resource) {
+			// Resource is embedded in repo name like "en_ult"
+			pathPrefix += `${language}_${resource}/`;
 		}
-
-		const resources: ResourceDescriptor[] = [];
-
-		// Map catalog entries to resource descriptors
-		for (const item of response.data) {
-			const resourceType = mapSubjectToType(item.subject);
-
-			// Filter by includeHelps
-			if (!includeHelps && !['bible'].includes(resourceType)) {
-				continue;
-			}
-
-			// Get ZIP URL from catalog
-			const zipUrl = item.zipball_url || item.url;
-			if (!zipUrl) {
-				continue;
-			}
-
-			resources.push({
-				name: item.identifier || item.name,
-				type: resourceType,
-				zipUrl,
-				owner: item.owner || owner,
-				language: item.language || language
-			});
-		}
-
-		logger.info('[Search:Discover] Resources discovered', {
-			count: resources.length,
-			includeHelps,
-			resourceNames: resources.map((r) => `${r.name}(${r.type})`),
-			elapsed: Date.now() - startTime
-		});
-
-		return resources;
-	} catch (error) {
-		logger.error('[Search:Discover] Discovery failed', {
-			error: error instanceof Error ? error.message : String(error)
-		});
-		return getFallbackResources(language, owner, includeHelps);
 	}
+
+	filters.path_prefix = pathPrefix;
+
+	// Add metadata filters
+	if (reference) {
+		const parsed = parseReference(reference);
+		if (parsed.book) {
+			filters.book = parsed.book;
+		}
+		if (parsed.chapter !== undefined) {
+			filters.chapter = String(parsed.chapter);
+		}
+	}
+
+	if (articleId) {
+		filters.article_id = articleId.toLowerCase();
+	}
+
+	if (resource) {
+		filters.resource = resource.toLowerCase();
+	}
+
+	logger.debug('[Search] Built filters', { filters, params });
+
+	return filters;
+}
+
+// =============================================================================
+// RESULT FORMATTING
+// =============================================================================
+
+/**
+ * Format AI Search match into enhanced SearchHit
+ */
+function formatHit(match: any, index: number, query: string): SearchHit {
+	const metadata = match.metadata || {};
+
+	// Extract metadata fields
+	const language = metadata.language || 'en';
+	const organization = metadata.organization || 'unfoldingWord';
+	const resource = metadata.resource || inferResourceFromPath(metadata.original_path || '');
+	const book = metadata.book;
+	const chapter = metadata.chapter ? parseInt(metadata.chapter, 10) : undefined;
+	const verseStart = metadata.verse_start ? parseInt(metadata.verse_start, 10) : undefined;
+	const verseEnd = metadata.verse_end ? parseInt(metadata.verse_end, 10) : undefined;
+	const articleId = metadata.article_id;
+	const articleCategory = metadata.article_category;
+	const title = metadata.title;
+
+	// Build formatted reference
+	let reference: string;
+	if (book) {
+		reference = formatScriptureReference(book, chapter, verseStart, verseEnd);
+	} else if (articleId) {
+		if (resource === 'tw' || resource === 'words') {
+			reference = formatTWReference(articleId, articleCategory, title);
+		} else if (resource === 'ta' || resource === 'academy') {
+			reference = formatTAReference(articleId, articleCategory, title);
+		} else {
+			reference = title || articleId;
+		}
+	} else {
+		reference = metadata.original_path || `Result ${index + 1}`;
+	}
+
+	// Extract content and create preview
+	const content = match.content || '';
+	const preview = createPreview(content, query, 200);
+	const context = createContext(content, query, 500);
+
+	// Find query terms that matched (for highlighting)
+	const queryTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
+	const highlights = queryTerms.filter((term) => content.toLowerCase().includes(term));
+
+	return {
+		id: match.id || `hit-${index}`,
+		reference,
+		preview,
+		context,
+		resource,
+		language,
+		organization,
+		path: metadata.original_path || '',
+		book,
+		chapter,
+		verse: verseStart,
+		articleId,
+		articleCategory,
+		title,
+		score: match.score || 0,
+		highlights
+	};
 }
 
 /**
- * Map DCS subject to resource type
+ * Create a preview snippet around matched terms
  */
-function mapSubjectToType(subject?: string): ResourceDescriptor['type'] {
-	if (!subject) return 'bible';
+function createPreview(content: string, query: string, maxLength: number): string {
+	if (!content) return '';
 
-	const sub = subject.toLowerCase();
-	if (sub.includes('bible') || sub.includes('scripture')) return 'bible';
-	if (sub.includes('notes') || sub === 'translation notes') return 'notes';
-	if (sub.includes('words') || sub === 'translation words') return 'words';
-	if (sub.includes('academy') || sub === 'translation academy') return 'academy';
-	if (sub.includes('questions') || sub === 'translation questions') return 'questions';
-	if (sub.includes('obs') || sub === 'open bible stories') return 'obs';
+	const queryTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
+	const contentLower = content.toLowerCase();
 
+	// Find the first match position
+	let bestStart = 0;
+	for (const term of queryTerms) {
+		const pos = contentLower.indexOf(term);
+		if (pos !== -1) {
+			// Center the preview around the match
+			bestStart = Math.max(0, pos - Math.floor(maxLength / 4));
+			break;
+		}
+	}
+
+	// Extract preview
+	let preview = content.substring(bestStart, bestStart + maxLength);
+
+	// Clean up boundaries
+	if (bestStart > 0) {
+		// Find word boundary
+		const spacePos = preview.indexOf(' ');
+		if (spacePos > 0 && spacePos < 20) {
+			preview = '...' + preview.substring(spacePos + 1);
+		} else {
+			preview = '...' + preview;
+		}
+	}
+
+	if (bestStart + maxLength < content.length) {
+		const lastSpace = preview.lastIndexOf(' ');
+		if (lastSpace > maxLength - 30) {
+			preview = preview.substring(0, lastSpace) + '...';
+		} else {
+			preview = preview + '...';
+		}
+	}
+
+	return preview.trim();
+}
+
+/**
+ * Create broader context around matched terms
+ */
+function createContext(content: string, query: string, maxLength: number): string {
+	// For context, try to capture a full sentence or paragraph
+	if (!content) return '';
+
+	if (content.length <= maxLength) {
+		return content;
+	}
+
+	// Use the same logic as preview but with more length
+	return createPreview(content, query, maxLength);
+}
+
+/**
+ * Infer resource type from file path
+ */
+function inferResourceFromPath(path: string): string {
+	if (path.includes('_ult') || path.includes('_ust')) return 'ult';
+	if (path.includes('_tn')) return 'tn';
+	if (path.includes('_tw')) return 'tw';
+	if (path.includes('_ta')) return 'ta';
+	if (path.includes('_tq')) return 'tq';
 	return 'bible';
 }
 
-/**
- * Fallback resources if catalog fails
- */
-function getFallbackResources(
-	language: string,
-	owner: string,
-	includeHelps: boolean = true
-): ResourceDescriptor[] {
-	const baseUrl = `https://git.door43.org/${owner}`;
-
-	const resources: ResourceDescriptor[] = [
-		{
-			name: `${language}_ult`,
-			type: 'bible',
-			zipUrl: `${baseUrl}/${language}_ult/archive/master.zip`,
-			owner,
-			language
-		},
-		{
-			name: `${language}_ust`,
-			type: 'bible',
-			zipUrl: `${baseUrl}/${language}_ust/archive/master.zip`,
-			owner,
-			language
-		}
-	];
-
-	// Only include helps if requested
-	if (includeHelps) {
-		resources.push(
-			{
-				name: `${language}_tn`,
-				type: 'notes',
-				zipUrl: `${baseUrl}/${language}_tn/archive/master.zip`,
-				owner,
-				language
-			},
-			{
-				name: `${language}_tw`,
-				type: 'words',
-				zipUrl: `${baseUrl}/${language}_tw/archive/master.zip`,
-				owner,
-				language
-			}
-		);
-	}
-
-	return resources;
-}
-
-interface SearchResult {
-	hits: SearchHit[];
-	failures: Array<{ resource: string; error: string }>;
-}
+// =============================================================================
+// MAIN SEARCH EXECUTION
+// =============================================================================
 
 /**
- * Fan out search to per-resource endpoints
+ * Execute search with AI Search
  */
-async function fanOutSearch(
-	resources: ResourceDescriptor[],
-	query: string,
-	reference: string | undefined,
-	baseUrl: string
-): Promise<SearchResult> {
-	const startTime = Date.now();
-
-	// Use absolute URL to force new isolate creation (CPU fan-out)
-	// We must use the public URL or internal worker URL if available
-	// For Pages, using the baseUrl (origin) is the standard way to hit self
-	const internalUrl = `${baseUrl}/api/internal/search-resource`;
-
-	// Create fetch promises for all resources
-	const searchPromises = resources.map(async (resource) => {
-		try {
-			// Use global fetch to ensure network/isolate boundary crossing
-			const response = await fetch(internalUrl, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					resource: resource.name,
-					zipUrl: resource.zipUrl,
-					query,
-					reference,
-					type: resource.type,
-					owner: resource.owner // Pass owner for cache key consistency
-				}),
-				signal: AbortSignal.timeout(15000) // 15s timeout per resource (Bible ZIPs are large)
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				let errorMessage = `HTTP ${response.status}`;
-				try {
-					const errorJson = JSON.parse(errorText);
-					if (errorJson.message) errorMessage += `: ${errorJson.message}`;
-				} catch {
-					errorMessage += `: ${errorText.substring(0, 100)}`;
-				}
-				throw new Error(errorMessage);
-			}
-
-			const data = await response.json();
-			return { hits: data.hits || [], error: null, resource: resource.name };
-		} catch (error) {
-			logger.warn('[Search:FanOut] Resource search failed', {
-				resource: resource.name,
-				error: error instanceof Error ? error.message : String(error)
-			});
-			return {
-				hits: [],
-				error: error instanceof Error ? error.message : String(error),
-				resource: resource.name
-			};
-		}
-	});
-
-	// Wait for all searches (or timeouts)
-	const results = await Promise.all(searchPromises);
-
-	// Aggregate results
-	const allHits: SearchHit[] = [];
-	const failures: Array<{ resource: string; error: string }> = [];
-
-	for (const result of results) {
-		if (result.error) {
-			failures.push({ resource: result.resource, error: result.error });
-		} else {
-			allHits.push(...result.hits);
-		}
-	}
-
-	logger.info('[Search:FanOut] Fan-out completed', {
-		resourceCount: resources.length,
-		hitCount: allHits.length,
-		failureCount: failures.length,
-		elapsed: Date.now() - startTime
-	});
-
-	return { hits: allHits, failures };
-}
-
-/**
- * Re-rank merged results
- */
-function reRankResults(hits: SearchHit[], limit: number): SearchHit[] {
-	// Sort by score (descending)
-	const sorted = hits.sort((a, b) => b.score - a.score);
-
-	// Apply limit
-	return sorted.slice(0, limit);
-}
-
-/**
- * Execute search logic (shared by GET and POST)
- */
-async function executeSearch(params: SearchRequest, baseUrl: string): Promise<Response> {
+async function executeSearch(
+	params: SearchRequest,
+	platform: App.Platform | undefined
+): Promise<Response> {
 	const startTime = Date.now();
 
 	try {
 		const {
 			query,
 			language = 'en',
-			owner = 'unfoldingWord',
+			organization = 'unfoldingWord',
+			resource,
 			reference,
+			articleId,
 			limit = 50,
 			includeHelps = true
 		} = params;
@@ -314,83 +353,171 @@ async function executeSearch(params: SearchRequest, baseUrl: string): Promise<Re
 			);
 		}
 
-		logger.info('[Search:Orchestrator] Starting search', {
+		logger.info('[Search] Starting AI Search', {
 			query,
 			language,
-			owner,
+			organization,
+			resource,
 			reference,
+			articleId,
 			limit,
 			includeHelps
 		});
 
-		// Step 1: Discover resources
-		const resources = await discoverResources(language, owner, includeHelps, reference);
+		// Check if AI binding is available
+		const ai = platform?.env?.AI;
 
-		if (resources.length === 0) {
+		if (!ai) {
+			logger.warn('[Search] AI binding not available');
 			return json({
 				took_ms: Date.now() - startTime,
+				query,
+				language,
+				organization,
+				resourceCount: 0,
 				hits: [],
-				message: 'No resources found for the specified language and owner'
-			});
+				message: 'AI binding not available. Ensure [ai] binding is configured in wrangler.toml.'
+			} as SearchResponse);
 		}
 
-		// Step 2: Fan out to resource-specific searches
-		const { hits, failures } = await fanOutSearch(resources, query, reference, baseUrl);
+		// Build filters from parameters
+		const filters = buildFilters(params);
 
-		// Step 3: Re-rank and limit results
-		const rankedHits = reRankResults(hits, limit);
+		// Execute AI Search query
+		let searchResults;
+		try {
+			searchResults = await ai.search(AI_SEARCH_INDEX, query, {
+				filters,
+				max_num_results: limit
+			});
+		} catch (searchError) {
+			const errorMessage = searchError instanceof Error ? searchError.message : String(searchError);
+			logger.error('[Search] AI Search query failed', {
+				error: errorMessage,
+				indexName: AI_SEARCH_INDEX,
+				query,
+				filters
+			});
 
-		// Return response
-		const response = {
-			took_ms: Date.now() - startTime,
+			// Check if this is the "not a function" error (local dev limitation)
+			const isLocalDevIssue = errorMessage.includes('not a function');
+
+			return json({
+				took_ms: Date.now() - startTime,
+				query,
+				language,
+				organization,
+				resourceCount: 0,
+				hits: [],
+				error: errorMessage,
+				message: isLocalDevIssue
+					? 'AI Search is not available in local development. Deploy to production to use AI Search, or use resource-specific endpoints (fetch-scripture, fetch-translation-notes, etc.) which work locally.'
+					: 'AI Search query failed. The index may not be ready or the /clean/ prefix in R2 may not have indexed content yet.'
+			} as SearchResponse);
+		}
+
+		// POST-FILTER: Only include results from /clean/ prefix
+		// This prevents duplicates from raw content files that AI Search may also index
+		const cleanMatches = searchResults.matches.filter((match: any) => {
+			// Check the match ID (R2 path)
+			const matchId = match.id || '';
+
+			// Also check metadata paths as fallback
+			const metadataPath = match.metadata?.clean_path || match.metadata?.original_path || '';
+
+			// Return true only if path starts with clean/
+			return matchId.startsWith('clean/') || (matchId === '' && metadataPath.startsWith('clean/'));
+		});
+
+		// Log filtering effectiveness for debugging
+		logger.debug('[Search] Post-filter applied', {
+			originalCount: searchResults.matches.length,
+			filteredCount: cleanMatches.length,
+			removedCount: searchResults.matches.length - cleanMatches.length
+		});
+
+		// Format only the filtered results
+		let hits: SearchHit[] = cleanMatches.map((match: any, index: number) =>
+			formatHit(match, index, query)
+		);
+
+		// Post-filter by resource type if needed
+		if (!includeHelps) {
+			hits = hits.filter(
+				(hit) => hit.resource === 'ult' || hit.resource === 'ust' || hit.resource === 'bible'
+			);
+		}
+
+		// Filter by specific resource if requested
+		if (resource) {
+			hits = hits.filter(
+				(hit) => hit.resource === resource || hit.resource === `${language}_${resource}`
+			);
+		}
+
+		const response: SearchResponse = {
+			took_ms: searchResults.latency_ms || Date.now() - startTime,
 			query,
 			language,
-			owner,
-			resourceCount: resources.length,
-			hits: rankedHits,
-			failures // Include failures for debugging
+			organization,
+			resource,
+			reference,
+			resourceCount: hits.length,
+			total_hits: cleanMatches.length, // Total after filtering, before limit
+			hits: hits.slice(0, limit)
 		};
 
-		logger.info('[Search:Orchestrator] Search completed', {
+		logger.info('[Search] AI Search completed', {
 			took_ms: response.took_ms,
-			hitCount: rankedHits.length
+			hitCount: hits.length,
+			cleanMatchCount: cleanMatches.length,
+			rawMatchCount: searchResults.matches.length,
+			duplicatesRemoved: searchResults.matches.length - cleanMatches.length,
+			filters
 		});
 
 		return json(response);
 	} catch (error) {
-		logger.error('[Search:Orchestrator] Search failed', {
+		logger.error('[Search] Search failed', {
 			error: error instanceof Error ? error.message : String(error)
 		});
 
 		return json(
 			{
-				error: 'Internal server error',
+				error: 'Search failed',
 				message: error instanceof Error ? error.message : String(error),
-				code: 'INTERNAL_ERROR'
+				code: 'SEARCH_ERROR'
 			},
 			{ status: 500 }
 		);
 	}
 }
 
+// =============================================================================
+// REQUEST HANDLERS
+// =============================================================================
+
 /**
  * POST /api/search
- * Main search orchestrator endpoint (JSON body)
+ * Main search endpoint (JSON body)
  */
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	const body: SearchRequest = await request.json();
-	return executeSearch(body, url.origin);
+	return executeSearch(body, platform);
 };
 
 /**
  * GET /api/search
- * Main search orchestrator endpoint (Query params)
+ * Main search endpoint (Query params)
  */
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, platform }) => {
 	const query = url.searchParams.get('query') || '';
 	const language = url.searchParams.get('language') || 'en';
-	const owner = url.searchParams.get('owner') || 'unfoldingWord';
+	const organization =
+		url.searchParams.get('organization') || url.searchParams.get('owner') || 'unfoldingWord';
+	const resource = url.searchParams.get('resource') || undefined;
 	const reference = url.searchParams.get('reference') || undefined;
+	const articleId = url.searchParams.get('articleId') || undefined;
 	const limitParam = url.searchParams.get('limit');
 	const limit = limitParam ? parseInt(limitParam, 10) : 50;
 	const includeHelpsParam = url.searchParams.get('includeHelps');
@@ -399,11 +526,13 @@ export const GET: RequestHandler = async ({ url }) => {
 	const params: SearchRequest = {
 		query,
 		language,
-		owner,
+		organization,
+		resource,
 		reference,
+		articleId,
 		limit,
 		includeHelps
 	};
 
-	return executeSearch(params, url.origin);
+	return executeSearch(params, platform);
 };

@@ -1,21 +1,28 @@
 /**
  * Search Endpoint Configurations
  *
- * Defines endpoints for ad-hoc search across resources.
+ * Defines endpoints for AI-powered search across resources.
+ * Uses Cloudflare AI Search for semantic understanding.
  */
 
 import type { EndpointConfig } from "../EndpointConfig.js";
 import { SEARCH_SHAPE } from "../ResponseShapes.js";
 
 /**
- * Search Biblical Resources - Ad-hoc search across all resources
+ * Search Biblical Resources - AI-powered semantic search across all resources
+ *
+ * Features:
+ * - Semantic understanding of queries
+ * - Filter by language, organization, resource type, reference, article ID
+ * - Returns formatted references (e.g., "John 3:16", "Grace (Key Term)")
+ * - Contextual previews with matched term highlighting
  */
 export const SEARCH_BIBLICAL_RESOURCES_CONFIG: EndpointConfig = {
   name: "search-biblical-resources",
   path: "/search",
-  title: "Search Biblical Resources",
+  title: "AI Search Biblical Resources",
   description:
-    "Perform ad-hoc, relevance-ranked searches across scripture, notes, words, and other resources using BM25 ranking.",
+    "Semantic search across scripture, notes, words, and other resources using Cloudflare AI Search. Supports filtering by language, organization, resource type, reference, and article ID.",
   category: "core",
   responseShape: SEARCH_SHAPE,
 
@@ -23,44 +30,62 @@ export const SEARCH_BIBLICAL_RESOURCES_CONFIG: EndpointConfig = {
     query: {
       type: "string" as const,
       required: true,
-      description: "Search query (natural language, keywords, or phrases)",
-      example: "jesus peace",
+      description:
+        "Search query - AI Search understands natural language, synonyms, and context",
+      example: "what does love mean",
     },
     language: {
       type: "string" as const,
       required: false,
       default: "en",
-      description: "Language code (e.g., 'en', 'es', 'fr')",
+      description: "Language code for filtering results",
       example: "en",
       options: ["en", "es", "fr", "ru", "ar", "hi", "sw", "zh"],
     },
-    owner: {
+    organization: {
       type: "string" as const,
       required: false,
       default: "unfoldingWord",
-      description: "Organization/owner (e.g., 'unfoldingWord', 'Wycliffe')",
+      description: "Organization/owner to filter by",
       example: "unfoldingWord",
       options: ["unfoldingWord", "Door43-Catalog"],
+    },
+    resource: {
+      type: "string" as const,
+      required: false,
+      description: "Filter by specific resource type: ult, ust, tn, tw, ta, tq",
+      example: "tw",
+      options: ["ult", "ust", "tn", "tw", "ta", "tq"],
     },
     reference: {
       type: "string" as const,
       required: false,
       description:
-        "Optional Bible reference to filter results (e.g., 'John 3:16', 'Genesis 1')",
+        "Filter by Bible reference (e.g., 'John 3:16', 'Genesis 1', 'Romans')",
       example: "John 3:16",
+    },
+    articleId: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Filter by article ID for Translation Words/Academy (e.g., 'grace', 'figs-metaphor')",
+      example: "grace",
     },
     limit: {
       type: "number" as const,
       required: false,
       default: 50,
-      description: "Maximum number of results to return",
-      example: 50,
+      description: "Maximum number of results to return (1-100)",
+      example: 20,
+      min: 1,
+      max: 100,
     },
     includeHelps: {
       type: "boolean" as const,
       required: false,
       default: true,
-      description: "Include translation helps (notes, words, academy)",
+      description:
+        "Include translation helps (notes, words, academy) in results",
       example: true,
     },
   },
@@ -68,23 +93,23 @@ export const SEARCH_BIBLICAL_RESOURCES_CONFIG: EndpointConfig = {
   dataSource: {
     type: "computed",
     transformation: "json-passthrough",
-    cacheTtl: 0, // Search results are not cached (stateless)
+    cacheTtl: 0, // Search results are not cached (AI Search handles this)
   },
 
   enabled: true,
-  tags: ["search", "core", "discovery", "biblical-content"],
+  tags: ["search", "core", "ai-search", "semantic", "discovery"],
 
   examples: [
     {
-      name: "Basic Search",
-      description: "Search for 'grace' in English resources",
+      name: "Semantic Search",
+      description:
+        "Search for 'love' - AI understands context and finds related concepts",
       params: {
-        query: "grace",
+        query: "what does love mean",
         language: "en",
-        owner: "unfoldingWord",
       },
       expectedContent: {
-        contains: ["hits", "grace", "score"],
+        contains: ["hits", "reference", "preview"],
         minLength: 200,
         fields: {
           hits: "array",
@@ -93,15 +118,61 @@ export const SEARCH_BIBLICAL_RESOURCES_CONFIG: EndpointConfig = {
       },
     },
     {
-      name: "Reference Filtered Search",
-      description: "Search for 'faith' in Romans 5",
+      name: "Filter by Resource Type",
+      description: "Search Translation Words only",
       params: {
-        query: "faith",
-        reference: "Romans 5",
+        query: "grace",
+        resource: "tw",
         language: "en",
       },
       expectedContent: {
-        contains: ["hits", "faith", "Romans"],
+        contains: ["hits", "grace"],
+        fields: {
+          hits: "array",
+        },
+      },
+    },
+    {
+      name: "Scripture Reference Filter",
+      description: "Search within John chapter 3",
+      params: {
+        query: "believe",
+        reference: "John 3",
+        language: "en",
+      },
+      expectedContent: {
+        contains: ["hits", "John"],
+        fields: {
+          hits: "array",
+        },
+      },
+    },
+    {
+      name: "Article ID Search",
+      description: "Find content about a specific Translation Word article",
+      params: {
+        query: "salvation",
+        articleId: "save",
+        resource: "tw",
+        language: "en",
+      },
+      expectedContent: {
+        contains: ["hits"],
+        fields: {
+          hits: "array",
+        },
+      },
+    },
+    {
+      name: "Multi-language Search",
+      description: "Search Spanish resources",
+      params: {
+        query: "amor",
+        language: "es",
+        organization: "unfoldingWord",
+      },
+      expectedContent: {
+        contains: ["hits"],
         fields: {
           hits: "array",
         },

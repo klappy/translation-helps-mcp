@@ -19,6 +19,11 @@ compatibility_flags = ["nodejs_compat"]
   binding = "ZIP_FILES"
   bucket_name = "translation-helps-mcp-zip-persistence"
 
+  # AI binding for production (for Workers AI / AI Search)
+  # Note: AI Search index configuration is done via Cloudflare dashboard
+  [env.production.ai]
+  binding = "AI"
+
 [env.preview.vars]
   NODE_ENV = "development"
 
@@ -34,6 +39,12 @@ preview_id = "3073e58cc3eb4f16958854a6ec1531e6"
 [[r2_buckets]]
 binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
+
+# AI binding for Workers AI / AI Search
+# Create AI Search index via Cloudflare dashboard
+# Documentation: https://developers.cloudflare.com/ai-search/
+[ai]
+binding = "AI"
 
 # For Pages deployment, use: npx wrangler pages deploy ui/build
 # For secrets: npx wrangler secret put ANTHROPIC_API_KEY 

@@ -16,7 +16,7 @@ import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js'
 import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 import { UnifiedResourceFetcher, type TWArticleResult } from '$lib/unifiedResourceFetcher.js';
 import { parseRCLink, extractTerm, isRCLink } from '$lib/rcLinkParser.js';
-import { SearchService } from '$lib/../../../src/services/SearchService.js';
+import { createSearchService } from '$lib/../../../src/services/SearchServiceFactory.js';
 
 /**
  * Generate Table of Contents when no specific term is requested
@@ -252,7 +252,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		// Apply search relevance check if search parameter provided
 		if (search && search.trim().length > 0) {
 			// Create ephemeral search service to check relevance
-			const searchService = new SearchService();
+			const searchService = createSearchService('words');
 			await searchService.indexDocuments([
 				{
 					id: wordKey,

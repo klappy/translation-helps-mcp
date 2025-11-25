@@ -436,7 +436,8 @@
 			},
 			'Search Tools': {
 				icon: '🔍',
-				description: 'Ad-hoc search across all biblical resources',
+				description:
+					'AI-powered semantic search with filtering by language, resource type, reference, and article',
 				endpoints: groups.search
 			},
 			'Verse Referenced Data': {
@@ -495,10 +496,12 @@
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
 		} else if (endpoint.name === 'search-biblical-resources') {
-			testParams.query = 'grace';
+			// Test AI Search with semantic query and resource filter
+			testParams.query = 'what does love mean';
 			testParams.language = 'en';
 			testParams.organization = 'unfoldingWord';
-			testParams.limit = 5;
+			testParams.resource = 'tw'; // Focus on Translation Words for cleaner test
+			testParams.limit = 10;
 		}
 
 		// Convert endpoint name to MCP tool name

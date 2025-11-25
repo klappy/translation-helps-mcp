@@ -6,7 +6,6 @@
  * DRY: All resources use the same pattern
  */
 
-import MiniSearch from "minisearch";
 import { EdgeXRayTracer, trackedFetch } from "../functions/edge-xray.js";
 import { getKVCache } from "../functions/kv-cache.js";
 import { getR2Env } from "../functions/r2-env.js";
@@ -18,7 +17,18 @@ import {
 } from "../middleware/cacheValidator.js";
 import type { ParsedReference } from "../parsers/referenceParser.js";
 import { logger } from "../utils/logger.js";
-import type { SearchDocument } from "./SearchService.js";
+import {
+  cleanContent,
+  cleanContentWithMetadata,
+  metadataToR2Metadata,
+  type ResourceType,
+  type CleanResult,
+} from "./ContentCleaners.js";
+import {
+  extractLanguageFromRepo,
+  extractVersionFromUrl,
+  extractOrganization,
+} from "../utils/metadata-extractors.js";
 
 interface CatalogResource {
   name: string;
@@ -37,36 +47,8 @@ interface CatalogResource {
   }>;
 }
 
-/**
- * Result type when extracting a file with optional index
- * Supports cached MiniSearch indexes for search acceleration
- */
-export interface FileWithIndex {
-  /** The raw file content */
-  content: string;
-  /** MiniSearch index if requested and available */
-  index?: MiniSearch<SearchDocument>;
-  /** How the index was obtained: 'cache' (from R2), 'built' (just created), or 'none' (not requested) */
-  indexSource: "cache" | "built" | "none";
-  /** R2 key where index is cached */
-  indexKey?: string;
-}
-
-/**
- * Options for building/loading a MiniSearch index alongside file extraction
- */
-export interface IndexOptions {
-  /** Whether to build/load an index for this file */
-  buildIndex: boolean;
-  /** Resource type for document creation */
-  resourceType: "bible" | "notes" | "words" | "academy" | "questions";
-  /** Optional custom document parser - uses default if not provided */
-  documentParser?: (
-    content: string,
-    path: string,
-    resource: string,
-  ) => SearchDocument[];
-}
+// MiniSearch-based indexing removed in favor of Cloudflare AI Search
+// Clean content is automatically stored in /clean/ prefix for AI Search indexing
 
 export class ZipResourceFetcher2 {
   private tracer: EdgeXRayTracer;
@@ -2571,6 +2553,60 @@ export class ZipResourceFetcher2 {
               } catch {
                 // ignore
               }
+
+              // 🚀 AUTO-POPULATE CLEAN CONTENT FOR AI SEARCH
+              // Store clean version in /clean/ prefix for AI Search auto-indexing
+              // This happens automatically on every file extraction
+              try {
+                const resourceType = this.inferResourceType(cleanInner);
+                if (resourceType) {
+                  const cleanedContent = cleanContent(
+                    decodedContent,
+                    resourceType,
+                  );
+                  if (cleanedContent && cleanedContent.length > 0) {
+                    // Extract version from zipCacheKey
+                    const versionMatch = zipCacheKey.match(/:([^:]+)$/);
+                    const version = versionMatch ? versionMatch[1] : "latest";
+
+                    // Extract language from repository
+                    const langMatch = repository.match(/^([a-z]{2,3})_/i);
+                    const language = langMatch
+                      ? langMatch[1].toLowerCase()
+                      : "unknown";
+
+                    // Build clean content key: /clean/{language}/{resource}/{version}/{filename}.txt
+                    const cleanKey = `clean/${language}/${repository}/${version}/${cleanInner}.txt`;
+
+                    await r2.putFile(
+                      cleanKey,
+                      cleanedContent,
+                      "text/plain; charset=utf-8",
+                      {
+                        source_zip: zipCacheKey,
+                        resource_type: resourceType,
+                        language: language,
+                        version: version,
+                        original_path: cleanInner,
+                        processed: new Date().toISOString(),
+                      },
+                    );
+
+                    logger.debug(
+                      `[AI Search] Auto-stored clean content: ${cleanKey}`,
+                      {
+                        originalSize: decodedContent.length,
+                        cleanSize: cleanedContent.length,
+                      },
+                    );
+                  }
+                }
+              } catch (cleanErr) {
+                // Don't fail the main extraction if clean storage fails
+                logger.debug(
+                  `[AI Search] Failed to store clean content: ${String(cleanErr)}`,
+                );
+              }
             } catch {
               // ignore
             }
@@ -2594,327 +2630,283 @@ export class ZipResourceFetcher2 {
   }
 
   /**
-   * Parse file content into searchable documents
-   * KISS: Simple document creation for indexing
-   */
-  private parseContentToDocuments(
-    content: string,
-    filePath: string,
-    repository: string,
-    resourceType: "bible" | "notes" | "words" | "academy" | "questions",
-  ): SearchDocument[] {
-    const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
-    const documents: SearchDocument[] = [];
-
-    // For bible content: parse USFM into chapter/verse segments
-    if (resourceType === "bible") {
-      // Split by chapters
-      const chapterMatches = content.matchAll(/\\c\s+(\d+)/g);
-      const chapterPositions: { num: number; start: number }[] = [];
-      for (const match of chapterMatches) {
-        chapterPositions.push({
-          num: parseInt(match[1], 10),
-          start: match.index!,
-        });
-      }
-
-      // Extract content between chapters
-      for (let i = 0; i < chapterPositions.length; i++) {
-        const chapter = chapterPositions[i];
-        const nextStart =
-          i + 1 < chapterPositions.length
-            ? chapterPositions[i + 1].start
-            : content.length;
-
-        const chapterContent = content.substring(chapter.start, nextStart);
-
-        // Clean USFM markers for searchable content
-        const cleanContent = chapterContent
-          .replace(/\\zaln-s\s*\|[^\\]+\\*/g, "")
-          .replace(/\\zaln-e\\*/g, "")
-          .replace(/\\w\s+([^|]+)\|[^\\]+\\w\*/g, "$1")
-          .replace(/\\[a-z]+\s*\d*\s*/gi, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-
-        if (cleanContent.length > 0) {
-          documents.push({
-            id: `${repository}:${cleanPath}:ch${chapter.num}`,
-            content: cleanContent,
-            path: cleanPath,
-            resource: repository,
-            type: resourceType,
-          });
-        }
-      }
-
-      // If no chapters found, index as single document
-      if (documents.length === 0 && content.trim().length > 0) {
-        documents.push({
-          id: `${repository}:${cleanPath}`,
-          content: content,
-          path: cleanPath,
-          resource: repository,
-          type: resourceType,
-        });
-      }
-    } else if (resourceType === "notes" || resourceType === "questions") {
-      // For TSV content: parse rows as individual documents
-      const lines = content.split("\n").filter((line) => line.trim());
-      const _header = lines[0]?.split("\t") || []; // Header available for future use
-
-      for (let i = 1; i < lines.length; i++) {
-        const cells = lines[i].split("\t");
-        const rowContent = cells.join(" ").trim();
-        if (rowContent.length > 0) {
-          documents.push({
-            id: `${repository}:${cleanPath}:row${i}`,
-            content: rowContent,
-            path: cleanPath,
-            resource: repository,
-            type: resourceType,
-          });
-        }
-      }
-    } else {
-      // For markdown and other content: index as single document
-      if (content.trim().length > 0) {
-        documents.push({
-          id: `${repository}:${cleanPath}`,
-          content: content,
-          path: cleanPath,
-          resource: repository,
-          type: resourceType,
-        });
-      }
-    }
-
-    return documents;
-  }
-
-  /**
-   * Get file with cached MiniSearch index - LAZY ZIP LOADING
+   * Get clean content for AI Search indexing
    *
-   * Optimized flow:
-   * 1. Check R2 for cached index → return immediately (no ZIP needed!)
-   * 2. Check R2 for cached file content → build index if found
-   * 3. Only fetch/unzip ZIP if both caches miss
+   * This method:
+   * 1. Checks R2 for cached clean content (fastest path)
+   * 2. If not cached, extracts from ZIP and cleans
+   * 3. Stores clean version in /clean/ prefix for AI Search auto-indexing
+   *
+   * AI Search watches the /clean/ prefix and automatically indexes changes.
+   * Clean content is stored at: /clean/{language}/{resource}/{version}/{filename}.txt
    *
    * @param filePath - Path within the ZIP
-   * @param repository - Repository name
-   * @param zipCacheKey - Cache key for R2 storage
-   * @param indexOptions - Options for building/loading search index
+   * @param repository - Repository name (e.g., "en_ult")
+   * @param zipUrl - Original ZIP URL for version extraction
+   * @param resourceType - Type of resource for appropriate cleaning
    * @param zipDataProvider - Lazy function to get ZIP data (only called on cache miss)
-   * @returns FileWithIndex with index and content
+   * @returns Clean, searchable text content
    */
-  async getIndexedFile(
+  /**
+   * Get clean content with rich metadata for AI Search indexing
+   *
+   * This enhanced version extracts comprehensive metadata from both
+   * file paths and content, enabling proper filtering and contextual results.
+   *
+   * @param filePath - Path to file within ZIP
+   * @param repository - Repository name (e.g., "en_ult")
+   * @param zipUrl - Original ZIP URL for version extraction
+   * @param resourceType - Type of resource for appropriate cleaning
+   * @param zipDataProvider - Lazy function to get ZIP data (only called on cache miss)
+   * @returns Clean, searchable text content (metadata stored in R2)
+   */
+  async getCleanContent(
     filePath: string,
     repository: string,
-    zipCacheKey: string,
-    indexOptions: IndexOptions,
+    zipUrl: string,
+    resourceType: ResourceType,
     zipDataProvider: () => Promise<Uint8Array | null>,
-  ): Promise<FileWithIndex | null> {
+  ): Promise<string | null> {
     const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
-    const indexKey = `${zipCacheKey}/index/${cleanPath}.json`;
-    const fileKey = `${zipCacheKey}/files/${cleanPath}`;
 
-    // Get R2 environment once
+    // Use centralized extraction utilities
+    const version = extractVersionFromUrl(zipUrl);
+    const language = extractLanguageFromRepo(repository);
+    const organization = extractOrganization(zipUrl);
+
+    // Build the clean content key for AI Search
+    // Format: /clean/{language}/{organization}/{resource}/{version}/{filename}.txt
+    const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
+
+    // Get R2 environment
     const { bucket, caches } = getR2Env();
     let r2: R2Storage | null = null;
     if (bucket) {
       r2 = new R2Storage(bucket as any, caches as any);
     }
 
-    // STEP 1: Check for cached INDEX first (fastest path - no ZIP needed!)
-    if (r2 && indexOptions.buildIndex) {
-      try {
-        const { data: cachedIndex, source } = await r2.getFileWithInfo(
-          indexKey,
-          "application/json",
-        );
-
-        if (cachedIndex) {
-          try {
-            const index = MiniSearch.loadJSON<SearchDocument>(cachedIndex, {
-              fields: ["content"],
-              storeFields: ["path", "resource", "type", "content"],
-              searchOptions: {
-                fuzzy: 0.2,
-                prefix: true,
-                boost: { content: 2 },
-                combineWith: "AND",
-              },
-            });
-
-            logger.debug(
-              `[Index] Cache HIT (${source}): ${indexKey} - ZIP skipped!`,
-            );
-            this.tracer.addApiCall({
-              url: `internal://${source}/index/${indexKey}`,
-              duration: 1,
-              status: 200,
-              size: cachedIndex.length,
-              cached: true,
-            });
-
-            // We have the index - no need for ZIP or file content!
-            return { content: "", index, indexSource: "cache", indexKey };
-          } catch (_e) {
-            logger.warn(`[Index] Corrupted cache, will rebuild: ${indexKey}`);
-          }
-        }
-      } catch (_e) {
-        // Index not cached, continue to check file cache
-      }
-    }
-
-    // STEP 2: Check for cached FILE content (still avoids ZIP unzip)
-    let content: string | null = null;
+    // STEP 1: Check for cached clean content (fastest path)
     if (r2) {
       try {
-        const ext = cleanPath.toLowerCase();
-        const contentType = ext.endsWith(".md")
-          ? "text/markdown; charset=utf-8"
-          : ext.endsWith(".tsv")
-            ? "text/tab-separated-values; charset=utf-8"
-            : "text/plain; charset=utf-8";
-
-        const { data: cachedContent, source } = await r2.getFileWithInfo(
-          fileKey,
-          contentType,
+        const { data: cachedClean, source } = await r2.getFileWithInfo(
+          cleanKey,
+          "text/plain; charset=utf-8",
         );
 
-        if (cachedContent) {
-          content = cachedContent;
-          logger.debug(
-            `[Index] File cache HIT (${source}): ${fileKey} - ZIP skipped!`,
-          );
+        if (cachedClean) {
+          logger.debug(`[CleanContent] Cache HIT (${source}): ${cleanKey}`);
           this.tracer.addApiCall({
-            url: `internal://${source}/file/${fileKey}`,
+            url: `internal://${source}/clean/${cleanKey}`,
             duration: 1,
             status: 200,
-            size: cachedContent.length,
+            size: cachedClean.length,
             cached: true,
           });
+          return cachedClean;
         }
       } catch (_e) {
-        // File not cached, will need ZIP
+        // Clean content not cached, will extract and clean
       }
     }
 
-    // STEP 3: Only now fetch ZIP if we still need content
-    if (!content) {
-      logger.debug(`[Index] Cache MISS, fetching ZIP for: ${cleanPath}`);
-      const zipData = await zipDataProvider();
-      if (!zipData) {
-        logger.warn(`[Index] ZIP provider returned null for: ${cleanPath}`);
-        return null;
-      }
-
-      // Extract file from ZIP
-      content = await this.extractFileFromZip(
-        zipData,
-        filePath,
-        repository,
-        zipCacheKey,
-      );
-    }
-
-    if (!content) return null;
-
-    // If not building index, return content only
-    if (!indexOptions.buildIndex) {
-      return { content, indexSource: "none" };
-    }
-
-    // STEP 4: Build index from content
-    logger.debug(`[Index] Building index: ${indexKey}`);
-    const startTime = Date.now();
-
-    const documents = indexOptions.documentParser
-      ? indexOptions.documentParser(content, filePath, repository)
-      : this.parseContentToDocuments(
-          content,
-          filePath,
-          repository,
-          indexOptions.resourceType,
-        );
-
-    if (documents.length === 0) {
-      return { content, indexSource: "none" };
-    }
-
-    const index = new MiniSearch<SearchDocument>({
-      fields: ["content"],
-      storeFields: ["path", "resource", "type", "content"],
-      searchOptions: {
-        fuzzy: 0.2,
-        prefix: true,
-        boost: { content: 2 },
-        combineWith: "AND",
-      },
-    });
-    index.addAll(documents);
-
-    const buildDuration = Date.now() - startTime;
     logger.debug(
-      `[Index] Built in ${buildDuration}ms: ${documents.length} docs from ${cleanPath}`,
+      `[CleanContent] Cache MISS, fetching and cleaning: ${cleanPath}`,
     );
 
-    // 6. Cache the index in R2 (using same r2 instance from above)
-    if (r2) {
-      try {
-        const serialized = JSON.stringify(index.toJSON());
-        logger.debug(
-          `[Index] Attempting to cache: ${indexKey} (${serialized.length} bytes)`,
-        );
-
-        await r2.putFile(indexKey, serialized, "application/json", {
-          resource_type: indexOptions.resourceType,
-          doc_count: documents.length.toString(),
-        });
-
-        this.tracer.addApiCall({
-          url: `internal://r2/index-write/${indexKey}`,
-          duration: buildDuration,
-          status: 200,
-          size: serialized.length,
-          cached: false,
-        });
-
-        logger.info(
-          `[Index] Cached: ${indexKey} (${documents.length} docs, ${serialized.length} bytes)`,
-        );
-      } catch (e) {
-        logger.warn(`[Index] Failed to cache: ${String(e)}`);
-      }
-    } else {
-      logger.warn(`[Index] No R2 bucket available for caching: ${indexKey}`);
+    // STEP 2: Get raw content from ZIP (use existing extraction)
+    const zipData = await zipDataProvider();
+    if (!zipData) {
+      logger.warn(
+        `[CleanContent] ZIP provider returned null for: ${cleanPath}`,
+      );
+      return null;
     }
 
-    return { content, index, indexSource: "built", indexKey };
-  }
-
-  /**
-   * Legacy wrapper for extractFileWithIndex (backward compatibility)
-   * Prefer getIndexedFile() for lazy ZIP loading
-   */
-  async extractFileWithIndex(
-    zipData: Uint8Array,
-    filePath: string,
-    repository: string,
-    zipCacheKey: string,
-    indexOptions: IndexOptions,
-  ): Promise<FileWithIndex | null> {
-    // Use lazy method with pre-loaded ZIP data
-    return this.getIndexedFile(
+    const zipCacheKey = r2KeyFromUrl(zipUrl).key;
+    const rawContent = await this.extractFileFromZip(
+      zipData,
       filePath,
       repository,
       zipCacheKey,
-      indexOptions,
-      async () => zipData,
     );
+
+    if (!rawContent) {
+      logger.warn(`[CleanContent] Failed to extract: ${cleanPath}`);
+      return null;
+    }
+
+    // STEP 3: Clean content AND extract metadata in one operation
+    const cleanResult: CleanResult = cleanContentWithMetadata(
+      rawContent,
+      resourceType,
+      filePath,
+      repository,
+      zipUrl,
+    );
+
+    if (!cleanResult.text || cleanResult.text.length === 0) {
+      logger.warn(
+        `[CleanContent] Cleaning produced empty content: ${cleanPath}`,
+      );
+      return null;
+    }
+
+    // STEP 4: Store clean content with comprehensive metadata in R2 for AI Search
+    if (r2) {
+      try {
+        // Convert metadata to R2-compatible format (all strings)
+        const r2Metadata = metadataToR2Metadata(cleanResult.metadata);
+
+        await r2.putFile(
+          cleanKey,
+          cleanResult.text,
+          "text/plain; charset=utf-8",
+          r2Metadata,
+        );
+
+        logger.info(`[CleanContent] Stored clean content: ${cleanKey}`, {
+          originalSize: rawContent.length,
+          cleanSize: cleanResult.text.length,
+          reduction: `${Math.round((1 - cleanResult.text.length / rawContent.length) * 100)}%`,
+          book: cleanResult.metadata.book,
+          chapter: cleanResult.metadata.chapter,
+          articleId: cleanResult.metadata.articleId,
+        });
+
+        this.tracer.addApiCall({
+          url: `internal://r2/clean-write/${cleanKey}`,
+          duration: 1,
+          status: 200,
+          size: cleanResult.text.length,
+          cached: false,
+        });
+      } catch (e) {
+        logger.warn(`[CleanContent] Failed to cache: ${String(e)}`);
+      }
+    }
+
+    return cleanResult.text;
   }
+
+  /**
+   * Get clean content with full CleanResult (text + metadata)
+   * Use this when you need access to the extracted metadata
+   */
+  async getCleanContentWithMetadata(
+    filePath: string,
+    repository: string,
+    zipUrl: string,
+    resourceType: ResourceType,
+    zipDataProvider: () => Promise<Uint8Array | null>,
+  ): Promise<CleanResult | null> {
+    const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
+    const version = extractVersionFromUrl(zipUrl);
+    const language = extractLanguageFromRepo(repository);
+    const organization = extractOrganization(zipUrl);
+    const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
+
+    // Get R2 environment
+    const { bucket, caches } = getR2Env();
+    let r2: R2Storage | null = null;
+    if (bucket) {
+      r2 = new R2Storage(bucket as any, caches as any);
+    }
+
+    // Get raw content from ZIP
+    const zipData = await zipDataProvider();
+    if (!zipData) {
+      return null;
+    }
+
+    const zipCacheKey = r2KeyFromUrl(zipUrl).key;
+    const rawContent = await this.extractFileFromZip(
+      zipData,
+      filePath,
+      repository,
+      zipCacheKey,
+    );
+
+    if (!rawContent) {
+      return null;
+    }
+
+    // Clean content AND extract metadata
+    const cleanResult = cleanContentWithMetadata(
+      rawContent,
+      resourceType,
+      filePath,
+      repository,
+      zipUrl,
+    );
+
+    if (!cleanResult.text) {
+      return null;
+    }
+
+    // Store in R2 (side effect for caching)
+    if (r2) {
+      try {
+        const r2Metadata = metadataToR2Metadata(cleanResult.metadata);
+        await r2.putFile(
+          cleanKey,
+          cleanResult.text,
+          "text/plain; charset=utf-8",
+          r2Metadata,
+        );
+      } catch (_e) {
+        // Ignore cache errors
+      }
+    }
+
+    return cleanResult;
+  }
+
+  /**
+   * Infer resource type from file extension
+   * Used for automatic clean content storage for AI Search
+   */
+  private inferResourceType(filePath: string): ResourceType | null {
+    const ext = filePath.toLowerCase();
+
+    if (ext.endsWith(".usfm") || ext.endsWith(".usfm3")) {
+      return "bible";
+    }
+
+    if (ext.endsWith(".tsv")) {
+      // TSV can be notes, questions, or word links
+      // Check path hints
+      if (filePath.includes("_tn") || filePath.includes("notes")) {
+        return "notes";
+      }
+      if (filePath.includes("_tq") || filePath.includes("questions")) {
+        return "questions";
+      }
+      if (filePath.includes("_twl") || filePath.includes("links")) {
+        return "notes"; // Treat word links similar to notes for search
+      }
+      return "notes"; // Default TSV to notes
+    }
+
+    if (ext.endsWith(".md")) {
+      // Markdown can be words or academy
+      if (filePath.includes("_tw") || filePath.includes("bible/")) {
+        return "words";
+      }
+      if (
+        filePath.includes("_ta") ||
+        filePath.includes("translate/") ||
+        filePath.includes("checking/")
+      ) {
+        return "academy";
+      }
+      return "words"; // Default markdown to words
+    }
+
+    return null; // Unknown file type, skip clean content storage
+  }
+
+  // MiniSearch indexing methods removed - AI Search handles all indexing
+  // Clean content is automatically stored in /clean/ prefix for AI Search
 
   private extractVerseFromUSFM(
     usfm: string,

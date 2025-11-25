@@ -19,6 +19,50 @@ interface R2Bucket {
 	): Promise<void>;
 }
 
+// AI Search types for Cloudflare AI Search
+// API: env.AI.search(indexName, query, options)
+interface AISearchMatch {
+	id: string;
+	score: number;
+	metadata?: Record<string, string>;
+	content?: string;
+}
+
+interface AISearchResponse {
+	matches: AISearchMatch[];
+	latency_ms?: number;
+}
+
+interface AIBinding {
+	// AI Search method - searches an AI Search index
+	search(
+		indexName: string,
+		query: string,
+		options?: {
+			filters?: Record<string, string>;
+			max_num_results?: number;
+		}
+	): Promise<AISearchResponse>;
+
+	// AI Search with generation - searches and generates response
+	aiSearch(
+		indexName: string,
+		query: string,
+		options?: {
+			model?: string;
+			system_prompt?: string;
+			rewrite_query?: boolean;
+			max_num_results?: number;
+			filters?: Record<string, string>;
+			stream?: boolean;
+		}
+	): Promise<{
+		response: string;
+		data: AISearchMatch[];
+		latency_ms?: number;
+	}>;
+}
+
 declare global {
 	namespace App {
 		// interface Error {}
@@ -31,6 +75,8 @@ declare global {
 				TRANSLATION_HELPS_CACHE?: KVNamespace;
 				// R2 bucket for ZIPs and extracted files
 				ZIP_FILES?: R2Bucket;
+				// AI binding for Workers AI / AI Search
+				AI?: AIBinding;
 				// Secrets
 				OPENAI_API_KEY?: string;
 				ANTHROPIC_API_KEY?: string;
