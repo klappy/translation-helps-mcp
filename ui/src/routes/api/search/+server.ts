@@ -215,7 +215,8 @@ async function fanOutSearch(
 					zipUrl: resource.zipUrl,
 					query,
 					reference,
-					type: resource.type
+					type: resource.type,
+					owner: resource.owner // Pass owner for cache key consistency
 				}),
 				signal: AbortSignal.timeout(15000) // 15s timeout per resource (Bible ZIPs are large)
 			});

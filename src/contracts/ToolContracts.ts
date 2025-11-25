@@ -280,12 +280,12 @@ export const ToolRegistry = {
   fetch_translation_notes: {
     endpoint: "/api/fetch-translation-notes",
     formatter: ToolFormatters.notes,
-    requiredParams: ["reference"],
+    requiredParams: [], // Reference is optional when search is provided
   },
   fetch_translation_questions: {
     endpoint: "/api/fetch-translation-questions",
     formatter: ToolFormatters.questions,
-    requiredParams: ["reference"],
+    requiredParams: [], // Reference is optional when search is provided
   },
   fetch_translation_word: {
     endpoint: "/api/fetch-translation-word",
