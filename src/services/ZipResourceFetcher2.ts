@@ -712,6 +712,19 @@ export class ZipResourceFetcher2 {
           `[getScripture] Got file content for ${t.name}, length: ${fileContent.length}`,
         );
 
+        // Queue clean content storage for AI Search (fire-and-forget)
+        this.storeCleanContent(
+          fileContent,
+          "bible",
+          t.ingredientPath,
+          t.name,
+          language,
+          t.owner,
+          t.refTag || "master",
+        ).catch((err) =>
+          logger.debug(`[CleanContent] Scripture store failed: ${err}`),
+        );
+
         // Extract text
         let verseText: string;
         if (!reference.chapter && !reference.verse) {
@@ -955,6 +968,23 @@ export class ZipResourceFetcher2 {
       );
 
       if (!tsvContent) return [];
+
+      // Queue clean content storage for AI Search (fire-and-forget)
+      const tsvResourceType =
+        resourceType === "tn"
+          ? "notes"
+          : resourceType === "tq"
+            ? "questions"
+            : "notes";
+      this.storeCleanContent(
+        tsvContent,
+        tsvResourceType,
+        targetIngredient.path,
+        resource.name,
+        language,
+        resource.owner,
+        refTag,
+      ).catch((err) => logger.debug(`[CleanContent] TSV store failed: ${err}`));
 
       // 5. Parse TSV and filter by reference
       return this.parseTSVForReference(tsvContent, reference);
@@ -1477,6 +1507,19 @@ export class ZipResourceFetcher2 {
           };
         }
 
+        // Queue clean content storage for AI Search (fire-and-forget)
+        this.storeCleanContent(
+          content,
+          "words",
+          targetPath,
+          resource.name,
+          language,
+          resource.owner,
+          refTag,
+        ).catch((err) =>
+          logger.debug(`[CleanContent] TW store failed: ${err}`),
+        );
+
         return {
           articles: [
             {
@@ -1634,6 +1677,19 @@ export class ZipResourceFetcher2 {
           const combined = contentParts.join("\n\n");
           const moduleIdFromPath = dirPath.split("/").pop() || dirPath;
 
+          // Queue clean content storage for AI Search (fire-and-forget)
+          this.storeCleanContent(
+            combined,
+            "academy",
+            dirPath,
+            resource.name,
+            language,
+            resource.owner,
+            refTag,
+          ).catch((err) =>
+            logger.debug(`[CleanContent] TA dir store failed: ${err}`),
+          );
+
           return {
             modules: [
               {
@@ -1717,6 +1773,19 @@ export class ZipResourceFetcher2 {
           );
         }
         if (!content) return { modules: [] };
+
+        // Queue clean content storage for AI Search (fire-and-forget)
+        this.storeCleanContent(
+          content,
+          "academy",
+          modulePath,
+          resource.name,
+          language,
+          resource.owner,
+          refTag,
+        ).catch((err) =>
+          logger.debug(`[CleanContent] TA file store failed: ${err}`),
+        );
 
         return {
           modules: [
@@ -2907,6 +2976,106 @@ export class ZipResourceFetcher2 {
 
   // MiniSearch indexing methods removed - AI Search handles all indexing
   // Clean content is automatically stored in /clean/ prefix for AI Search
+
+  /**
+   * Store clean content in R2 for AI Search indexing
+   * This method takes already-fetched raw content and stores the cleaned version
+   *
+   * @param rawContent - The raw content (USFM, TSV, or Markdown)
+   * @param resourceType - Type of resource for proper cleaning
+   * @param filePath - Original file path within the ZIP
+   * @param repository - Repository name (e.g., 'en_ult')
+   * @param language - Language code (e.g., 'en')
+   * @param organization - Organization (e.g., 'unfoldingWord')
+   * @param version - Version string (e.g., 'v87')
+   * @returns Promise<boolean> - true if stored successfully
+   */
+  async storeCleanContent(
+    rawContent: string,
+    resourceType: ResourceType,
+    filePath: string,
+    repository: string,
+    language: string,
+    organization: string,
+    version: string,
+  ): Promise<boolean> {
+    if (!rawContent || rawContent.length === 0) {
+      return false;
+    }
+
+    const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
+
+    // Build the clean content key for AI Search
+    // Format: clean/{language}/{organization}/{repository}/{version}/{filename}.txt
+    const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
+
+    // Get R2 environment
+    const { bucket, caches } = getR2Env();
+    if (!bucket) {
+      logger.debug(
+        "[StoreCleanContent] R2 not available, skipping clean content storage",
+      );
+      return false;
+    }
+
+    const r2 = new R2Storage(bucket as any, caches as any);
+
+    // Check if already cached
+    try {
+      const { data: existing } = await r2.getFileWithInfo(
+        cleanKey,
+        "text/plain; charset=utf-8",
+      );
+      if (existing) {
+        logger.debug(`[StoreCleanContent] Already cached: ${cleanKey}`);
+        return true;
+      }
+    } catch {
+      // Not cached, continue to store
+    }
+
+    // Build a synthetic zipUrl for metadata extraction
+    const zipUrl = `https://git.door43.org/${organization}/${repository}/archive/${version}.zip`;
+
+    // Clean content AND extract metadata
+    const cleanResult = cleanContentWithMetadata(
+      rawContent,
+      resourceType,
+      filePath,
+      repository,
+      zipUrl,
+    );
+
+    if (!cleanResult.text || cleanResult.text.length === 0) {
+      logger.debug(
+        `[StoreCleanContent] Cleaning produced empty content: ${cleanPath}`,
+      );
+      return false;
+    }
+
+    // Store in R2 with metadata
+    try {
+      const r2Metadata = metadataToR2Metadata(cleanResult.metadata);
+
+      await r2.putFile(
+        cleanKey,
+        cleanResult.text,
+        "text/plain; charset=utf-8",
+        r2Metadata,
+      );
+
+      logger.info(`[StoreCleanContent] Stored: ${cleanKey}`, {
+        originalSize: rawContent.length,
+        cleanSize: cleanResult.text.length,
+        reduction: `${Math.round((1 - cleanResult.text.length / rawContent.length) * 100)}%`,
+      });
+
+      return true;
+    } catch (e) {
+      logger.warn(`[StoreCleanContent] Failed to store: ${String(e)}`);
+      return false;
+    }
+  }
 
   private extractVerseFromUSFM(
     usfm: string,

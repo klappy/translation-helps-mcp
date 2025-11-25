@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.5.3](https://github.com/klappy/translation-helps-mcp/compare/v7.5.2...v7.5.3) (2025-11-25)
+
+### Features
+
+- **Auto-populate clean content**: Added automatic clean content storage in R2 for AI Search indexing
+- **Fire-and-forget hooks**: Clean content generation happens in background without blocking responses
+- **Coverage**: Scripture (USFM), Translation Notes (TSV), Translation Questions (TSV), Translation Words (MD), Translation Academy (MD)
+
+### Technical Details
+
+- Added `storeCleanContent()` method to ZipResourceFetcher2
+- Integrated hooks into `getScripture()`, `getTSVData()`, and `getMarkdownContent()` methods
+- Clean content stored at `clean/{language}/{organization}/{repository}/{version}/{filepath}.txt`
+
 ## [7.5.2](https://github.com/klappy/translation-helps-mcp/compare/v7.5.1...v7.5.2) (2025-11-25)
 
 ### Bug Fixes

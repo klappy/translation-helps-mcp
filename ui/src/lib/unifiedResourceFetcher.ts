@@ -5,6 +5,10 @@
  * DRY: Reuses the battle-tested ZipResourceFetcher2
  * Consistent: Same patterns for all resources
  * Antifragile: Real data or real errors, no fake fallbacks
+ *
+ * Clean Content Pipeline:
+ * After successful fetches, content is cleaned and stored in R2 /clean/ prefix
+ * for AI Search indexing. This happens non-blocking via fire-and-forget promises.
  */
 
 import { EdgeXRayTracer } from '../../../src/functions/edge-xray.js';
@@ -48,6 +52,11 @@ export interface TAResult {
 /**
  * Unified fetcher that wraps ZipResourceFetcher2
  * All resources go through here for consistency
+ *
+ * Clean Content Pipeline:
+ * ZipResourceFetcher2 automatically stores cleaned content in R2 /clean/ prefix
+ * for AI Search indexing when resources are fetched. This happens fire-and-forget
+ * in the background without blocking responses.
  */
 export class UnifiedResourceFetcher {
 	private zipFetcher: ZipResourceFetcher2;
