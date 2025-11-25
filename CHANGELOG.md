@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.4.11](https://github.com/klappy/translation-helps-mcp/compare/v7.4.10...v7.4.11) (2025-11-25)
+
+### Features
+
+- add search-all-books support to notes and questions endpoints ([be8f053](https://github.com/klappy/translation-helps-mcp/commit/be8f053f8934e6027026c3299dd18210a55abc7c))
+- implement simple sequential search across all books ([6cc3509](https://github.com/klappy/translation-helps-mcp/commit/6cc350933f25fb66a84ffde37635b6f4a91fc5bd))
+- improve scripture search quality and coverage ([8fbb598](https://github.com/klappy/translation-helps-mcp/commit/8fbb598db0044043c43ac71d0e9cd14a2cf7b96a))
+- optimize with parallel batch processing (10 books at a time) ([9924ac4](https://github.com/klappy/translation-helps-mcp/commit/9924ac4d35e89125e134e42b1d3c821a7cd99302))
+
+### Bug Fixes
+
+- make reference parameter optional in MCP tool configuration ([9a61718](https://github.com/klappy/translation-helps-mcp/commit/9a61718aaf8eed7f2e72f16ef624039f316301f6))
+- scripture search now properly handles book-level and no-reference searches ([11e64ac](https://github.com/klappy/translation-helps-mcp/commit/11e64ace482d06aba352d0a42dab532d12dfea9f))
+- scripture search now works without reference parameter ([9226e8e](https://github.com/klappy/translation-helps-mcp/commit/9226e8e05faf022082b39eba37244842583019b4))
+- **search:** pass includeHelps param to getFallbackResources ([3b4bc2a](https://github.com/klappy/translation-helps-mcp/commit/3b4bc2af655548e360d4aeb284c3fd18b9745d16))
+
+### Documentation
+
+- add search success log for v7.4.10 ([4abe8fa](https://github.com/klappy/translation-helps-mcp/commit/4abe8faa1b4d171e65b1cc5d66e3363195238d51))
+
+### Performance
+
+- optimize search to meet 2.5s target with index caching ([abf6462](https://github.com/klappy/translation-helps-mcp/commit/abf6462516dedd93e55ed3929bc0cb2f48365fe2))
+
 ### [7.4.10](https://github.com/klappy/translation-helps-mcp/compare/v7.4.9...v7.4.10) (2025-11-22)
 
 ### [7.4.9](https://github.com/klappy/translation-helps-mcp/compare/v7.4.8...v7.4.9) (2025-11-22)
