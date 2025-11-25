@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.5.2](https://github.com/klappy/translation-helps-mcp/compare/v7.5.1...v7.5.2) (2025-11-25)
+
+### Bug Fixes
+
+- **AutoRAG API**: Fixed AI Search to use correct AutoRAG API (`env.AI.autorag(indexName).aiSearch()`) instead of non-existent `env.AI.search()` method
+- **Type definitions**: Updated `app.d.ts` with correct AutoRAG TypeScript interfaces
+
 ## [7.5.1](https://github.com/klappy/translation-helps-mcp/compare/v7.5.0...v7.5.1) (2025-11-25)
 
 ### Bug Fixes

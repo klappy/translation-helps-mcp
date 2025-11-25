@@ -182,15 +182,19 @@ function buildFilters(params: SearchRequest): Record<string, string> {
 // =============================================================================
 
 /**
- * Format AI Search match into enhanced SearchHit
+ * Format AutoRAG search result into enhanced SearchHit
+ * AutoRAG returns: { id, score, metadata, content, filename }
  */
 function formatHit(match: any, index: number, query: string): SearchHit {
 	const metadata = match.metadata || {};
 
+	// AutoRAG may use 'filename' instead of 'id' for the R2 path
+	const filePath = match.id || match.filename || metadata.original_path || '';
+
 	// Extract metadata fields
 	const language = metadata.language || 'en';
 	const organization = metadata.organization || 'unfoldingWord';
-	const resource = metadata.resource || inferResourceFromPath(metadata.original_path || '');
+	const resource = metadata.resource || inferResourceFromPath(filePath);
 	const book = metadata.book;
 	const chapter = metadata.chapter ? parseInt(metadata.chapter, 10) : undefined;
 	const verseStart = metadata.verse_start ? parseInt(metadata.verse_start, 10) : undefined;
@@ -212,7 +216,7 @@ function formatHit(match: any, index: number, query: string): SearchHit {
 			reference = title || articleId;
 		}
 	} else {
-		reference = metadata.original_path || `Result ${index + 1}`;
+		reference = filePath || `Result ${index + 1}`;
 	}
 
 	// Extract content and create preview
@@ -225,14 +229,14 @@ function formatHit(match: any, index: number, query: string): SearchHit {
 	const highlights = queryTerms.filter((term) => content.toLowerCase().includes(term));
 
 	return {
-		id: match.id || `hit-${index}`,
+		id: filePath || `hit-${index}`,
 		reference,
 		preview,
 		context,
 		resource,
 		language,
 		organization,
-		path: metadata.original_path || '',
+		path: filePath,
 		book,
 		chapter,
 		verse: verseStart,
@@ -383,12 +387,13 @@ async function executeSearch(
 		// Build filters from parameters
 		const filters = buildFilters(params);
 
-		// Execute AI Search query
+		// Execute AI Search query using AutoRAG API
+		// API: env.AI.autorag(indexName).aiSearch({ query })
 		let searchResults;
 		try {
-			searchResults = await ai.search(AI_SEARCH_INDEX, query, {
-				filters,
-				max_num_results: limit
+			const autorag = ai.autorag(AI_SEARCH_INDEX);
+			searchResults = await autorag.aiSearch({
+				query
 			});
 		} catch (searchError) {
 			const errorMessage = searchError instanceof Error ? searchError.message : String(searchError);
@@ -399,8 +404,9 @@ async function executeSearch(
 				filters
 			});
 
-			// Check if this is the "not a function" error (local dev limitation)
-			const isLocalDevIssue = errorMessage.includes('not a function');
+			// Check if this is a function/method error (local dev or API mismatch)
+			const isApiIssue =
+				errorMessage.includes('not a function') || errorMessage.includes('autorag');
 
 			return json({
 				took_ms: Date.now() - startTime,
@@ -410,17 +416,28 @@ async function executeSearch(
 				resourceCount: 0,
 				hits: [],
 				error: errorMessage,
-				message: isLocalDevIssue
-					? 'AI Search is not available in local development. Deploy to production to use AI Search, or use resource-specific endpoints (fetch-scripture, fetch-translation-notes, etc.) which work locally.'
+				message: isApiIssue
+					? 'AI Search (AutoRAG) is not available. This may be a local development limitation or the AI binding may not support AutoRAG. Use resource-specific endpoints (fetch-scripture, fetch-translation-notes, etc.) instead.'
 					: 'AI Search query failed. The index may not be ready or the /clean/ prefix in R2 may not have indexed content yet.'
 			} as SearchResponse);
 		}
 
+		// AutoRAG returns { response: string, data: AutoRAGSearchResult[] }
+		const searchData = searchResults.data || [];
+
+		// Log the AI-generated response if available
+		if (searchResults.response) {
+			logger.debug('[Search] AutoRAG AI response', {
+				responseLength: searchResults.response.length,
+				preview: searchResults.response.substring(0, 200)
+			});
+		}
+
 		// POST-FILTER: Only include results from /clean/ prefix
 		// This prevents duplicates from raw content files that AI Search may also index
-		const cleanMatches = searchResults.matches.filter((match: any) => {
-			// Check the match ID (R2 path)
-			const matchId = match.id || '';
+		const cleanMatches = searchData.filter((match: any) => {
+			// Check the match ID or filename (R2 path)
+			const matchId = match.id || match.filename || '';
 
 			// Also check metadata paths as fallback
 			const metadataPath = match.metadata?.clean_path || match.metadata?.original_path || '';
@@ -431,9 +448,9 @@ async function executeSearch(
 
 		// Log filtering effectiveness for debugging
 		logger.debug('[Search] Post-filter applied', {
-			originalCount: searchResults.matches.length,
+			originalCount: searchData.length,
 			filteredCount: cleanMatches.length,
-			removedCount: searchResults.matches.length - cleanMatches.length
+			removedCount: searchData.length - cleanMatches.length
 		});
 
 		// Format only the filtered results
@@ -455,8 +472,9 @@ async function executeSearch(
 			);
 		}
 
+		const took_ms = Date.now() - startTime;
 		const response: SearchResponse = {
-			took_ms: searchResults.latency_ms || Date.now() - startTime,
+			took_ms,
 			query,
 			language,
 			organization,
@@ -468,11 +486,12 @@ async function executeSearch(
 		};
 
 		logger.info('[Search] AI Search completed', {
-			took_ms: response.took_ms,
+			took_ms,
 			hitCount: hits.length,
 			cleanMatchCount: cleanMatches.length,
-			rawMatchCount: searchResults.matches.length,
-			duplicatesRemoved: searchResults.matches.length - cleanMatches.length,
+			rawMatchCount: searchData.length,
+			duplicatesRemoved: searchData.length - cleanMatches.length,
+			hasAIResponse: !!searchResults.response,
 			filters
 		});
 

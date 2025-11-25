@@ -19,48 +19,33 @@ interface R2Bucket {
 	): Promise<void>;
 }
 
-// AI Search types for Cloudflare AI Search
-// API: env.AI.search(indexName, query, options)
-interface AISearchMatch {
+// AI Search types for Cloudflare AI Search (AutoRAG)
+// API: env.AI.autorag(indexName).aiSearch({ query })
+interface AutoRAGSearchResult {
 	id: string;
 	score: number;
 	metadata?: Record<string, string>;
 	content?: string;
+	filename?: string;
 }
 
-interface AISearchResponse {
-	matches: AISearchMatch[];
-	latency_ms?: number;
+interface AutoRAGResponse {
+	response: string;
+	data: AutoRAGSearchResult[];
+}
+
+interface AutoRAGInstance {
+	// Search with AI-generated response
+	aiSearch(options: { query: string }): Promise<AutoRAGResponse>;
+	// Direct search without AI generation (if available)
+	search?(options: { query: string }): Promise<{ data: AutoRAGSearchResult[] }>;
 }
 
 interface AIBinding {
-	// AI Search method - searches an AI Search index
-	search(
-		indexName: string,
-		query: string,
-		options?: {
-			filters?: Record<string, string>;
-			max_num_results?: number;
-		}
-	): Promise<AISearchResponse>;
-
-	// AI Search with generation - searches and generates response
-	aiSearch(
-		indexName: string,
-		query: string,
-		options?: {
-			model?: string;
-			system_prompt?: string;
-			rewrite_query?: boolean;
-			max_num_results?: number;
-			filters?: Record<string, string>;
-			stream?: boolean;
-		}
-	): Promise<{
-		response: string;
-		data: AISearchMatch[];
-		latency_ms?: number;
-	}>;
+	// AutoRAG - returns an instance for a specific AI Search index
+	autorag(indexName: string): AutoRAGInstance;
+	// Workers AI model inference (if needed)
+	run?(model: string, inputs: unknown): Promise<unknown>;
 }
 
 declare global {
