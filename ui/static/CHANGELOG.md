@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.5.4](https://github.com/klappy/translation-helps-mcp/compare/v7.5.3...v7.5.4) (2025-11-26)
+
+### Features
+
+- **Admin endpoints**: New admin endpoints for managing AI Search clean content
+  - `/api/admin/populate-scope` - Trigger clean content generation for a language/organization
+  - `/api/admin/clean-status` - Check the status of clean content in R2 storage
+- **Enhanced debugging**: Improved logging throughout clean content generation pipeline
+- **Scoped population**: Smart population strategy to avoid massive initial indexing
+
+### Bug Fixes
+
+- **Clean content logging**: Added detailed logging to track clean content generation flow
+- **R2 environment checks**: Added proper checks before attempting R2 operations
+- **Import paths**: Fixed admin endpoint import paths for R2 utilities
+
 ## [7.5.3](https://github.com/klappy/translation-helps-mcp/compare/v7.5.2...v7.5.3) (2025-11-25)
 
 ### Features

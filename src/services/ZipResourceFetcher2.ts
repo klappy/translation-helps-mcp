@@ -2999,7 +2999,18 @@ export class ZipResourceFetcher2 {
     organization: string,
     version: string,
   ): Promise<boolean> {
+    logger.info("[StoreCleanContent] Starting", {
+      resourceType,
+      filePath,
+      repository,
+      language,
+      organization,
+      version,
+      contentSize: rawContent?.length || 0,
+    });
+
     if (!rawContent || rawContent.length === 0) {
+      logger.warn("[StoreCleanContent] Empty content provided");
       return false;
     }
 
@@ -3009,10 +3020,12 @@ export class ZipResourceFetcher2 {
     // Format: clean/{language}/{organization}/{repository}/{version}/{filename}.txt
     const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
 
+    logger.info("[StoreCleanContent] Clean key generated", { cleanKey });
+
     // Get R2 environment
     const { bucket, caches } = getR2Env();
     if (!bucket) {
-      logger.debug(
+      logger.error(
         "[StoreCleanContent] R2 not available, skipping clean content storage",
       );
       return false;
@@ -3027,11 +3040,17 @@ export class ZipResourceFetcher2 {
         "text/plain; charset=utf-8",
       );
       if (existing) {
-        logger.debug(`[StoreCleanContent] Already cached: ${cleanKey}`);
+        logger.info(`[StoreCleanContent] Already cached: ${cleanKey}`);
         return true;
       }
-    } catch {
+    } catch (checkError) {
       // Not cached, continue to store
+      logger.info(
+        `[StoreCleanContent] Not cached, will generate: ${cleanKey}`,
+        {
+          error: String(checkError),
+        },
+      );
     }
 
     // Build a synthetic zipUrl for metadata extraction
