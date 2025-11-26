@@ -2,6 +2,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher';
 import { logger } from '$lib/../../../src/utils/logger.js';
+import { initializeR2Env } from '$lib/../../../src/functions/r2-env.js';
 
 /**
  * Admin endpoint to trigger clean content population for a specific language/organization
@@ -19,6 +20,16 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 	const organization = url.searchParams.get('organization') || 'unfoldingWord';
 	const test = url.searchParams.get('test') !== 'false';
 	const full = url.searchParams.get('full') === 'true';
+
+	// Initialize R2 environment from platform
+	const r2Bucket = platform?.env?.ZIP_FILES;
+	const caches = (platform as any)?.caches;
+	if (r2Bucket || caches) {
+		initializeR2Env(r2Bucket, caches);
+		logger.info('[PopulateScope] R2 environment initialized');
+	} else {
+		logger.warn('[PopulateScope] R2 environment not available');
+	}
 
 	logger.info('[PopulateScope] Starting population', {
 		language,

@@ -1,6 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { getR2Env } from '$lib/../../../src/functions/r2-env.js';
+import { getR2Env, initializeR2Env } from '$lib/../../../src/functions/r2-env.js';
 import { R2Storage } from '$lib/../../../src/functions/r2-storage.js';
 import { logger } from '$lib/../../../src/utils/logger.js';
 
@@ -15,7 +15,7 @@ import { logger } from '$lib/../../../src/utils/logger.js';
  * - limit: Maximum number of items to list (default: 100)
  * - prefix: Custom prefix to check (overrides language/organization)
  */
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, platform }) => {
 	const language = url.searchParams.get('language') || 'en';
 	const organization = url.searchParams.get('organization') || 'unfoldingWord';
 	const limit = parseInt(url.searchParams.get('limit') || '100', 10);
@@ -29,7 +29,14 @@ export const GET: RequestHandler = async ({ url }) => {
 	});
 
 	try {
-		const { bucket, caches } = getR2Env();
+		// Initialize R2 environment from platform
+		const r2Bucket = platform?.env?.ZIP_FILES;
+		const caches = (platform as any)?.caches;
+		if (r2Bucket || caches) {
+			initializeR2Env(r2Bucket, caches);
+		}
+
+		const { bucket, caches: cachesFromEnv } = getR2Env();
 		if (!bucket) {
 			return json(
 				{
@@ -42,7 +49,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Note: R2Storage instance created but not used directly
 		// The bucket API is accessed directly for list operations
-		const _r2 = new R2Storage(bucket as any, caches as any);
+		const _r2 = new R2Storage(bucket as any, cachesFromEnv as any);
 
 		// List objects with the given prefix
 		const listResult = await bucket.list({

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.5.5](https://github.com/klappy/translation-helps-mcp/compare/v7.5.4...v7.5.5) (2025-11-26)
+
+### Bug Fixes
+
+- **Admin endpoints**: Fixed R2 environment initialization in admin endpoints
+  - Admin endpoints now properly initialize R2 from platform environment
+  - Both clean-status and populate-scope endpoints will now work in production
+
 ## [7.5.4](https://github.com/klappy/translation-helps-mcp/compare/v7.5.3...v7.5.4) (2025-11-26)
 
 ### Features
