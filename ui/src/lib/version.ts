@@ -5,7 +5,7 @@
  */
 
 // This version is populated by the build script from package.json
-export const VERSION = '7.5.9';
+export const VERSION = '7.5.10';
 
 // Helper function to get version with 'v' prefix for display
 export const getDisplayVersion = () => `v${VERSION}`;

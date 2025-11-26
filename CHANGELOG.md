@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.5.10] - 2025-01-26
+
+### Fixed
+
+- Reduced excessive logging that caused Cloudflare deployment failures
+- Simplified logging to essential errors only to avoid Worker limits
+- Kept critical error logging for R2 storage and cleaning failures
+
 ## [7.5.9] - 2025-01-26
 
 ### Fixed

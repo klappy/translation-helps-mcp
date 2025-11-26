@@ -238,31 +238,15 @@ export function cleanContentWithMetadata(
   repository: string,
   zipUrl: string,
 ): CleanResult {
-  logger.info("[cleanContentWithMetadata] Starting", {
-    resourceType,
-    contentLength: content.length,
-    filePath,
-    repository,
-    zipUrl,
-  });
-
   // Clean the content
   const cleaner = getContentCleaner(resourceType);
-  logger.info("[cleanContentWithMetadata] Got cleaner", {
-    cleanerType: cleaner.name,
-    resourceType,
-  });
 
   let cleanedText: string;
   try {
     cleanedText = cleaner(content);
-    logger.info("[cleanContentWithMetadata] Cleaner succeeded", {
-      cleanTextLength: cleanedText?.length || 0,
-    });
   } catch (error) {
     logger.error("[cleanContentWithMetadata] Cleaner FAILED", {
       error: String(error),
-      stack: error instanceof Error ? error.stack : undefined,
       resourceType,
     });
     throw error;
@@ -277,13 +261,10 @@ export function cleanContentWithMetadata(
     content, // Pass raw content for content-based extraction
   );
 
-  logger.info(`[cleanContentWithMetadata] SUCCESS`, {
+  logger.debug(`[cleanContentWithMetadata] Completed`, {
     originalSize: content.length,
     cleanedSize: cleanedText.length,
     reduction: `${Math.round((1 - cleanedText.length / content.length) * 100)}%`,
-    book: metadata.book,
-    chapter: metadata.chapter,
-    articleId: metadata.articleId,
   });
 
   return {

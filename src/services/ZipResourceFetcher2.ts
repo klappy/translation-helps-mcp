@@ -717,16 +717,6 @@ export class ZipResourceFetcher2 {
         const version = versionMatch ? versionMatch[1] : t.refTag || "master";
 
         // Queue clean content storage for AI Search (fire-and-forget)
-        logger.info(`[getScripture] Attempting to store clean content`, {
-          resourceType: "bible",
-          filePath: t.ingredientPath,
-          repository: t.name,
-          language,
-          organization: t.owner,
-          version,
-          contentLength: fileContent.length,
-        });
-
         this.storeCleanContent(
           fileContent,
           "bible",
@@ -738,7 +728,6 @@ export class ZipResourceFetcher2 {
         ).catch((err) => {
           logger.error(`[CleanContent] Scripture store FAILED`, {
             error: String(err),
-            stack: err instanceof Error ? err.stack : undefined,
             filePath: t.ingredientPath,
             repository: t.name,
             version,
@@ -3019,21 +3008,10 @@ export class ZipResourceFetcher2 {
     organization: string,
     version: string,
   ): Promise<boolean> {
-    logger.info("[StoreCleanContent] ===== STARTING =====", {
-      resourceType,
-      filePath,
-      repository,
-      language,
-      organization,
-      version,
-      contentSize: rawContent?.length || 0,
-    });
-
     if (!rawContent || rawContent.length === 0) {
-      logger.error("[StoreCleanContent] FAILED: Empty content provided", {
+      logger.warn("[StoreCleanContent] Empty content", {
         resourceType,
         filePath,
-        repository,
       });
       return false;
     }
@@ -3044,23 +3022,12 @@ export class ZipResourceFetcher2 {
     // Format: clean/{language}/{organization}/{repository}/{version}/{filename}.txt
     const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
 
-    logger.info("[StoreCleanContent] Clean key generated", {
-      cleanKey,
-      originalPath: filePath,
-      cleanPath,
-    });
-
     // Get R2 environment
     const { bucket, caches } = getR2Env();
     if (!bucket) {
-      logger.error("[StoreCleanContent] FAILED: R2 not available", {
-        hasR2: false,
-        hasCaches: !!caches,
-      });
+      logger.error("[StoreCleanContent] R2 not available");
       return false;
     }
-
-    logger.info("[StoreCleanContent] R2 available, proceeding");
 
     const r2 = new R2Storage(bucket as any, caches as any);
 
@@ -3103,44 +3070,26 @@ export class ZipResourceFetcher2 {
         repository,
         zipUrl,
       );
-
-      logger.info("[StoreCleanContent] cleanContentWithMetadata SUCCEEDED", {
-        cleanTextLength: cleanResult.text?.length || 0,
-        metadataKeys: Object.keys(cleanResult.metadata || {}),
-      });
     } catch (cleanError) {
-      logger.error(
-        "[StoreCleanContent] FAILED: cleanContentWithMetadata threw",
-        {
-          error: String(cleanError),
-          resourceType,
-          filePath,
-        },
-      );
+      logger.error("[StoreCleanContent] Clean failed", {
+        error: String(cleanError),
+        resourceType,
+        filePath,
+      });
       return false;
     }
 
     if (!cleanResult.text || cleanResult.text.length === 0) {
-      logger.error(
-        `[StoreCleanContent] FAILED: Cleaning produced empty content`,
-        {
-          cleanPath,
-          resourceType,
-          originalLength: rawContent.length,
-        },
-      );
+      logger.warn(`[StoreCleanContent] Empty after cleaning`, {
+        cleanPath,
+        resourceType,
+      });
       return false;
     }
 
     // Store in R2 with metadata
     try {
       const r2Metadata = metadataToR2Metadata(cleanResult.metadata);
-
-      logger.info("[StoreCleanContent] Attempting R2 putFile", {
-        cleanKey,
-        contentSize: cleanResult.text.length,
-        metadataCount: Object.keys(r2Metadata).length,
-      });
 
       await r2.putFile(
         cleanKey,
@@ -3149,18 +3098,11 @@ export class ZipResourceFetcher2 {
         r2Metadata,
       );
 
-      logger.info(`[StoreCleanContent] ✅ SUCCESS: Stored ${cleanKey}`, {
-        originalSize: rawContent.length,
-        cleanSize: cleanResult.text.length,
-        reduction: `${Math.round((1 - cleanResult.text.length / rawContent.length) * 100)}%`,
-        metadata: r2Metadata,
-      });
-
+      logger.info(`[StoreCleanContent] Stored: ${cleanKey}`);
       return true;
     } catch (e) {
-      logger.error(`[StoreCleanContent] ❌ FAILED to store in R2`, {
+      logger.error(`[StoreCleanContent] R2 store failed`, {
         error: String(e),
-        stack: e instanceof Error ? e.stack : undefined,
         cleanKey,
       });
       return false;
