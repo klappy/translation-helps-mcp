@@ -712,6 +712,10 @@ export class ZipResourceFetcher2 {
           `[getScripture] Got file content for ${t.name}, length: ${fileContent.length}`,
         );
 
+        // Extract version from the actual zipUrl (which may contain v87, v86, etc.)
+        const versionMatch = zipUrl.match(/\/archive\/([^/]+)\.zip/);
+        const version = versionMatch ? versionMatch[1] : t.refTag || "master";
+
         // Queue clean content storage for AI Search (fire-and-forget)
         this.storeCleanContent(
           fileContent,
@@ -720,7 +724,7 @@ export class ZipResourceFetcher2 {
           t.name,
           language,
           t.owner,
-          t.refTag || "master",
+          version,
         ).catch((err) =>
           logger.debug(`[CleanContent] Scripture store failed: ${err}`),
         );

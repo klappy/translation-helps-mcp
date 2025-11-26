@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.5.8](https://github.com/klappy/translation-helps-mcp/compare/v7.5.7...v7.5.8) (2025-11-26)
+
+### Bug Fixes
+
+- **Scripture clean content**: Fixed version extraction for scripture clean content storage
+  - Scripture was being stored with "master" instead of actual version (e.g., "v87")
+  - This prevented AI Search from indexing scripture content correctly
+  - Now extracts version from the actual ZIP URL for proper storage path
+
+### Critical Fix
+
+This fixes the issue where scripture searches were returning no results in AI Search.
+The clean content was being stored at the wrong path in R2.
+
 ## [7.5.7](https://github.com/klappy/translation-helps-mcp/compare/v7.5.6...v7.5.7) (2025-11-26)
 
 ### Features
