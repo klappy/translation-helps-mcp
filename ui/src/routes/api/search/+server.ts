@@ -220,13 +220,27 @@ function formatHit(match: any, index: number, query: string): SearchHit {
 	}
 
 	// Extract content and create preview
-	const content = match.content || '';
+	// Handle various content formats from AutoRAG
+	let content = '';
+	if (typeof match.content === 'string') {
+		content = match.content;
+	} else if (match.content && typeof match.content === 'object') {
+		// AutoRAG might return content as an object
+		content = JSON.stringify(match.content);
+		logger.warn('[Search] Content is an object, stringifying', {
+			contentType: typeof match.content,
+			contentKeys: Object.keys(match.content)
+		});
+	}
+
 	const preview = createPreview(content, query, 200);
 	const context = createContext(content, query, 500);
 
 	// Find query terms that matched (for highlighting)
 	const queryTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
-	const highlights = queryTerms.filter((term) => content.toLowerCase().includes(term));
+	const highlights = content
+		? queryTerms.filter((term) => content.toLowerCase().includes(term))
+		: [];
 
 	return {
 		id: filePath || `hit-${index}`,
@@ -252,7 +266,7 @@ function formatHit(match: any, index: number, query: string): SearchHit {
  * Create a preview snippet around matched terms
  */
 function createPreview(content: string, query: string, maxLength: number): string {
-	if (!content) return '';
+	if (!content || typeof content !== 'string') return '';
 
 	const queryTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
 	const contentLower = content.toLowerCase();
@@ -299,7 +313,7 @@ function createPreview(content: string, query: string, maxLength: number): strin
  */
 function createContext(content: string, query: string, maxLength: number): string {
 	// For context, try to capture a full sentence or paragraph
-	if (!content) return '';
+	if (!content || typeof content !== 'string') return '';
 
 	if (content.length <= maxLength) {
 		return content;

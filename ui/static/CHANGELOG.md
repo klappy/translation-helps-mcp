@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.5.6](https://github.com/klappy/translation-helps-mcp/compare/v7.5.5...v7.5.6) (2025-11-26)
+
+### Bug Fixes
+
+- **Search endpoint**: Fixed "toLowerCase is not a function" error when AI Search returns non-string content
+  - Added type checking for content field from AutoRAG response
+  - Handle object/non-string content gracefully by stringifying
+  - Added defensive checks in preview and context creation functions
+
+### Notes
+
+- AI Search threshold of 0.7 was too high, filtering out all results
+- Typical semantic search scores range from 0.1-0.5
+
 ## [7.5.5](https://github.com/klappy/translation-helps-mcp/compare/v7.5.4...v7.5.5) (2025-11-26)
 
 ### Bug Fixes
