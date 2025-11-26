@@ -1,6 +1,15 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file.
+
+## [7.5.9] - 2025-01-26
+
+### Fixed
+
+- Added aggressive error logging to debug scripture clean content storage failures
+- Enhanced logging in storeCleanContent to track R2 storage operations
+- Added detailed logging to cleanContentWithMetadata to identify cleaning issues
+- Improved error visibility for clean content pipeline debugging See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 ## [7.5.8](https://github.com/klappy/translation-helps-mcp/compare/v7.5.7...v7.5.8) (2025-11-26)
 

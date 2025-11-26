@@ -717,6 +717,16 @@ export class ZipResourceFetcher2 {
         const version = versionMatch ? versionMatch[1] : t.refTag || "master";
 
         // Queue clean content storage for AI Search (fire-and-forget)
+        logger.info(`[getScripture] Attempting to store clean content`, {
+          resourceType: "bible",
+          filePath: t.ingredientPath,
+          repository: t.name,
+          language,
+          organization: t.owner,
+          version,
+          contentLength: fileContent.length,
+        });
+
         this.storeCleanContent(
           fileContent,
           "bible",
@@ -725,9 +735,15 @@ export class ZipResourceFetcher2 {
           language,
           t.owner,
           version,
-        ).catch((err) =>
-          logger.debug(`[CleanContent] Scripture store failed: ${err}`),
-        );
+        ).catch((err) => {
+          logger.error(`[CleanContent] Scripture store FAILED`, {
+            error: String(err),
+            stack: err instanceof Error ? err.stack : undefined,
+            filePath: t.ingredientPath,
+            repository: t.name,
+            version,
+          });
+        });
 
         // Extract text
         let verseText: string;
@@ -3003,7 +3019,7 @@ export class ZipResourceFetcher2 {
     organization: string,
     version: string,
   ): Promise<boolean> {
-    logger.info("[StoreCleanContent] Starting", {
+    logger.info("[StoreCleanContent] ===== STARTING =====", {
       resourceType,
       filePath,
       repository,
@@ -3014,7 +3030,11 @@ export class ZipResourceFetcher2 {
     });
 
     if (!rawContent || rawContent.length === 0) {
-      logger.warn("[StoreCleanContent] Empty content provided");
+      logger.error("[StoreCleanContent] FAILED: Empty content provided", {
+        resourceType,
+        filePath,
+        repository,
+      });
       return false;
     }
 
@@ -3024,16 +3044,23 @@ export class ZipResourceFetcher2 {
     // Format: clean/{language}/{organization}/{repository}/{version}/{filename}.txt
     const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
 
-    logger.info("[StoreCleanContent] Clean key generated", { cleanKey });
+    logger.info("[StoreCleanContent] Clean key generated", {
+      cleanKey,
+      originalPath: filePath,
+      cleanPath,
+    });
 
     // Get R2 environment
     const { bucket, caches } = getR2Env();
     if (!bucket) {
-      logger.error(
-        "[StoreCleanContent] R2 not available, skipping clean content storage",
-      );
+      logger.error("[StoreCleanContent] FAILED: R2 not available", {
+        hasR2: false,
+        hasCaches: !!caches,
+      });
       return false;
     }
+
+    logger.info("[StoreCleanContent] R2 available, proceeding");
 
     const r2 = new R2Storage(bucket as any, caches as any);
 
@@ -3061,17 +3088,46 @@ export class ZipResourceFetcher2 {
     const zipUrl = `https://git.door43.org/${organization}/${repository}/archive/${version}.zip`;
 
     // Clean content AND extract metadata
-    const cleanResult = cleanContentWithMetadata(
-      rawContent,
+    logger.info("[StoreCleanContent] Calling cleanContentWithMetadata", {
       resourceType,
-      filePath,
-      repository,
+      contentLengthBefore: rawContent.length,
       zipUrl,
-    );
+    });
+
+    let cleanResult: CleanResult;
+    try {
+      cleanResult = cleanContentWithMetadata(
+        rawContent,
+        resourceType,
+        filePath,
+        repository,
+        zipUrl,
+      );
+
+      logger.info("[StoreCleanContent] cleanContentWithMetadata SUCCEEDED", {
+        cleanTextLength: cleanResult.text?.length || 0,
+        metadataKeys: Object.keys(cleanResult.metadata || {}),
+      });
+    } catch (cleanError) {
+      logger.error(
+        "[StoreCleanContent] FAILED: cleanContentWithMetadata threw",
+        {
+          error: String(cleanError),
+          resourceType,
+          filePath,
+        },
+      );
+      return false;
+    }
 
     if (!cleanResult.text || cleanResult.text.length === 0) {
-      logger.debug(
-        `[StoreCleanContent] Cleaning produced empty content: ${cleanPath}`,
+      logger.error(
+        `[StoreCleanContent] FAILED: Cleaning produced empty content`,
+        {
+          cleanPath,
+          resourceType,
+          originalLength: rawContent.length,
+        },
       );
       return false;
     }
@@ -3080,6 +3136,12 @@ export class ZipResourceFetcher2 {
     try {
       const r2Metadata = metadataToR2Metadata(cleanResult.metadata);
 
+      logger.info("[StoreCleanContent] Attempting R2 putFile", {
+        cleanKey,
+        contentSize: cleanResult.text.length,
+        metadataCount: Object.keys(r2Metadata).length,
+      });
+
       await r2.putFile(
         cleanKey,
         cleanResult.text,
@@ -3087,15 +3149,20 @@ export class ZipResourceFetcher2 {
         r2Metadata,
       );
 
-      logger.info(`[StoreCleanContent] Stored: ${cleanKey}`, {
+      logger.info(`[StoreCleanContent] ✅ SUCCESS: Stored ${cleanKey}`, {
         originalSize: rawContent.length,
         cleanSize: cleanResult.text.length,
         reduction: `${Math.round((1 - cleanResult.text.length / rawContent.length) * 100)}%`,
+        metadata: r2Metadata,
       });
 
       return true;
     } catch (e) {
-      logger.warn(`[StoreCleanContent] Failed to store: ${String(e)}`);
+      logger.error(`[StoreCleanContent] ❌ FAILED to store in R2`, {
+        error: String(e),
+        stack: e instanceof Error ? e.stack : undefined,
+        cleanKey,
+      });
       return false;
     }
   }
