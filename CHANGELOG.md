@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.5.7](https://github.com/klappy/translation-helps-mcp/compare/v7.5.6...v7.5.7) (2025-11-26)
+
+### Features
+
+- **Search-triggered population**: Search endpoint now triggers background content population
+  - When search returns few/no results, automatically fetches and cleans relevant resources
+  - Scoped population based on search filters (language, organization, resource, reference)
+  - Smart population: Scripture fetches chapters, notes/questions fetch references, words/academy fetch common items
+  - Returns message to user indicating content is being prepared
+
+### Technical Details
+
+- Added `triggerScopedPopulation` function to search endpoint
+- Uses `platform.context.waitUntil()` for non-blocking background processing
+- Population is scoped to the specific search context to avoid massive indexing
+
 ## [7.5.6](https://github.com/klappy/translation-helps-mcp/compare/v7.5.5...v7.5.6) (2025-11-26)
 
 ### Bug Fixes

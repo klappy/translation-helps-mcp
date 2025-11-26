@@ -24,6 +24,8 @@ import {
 } from '$lib/../../../src/utils/metadata-extractors.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
+import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher';
+import { initializeR2Env } from '$lib/../../../src/functions/r2-env.js';
 
 // AI Search index name - created in Cloudflare dashboard
 const AI_SEARCH_INDEX = 'translation-helps-search';
@@ -90,6 +92,7 @@ interface SearchResponse {
 	hits: SearchHit[];
 	message?: string;
 	error?: string;
+	indexing?: boolean; // True if background population was triggered
 }
 
 // =============================================================================
@@ -100,7 +103,7 @@ interface SearchResponse {
  * Parse a reference string into components
  * Handles: "John 3:16", "Genesis 1", "JHN", "1 Corinthians 13:4-7"
  */
-function parseReference(reference: string): {
+function parseReferenceForFilter(reference: string): {
 	book?: string;
 	chapter?: number;
 	verseStart?: number;
@@ -155,7 +158,7 @@ function buildFilters(params: SearchRequest): Record<string, string> {
 
 	// Add metadata filters
 	if (reference) {
-		const parsed = parseReference(reference);
+		const parsed = parseReferenceForFilter(reference);
 		if (parsed.book) {
 			filters.book = parsed.book;
 		}
@@ -175,6 +178,130 @@ function buildFilters(params: SearchRequest): Record<string, string> {
 	logger.debug('[Search] Built filters', { filters, params });
 
 	return filters;
+}
+
+// =============================================================================
+// POPULATION TRIGGER
+// =============================================================================
+
+/**
+ * Trigger background population of clean content for a specific scope
+ */
+async function triggerScopedPopulation(
+	language: string,
+	organization: string,
+	resource: string | undefined,
+	reference: string | undefined,
+	platform: App.Platform
+): Promise<void> {
+	try {
+		// Initialize R2 environment if needed
+		const r2Bucket = platform?.env?.ZIP_FILES;
+		const caches = (platform as any)?.caches;
+		if (r2Bucket || caches) {
+			initializeR2Env(r2Bucket, caches);
+		}
+
+		const fetcher = new UnifiedResourceFetcher();
+		const promises: Promise<any>[] = [];
+
+		// Parse reference to get book/chapter
+		const parsed = reference ? parseReferenceForFilter(reference) : null;
+
+		if (resource === 'ult' || resource === 'ust' || !resource) {
+			// Scripture resources
+			if (parsed?.book) {
+				// Specific book requested - fetch first 3 chapters
+				logger.info('[Population] Fetching scripture for book', {
+					book: parsed.book,
+					language,
+					organization
+				});
+
+				for (let chapter = 1; chapter <= 3; chapter++) {
+					const ref = `${parsed.book} ${chapter}`;
+					const resources = resource ? [resource] : ['ult', 'ust'];
+					promises.push(
+						fetcher
+							.fetchScripture(ref, language, organization, resources)
+							.catch((err) => logger.debug(`[Population] Failed: ${ref}`, { err }))
+					);
+				}
+			} else {
+				// No specific book - fetch key verses
+				const keyReferences = ['John 3:16', 'Genesis 1:1', 'Matthew 5:1-10'];
+				for (const ref of keyReferences) {
+					const resources = resource ? [resource] : ['ult'];
+					promises.push(
+						fetcher
+							.fetchScripture(ref, language, organization, resources)
+							.catch((err) => logger.debug(`[Population] Failed: ${ref}`, { err }))
+					);
+				}
+			}
+		} else if (resource === 'tn') {
+			// Translation Notes
+			const refs = parsed?.book
+				? [`${parsed.book} 1`, `${parsed.book} 2`, `${parsed.book} 3`]
+				: ['John 3:16', 'Genesis 1:1'];
+
+			for (const ref of refs) {
+				promises.push(
+					fetcher
+						.fetchTranslationNotes(ref, language, organization)
+						.catch((err) => logger.debug(`[Population] TN failed: ${ref}`, { err }))
+				);
+			}
+		} else if (resource === 'tq') {
+			// Translation Questions
+			const refs = parsed?.book
+				? [`${parsed.book} 1`, `${parsed.book} 2`]
+				: ['John 3', 'Genesis 1'];
+
+			for (const ref of refs) {
+				promises.push(
+					fetcher
+						.fetchTranslationQuestions(ref, language, organization)
+						.catch((err) => logger.debug(`[Population] TQ failed: ${ref}`, { err }))
+				);
+			}
+		} else if (resource === 'tw') {
+			// Translation Words
+			const terms = ['god', 'love', 'faith', 'grace', 'salvation'];
+			for (const term of terms) {
+				promises.push(
+					fetcher
+						.fetchTranslationWord(term, language, organization)
+						.catch((err) => logger.debug(`[Population] TW failed: ${term}`, { err }))
+				);
+			}
+		} else if (resource === 'ta') {
+			// Translation Academy
+			const modules = ['translate', 'checking', 'process'];
+			for (const moduleId of modules) {
+				promises.push(
+					fetcher
+						.fetchTranslationAcademy(language, organization, moduleId)
+						.catch((err) => logger.debug(`[Population] TA failed: ${moduleId}`, { err }))
+				);
+			}
+		}
+
+		// Execute all fetches in parallel
+		if (promises.length > 0) {
+			logger.info('[Population] Starting parallel fetches', {
+				count: promises.length,
+				language,
+				organization,
+				resource,
+				reference
+			});
+			await Promise.allSettled(promises);
+			logger.info('[Population] Parallel fetches completed');
+		}
+	} catch (error) {
+		logger.error('[Population] Failed to trigger population', { error });
+	}
 }
 
 // =============================================================================
@@ -498,6 +625,35 @@ async function executeSearch(
 			total_hits: cleanMatches.length, // Total after filtering, before limit
 			hits: hits.slice(0, limit)
 		};
+
+		// If we have very few or no results, trigger population for the scope
+		if (response.hits.length < 3 && platform?.context) {
+			logger.info('[Search] Low/no results, triggering scoped population', {
+				hits: response.hits.length,
+				language,
+				organization,
+				resource,
+				reference
+			});
+
+			// Trigger background population for this specific scope
+			const populationPromise = triggerScopedPopulation(
+				language,
+				organization,
+				resource,
+				reference,
+				platform
+			);
+
+			if (populationPromise) {
+				platform.context.waitUntil(populationPromise);
+				response.message =
+					response.hits.length === 0
+						? 'No results found yet. Content is being prepared for this scope. Please try again in 30 seconds.'
+						: 'Limited results found. Additional content is being prepared for this scope.';
+				response.indexing = true;
+			}
+		}
 
 		logger.info('[Search] AI Search completed', {
 			took_ms,
