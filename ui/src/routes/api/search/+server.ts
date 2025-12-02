@@ -2,16 +2,23 @@
  * Search Endpoint - Cloudflare AI Search
  *
  * Enhanced search using Cloudflare AI Search with rich metadata filtering.
- * AI Search automatically indexes content stored in /clean/ prefix of R2.
+ * AI Search indexes content from the dedicated search index bucket populated
+ * by the event-driven Indexer Worker.
  *
  * Features:
  * - Filter by language, organization, resource type
+ * - Multi-level chunk filtering (verse, passage, chapter, note, article, section, question)
  * - Scripture reference filtering (book, chapter, verse)
  * - Article ID filtering for Translation Words/Academy
  * - Contextual results with formatted references
  *
+ * LLM-as-Client Design:
+ * - Returns all matching chunks at all levels
+ * - Rich metadata on every result
+ * - No server-side deduplication (LLM handles curation)
+ *
  * KISS: Single AI Search call replaces complex fan-out pattern
- * DRY: Clean content populated by normal data fetching operations
+ * DRY: Clean content populated by Indexer Worker
  * Antifragile: Graceful fallback if AI Search unavailable
  */
 
@@ -24,11 +31,34 @@ import {
 } from '$lib/../../../src/utils/metadata-extractors.js';
 import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
-import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher';
-import { initializeR2Env } from '$lib/../../../src/functions/r2-env.js';
 
-// AI Search index name - created in Cloudflare dashboard
+// AI Search index name - configured in Cloudflare dashboard
 const AI_SEARCH_INDEX = 'translation-helps-search';
+
+// Resource type aliases for user-friendly queries
+const RESOURCE_ALIASES: Record<string, string> = {
+	tn: 'tn',
+	notes: 'tn',
+	translationNotes: 'tn',
+	tw: 'tw',
+	words: 'tw',
+	translationWords: 'tw',
+	ta: 'ta',
+	academy: 'ta',
+	translationAcademy: 'ta',
+	tq: 'tq',
+	questions: 'tq',
+	translationQuestions: 'tq',
+	ult: 'ult',
+	literal: 'ult',
+	ust: 'ust',
+	simplified: 'ust',
+	scripture: 'scripture',
+	bible: 'scripture'
+};
+
+// Valid chunk levels
+const CHUNK_LEVELS = ['verse', 'passage', 'chapter', 'note', 'article', 'section', 'question'];
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -38,8 +68,11 @@ interface SearchRequest {
 	query: string;
 	language?: string;
 	organization?: string;
-	resource?: string; // "ult", "tn", "tw", "ta", "tq"
+	resource?: string; // "ult", "tn", "tw", "ta", "tq", or aliases
 	reference?: string; // "John 3:16", "Genesis 1"
+	book?: string; // Book filter (3-letter code)
+	chapter?: number; // Chapter filter
+	chunk_level?: string; // "verse", "passage", "chapter", "note", "article", "section", "question"
 	articleId?: string; // For TW/TA: "grace", "figs-metaphor"
 	limit?: number;
 	includeHelps?: boolean;
@@ -57,23 +90,43 @@ interface SearchHit {
 
 	// Content
 	preview: string; // Matching snippet with context
-	context: string; // Surrounding paragraph/verse
+	content: string; // Full chunk content
 
-	// Metadata for filtering
+	// Core metadata
 	resource: string;
+	resource_name: string;
 	language: string;
+	language_name: string;
 	organization: string;
+	version: string;
+	chunk_level: string;
+	indexed_at: string;
 	path: string;
 
 	// Scripture-specific
 	book?: string;
+	book_name?: string;
 	chapter?: number;
 	verse?: number;
+	verse_start?: number;
+	verse_end?: number;
+	passage_title?: string;
+	themes?: string[];
 
-	// Article-specific
-	articleId?: string;
-	articleCategory?: string;
+	// Article-specific (TW/TA)
+	article_id?: string;
+	category?: string;
 	title?: string;
+	section?: number;
+	section_title?: string;
+
+	// Question-specific (TQ)
+	question_text?: string;
+	answer_text?: string;
+
+	// Note-specific (TN)
+	phrase?: string;
+	note_id?: string;
 
 	// Scoring
 	score: number;
@@ -87,12 +140,11 @@ interface SearchResponse {
 	organization: string;
 	resource?: string;
 	reference?: string;
-	resourceCount: number;
-	total_hits?: number; // Total matches after filtering (before limit applied)
+	chunk_level?: string;
+	total_hits: number;
 	hits: SearchHit[];
 	message?: string;
 	error?: string;
-	indexing?: boolean; // True if background population was triggered
 }
 
 // =============================================================================
@@ -130,178 +182,12 @@ function parseReferenceForFilter(reference: string): {
 	};
 }
 
-// =============================================================================
-// FILTER BUILDING
-// =============================================================================
-
 /**
- * Build AI Search filters from request parameters
- * Uses R2 metadata stored during content cleaning
+ * Normalize resource type using aliases
  */
-function buildFilters(params: SearchRequest): Record<string, string> {
-	const filters: Record<string, string> = {};
-	const { language = 'en', organization, resource, reference, articleId } = params;
-
-	// Build path prefix filter
-	// Path structure: /clean/{language}/{organization}/{resource}/{version}/{file}
-	let pathPrefix = `clean/${language}/`;
-
-	if (organization) {
-		pathPrefix += `${organization}/`;
-		if (resource) {
-			// Resource is embedded in repo name like "en_ult"
-			pathPrefix += `${language}_${resource}/`;
-		}
-	}
-
-	filters.path_prefix = pathPrefix;
-
-	// Add metadata filters
-	if (reference) {
-		const parsed = parseReferenceForFilter(reference);
-		if (parsed.book) {
-			filters.book = parsed.book;
-		}
-		if (parsed.chapter !== undefined) {
-			filters.chapter = String(parsed.chapter);
-		}
-	}
-
-	if (articleId) {
-		filters.article_id = articleId.toLowerCase();
-	}
-
-	if (resource) {
-		filters.resource = resource.toLowerCase();
-	}
-
-	logger.debug('[Search] Built filters', { filters, params });
-
-	return filters;
-}
-
-// =============================================================================
-// POPULATION TRIGGER
-// =============================================================================
-
-/**
- * Trigger background population of clean content for a specific scope
- */
-async function triggerScopedPopulation(
-	language: string,
-	organization: string,
-	resource: string | undefined,
-	reference: string | undefined,
-	platform: App.Platform
-): Promise<void> {
-	try {
-		// Initialize R2 environment if needed
-		const r2Bucket = platform?.env?.ZIP_FILES;
-		const caches = (platform as any)?.caches;
-		if (r2Bucket || caches) {
-			initializeR2Env(r2Bucket, caches);
-		}
-
-		const fetcher = new UnifiedResourceFetcher();
-		const promises: Promise<any>[] = [];
-
-		// Parse reference to get book/chapter
-		const parsed = reference ? parseReferenceForFilter(reference) : null;
-
-		if (resource === 'ult' || resource === 'ust' || !resource) {
-			// Scripture resources
-			if (parsed?.book) {
-				// Specific book requested - fetch first 3 chapters
-				logger.info('[Population] Fetching scripture for book', {
-					book: parsed.book,
-					language,
-					organization
-				});
-
-				for (let chapter = 1; chapter <= 3; chapter++) {
-					const ref = `${parsed.book} ${chapter}`;
-					const resources = resource ? [resource] : ['ult', 'ust'];
-					promises.push(
-						fetcher
-							.fetchScripture(ref, language, organization, resources)
-							.catch((err) => logger.debug(`[Population] Failed: ${ref}`, { err }))
-					);
-				}
-			} else {
-				// No specific book - fetch key verses
-				const keyReferences = ['John 3:16', 'Genesis 1:1', 'Matthew 5:1-10'];
-				for (const ref of keyReferences) {
-					const resources = resource ? [resource] : ['ult'];
-					promises.push(
-						fetcher
-							.fetchScripture(ref, language, organization, resources)
-							.catch((err) => logger.debug(`[Population] Failed: ${ref}`, { err }))
-					);
-				}
-			}
-		} else if (resource === 'tn') {
-			// Translation Notes
-			const refs = parsed?.book
-				? [`${parsed.book} 1`, `${parsed.book} 2`, `${parsed.book} 3`]
-				: ['John 3:16', 'Genesis 1:1'];
-
-			for (const ref of refs) {
-				promises.push(
-					fetcher
-						.fetchTranslationNotes(ref, language, organization)
-						.catch((err) => logger.debug(`[Population] TN failed: ${ref}`, { err }))
-				);
-			}
-		} else if (resource === 'tq') {
-			// Translation Questions
-			const refs = parsed?.book
-				? [`${parsed.book} 1`, `${parsed.book} 2`]
-				: ['John 3', 'Genesis 1'];
-
-			for (const ref of refs) {
-				promises.push(
-					fetcher
-						.fetchTranslationQuestions(ref, language, organization)
-						.catch((err) => logger.debug(`[Population] TQ failed: ${ref}`, { err }))
-				);
-			}
-		} else if (resource === 'tw') {
-			// Translation Words
-			const terms = ['god', 'love', 'faith', 'grace', 'salvation'];
-			for (const term of terms) {
-				promises.push(
-					fetcher
-						.fetchTranslationWord(term, language, organization)
-						.catch((err) => logger.debug(`[Population] TW failed: ${term}`, { err }))
-				);
-			}
-		} else if (resource === 'ta') {
-			// Translation Academy
-			const modules = ['translate', 'checking', 'process'];
-			for (const moduleId of modules) {
-				promises.push(
-					fetcher
-						.fetchTranslationAcademy(language, organization, moduleId)
-						.catch((err) => logger.debug(`[Population] TA failed: ${moduleId}`, { err }))
-				);
-			}
-		}
-
-		// Execute all fetches in parallel
-		if (promises.length > 0) {
-			logger.info('[Population] Starting parallel fetches', {
-				count: promises.length,
-				language,
-				organization,
-				resource,
-				reference
-			});
-			await Promise.allSettled(promises);
-			logger.info('[Population] Parallel fetches completed');
-		}
-	} catch (error) {
-		logger.error('[Population] Failed to trigger population', { error });
-	}
+function normalizeResource(resource: string | undefined): string | undefined {
+	if (!resource) return undefined;
+	return RESOURCE_ALIASES[resource] || resource.toLowerCase();
 }
 
 // =============================================================================
@@ -318,50 +204,70 @@ function formatHit(match: any, index: number, query: string): SearchHit {
 	// AutoRAG may use 'filename' instead of 'id' for the R2 path
 	const filePath = match.id || match.filename || metadata.original_path || '';
 
-	// Extract metadata fields
+	// Extract core metadata with fallbacks
 	const language = metadata.language || 'en';
+	const languageName = metadata.language_name || language;
 	const organization = metadata.organization || 'unfoldingWord';
 	const resource = metadata.resource || inferResourceFromPath(filePath);
+	const resourceName = metadata.resource_name || resource;
+	const version = metadata.version || 'unknown';
+	const chunkLevel = metadata.chunk_level || 'unknown';
+	const indexedAt = metadata.indexed_at || new Date().toISOString();
+
+	// Scripture metadata
 	const book = metadata.book;
+	const bookName = metadata.book_name;
 	const chapter = metadata.chapter ? parseInt(metadata.chapter, 10) : undefined;
+	const verse = metadata.verse ? parseInt(metadata.verse, 10) : undefined;
 	const verseStart = metadata.verse_start ? parseInt(metadata.verse_start, 10) : undefined;
 	const verseEnd = metadata.verse_end ? parseInt(metadata.verse_end, 10) : undefined;
+	const passageTitle = metadata.passage_title;
+	const themes = metadata.themes;
+
+	// Article metadata (TW/TA)
 	const articleId = metadata.article_id;
-	const articleCategory = metadata.article_category;
-	const title = metadata.title;
+	const category = metadata.category || metadata.article_category;
+	const title = metadata.title || metadata.article_title;
+	const section = metadata.section ? parseInt(metadata.section, 10) : undefined;
+	const sectionTitle = metadata.section_title;
+
+	// Question metadata (TQ)
+	const questionText = metadata.question_text;
+	const answerText = metadata.answer_text;
+
+	// Note metadata (TN)
+	const phrase = metadata.phrase;
+	const noteId = metadata.note_id;
 
 	// Build formatted reference
 	let reference: string;
 	if (book) {
-		reference = formatScriptureReference(book, chapter, verseStart, verseEnd);
+		reference = formatScriptureReference(book, chapter, verse || verseStart, verseEnd);
 	} else if (articleId) {
-		if (resource === 'tw' || resource === 'words') {
-			reference = formatTWReference(articleId, articleCategory, title);
-		} else if (resource === 'ta' || resource === 'academy') {
-			reference = formatTAReference(articleId, articleCategory, title);
+		if (resource === 'tw') {
+			reference = formatTWReference(articleId, category, title);
+		} else if (resource === 'ta') {
+			reference = formatTAReference(articleId, category, title);
 		} else {
 			reference = title || articleId;
 		}
+	} else if (questionText) {
+		reference = `${bookName || book || 'Question'} ${chapter}:${verse}`;
+	} else if (noteId) {
+		reference = `${bookName || book || 'Note'} ${chapter}:${verse}`;
 	} else {
 		reference = filePath || `Result ${index + 1}`;
 	}
 
-	// Extract content and create preview
-	// Handle various content formats from AutoRAG
+	// Extract content
 	let content = '';
 	if (typeof match.content === 'string') {
 		content = match.content;
 	} else if (match.content && typeof match.content === 'object') {
-		// AutoRAG might return content as an object
 		content = JSON.stringify(match.content);
-		logger.warn('[Search] Content is an object, stringifying', {
-			contentType: typeof match.content,
-			contentKeys: Object.keys(match.content)
-		});
 	}
 
 	const preview = createPreview(content, query, 200);
-	const context = createContext(content, query, 500);
 
 	// Find query terms that matched (for highlighting)
 	const queryTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -373,17 +279,33 @@ function formatHit(match: any, index: number, query: string): SearchHit {
 		id: filePath || `hit-${index}`,
 		reference,
 		preview,
-		context,
+		content,
 		resource,
+		resource_name: resourceName,
 		language,
+		language_name: languageName,
 		organization,
+		version,
+		chunk_level: chunkLevel,
+		indexed_at: indexedAt,
 		path: filePath,
 		book,
+		book_name: bookName,
 		chapter,
-		verse: verseStart,
-		articleId,
-		articleCategory,
+		verse,
+		verse_start: verseStart,
+		verse_end: verseEnd,
+		passage_title: passageTitle,
+		themes,
+		article_id: articleId,
+		category,
 		title,
+		section,
+		section_title: sectionTitle,
+		question_text: questionText,
+		answer_text: answerText,
+		phrase,
+		note_id: noteId,
 		score: match.score || 0,
 		highlights
 	};
@@ -414,7 +336,6 @@ function createPreview(content: string, query: string, maxLength: number): strin
 
 	// Clean up boundaries
 	if (bestStart > 0) {
-		// Find word boundary
 		const spacePos = preview.indexOf(' ');
 		if (spacePos > 0 && spacePos < 20) {
 			preview = '...' + preview.substring(spacePos + 1);
@@ -436,30 +357,20 @@ function createPreview(content: string, query: string, maxLength: number): strin
 }
 
 /**
- * Create broader context around matched terms
- */
-function createContext(content: string, query: string, maxLength: number): string {
-	// For context, try to capture a full sentence or paragraph
-	if (!content || typeof content !== 'string') return '';
-
-	if (content.length <= maxLength) {
-		return content;
-	}
-
-	// Use the same logic as preview but with more length
-	return createPreview(content, query, maxLength);
-}
-
-/**
  * Infer resource type from file path
+ * New path structure: {language}/{organization}/{resource}/{version}/...
  */
 function inferResourceFromPath(path: string): string {
-	if (path.includes('_ult') || path.includes('_ust')) return 'ult';
-	if (path.includes('_tn')) return 'tn';
-	if (path.includes('_tw')) return 'tw';
-	if (path.includes('_ta')) return 'ta';
-	if (path.includes('_tq')) return 'tq';
-	return 'bible';
+	const parts = path.split('/');
+	if (parts.length >= 3) {
+		const resource = parts[2].toLowerCase();
+		if (['ult', 'ust', 'ueb'].includes(resource)) return 'scripture';
+		if (resource === 'tn') return 'tn';
+		if (resource === 'tw') return 'tw';
+		if (resource === 'ta') return 'ta';
+		if (resource === 'tq') return 'tq';
+	}
+	return 'unknown';
 }
 
 // =============================================================================
@@ -480,12 +391,18 @@ async function executeSearch(
 			query,
 			language = 'en',
 			organization = 'unfoldingWord',
-			resource,
+			resource: rawResource,
 			reference,
+			book: bookParam,
+			chapter: chapterParam,
+			chunk_level,
 			articleId,
 			limit = 50,
 			includeHelps = true
 		} = params;
+
+		// Normalize resource type
+		const resource = normalizeResource(rawResource);
 
 		// Validate required fields
 		if (!query || query.trim().length === 0) {
@@ -498,12 +415,26 @@ async function executeSearch(
 			);
 		}
 
+		// Validate chunk_level if provided
+		if (chunk_level && !CHUNK_LEVELS.includes(chunk_level)) {
+			return json(
+				{
+					error: `Invalid chunk_level. Must be one of: ${CHUNK_LEVELS.join(', ')}`,
+					code: 'INVALID_CHUNK_LEVEL'
+				},
+				{ status: 400 }
+			);
+		}
+
 		logger.info('[Search] Starting AI Search', {
 			query,
 			language,
 			organization,
 			resource,
 			reference,
+			book: bookParam,
+			chapter: chapterParam,
+			chunk_level,
 			articleId,
 			limit,
 			includeHelps
@@ -519,17 +450,17 @@ async function executeSearch(
 				query,
 				language,
 				organization,
-				resourceCount: 0,
+				total_hits: 0,
 				hits: [],
-				message: 'AI binding not available. Ensure [ai] binding is configured in wrangler.toml.'
+				message:
+					'AI binding not available. Ensure [ai] binding is configured in wrangler.toml and AI Search index is set up.'
 			} as SearchResponse);
 		}
 
-		// Build filters from parameters
-		const filters = buildFilters(params);
+		// Parse reference if provided
+		const parsedRef = reference ? parseReferenceForFilter(reference) : null;
 
-		// Execute AI Search query using AutoRAG API
-		// API: env.AI.autorag(indexName).aiSearch({ query })
+		// Execute AI Search query
 		let searchResults;
 		try {
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
@@ -541,11 +472,9 @@ async function executeSearch(
 			logger.error('[Search] AI Search query failed', {
 				error: errorMessage,
 				indexName: AI_SEARCH_INDEX,
-				query,
-				filters
+				query
 			});
 
-			// Check if this is a function/method error (local dev or API mismatch)
 			const isApiIssue =
 				errorMessage.includes('not a function') || errorMessage.includes('autorag');
 
@@ -554,66 +483,71 @@ async function executeSearch(
 				query,
 				language,
 				organization,
-				resourceCount: 0,
+				total_hits: 0,
 				hits: [],
 				error: errorMessage,
 				message: isApiIssue
-					? 'AI Search (AutoRAG) is not available. This may be a local development limitation or the AI binding may not support AutoRAG. Use resource-specific endpoints (fetch-scripture, fetch-translation-notes, etc.) instead.'
-					: 'AI Search query failed. The index may not be ready or the /clean/ prefix in R2 may not have indexed content yet.'
+					? 'AI Search (AutoRAG) is not available. This may be a local development limitation.'
+					: 'AI Search query failed. The index may not be ready or may not have indexed content yet.'
 			} as SearchResponse);
 		}
 
 		// AutoRAG returns { response: string, data: AutoRAGSearchResult[] }
 		const searchData = searchResults.data || [];
 
-		// Log the AI-generated response if available
-		if (searchResults.response) {
-			logger.debug('[Search] AutoRAG AI response', {
-				responseLength: searchResults.response.length,
-				preview: searchResults.response.substring(0, 200)
-			});
-		}
-
-		// POST-FILTER: Only include results from /clean/ prefix
-		// This prevents duplicates from raw content files that AI Search may also index
-		const cleanMatches = searchData.filter((match: any) => {
-			// Check the match ID or filename (R2 path)
-			const matchId = match.id || match.filename || '';
-
-			// Also check metadata paths as fallback
-			const metadataPath = match.metadata?.clean_path || match.metadata?.original_path || '';
-
-			// Return true only if path starts with clean/
-			return matchId.startsWith('clean/') || (matchId === '' && metadataPath.startsWith('clean/'));
-		});
-
-		// Log filtering effectiveness for debugging
-		logger.debug('[Search] Post-filter applied', {
-			originalCount: searchData.length,
-			filteredCount: cleanMatches.length,
-			removedCount: searchData.length - cleanMatches.length
-		});
-
-		// Format only the filtered results
-		let hits: SearchHit[] = cleanMatches.map((match: any, index: number) =>
+		// Format results
+		let hits: SearchHit[] = searchData.map((match: any, index: number) =>
 			formatHit(match, index, query)
 		);
 
-		// Post-filter by resource type if needed
-		if (!includeHelps) {
-			hits = hits.filter(
-				(hit) => hit.resource === 'ult' || hit.resource === 'ust' || hit.resource === 'bible'
-			);
+		// Apply filters
+
+		// Language filter
+		hits = hits.filter((hit) => hit.language === language);
+
+		// Organization filter
+		hits = hits.filter((hit) => hit.organization.toLowerCase() === organization.toLowerCase());
+
+		// Resource filter
+		if (resource && resource !== 'scripture') {
+			hits = hits.filter((hit) => hit.resource === resource);
+		} else if (resource === 'scripture') {
+			hits = hits.filter((hit) => ['ult', 'ust', 'ueb', 'scripture'].includes(hit.resource));
 		}
 
-		// Filter by specific resource if requested
-		if (resource) {
-			hits = hits.filter(
-				(hit) => hit.resource === resource || hit.resource === `${language}_${resource}`
-			);
+		// Include helps filter
+		if (!includeHelps) {
+			hits = hits.filter((hit) => ['ult', 'ust', 'ueb', 'scripture'].includes(hit.resource));
 		}
+
+		// Chunk level filter
+		if (chunk_level) {
+			hits = hits.filter((hit) => hit.chunk_level === chunk_level);
+		}
+
+		// Book filter (from reference or explicit)
+		const bookFilter = bookParam || parsedRef?.book;
+		if (bookFilter) {
+			hits = hits.filter((hit) => hit.book?.toUpperCase() === bookFilter.toUpperCase());
+		}
+
+		// Chapter filter (from reference or explicit)
+		const chapterFilter = chapterParam || parsedRef?.chapter;
+		if (chapterFilter !== undefined) {
+			hits = hits.filter((hit) => hit.chapter === chapterFilter);
+		}
+
+		// Article ID filter
+		if (articleId) {
+			hits = hits.filter((hit) => hit.article_id?.toLowerCase() === articleId.toLowerCase());
+		}
+
+		// Sort by score descending
+		hits.sort((a, b) => b.score - a.score);
 
 		const took_ms = Date.now() - startTime;
+		const totalHits = hits.length;
+
 		const response: SearchResponse = {
 			took_ms,
 			query,
@@ -621,48 +555,25 @@ async function executeSearch(
 			organization,
 			resource,
 			reference,
-			resourceCount: hits.length,
-			total_hits: cleanMatches.length, // Total after filtering, before limit
+			chunk_level,
+			total_hits: totalHits,
 			hits: hits.slice(0, limit)
 		};
 
-		// If we have very few or no results, trigger population for the scope
-		if (response.hits.length < 3 && platform?.context) {
-			logger.info('[Search] Low/no results, triggering scoped population', {
-				hits: response.hits.length,
-				language,
-				organization,
-				resource,
-				reference
-			});
-
-			// Trigger background population for this specific scope
-			const populationPromise = triggerScopedPopulation(
-				language,
-				organization,
-				resource,
-				reference,
-				platform
-			);
-
-			if (populationPromise) {
-				platform.context.waitUntil(populationPromise);
-				response.message =
-					response.hits.length === 0
-						? 'No results found yet. Content is being prepared for this scope. Please try again in 30 seconds.'
-						: 'Limited results found. Additional content is being prepared for this scope.';
-				response.indexing = true;
-			}
-		}
-
 		logger.info('[Search] AI Search completed', {
 			took_ms,
-			hitCount: hits.length,
-			cleanMatchCount: cleanMatches.length,
+			totalHits,
+			returnedHits: response.hits.length,
 			rawMatchCount: searchData.length,
-			duplicatesRemoved: searchData.length - cleanMatches.length,
-			hasAIResponse: !!searchResults.response,
-			filters
+			filters: {
+				language,
+				organization,
+				resource,
+				chunk_level,
+				book: bookFilter,
+				chapter: chapterFilter,
+				articleId
+			}
 		});
 
 		return json(response);
@@ -706,6 +617,10 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		url.searchParams.get('organization') || url.searchParams.get('owner') || 'unfoldingWord';
 	const resource = url.searchParams.get('resource') || undefined;
 	const reference = url.searchParams.get('reference') || undefined;
+	const book = url.searchParams.get('book') || undefined;
+	const chapterParam = url.searchParams.get('chapter');
+	const chapter = chapterParam ? parseInt(chapterParam, 10) : undefined;
+	const chunk_level = url.searchParams.get('chunk_level') || undefined;
 	const articleId = url.searchParams.get('articleId') || undefined;
 	const limitParam = url.searchParams.get('limit');
 	const limit = limitParam ? parseInt(limitParam, 10) : 50;
@@ -718,6 +633,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		organization,
 		resource,
 		reference,
+		book,
+		chapter,
+		chunk_level,
 		articleId,
 		limit,
 		includeHelps

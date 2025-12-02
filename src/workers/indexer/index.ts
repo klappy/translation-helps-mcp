@@ -1,0 +1,269 @@
+/**
+ * Search Indexer Worker
+ *
+ * Consumes R2 event notifications when ZIP files are cached in the source bucket.
+ * Extracts, cleans, and chunks content into the search index bucket for AI Search.
+ *
+ * Architecture:
+ * ZIP cached in R2 → R2 Event → Queue → This Worker → Search Index Bucket → AI Search
+ */
+
+import type { MessageBatch } from "@cloudflare/workers-types";
+import type {
+  Env,
+  R2EventNotification,
+  IndexingResult,
+  ResourceType,
+  ParsedZipKey,
+} from "./types.js";
+import { generateMarkdownWithFrontmatter } from "./utils/markdown-generator.js";
+import { triggerAISearchReindex } from "./utils/ai-search-trigger.js";
+import { processScripture } from "./chunkers/scripture-chunker.js";
+import { processTranslationNotes } from "./chunkers/notes-chunker.js";
+import { processTranslationWords } from "./chunkers/words-chunker.js";
+import { processTranslationAcademy } from "./chunkers/academy-chunker.js";
+import { processTranslationQuestions } from "./chunkers/questions-chunker.js";
+
+/**
+ * Parse a ZIP key to extract resource information
+ * ZIP keys follow pattern: {language}_{organization}_{resource}/{version}/{filename}.zip
+ * Example: en_unfoldingWord_ult/v86/en_ult.zip
+ */
+function parseZipKey(key: string): ParsedZipKey | null {
+  // Match pattern: lang_org_resource/version/filename.zip
+  const match = key.match(
+    /^([a-z]{2,3}(?:-[a-zA-Z0-9]+)?)_([^_/]+)_([^/]+)\/([^/]+)\/([^/]+)\.zip$/,
+  );
+
+  if (!match) {
+    console.log(`[Indexer] Could not parse ZIP key: ${key}`);
+    return null;
+  }
+
+  const [, language, organization, resourceName, version, filename] = match;
+
+  // Determine resource type from resource name
+  const resourceType = determineResourceType(resourceName);
+
+  return {
+    language,
+    organization,
+    resource: resourceType,
+    resourceName,
+    version,
+    filename,
+  };
+}
+
+/**
+ * Determine resource type from resource name
+ */
+function determineResourceType(resourceName: string): ResourceType {
+  const name = resourceName.toLowerCase();
+
+  if (name.includes("ult") || name.includes("ust") || name.includes("ueb")) {
+    return "scripture";
+  }
+  if (name === "tn" || name.includes("_tn")) {
+    return "tn";
+  }
+  if (name === "tw" || name.includes("_tw")) {
+    return "tw";
+  }
+  if (name === "ta" || name.includes("_ta")) {
+    return "ta";
+  }
+  if (name === "tq" || name.includes("_tq")) {
+    return "tq";
+  }
+  if (name === "twl" || name.includes("_twl")) {
+    return "twl";
+  }
+  if (name === "obs" || name.includes("_obs")) {
+    return "obs";
+  }
+
+  // Default to scripture for Bible resources
+  return "scripture";
+}
+
+/**
+ * Process a single ZIP file and populate the search index
+ */
+async function processZipFile(
+  env: Env,
+  notification: R2EventNotification,
+): Promise<IndexingResult> {
+  const startTime = Date.now();
+  const { key } = notification.object;
+  const errors: string[] = [];
+  let chunksWritten = 0;
+
+  console.log(`[Indexer] Processing ZIP: ${key}`);
+
+  // Parse the ZIP key to get resource info
+  const parsed = parseZipKey(key);
+  if (!parsed) {
+    return {
+      zipKey: key,
+      resourceType: "scripture",
+      chunksWritten: 0,
+      errors: [`Could not parse ZIP key: ${key}`],
+      durationMs: Date.now() - startTime,
+    };
+  }
+
+  console.log(`[Indexer] Parsed: ${JSON.stringify(parsed)}`);
+
+  try {
+    // Download ZIP from source bucket
+    const zipObject = await env.SOURCE_BUCKET.get(key);
+    if (!zipObject) {
+      throw new Error(`ZIP not found in source bucket: ${key}`);
+    }
+
+    const zipBuffer = await zipObject.arrayBuffer();
+    console.log(`[Indexer] Downloaded ZIP: ${zipBuffer.byteLength} bytes`);
+
+    // Route to appropriate chunker based on resource type
+    let chunks;
+    switch (parsed.resource) {
+      case "scripture":
+        chunks = await processScripture(zipBuffer, parsed, env);
+        break;
+      case "tn":
+        chunks = await processTranslationNotes(zipBuffer, parsed, env);
+        break;
+      case "tw":
+        chunks = await processTranslationWords(zipBuffer, parsed, env);
+        break;
+      case "ta":
+        chunks = await processTranslationAcademy(zipBuffer, parsed, env);
+        break;
+      case "tq":
+        chunks = await processTranslationQuestions(zipBuffer, parsed, env);
+        break;
+      default:
+        console.log(
+          `[Indexer] Skipping unsupported resource type: ${parsed.resource}`,
+        );
+        return {
+          zipKey: key,
+          resourceType: parsed.resource,
+          chunksWritten: 0,
+          errors: [`Unsupported resource type: ${parsed.resource}`],
+          durationMs: Date.now() - startTime,
+        };
+    }
+
+    // Write chunks to search index bucket
+    for (const chunk of chunks) {
+      try {
+        const markdown = generateMarkdownWithFrontmatter(
+          chunk.content,
+          chunk.metadata,
+        );
+        await env.SEARCH_INDEX_BUCKET.put(chunk.path, markdown, {
+          customMetadata: {
+            language: chunk.metadata.language,
+            organization: chunk.metadata.organization,
+            resource: chunk.metadata.resource,
+            chunk_level: chunk.metadata.chunk_level,
+            version: chunk.metadata.version,
+          },
+        });
+        chunksWritten++;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        errors.push(`Failed to write chunk ${chunk.path}: ${errorMsg}`);
+      }
+    }
+
+    console.log(`[Indexer] Wrote ${chunksWritten} chunks for ${key}`);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    errors.push(errorMsg);
+    console.error(`[Indexer] Error processing ${key}: ${errorMsg}`);
+  }
+
+  return {
+    zipKey: key,
+    resourceType: parsed.resource,
+    chunksWritten,
+    errors,
+    durationMs: Date.now() - startTime,
+  };
+}
+
+/**
+ * Queue consumer handler
+ * Processes batches of R2 event notifications
+ */
+export default {
+  async queue(
+    batch: MessageBatch<R2EventNotification>,
+    env: Env,
+  ): Promise<void> {
+    console.log(
+      `[Indexer] Received batch of ${batch.messages.length} messages`,
+    );
+
+    const results: IndexingResult[] = [];
+
+    for (const message of batch.messages) {
+      const notification = message.body;
+
+      // Only process .zip files
+      if (!notification.object.key.endsWith(".zip")) {
+        console.log(`[Indexer] Skipping non-ZIP: ${notification.object.key}`);
+        message.ack();
+        continue;
+      }
+
+      try {
+        const result = await processZipFile(env, notification);
+        results.push(result);
+
+        if (result.errors.length === 0) {
+          message.ack();
+        } else if (result.chunksWritten > 0) {
+          // Partial success - ack but log errors
+          console.warn(
+            `[Indexer] Partial success for ${result.zipKey}: ${result.errors.join(", ")}`,
+          );
+          message.ack();
+        } else {
+          // Complete failure - let it retry
+          message.retry();
+        }
+      } catch (err) {
+        console.error(
+          `[Indexer] Fatal error processing ${notification.object.key}:`,
+          err,
+        );
+        message.retry();
+      }
+    }
+
+    // Trigger AI Search reindex if we wrote any chunks
+    const totalChunks = results.reduce((sum, r) => sum + r.chunksWritten, 0);
+    if (totalChunks > 0) {
+      try {
+        await triggerAISearchReindex(env);
+        console.log(
+          `[Indexer] Triggered AI Search reindex after writing ${totalChunks} chunks`,
+        );
+      } catch (err) {
+        console.error(`[Indexer] Failed to trigger AI Search reindex:`, err);
+        // Don't fail the batch for reindex failure - content is already written
+      }
+    }
+
+    // Log summary
+    console.log(`[Indexer] Batch complete:`, {
+      messagesProcessed: batch.messages.length,
+      totalChunksWritten: totalChunks,
+      totalErrors: results.reduce((sum, r) => sum + r.errors.length, 0),
+    });
+  },
+};

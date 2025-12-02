@@ -18,17 +18,10 @@ import {
 import type { ParsedReference } from "../parsers/referenceParser.js";
 import { logger } from "../utils/logger.js";
 import {
-  cleanContent,
   cleanContentWithMetadata,
-  metadataToR2Metadata,
   type ResourceType,
   type CleanResult,
 } from "./ContentCleaners.js";
-import {
-  extractLanguageFromRepo,
-  extractVersionFromUrl,
-  extractOrganization,
-} from "../utils/metadata-extractors.js";
 
 interface CatalogResource {
   name: string;
@@ -47,8 +40,8 @@ interface CatalogResource {
   }>;
 }
 
-// MiniSearch-based indexing removed in favor of Cloudflare AI Search
-// Clean content is automatically stored in /clean/ prefix for AI Search indexing
+// Clean content storage for AI Search is handled by the Indexer Worker
+// via R2 event notifications. See: src/workers/indexer/README.md
 
 export class ZipResourceFetcher2 {
   private tracer: EdgeXRayTracer;
@@ -712,27 +705,8 @@ export class ZipResourceFetcher2 {
           `[getScripture] Got file content for ${t.name}, length: ${fileContent.length}`,
         );
 
-        // Extract version from the actual zipUrl (which may contain v87, v86, etc.)
-        const versionMatch = zipUrl.match(/\/archive\/([^/]+)\.zip/);
-        const version = versionMatch ? versionMatch[1] : t.refTag || "master";
-
-        // Queue clean content storage for AI Search (fire-and-forget)
-        this.storeCleanContent(
-          fileContent,
-          "bible",
-          t.ingredientPath,
-          t.name,
-          language,
-          t.owner,
-          version,
-        ).catch((err) => {
-          logger.error(`[CleanContent] Scripture store FAILED`, {
-            error: String(err),
-            filePath: t.ingredientPath,
-            repository: t.name,
-            version,
-          });
-        });
+        // NOTE: Clean content storage for AI Search is handled by Indexer Worker
+        // via R2 event notifications when ZIPs are cached.
 
         // Extract text
         let verseText: string;
@@ -978,22 +952,7 @@ export class ZipResourceFetcher2 {
 
       if (!tsvContent) return [];
 
-      // Queue clean content storage for AI Search (fire-and-forget)
-      const tsvResourceType =
-        resourceType === "tn"
-          ? "notes"
-          : resourceType === "tq"
-            ? "questions"
-            : "notes";
-      this.storeCleanContent(
-        tsvContent,
-        tsvResourceType,
-        targetIngredient.path,
-        resource.name,
-        language,
-        resource.owner,
-        refTag,
-      ).catch((err) => logger.debug(`[CleanContent] TSV store failed: ${err}`));
+      // NOTE: Clean content storage handled by Indexer Worker
 
       // 5. Parse TSV and filter by reference
       return this.parseTSVForReference(tsvContent, reference);
@@ -1516,18 +1475,7 @@ export class ZipResourceFetcher2 {
           };
         }
 
-        // Queue clean content storage for AI Search (fire-and-forget)
-        this.storeCleanContent(
-          content,
-          "words",
-          targetPath,
-          resource.name,
-          language,
-          resource.owner,
-          refTag,
-        ).catch((err) =>
-          logger.debug(`[CleanContent] TW store failed: ${err}`),
-        );
+        // NOTE: Clean content storage handled by Indexer Worker
 
         return {
           articles: [
@@ -1686,18 +1634,7 @@ export class ZipResourceFetcher2 {
           const combined = contentParts.join("\n\n");
           const moduleIdFromPath = dirPath.split("/").pop() || dirPath;
 
-          // Queue clean content storage for AI Search (fire-and-forget)
-          this.storeCleanContent(
-            combined,
-            "academy",
-            dirPath,
-            resource.name,
-            language,
-            resource.owner,
-            refTag,
-          ).catch((err) =>
-            logger.debug(`[CleanContent] TA dir store failed: ${err}`),
-          );
+          // NOTE: Clean content storage handled by Indexer Worker
 
           return {
             modules: [
@@ -1783,18 +1720,7 @@ export class ZipResourceFetcher2 {
         }
         if (!content) return { modules: [] };
 
-        // Queue clean content storage for AI Search (fire-and-forget)
-        this.storeCleanContent(
-          content,
-          "academy",
-          modulePath,
-          resource.name,
-          language,
-          resource.owner,
-          refTag,
-        ).catch((err) =>
-          logger.debug(`[CleanContent] TA file store failed: ${err}`),
-        );
+        // NOTE: Clean content storage handled by Indexer Worker
 
         return {
           modules: [
@@ -2632,59 +2558,9 @@ export class ZipResourceFetcher2 {
                 // ignore
               }
 
-              // 🚀 AUTO-POPULATE CLEAN CONTENT FOR AI SEARCH
-              // Store clean version in /clean/ prefix for AI Search auto-indexing
-              // This happens automatically on every file extraction
-              try {
-                const resourceType = this.inferResourceType(cleanInner);
-                if (resourceType) {
-                  const cleanedContent = cleanContent(
-                    decodedContent,
-                    resourceType,
-                  );
-                  if (cleanedContent && cleanedContent.length > 0) {
-                    // Extract version from zipCacheKey
-                    const versionMatch = zipCacheKey.match(/:([^:]+)$/);
-                    const version = versionMatch ? versionMatch[1] : "latest";
-
-                    // Extract language from repository
-                    const langMatch = repository.match(/^([a-z]{2,3})_/i);
-                    const language = langMatch
-                      ? langMatch[1].toLowerCase()
-                      : "unknown";
-
-                    // Build clean content key: /clean/{language}/{resource}/{version}/{filename}.txt
-                    const cleanKey = `clean/${language}/${repository}/${version}/${cleanInner}.txt`;
-
-                    await r2.putFile(
-                      cleanKey,
-                      cleanedContent,
-                      "text/plain; charset=utf-8",
-                      {
-                        source_zip: zipCacheKey,
-                        resource_type: resourceType,
-                        language: language,
-                        version: version,
-                        original_path: cleanInner,
-                        processed: new Date().toISOString(),
-                      },
-                    );
-
-                    logger.debug(
-                      `[AI Search] Auto-stored clean content: ${cleanKey}`,
-                      {
-                        originalSize: decodedContent.length,
-                        cleanSize: cleanedContent.length,
-                      },
-                    );
-                  }
-                }
-              } catch (cleanErr) {
-                // Don't fail the main extraction if clean storage fails
-                logger.debug(
-                  `[AI Search] Failed to store clean content: ${String(cleanErr)}`,
-                );
-              }
+              // NOTE: Clean content population removed from API serving path.
+              // The Indexer Worker handles clean content storage via R2 event notifications.
+              // See: src/workers/indexer/README.md
             } catch {
               // ignore
             }
@@ -2708,35 +2584,18 @@ export class ZipResourceFetcher2 {
   }
 
   /**
-   * Get clean content for AI Search indexing
+   * Get clean content for API responses
    *
-   * This method:
-   * 1. Checks R2 for cached clean content (fastest path)
-   * 2. If not cached, extracts from ZIP and cleans
-   * 3. Stores clean version in /clean/ prefix for AI Search auto-indexing
-   *
-   * AI Search watches the /clean/ prefix and automatically indexes changes.
-   * Clean content is stored at: /clean/{language}/{resource}/{version}/{filename}.txt
+   * This method extracts and cleans content for API usage.
+   * NOTE: Clean content storage for AI Search is handled by the Indexer Worker
+   * via R2 event notifications - see src/workers/indexer/README.md
    *
    * @param filePath - Path within the ZIP
    * @param repository - Repository name (e.g., "en_ult")
    * @param zipUrl - Original ZIP URL for version extraction
    * @param resourceType - Type of resource for appropriate cleaning
-   * @param zipDataProvider - Lazy function to get ZIP data (only called on cache miss)
-   * @returns Clean, searchable text content
-   */
-  /**
-   * Get clean content with rich metadata for AI Search indexing
-   *
-   * This enhanced version extracts comprehensive metadata from both
-   * file paths and content, enabling proper filtering and contextual results.
-   *
-   * @param filePath - Path to file within ZIP
-   * @param repository - Repository name (e.g., "en_ult")
-   * @param zipUrl - Original ZIP URL for version extraction
-   * @param resourceType - Type of resource for appropriate cleaning
-   * @param zipDataProvider - Lazy function to get ZIP data (only called on cache miss)
-   * @returns Clean, searchable text content (metadata stored in R2)
+   * @param zipDataProvider - Lazy function to get ZIP data
+   * @returns Clean, readable text content
    */
   async getCleanContent(
     filePath: string,
@@ -2747,51 +2606,9 @@ export class ZipResourceFetcher2 {
   ): Promise<string | null> {
     const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
 
-    // Use centralized extraction utilities
-    const version = extractVersionFromUrl(zipUrl);
-    const language = extractLanguageFromRepo(repository);
-    const organization = extractOrganization(zipUrl);
+    logger.debug(`[CleanContent] Extracting and cleaning: ${cleanPath}`);
 
-    // Build the clean content key for AI Search
-    // Format: /clean/{language}/{organization}/{resource}/{version}/{filename}.txt
-    const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
-
-    // Get R2 environment
-    const { bucket, caches } = getR2Env();
-    let r2: R2Storage | null = null;
-    if (bucket) {
-      r2 = new R2Storage(bucket as any, caches as any);
-    }
-
-    // STEP 1: Check for cached clean content (fastest path)
-    if (r2) {
-      try {
-        const { data: cachedClean, source } = await r2.getFileWithInfo(
-          cleanKey,
-          "text/plain; charset=utf-8",
-        );
-
-        if (cachedClean) {
-          logger.debug(`[CleanContent] Cache HIT (${source}): ${cleanKey}`);
-          this.tracer.addApiCall({
-            url: `internal://${source}/clean/${cleanKey}`,
-            duration: 1,
-            status: 200,
-            size: cachedClean.length,
-            cached: true,
-          });
-          return cachedClean;
-        }
-      } catch (_e) {
-        // Clean content not cached, will extract and clean
-      }
-    }
-
-    logger.debug(
-      `[CleanContent] Cache MISS, fetching and cleaning: ${cleanPath}`,
-    );
-
-    // STEP 2: Get raw content from ZIP (use existing extraction)
+    // Get raw content from ZIP
     const zipData = await zipDataProvider();
     if (!zipData) {
       logger.warn(
@@ -2813,7 +2630,7 @@ export class ZipResourceFetcher2 {
       return null;
     }
 
-    // STEP 3: Clean content AND extract metadata in one operation
+    // Clean content
     const cleanResult: CleanResult = cleanContentWithMetadata(
       rawContent,
       resourceType,
@@ -2829,46 +2646,15 @@ export class ZipResourceFetcher2 {
       return null;
     }
 
-    // STEP 4: Store clean content with comprehensive metadata in R2 for AI Search
-    if (r2) {
-      try {
-        // Convert metadata to R2-compatible format (all strings)
-        const r2Metadata = metadataToR2Metadata(cleanResult.metadata);
-
-        await r2.putFile(
-          cleanKey,
-          cleanResult.text,
-          "text/plain; charset=utf-8",
-          r2Metadata,
-        );
-
-        logger.info(`[CleanContent] Stored clean content: ${cleanKey}`, {
-          originalSize: rawContent.length,
-          cleanSize: cleanResult.text.length,
-          reduction: `${Math.round((1 - cleanResult.text.length / rawContent.length) * 100)}%`,
-          book: cleanResult.metadata.book,
-          chapter: cleanResult.metadata.chapter,
-          articleId: cleanResult.metadata.articleId,
-        });
-
-        this.tracer.addApiCall({
-          url: `internal://r2/clean-write/${cleanKey}`,
-          duration: 1,
-          status: 200,
-          size: cleanResult.text.length,
-          cached: false,
-        });
-      } catch (e) {
-        logger.warn(`[CleanContent] Failed to cache: ${String(e)}`);
-      }
-    }
-
     return cleanResult.text;
   }
 
   /**
    * Get clean content with full CleanResult (text + metadata)
    * Use this when you need access to the extracted metadata
+   *
+   * NOTE: R2 storage for AI Search is handled by the Indexer Worker
+   * via R2 event notifications - see src/workers/indexer/README.md
    */
   async getCleanContentWithMetadata(
     filePath: string,
@@ -2877,19 +2663,6 @@ export class ZipResourceFetcher2 {
     resourceType: ResourceType,
     zipDataProvider: () => Promise<Uint8Array | null>,
   ): Promise<CleanResult | null> {
-    const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
-    const version = extractVersionFromUrl(zipUrl);
-    const language = extractLanguageFromRepo(repository);
-    const organization = extractOrganization(zipUrl);
-    const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
-
-    // Get R2 environment
-    const { bucket, caches } = getR2Env();
-    let r2: R2Storage | null = null;
-    if (bucket) {
-      r2 = new R2Storage(bucket as any, caches as any);
-    }
-
     // Get raw content from ZIP
     const zipData = await zipDataProvider();
     if (!zipData) {
@@ -2921,193 +2694,12 @@ export class ZipResourceFetcher2 {
       return null;
     }
 
-    // Store in R2 (side effect for caching)
-    if (r2) {
-      try {
-        const r2Metadata = metadataToR2Metadata(cleanResult.metadata);
-        await r2.putFile(
-          cleanKey,
-          cleanResult.text,
-          "text/plain; charset=utf-8",
-          r2Metadata,
-        );
-      } catch (_e) {
-        // Ignore cache errors
-      }
-    }
-
     return cleanResult;
   }
 
-  /**
-   * Infer resource type from file extension
-   * Used for automatic clean content storage for AI Search
-   */
-  private inferResourceType(filePath: string): ResourceType | null {
-    const ext = filePath.toLowerCase();
-
-    if (ext.endsWith(".usfm") || ext.endsWith(".usfm3")) {
-      return "bible";
-    }
-
-    if (ext.endsWith(".tsv")) {
-      // TSV can be notes, questions, or word links
-      // Check path hints
-      if (filePath.includes("_tn") || filePath.includes("notes")) {
-        return "notes";
-      }
-      if (filePath.includes("_tq") || filePath.includes("questions")) {
-        return "questions";
-      }
-      if (filePath.includes("_twl") || filePath.includes("links")) {
-        return "notes"; // Treat word links similar to notes for search
-      }
-      return "notes"; // Default TSV to notes
-    }
-
-    if (ext.endsWith(".md")) {
-      // Markdown can be words or academy
-      if (filePath.includes("_tw") || filePath.includes("bible/")) {
-        return "words";
-      }
-      if (
-        filePath.includes("_ta") ||
-        filePath.includes("translate/") ||
-        filePath.includes("checking/")
-      ) {
-        return "academy";
-      }
-      return "words"; // Default markdown to words
-    }
-
-    return null; // Unknown file type, skip clean content storage
-  }
-
-  // MiniSearch indexing methods removed - AI Search handles all indexing
-  // Clean content is automatically stored in /clean/ prefix for AI Search
-
-  /**
-   * Store clean content in R2 for AI Search indexing
-   * This method takes already-fetched raw content and stores the cleaned version
-   *
-   * @param rawContent - The raw content (USFM, TSV, or Markdown)
-   * @param resourceType - Type of resource for proper cleaning
-   * @param filePath - Original file path within the ZIP
-   * @param repository - Repository name (e.g., 'en_ult')
-   * @param language - Language code (e.g., 'en')
-   * @param organization - Organization (e.g., 'unfoldingWord')
-   * @param version - Version string (e.g., 'v87')
-   * @returns Promise<boolean> - true if stored successfully
-   */
-  async storeCleanContent(
-    rawContent: string,
-    resourceType: ResourceType,
-    filePath: string,
-    repository: string,
-    language: string,
-    organization: string,
-    version: string,
-  ): Promise<boolean> {
-    if (!rawContent || rawContent.length === 0) {
-      logger.warn("[StoreCleanContent] Empty content", {
-        resourceType,
-        filePath,
-      });
-      return false;
-    }
-
-    const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
-
-    // Build the clean content key for AI Search
-    // Format: clean/{language}/{organization}/{repository}/{version}/{filename}.txt
-    const cleanKey = `clean/${language}/${organization}/${repository}/${version}/${cleanPath}.txt`;
-
-    // Get R2 environment
-    const { bucket, caches } = getR2Env();
-    if (!bucket) {
-      logger.error("[StoreCleanContent] R2 not available");
-      return false;
-    }
-
-    const r2 = new R2Storage(bucket as any, caches as any);
-
-    // Check if already cached
-    try {
-      const { data: existing } = await r2.getFileWithInfo(
-        cleanKey,
-        "text/plain; charset=utf-8",
-      );
-      if (existing) {
-        logger.info(`[StoreCleanContent] Already cached: ${cleanKey}`);
-        return true;
-      }
-    } catch (checkError) {
-      // Not cached, continue to store
-      logger.info(
-        `[StoreCleanContent] Not cached, will generate: ${cleanKey}`,
-        {
-          error: String(checkError),
-        },
-      );
-    }
-
-    // Build a synthetic zipUrl for metadata extraction
-    const zipUrl = `https://git.door43.org/${organization}/${repository}/archive/${version}.zip`;
-
-    // Clean content AND extract metadata
-    logger.info("[StoreCleanContent] Calling cleanContentWithMetadata", {
-      resourceType,
-      contentLengthBefore: rawContent.length,
-      zipUrl,
-    });
-
-    let cleanResult: CleanResult;
-    try {
-      cleanResult = cleanContentWithMetadata(
-        rawContent,
-        resourceType,
-        filePath,
-        repository,
-        zipUrl,
-      );
-    } catch (cleanError) {
-      logger.error("[StoreCleanContent] Clean failed", {
-        error: String(cleanError),
-        resourceType,
-        filePath,
-      });
-      return false;
-    }
-
-    if (!cleanResult.text || cleanResult.text.length === 0) {
-      logger.warn(`[StoreCleanContent] Empty after cleaning`, {
-        cleanPath,
-        resourceType,
-      });
-      return false;
-    }
-
-    // Store in R2 with metadata
-    try {
-      const r2Metadata = metadataToR2Metadata(cleanResult.metadata);
-
-      await r2.putFile(
-        cleanKey,
-        cleanResult.text,
-        "text/plain; charset=utf-8",
-        r2Metadata,
-      );
-
-      logger.info(`[StoreCleanContent] Stored: ${cleanKey}`);
-      return true;
-    } catch (e) {
-      logger.error(`[StoreCleanContent] R2 store failed`, {
-        error: String(e),
-        cleanKey,
-      });
-      return false;
-    }
-  }
+  // NOTE: Clean content storage for AI Search is now handled by the Indexer Worker
+  // via R2 event notifications. The API serving path is read-only for ZIP data.
+  // See: src/workers/indexer/README.md
 
   private extractVerseFromUSFM(
     usfm: string,

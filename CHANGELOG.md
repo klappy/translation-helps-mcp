@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.6.0] - 2025-12-02
+
+### Added
+
+- Event-driven search indexing pipeline using Cloudflare R2 events and Queues
+- New Indexer Worker that processes ZIP files asynchronously for AI Search
+- Multi-level content chunking (verse, passage, chapter) for semantic search
+- Markdown output with YAML frontmatter for LLM-friendly search results
+- Automatic AI Search reindex triggering for sub-5-minute searchability
+- 90-day R2 lifecycle rule for automatic old version cleanup
+
+### Changed
+
+- Decoupled search indexing from API serving path for better scalability
+- Search endpoint now queries dedicated AI Search index bucket
+- API is now read-only for ZIP data (indexing handled by worker)
+
+### Removed
+
+- Inline clean content storage from ZipResourceFetcher2 (moved to Indexer Worker)
+- storeCleanContent and inferResourceType methods (handled by worker)
+
 ## [7.5.12] - 2025-12-02
 
 ### Fixed
