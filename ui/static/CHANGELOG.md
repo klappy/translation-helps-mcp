@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.5.12] - 2025-12-02
+
+### Fixed
+
+- Added runtime validation for cacheType in cache.set() to prevent NaN expiry times
+- Invalid cacheType values now fall back to fileContent default instead of causing undefined TTL
+- Cache items no longer persist indefinitely when passed invalid cache types
+
 ## [7.5.11] - 2025-12-02
 
 ### Fixed

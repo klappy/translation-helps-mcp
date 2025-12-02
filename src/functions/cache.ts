@@ -117,8 +117,22 @@ export class CacheManager {
       return;
     }
 
-    const fullKey = this.getVersionedKey(key, cacheType);
-    const baseTtl = CACHE_TTLS[cacheType || "fileContent"];
+    // Validate cacheType at runtime - invalid types fall back to fileContent
+    // This prevents NaN expiry times when an invalid cacheType bypasses TypeScript
+    const validatedCacheType: CacheType =
+      cacheType && cacheType in CACHE_TTLS ? cacheType : "fileContent";
+
+    if (cacheType && !(cacheType in CACHE_TTLS)) {
+      logger.warn(
+        `Invalid cacheType "${cacheType}" provided, using default "fileContent"`,
+        {
+          key,
+        },
+      );
+    }
+
+    const fullKey = this.getVersionedKey(key, validatedCacheType);
+    const baseTtl = CACHE_TTLS[validatedCacheType];
     const ttl = customTtl ? Math.min(customTtl, MAX_TTL) : baseTtl;
     const expiry = Date.now() + ttl * 1000;
 
