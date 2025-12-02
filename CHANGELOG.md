@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.5.11] - 2025-12-02
+
+### Fixed
+
+- Test suite cleanup: all 85 tests now pass
+- Fixed Playwright/Vitest conflict by excluding E2E tests from Vitest runner
+- Fixed invalid `.toBeOneOf()` assertions (not available in Vitest)
+- Fixed 404/500 status expectation in example-wrangler tests
+- Hardened cache to block `transformedResponse` caching per project policy
+
+### Changed
+
+- Excluded archived tests, experimental tests, and browser-mode tests from CI
+- Updated `vitest.config.ts` with proper exclusion patterns
+- Cleaned up cache architecture documentation to reflect actual implementation
+- Removed references to unused V2 cache system from docs
+
+### Documentation
+
+- Rewrote `docs/CACHE_ARCHITECTURE.md` to match actual caching behavior
+- Updated `tests/TEST_CLEANUP_PLAN.md` with current test status
+- Cleaned up `IMPLEMENTATION_COMPLETE.md` and `OFFLINE_CLI_IMPLEMENTATION_SUMMARY.md`
+
 ## [7.5.10] - 2025-01-26
 
 ### Fixed

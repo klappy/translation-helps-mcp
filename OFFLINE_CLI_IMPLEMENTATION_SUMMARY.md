@@ -124,10 +124,10 @@ This document summarizes the implementation of the offline-first Translation Hel
   - Configuration guide
 
 - ✅ **Cache Architecture** (`docs/CACHE_ARCHITECTURE.md`)
-  - Pluggable provider system explained
-  - Performance characteristics
-  - Configuration examples
-  - Custom provider guide
+  - Simple memory-based caching system
+  - Response caching policy enforcement
+  - Cache type reference
+  - Bypass mechanisms
 
 - ✅ **Offline Architecture** (`docs/OFFLINE_ARCHITECTURE.md`)
   - Offline-first principles

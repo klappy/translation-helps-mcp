@@ -1,49 +1,103 @@
 # Cache Architecture
 
-This document describes the caching system in the Translation Helps MCP project.
+This document describes the caching system used in the Translation Helps MCP project.
 
 ## Critical Rule: NEVER Cache Responses
 
-**API responses, transformed data, and computed results are NEVER cached.**
+**Response caching is strictly prohibited.** See [CRITICAL_NEVER_CACHE_RESPONSES.md](./CRITICAL_NEVER_CACHE_RESPONSES.md) for the full policy.
 
-Only the following are cached:
+Only the following may be cached:
 
 - External API calls (DCS catalog, etc.)
 - ZIP file downloads
 - Extracted files from ZIPs
 
-See [CRITICAL_NEVER_CACHE_RESPONSES.md](./CRITICAL_NEVER_CACHE_RESPONSES.md) for the full policy.
-
 ## Overview
 
-The cache system uses a simple, memory-based architecture with optional KV persistence in Cloudflare environments. The design prioritizes simplicity and correctness over complex features.
+The caching system uses a simple, memory-based architecture with two implementations:
 
-## Active Implementation
+1. **Simple Cache** (`src/functions/cache.ts`) - Used by service functions
+2. **Unified Cache** (`src/functions/unified-cache.ts`) - Used by platform adapters with bypass support
 
-The active cache is located in `src/functions/cache.ts`. It is a singleton `CacheManager` class.
+Both implementations enforce the "no response caching" policy at the code level.
 
-### Key Features
+## Cache Types
 
-- **Version-aware keys**: All cache keys are prefixed with the app version to auto-invalidate on deploy.
-- **TTL-based expiry**: Each cache type has a defined TTL.
-- **Request deduplication**: Prevents duplicate in-flight requests for the same resource.
-- **Hard block on response caching**: The `set` method refuses to cache `transformedResponse` types.
+| Type                  | TTL        | Description                | Status      |
+| --------------------- | ---------- | -------------------------- | ----------- |
+| `organizations`       | 1 hour     | Organization metadata      | Allowed     |
+| `languages`           | 1 hour     | Language metadata          | Allowed     |
+| `resources`           | 5 minutes  | Resource listings          | Allowed     |
+| `fileContent`         | 30 minutes | USFM files, ZIP contents   | Allowed     |
+| `metadata`            | 15 minutes | Catalog metadata           | Allowed     |
+| `deduplication`       | 1 minute   | Request deduplication      | Allowed     |
+| `transformedResponse` | **BANNED** | Processed/transformed data | **BLOCKED** |
+| `apiResponse`         | **BANNED** | HTTP response bodies       | **BLOCKED** |
 
-## Cache Types and TTLs
+## Implementation Details
 
-| Cache Type            | TTL (seconds) | Description                                 |
-| --------------------- | ------------- | ------------------------------------------- |
-| `organizations`       | 3600 (1 hr)   | Org metadata from DCS                       |
-| `languages`           | 3600 (1 hr)   | Language list from DCS                      |
-| `resources`           | 300 (5 min)   | Resource list (may change with new content) |
-| `fileContent`         | 1800 (30 min) | Raw USFM/TSV/MD files from ZIPs             |
-| `metadata`            | 900 (15 min)  | Catalog metadata                            |
-| `deduplication`       | 60 (1 min)    | Short-lived deduplication marker            |
-| `transformedResponse` | **BLOCKED**   | **Never cached. Hard-coded guard clause.**  |
+### Simple Cache (`src/functions/cache.ts`)
+
+A memory-only cache manager used by service functions:
+
+```typescript
+import { cache } from "./cache.js";
+
+// Allowed: caching file content
+await cache.setFileContent(key, content);
+
+// Blocked: attempting to cache responses (silently ignored)
+await cache.setTransformedResponse(key, data); // No-op
+```
+
+Key features:
+
+- Version-aware keys (`v{version}:{type}:{key}`)
+- TTL enforcement with 24-hour maximum cap
+- Request deduplication to prevent duplicate fetches
+- Banned types are blocked in the `set()` method
+
+### Unified Cache (`src/functions/unified-cache.ts`)
+
+An enhanced cache with bypass support, used by platform adapters:
+
+```typescript
+import { unifiedCache, shouldBypassCache } from "./unified-cache.js";
+
+// Check if cache should be bypassed
+const bypass = shouldBypassCache({ headers, queryParams });
+
+// Get with cache info for headers
+const result = await unifiedCache.get(key, "fileContent", bypassOptions);
+```
+
+Key features:
+
+- Cache bypass via headers (`X-Cache-Bypass`, `X-Force-Refresh`)
+- Cache bypass via query params (`nocache`, `bypass`, `fresh`, `_cache`)
+- Statistics tracking (hits, misses, bypasses)
+- HTTP cache header generation
+
+## Cache Bypass
+
+Users can force fresh data using:
+
+**Query Parameters:**
+
+- `?nocache=true`
+- `?bypass=true`
+- `?fresh=true`
+- `?_cache=false`
+
+**Headers:**
+
+- `X-Cache-Bypass: true`
+- `X-Force-Refresh: true`
+- `Cache-Control: no-store`
 
 ## Key Generation
 
-Cache keys are versioned and typed:
+Cache keys are versioned to prevent stale data across deployments:
 
 ```
 v{version}:{type}:{key}
@@ -51,46 +105,45 @@ v{version}:{type}:{key}
 Examples:
 - v7.5.10:fileContent:en_ult_01-GEN.usfm
 - v7.5.10:organizations:unfoldingWord
+- v7.5.10:metadata:catalog_en
 ```
 
-## How It Works
+## KV Cache (Cloudflare)
 
-### Read Flow
+For Cloudflare deployments, a KV-backed cache is available via `src/functions/kv-cache.ts`. This provides persistent caching across requests.
 
-```
-1. Application calls cache.get(key, cacheType)
-2. CacheManager checks in-memory Map
-3. If found and not expired, return value
-4. If not found or expired, return null
-```
+The KV cache follows the same rules:
 
-### Write Flow
-
-```
-1. Application calls cache.set(key, value, cacheType)
-2. Guard clause checks if cacheType is 'transformedResponse' -> REJECT
-3. Calculate TTL based on cacheType
-4. Store in in-memory Map with expiry timestamp
-```
-
-## Cloudflare KV Integration
-
-In production (Cloudflare Pages), a separate KV cache layer (`src/functions/kv-cache.ts`) is used for:
-
-- ZIP file storage
-- Extracted file content
-
-This is initialized via `initializeKVCache()` when the KV binding is available.
+- Keys are the exact URL being fetched
+- Only allowed types may be cached
+- Response caching is blocked
 
 ## Best Practices
 
-1. **Only cache data sources**: Raw API responses, raw file content.
-2. **Never cache computed results**: Parsed, transformed, or aggregated data.
-3. **Use the URL as the key**: For external fetches, the URL is the canonical key.
-4. **Let the cache manager handle TTLs**: Don't override unless you have a specific reason.
+1. **Always use the correct cache type** - Don't use `fileContent` for non-file data
+2. **Never cache responses** - If you're tempted, read CRITICAL_NEVER_CACHE_RESPONSES.md
+3. **Use version-aware keys** - The cache managers handle this automatically
+4. **Respect bypass requests** - Users may need fresh data for debugging
+5. **Keep TTLs reasonable** - Shorter is safer than longer
 
-## Files
+## Debugging
 
-- `src/functions/cache.ts` - Main memory cache manager (active)
-- `src/functions/kv-cache.ts` - Cloudflare KV integration
-- `src/functions/unified-cache.ts` - Legacy unified cache (provides bypass utilities)
+Check cache statistics:
+
+```typescript
+const stats = cache.getStats();
+console.log(stats);
+// {
+//   memorySize: 42,
+//   pendingRequests: 0,
+//   cacheTTLs: { ... },
+//   appVersion: "7.5.10",
+//   status: "MEMORY_CACHE_ONLY"
+// }
+```
+
+Force cache bypass in development:
+
+```bash
+curl -H "X-Cache-Bypass: true" https://api.example.com/endpoint
+```

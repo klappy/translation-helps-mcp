@@ -22,8 +22,12 @@ const CACHE_TTLS = {
   fileContent: Math.min(1800, MAX_TTL), // 30 minutes (1800s) - DCS API files
   metadata: Math.min(900, MAX_TTL), // 15 minutes (align with unified cache)
   deduplication: Math.min(60, MAX_TTL), // 1 minute
-  transformedResponse: Math.min(1800, MAX_TTL), // 30 minutes (1800s) - processed responses
+  // DISABLED BY POLICY - see docs/CRITICAL_NEVER_CACHE_RESPONSES.md
+  transformedResponse: 0, // Response caching is BANNED
 } as const;
+
+// Types that are BANNED from caching - see docs/CRITICAL_NEVER_CACHE_RESPONSES.md
+const BANNED_CACHE_TYPES = ["transformedResponse"] as const;
 
 type CacheType = keyof typeof CACHE_TTLS;
 
@@ -101,8 +105,15 @@ export class CacheManager {
     customTtl?: number,
   ): Promise<void> {
     // CRITICAL: Never cache responses - see docs/CRITICAL_NEVER_CACHE_RESPONSES.md
-    if (cacheType === "transformedResponse") {
-      logger.debug("Blocked attempt to cache transformedResponse", { key });
+    if (
+      cacheType &&
+      BANNED_CACHE_TYPES.includes(
+        cacheType as (typeof BANNED_CACHE_TYPES)[number],
+      )
+    ) {
+      logger.debug(`Blocked attempt to cache banned type: ${cacheType}`, {
+        key,
+      });
       return;
     }
 

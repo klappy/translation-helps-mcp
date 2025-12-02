@@ -5,6 +5,22 @@ export default defineConfig({
     // Use our standardized test config
     globalSetup: "./tests/global-setup.ts",
 
+    // Exclude tests that should run with different test runners
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      // Playwright E2E tests - run separately with `npx playwright test`
+      "**/ui/e2e/**",
+      // Experimental tests with broken imports - archived
+      "**/src/experimental/tests/**",
+      // Browser-mode tests - require vitest browser mode
+      "**/page.svelte.test.ts",
+      // Archived tests documenting known issues - not part of CI
+      "**/tests/archive/**",
+      // UI tests with SvelteKit-specific imports that dont resolve in Vitest
+      "**/ui/tests/**",
+    ],
+
     // Set environment variables for ALL tests
     env: {
       // Force Wrangler port

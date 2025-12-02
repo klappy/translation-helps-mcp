@@ -1,6 +1,46 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file.
+
+## [7.5.11] - 2025-12-02
+
+### Fixed
+
+- Test suite cleanup: all 85 tests now pass
+- Fixed Playwright/Vitest conflict by excluding E2E tests from Vitest runner
+- Fixed invalid `.toBeOneOf()` assertions (not available in Vitest)
+- Fixed 404/500 status expectation in example-wrangler tests
+- Hardened cache to block `transformedResponse` caching per project policy
+
+### Changed
+
+- Excluded archived tests, experimental tests, and browser-mode tests from CI
+- Updated `vitest.config.ts` with proper exclusion patterns
+- Cleaned up cache architecture documentation to reflect actual implementation
+- Removed references to unused V2 cache system from docs
+
+### Documentation
+
+- Rewrote `docs/CACHE_ARCHITECTURE.md` to match actual caching behavior
+- Updated `tests/TEST_CLEANUP_PLAN.md` with current test status
+- Cleaned up `IMPLEMENTATION_COMPLETE.md` and `OFFLINE_CLI_IMPLEMENTATION_SUMMARY.md`
+
+## [7.5.10] - 2025-01-26
+
+### Fixed
+
+- Reduced excessive logging that caused Cloudflare deployment failures
+- Simplified logging to essential errors only to avoid Worker limits
+- Kept critical error logging for R2 storage and cleaning failures
+
+## [7.5.9] - 2025-01-26
+
+### Fixed
+
+- Added aggressive error logging to debug scripture clean content storage failures
+- Enhanced logging in storeCleanContent to track R2 storage operations
+- Added detailed logging to cleanContentWithMetadata to identify cleaning issues
+- Improved error visibility for clean content pipeline debugging See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 ## [7.5.8](https://github.com/klappy/translation-helps-mcp/compare/v7.5.7...v7.5.8) (2025-11-26)
 

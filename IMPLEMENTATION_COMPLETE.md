@@ -6,48 +6,29 @@ Successfully implemented a **complete offline-first CLI system** with local AI f
 
 ## 📦 What Was Built
 
-### Phase 1: Pluggable Cache System ✅
+### Phase 1: Simple Cache System ✅
 
-**7 New Files** - Flexible, configurable caching infrastructure
+**Core Cache Files** - Memory-based caching with policy enforcement
 
-1. **`src/functions/caches/cache-provider.ts`** (95 lines)
-   - Base interface for all cache providers
-   - Pluggable architecture
+1. **`src/functions/cache.ts`** (~250 lines)
+   - Simple memory cache manager
+   - Version-aware keys
+   - TTL enforcement with 24-hour cap
+   - Request deduplication
+   - Hard block on banned cache types (transformedResponse)
+
+2. **`src/functions/unified-cache.ts`** (~390 lines)
+   - Cache bypass utilities
+   - Used by platform adapters
    - Statistics tracking
+   - HTTP cache header generation
 
-2. **`src/functions/caches/memory-cache-provider.ts`** (136 lines)
-   - In-process memory cache
-   - Fastest tier (< 1ms)
-   - Cleanup and stats
-
-3. **`src/functions/caches/kv-cache-provider.ts`** (182 lines)
+3. **`src/functions/kv-cache.ts`** (~200 lines)
    - Cloudflare KV integration
-   - Distributed persistence
-   - Graceful unavailability handling
+   - ZIP file storage
+   - Available in Cloudflare Workers
 
-4. **`src/functions/caches/fs-cache-provider.ts`** (313 lines)
-   - Local file system cache
-   - Offline-capable
-   - SHA-256 key hashing
-   - Stores in `~/.translation-helps-mcp/cache/`
-
-5. **`src/functions/caches/door43-provider.ts`** (160 lines)
-   - Upstream Door43 source
-   - Read-only provider
-   - Network connectivity checking
-
-6. **`src/functions/caches/cache-chain.ts`** (322 lines)
-   - Manages ordered provider chain
-   - Dynamic add/remove/reorder
-   - Cache warming
-   - Auto-filter unavailable providers
-
-7. **`src/functions/unified-cache-v2.ts`** (283 lines)
-   - Replaces hard-coded tiers
-   - Uses pluggable CacheChain
-   - Configurable at runtime
-
-**Total: ~1,491 lines**
+**Note:** The pluggable provider system (V2) was designed but never integrated. The simple cache system is what is actually used in production.
 
 ### Phase 2: Offline Services ✅
 
@@ -132,11 +113,11 @@ Successfully implemented a **complete offline-first CLI system** with local AI f
 19. **`clients/README.md`** (47 lines)
     - Client architecture overview
 
-20. **`docs/CACHE_ARCHITECTURE.md`** (335 lines)
-    - Pluggable provider system
-    - Performance characteristics
-    - Configuration guide
-    - Custom provider creation
+20. **`docs/CACHE_ARCHITECTURE.md`** (~150 lines)
+    - Simple memory-based caching
+    - Response caching policy enforcement
+    - Cache type reference
+    - Bypass mechanisms
 
 21. **`docs/OFFLINE_ARCHITECTURE.md`** (404 lines)
     - Offline-first principles
@@ -251,10 +232,10 @@ Successfully implemented a **complete offline-first CLI system** with local AI f
    - Reset to defaults
    - Auto-creates config file
 
-3. **Pluggable Cache**
-   - All 4 providers implemented
-   - CacheChain manager ready
-   - Dynamic configuration supported
+3. **Simple Cache System**
+   - Memory cache with version-aware keys
+   - KV cache for Cloudflare deployments
+   - Response caching blocked by policy
 
 4. **Offline Services**
    - ResourceSync ready to use
@@ -277,7 +258,7 @@ These services exist but need CLI commands:
 - `sync <lang>` - Uses ResourceSync
 - `import <file>` - Uses ResourceTransfer
 - `export <lang>` - Uses ResourceTransfer
-- `cache stats` - Uses CacheChain
+- `cache stats` - Uses CacheManager
 
 **Estimated time to wire**: 2-4 hours
 
@@ -303,13 +284,13 @@ These services exist but need CLI commands:
 
 ### Architecture
 
-✅ **Pluggable Design** - Cache providers can be added/removed/reordered like plugins
+✅ **Simple Design** - Memory-based caching with policy enforcement
 
 ✅ **Offline-First** - Works without internet by default
 
-✅ **Configurable** - Every aspect can be customized
+✅ **Policy-Enforced** - Response caching blocked at code level
 
-✅ **Extensible** - Easy to add new providers/features
+✅ **Extensible** - Easy to add new cache types for allowed data
 
 ### Developer Experience
 
