@@ -21,8 +21,11 @@ const MIN_TRIGGER_INTERVAL_MS = 30_000; // 30 seconds
  * Rate limited to once every 30 seconds per Cloudflare limits.
  * Silently skips if called too frequently.
  *
+ * Failures are logged but not thrown - content is already in R2 and will
+ * be indexed on the next automatic 6-hour sync. This prevents unnecessary
+ * queue retries for non-critical reindex optimization.
+ *
  * @param env - Worker environment with credentials
- * @throws Error if the API call fails (non-rate-limit errors)
  */
 export async function triggerAISearchReindex(env: Env): Promise<void> {
   const now = Date.now();
@@ -59,30 +62,33 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
       },
     });
 
-    lastTriggerTime = now;
-
     if (!response.ok) {
       const body = await response.text();
 
-      // Check for rate limit response
+      // Check for rate limit response - don't update lastTriggerTime to allow retry
       if (response.status === 429) {
         console.log(
-          "[AI Search Trigger] Rate limited - will retry on next batch",
+          "[AI Search Trigger] Rate limited by API - will retry on next batch",
         );
         return;
       }
 
-      throw new Error(
-        `AI Search reindex failed: ${response.status} ${response.statusText} - ${body}`,
+      // Log non-rate-limit errors but don't throw
+      console.error(
+        `[AI Search Trigger] API error: ${response.status} ${response.statusText} - ${body}`,
       );
+      return;
     }
+
+    // Only update lastTriggerTime on SUCCESS
+    lastTriggerTime = now;
 
     const result = await response.json();
     console.log("[AI Search Trigger] Reindex triggered successfully:", result);
   } catch (error) {
-    // Log but don't throw for network errors - content is already indexed
+    // Log but don't throw - content is already in R2 and will be indexed
+    // on the next automatic 6-hour sync. No need to block queue processing.
     console.error("[AI Search Trigger] Failed to trigger reindex:", error);
-    throw error;
   }
 }
 

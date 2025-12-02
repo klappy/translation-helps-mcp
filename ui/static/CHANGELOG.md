@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.6.1] - 2025-12-02
+
+### Fixed
+
+- Critical: Fixed R2 key parsing to match actual `by-url/git.door43.org/...` format
+- Fixed AI Search reindex trigger to only update rate limit on success
+- Fixed catch block to not throw errors (content already in R2)
+- Removed duplicate code blocks in ai-search-trigger.ts
+
 ## [7.6.0] - 2025-12-02
 
 ### Added
