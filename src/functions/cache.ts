@@ -100,6 +100,12 @@ export class CacheManager {
     cacheType?: CacheType,
     customTtl?: number,
   ): Promise<void> {
+    // CRITICAL: Never cache responses - see docs/CRITICAL_NEVER_CACHE_RESPONSES.md
+    if (cacheType === "transformedResponse") {
+      logger.debug("Blocked attempt to cache transformedResponse", { key });
+      return;
+    }
+
     const fullKey = this.getVersionedKey(key, cacheType);
     const baseTtl = CACHE_TTLS[cacheType || "fileContent"];
     const ttl = customTtl ? Math.min(customTtl, MAX_TTL) : baseTtl;
@@ -215,17 +221,17 @@ export class CacheManager {
     return this.set(key, value, "fileContent");
   }
 
-  async getTransformedResponse(key: string): Promise<any> {
+  async getTransformedResponse(_key: string): Promise<any> {
     // Response-level caching is disabled by policy
     return null;
   }
 
-  async setTransformedResponse(key: string, value: any): Promise<void> {
+  async setTransformedResponse(_key: string, _value: any): Promise<void> {
     // No-op: response-level caching is disabled
     return Promise.resolve();
   }
 
-  async getTransformedResponseWithCacheInfo(key: string): Promise<{
+  async getTransformedResponseWithCacheInfo(_key: string): Promise<{
     value: any;
     cached: boolean;
     cacheType?: string;

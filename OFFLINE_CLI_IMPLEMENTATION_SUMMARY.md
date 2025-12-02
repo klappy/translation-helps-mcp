@@ -6,47 +6,22 @@ This document summarizes the implementation of the offline-first Translation Hel
 
 ### Phase 1: Server Infrastructure
 
-#### Pluggable Cache System
+#### Cache System
 
-- ✅ **CacheProvider Interface** (`src/functions/caches/cache-provider.ts`)
-  - Base interface for all cache implementations
-  - Pluggable architecture
-  - Statistics and availability checking
+- ✅ **CacheManager** (`src/functions/cache.ts`)
+  - Simple memory cache
+  - Version-aware keys
+  - TTL-based expiry
+  - Request deduplication
+  - Hard block on response caching (transformedResponse type is rejected)
 
-- ✅ **MemoryCacheProvider** (`src/functions/caches/memory-cache-provider.ts`)
-  - In-process memory cache
-  - Priority: 100 (fastest)
-  - Always available
-
-- ✅ **KVCacheProvider** (`src/functions/caches/kv-cache-provider.ts`)
-  - Cloudflare KV integration
-  - Priority: 50
+- ✅ **KV Cache** (`src/functions/kv-cache.ts`)
+  - Cloudflare KV integration for ZIP storage
   - Available only in Cloudflare Workers
 
-- ✅ **FSCacheProvider** (`src/functions/caches/fs-cache-provider.ts`)
-  - Local file system cache
-  - Priority: 75 (offline-capable)
-  - Stores in `~/.translation-helps-mcp/cache/data/`
-  - Available only in Node.js
-
-- ✅ **Door43Provider** (`src/functions/caches/door43-provider.ts`)
-  - Upstream data source
-  - Priority: 0 (always last)
-  - Read-only provider
-  - Network connectivity checking
-
-- ✅ **CacheChain** (`src/functions/caches/cache-chain.ts`)
-  - Manages ordered chain of providers
-  - Configurable fallback system
-  - Dynamic add/remove/reorder
-  - Automatic unavailable provider filtering
-  - Cache warming between tiers
-
-- ✅ **UnifiedCacheV2** (`src/functions/unified-cache-v2.ts`)
-  - Replaces hard-coded cache tiers
-  - Uses pluggable CacheChain
-  - Configurable at runtime
-  - Backward compatible
+- ✅ **Unified Cache** (`src/functions/unified-cache.ts`)
+  - Provides cache bypass utilities
+  - Used by platform adapter
 
 #### Offline Services
 
@@ -230,11 +205,9 @@ MCP Client (stdio)
     ↓
 MCP Server
     ↓
-UnifiedCacheV2
+CacheManager (memory)
     ↓
-CacheChain
-    ↓
-Providers: [Memory → FS → Door43]
+KV Cache (if Cloudflare)
     ↓
 Translation Resources
 ```
@@ -262,10 +235,10 @@ All without internet! 🎉
 
 **Server-side:**
 
-- 7 new cache provider files (~1,200 lines)
+- Cache manager and KV integration (~500 lines)
 - 2 new service files (~600 lines)
 - 1 utility file (~200 lines)
-- Total: ~2,000 lines
+- Total: ~1,300 lines
 
 **Client-side:**
 
