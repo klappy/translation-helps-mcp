@@ -59,13 +59,14 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
     return;
   }
 
-  const url = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai-search/indexes/${env.AI_SEARCH_INDEX_ID}/reindex`;
+  // API uses "autorag" path and PATCH method per https://developers.cloudflare.com/api/resources/autorag/
+  const url = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/autorag/rags/${env.AI_SEARCH_INDEX_ID}/sync`;
 
   console.log(`[AI Search Trigger] Calling reindex API: ${url}`);
 
   try {
     const response = await fetch(url, {
-      method: "POST",
+      method: "PATCH",
       headers: {
         Authorization: `Bearer ${env.CF_API_TOKEN}`,
         "Content-Type": "application/json",
