@@ -140,7 +140,7 @@ interface IndexingResult {
 function parseExtractedKey(key: string): ParsedExtractedKey | null {
   // Match pattern: by-url/git.door43.org/{org}/{repo}/archive/{version}.zip/files/{filepath}
   const match = key.match(
-    /^by-url\/git\.door43\.org\/([^/]+)\/([^/]+)\/archive\/([^/]+)\.zip\/files\/(.+)$/,
+    /^by-url\/git\.door43\.org\/([^/]+)\/([^/]+)\/archive\/([^/]+)\.zip\/files\/(.+)$/
   );
 
   if (!match) {
@@ -154,9 +154,7 @@ function parseExtractedKey(key: string): ParsedExtractedKey | null {
   const repoMatch = repository.match(/^([a-z]{2,3}(?:-[a-zA-Z0-9-]+)?)_(.+)$/i);
 
   if (!repoMatch) {
-    console.log(
-      `[Index Worker] Could not parse repository name: ${repository}`,
-    );
+    console.log(`[Index Worker] Could not parse repository name: ${repository}`);
     return null;
   }
 
@@ -208,10 +206,7 @@ function determineResourceType(resourceName: string): ResourceType {
 function cleanUSFM(usfm: string): string {
   let cleaned = usfm;
 
-  cleaned = cleaned.replace(
-    /\\zaln-s\s*\|[^|]*\|\s*\\?\*[^\\]*\\zaln-e\\\*/g,
-    " ",
-  );
+  cleaned = cleaned.replace(/\\zaln-s\s*\|[^|]*\|\s*\\?\*[^\\]*\\zaln-e\\\*/g, " ");
   cleaned = cleaned.replace(/\\zaln-[se]\s*\|[^|]*\|\s*\\?\*/g, " ");
   cleaned = cleaned.replace(/\\zaln-[se]\\\*/g, " ");
   cleaned = cleaned.replace(/\\w\s+([^|\\]+)\|[^\\]*\\w\*/g, "$1 ");
@@ -232,7 +227,7 @@ function cleanUSFM(usfm: string): string {
  */
 function processUSFMToMarkdown(
   usfm: string,
-  bookName: string,
+  bookName: string
 ): { markdown: string; verseCount: number; chapterCount: number } {
   const lines: string[] = [`# ${bookName}`, ""];
 
@@ -280,25 +275,17 @@ function processUSFMToMarkdown(
 /**
  * Process a single USFM file into a search index chunk
  */
-function processScriptureFile(
-  content: string,
-  parsed: ParsedExtractedKey,
-): IndexChunk | null {
+function processScriptureFile(content: string, parsed: ParsedExtractedKey): IndexChunk | null {
   const bookMatch = parsed.fileName.match(/(\d{2})-?([A-Z1-3]{3})\.usfm/i);
   if (!bookMatch) {
-    console.log(
-      `[Index Worker] Could not extract book code from: ${parsed.fileName}`,
-    );
+    console.log(`[Index Worker] Could not extract book code from: ${parsed.fileName}`);
     return null;
   }
 
   const book = bookMatch[2].toUpperCase();
   const bookName = BOOK_NAMES[book] || book;
 
-  const { markdown, verseCount, chapterCount } = processUSFMToMarkdown(
-    content,
-    bookName,
-  );
+  const { markdown, verseCount, chapterCount } = processUSFMToMarkdown(content, bookName);
 
   if (verseCount === 0) {
     console.log(`[Index Worker] No verses found in ${parsed.fileName}`);
@@ -310,8 +297,7 @@ function processScriptureFile(
     language_name: parsed.language === "en" ? "English" : parsed.language,
     organization: parsed.organization,
     resource: parsed.resourceName,
-    resource_name:
-      RESOURCE_NAMES[parsed.resourceName.toLowerCase()] || parsed.resourceName,
+    resource_name: RESOURCE_NAMES[parsed.resourceName.toLowerCase()] || parsed.resourceName,
     version: parsed.version,
     chunk_level: "book",
     indexed_at: new Date().toISOString(),
@@ -331,15 +317,10 @@ function processScriptureFile(
 /**
  * Process a TSV file (TN, TQ, TWL) into a search index chunk
  */
-function processTSVFile(
-  content: string,
-  parsed: ParsedExtractedKey,
-): IndexChunk | null {
+function processTSVFile(content: string, parsed: ParsedExtractedKey): IndexChunk | null {
   const bookMatch = parsed.fileName.match(/(?:tn|tq|twl)_([A-Z1-3]{3})\.tsv/i);
   if (!bookMatch) {
-    console.log(
-      `[Index Worker] Could not extract book code from TSV: ${parsed.fileName}`,
-    );
+    console.log(`[Index Worker] Could not extract book code from TSV: ${parsed.fileName}`);
     return null;
   }
 
@@ -355,10 +336,7 @@ function processTSVFile(
   const answerIdx = header.findIndex((h) => /answer/i.test(h));
   const refIdx = header.findIndex((h) => /reference/i.test(h));
 
-  const markdownLines: string[] = [
-    `# ${bookName} - ${parsed.resourceType.toUpperCase()}`,
-    "",
-  ];
+  const markdownLines: string[] = [`# ${bookName} - ${parsed.resourceType.toUpperCase()}`, ""];
 
   let itemCount = 0;
   const chaptersSet = new Set<number>();
@@ -433,10 +411,7 @@ function processTSVFile(
 /**
  * Process a markdown file (TW, TA) into a search index chunk
  */
-function processMarkdownFile(
-  content: string,
-  parsed: ParsedExtractedKey,
-): IndexChunk | null {
+function processMarkdownFile(content: string, parsed: ParsedExtractedKey): IndexChunk | null {
   if (
     parsed.fileName === "toc.yaml" ||
     parsed.fileName === "manifest.yaml" ||
@@ -450,24 +425,17 @@ function processMarkdownFile(
   // Extract article ID from filename (works for both TW single files and TA merged files)
   // e.g., "kt/grace.md" -> "grace", "translate/figs-metaphor.md" -> "figs-metaphor"
   const articleId =
-    pathParts[pathParts.length - 1].replace(/\.md$/i, "") ||
-    pathParts[pathParts.length - 2];
+    pathParts[pathParts.length - 1].replace(/\.md$/i, "") || pathParts[pathParts.length - 2];
 
-  // Determine category from path
-  let category:
-    | "kt"
-    | "names"
-    | "other"
-    | "translate"
-    | "checking"
-    | "process"
-    | "intro" = "other";
-  if (parsed.filePath.includes("/kt/")) category = "kt";
-  else if (parsed.filePath.includes("/names/")) category = "names";
-  else if (parsed.filePath.includes("/translate/")) category = "translate";
-  else if (parsed.filePath.includes("/checking/")) category = "checking";
-  else if (parsed.filePath.includes("/process/")) category = "process";
-  else if (parsed.filePath.includes("/intro/")) category = "intro";
+  // Determine category from path - handle both "/category/" and "category/" patterns
+  let category: "kt" | "names" | "other" | "translate" | "checking" | "process" | "intro" = "other";
+  const fp = parsed.filePath;
+  if (fp.includes("/kt/") || fp.startsWith("kt/")) category = "kt";
+  else if (fp.includes("/names/") || fp.startsWith("names/")) category = "names";
+  else if (fp.includes("/translate/") || fp.startsWith("translate/")) category = "translate";
+  else if (fp.includes("/checking/") || fp.startsWith("checking/")) category = "checking";
+  else if (fp.includes("/process/") || fp.startsWith("process/")) category = "process";
+  else if (fp.includes("/intro/") || fp.startsWith("intro/")) category = "intro";
 
   const cleanedContent = content
     .replace(/\r\n/g, "\n")
@@ -484,10 +452,7 @@ function processMarkdownFile(
     language_name: parsed.language === "en" ? "English" : parsed.language,
     organization: parsed.organization,
     resource: parsed.resourceName,
-    resource_name:
-      parsed.resourceType === "tw"
-        ? "Translation Words"
-        : "Translation Academy",
+    resource_name: parsed.resourceType === "tw" ? "Translation Words" : "Translation Academy",
     version: parsed.version,
     chunk_level: "article" as const,
     indexed_at: new Date().toISOString(),
@@ -513,9 +478,7 @@ function processMarkdownFile(
   // - TA: category/articleId.md (e.g., translate/figs-metaphor.md)
   // This ensures unique paths and preserves organizational structure
   const relativePath =
-    parsed.resourceType === "tw"
-      ? `${category}/${articleId}.md`
-      : `${category}/${articleId}.md`;
+    parsed.resourceType === "tw" ? `${category}/${articleId}.md` : `${category}/${articleId}.md`;
 
   return {
     path: `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${relativePath}`,
@@ -529,7 +492,7 @@ function processMarkdownFile(
  */
 async function processExtractedFile(
   env: Env,
-  notification: R2EventNotification,
+  notification: R2EventNotification
 ): Promise<IndexingResult> {
   const startTime = Date.now();
   const { key } = notification.object;
@@ -587,10 +550,7 @@ async function processExtractedFile(
       };
     }
 
-    const markdown = generateMarkdownWithFrontmatter(
-      chunk.content,
-      chunk.metadata,
-    );
+    const markdown = generateMarkdownWithFrontmatter(chunk.content, chunk.metadata);
     await env.SEARCH_INDEX_BUCKET.put(chunk.path, markdown, {
       customMetadata: {
         language: chunk.metadata.language,
@@ -629,7 +589,7 @@ async function processExtractedFile(
  */
 export async function processExtractedFiles(
   messages: Message<R2EventNotification>[],
-  env: Env,
+  env: Env
 ): Promise<void> {
   console.log(`[Index Worker] Processing ${messages.length} extracted files`);
 
@@ -660,9 +620,7 @@ export async function processExtractedFiles(
   if (chunksWritten > 0) {
     try {
       await triggerAISearchReindex(env);
-      console.log(
-        `[Index Worker] Triggered AI Search reindex (${chunksWritten} chunks)`,
-      );
+      console.log(`[Index Worker] Triggered AI Search reindex (${chunksWritten} chunks)`);
     } catch (err) {
       console.error(`[Index Worker] Failed to trigger reindex:`, err);
     }

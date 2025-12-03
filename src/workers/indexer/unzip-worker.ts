@@ -16,13 +16,13 @@
 import type { Message } from "@cloudflare/workers-types";
 import type { Env, R2EventNotification } from "./types.js";
 import {
-  listFilesOnly,
   extractSingleFile,
-  isIndexableFile,
-  groupTAArticleFiles,
-  sortTAArticlePieces,
-  mergeTAArticleContent,
   getTAArticleId,
+  groupTAArticleFiles,
+  isIndexableFile,
+  listFilesOnly,
+  mergeTAArticleContent,
+  sortTAArticlePieces,
   type TAArticlePiece,
 } from "./utils/zip-handler.js";
 
@@ -52,10 +52,7 @@ function isTranslationAcademyZip(key: string): boolean {
  * Process a single ZIP file - extract files one at a time to R2
  * For Translation Academy, merges article pieces into single files.
  */
-async function processZipFile(
-  env: Env,
-  notification: R2EventNotification,
-): Promise<UnzipResult> {
+async function processZipFile(env: Env, notification: R2EventNotification): Promise<UnzipResult> {
   const startTime = Date.now();
   const { key } = notification.object;
   const errors: string[] = [];
@@ -77,7 +74,7 @@ async function processZipFile(
     const zipBuffer = await zipObject.arrayBuffer();
     const fetchDuration = Date.now() - fetchStart;
     console.log(
-      `[Unzip Worker] Downloaded ZIP: ${zipBuffer.byteLength} bytes in ${fetchDuration}ms`,
+      `[Unzip Worker] Downloaded ZIP: ${zipBuffer.byteLength} bytes in ${fetchDuration}ms`
     );
 
     // List files without full decompression (memory efficient)
@@ -85,14 +82,12 @@ async function processZipFile(
     const listStart = Date.now();
     const filePaths = listFilesOnly(zipBuffer);
     const listDuration = Date.now() - listStart;
-    console.log(
-      `[Unzip Worker] Found ${filePaths.length} files in ${listDuration}ms`,
-    );
+    console.log(`[Unzip Worker] Found ${filePaths.length} files in ${listDuration}ms`);
 
     // Filter to indexable files only
     const indexableFiles = filePaths.filter(isIndexableFile);
     console.log(
-      `[Unzip Worker] ${indexableFiles.length} indexable files (.usfm, .tsv, .md, .txt, .json)`,
+      `[Unzip Worker] ${indexableFiles.length} indexable files (.usfm, .tsv, .md, .txt, .json)`
     );
 
     // Check if this is a Translation Academy resource
@@ -100,14 +95,12 @@ async function processZipFile(
 
     if (isTA) {
       console.log(
-        `[Unzip Worker] Detected Translation Academy resource - will merge article pieces`,
+        `[Unzip Worker] Detected Translation Academy resource - will merge article pieces`
       );
 
       // Group TA files by article folder
       const articleGroups = groupTAArticleFiles(indexableFiles);
-      console.log(
-        `[Unzip Worker] Found ${articleGroups.size} TA articles to merge`,
-      );
+      console.log(`[Unzip Worker] Found ${articleGroups.size} TA articles to merge`);
 
       // Track which files belong to TA articles (so we skip them in normal processing)
       const taArticleFiles = new Set<string>();
@@ -133,9 +126,7 @@ async function processZipFile(
           }
 
           if (pieces.length === 0) {
-            console.warn(
-              `[Unzip Worker] No content extracted for article: ${articleFolder}`,
-            );
+            console.warn(`[Unzip Worker] No content extracted for article: ${articleFolder}`);
             filesSkipped += articleFiles.length;
             continue;
           }
@@ -166,7 +157,7 @@ async function processZipFile(
           // Log progress every 10 articles
           if (articlesMerged % 10 === 0) {
             console.log(
-              `[Unzip Worker] Merged ${articlesMerged}/${articleGroups.size} TA articles...`,
+              `[Unzip Worker] Merged ${articlesMerged}/${articleGroups.size} TA articles...`
             );
           }
         } catch (err) {
@@ -218,7 +209,7 @@ async function processZipFile(
       }
 
       console.log(
-        `[Unzip Worker] TA Completed: ${articlesMerged} articles merged, ${filesExtracted} total files, ${filesSkipped} skipped, ${errors.length} errors`,
+        `[Unzip Worker] TA Completed: ${articlesMerged} articles merged, ${filesExtracted} total files, ${filesSkipped} skipped, ${errors.length} errors`
       );
     } else {
       // Non-TA resource: extract and write files one at a time (original behavior)
@@ -262,7 +253,7 @@ async function processZipFile(
           // Log progress every 10 files
           if (filesExtracted % 10 === 0) {
             console.log(
-              `[Unzip Worker] Extracted ${filesExtracted}/${indexableFiles.length} files...`,
+              `[Unzip Worker] Extracted ${filesExtracted}/${indexableFiles.length} files...`
             );
           }
         } catch (err) {
@@ -273,7 +264,7 @@ async function processZipFile(
       }
 
       console.log(
-        `[Unzip Worker] Completed: ${filesExtracted} extracted, ${filesSkipped} skipped, ${errors.length} errors`,
+        `[Unzip Worker] Completed: ${filesExtracted} extracted, ${filesSkipped} skipped, ${errors.length} errors`
       );
     }
 
@@ -307,7 +298,7 @@ async function processZipFile(
  */
 export async function processZipFiles(
   messages: Message<R2EventNotification>[],
-  env: Env,
+  env: Env
 ): Promise<void> {
   console.log(`[Unzip Worker] Processing ${messages.length} ZIP files`);
 
@@ -318,9 +309,7 @@ export async function processZipFiles(
 
     // Only process .zip files
     if (!notification.object.key.endsWith(".zip")) {
-      console.log(
-        `[Unzip Worker] Skipping non-ZIP: ${notification.object.key}`,
-      );
+      console.log(`[Unzip Worker] Skipping non-ZIP: ${notification.object.key}`);
       message.ack();
       continue;
     }
@@ -334,20 +323,18 @@ export async function processZipFiles(
       } else if (result.filesExtracted > 0) {
         // Partial success - ack but log errors
         console.warn(
-          `[Unzip Worker] Partial success for ${result.zipKey}: ${result.errors.length} errors`,
+          `[Unzip Worker] Partial success for ${result.zipKey}: ${result.errors.length} errors`
         );
         message.ack();
       } else {
         // Complete failure - let it retry
-        console.error(
-          `[Unzip Worker] Complete failure for ${result.zipKey}, retrying`,
-        );
+        console.error(`[Unzip Worker] Complete failure for ${result.zipKey}, retrying`);
         message.retry();
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       console.error(
-        `[Unzip Worker] FATAL ERROR processing ${notification.object.key}: ${errorMsg}`,
+        `[Unzip Worker] FATAL ERROR processing ${notification.object.key}: ${errorMsg}`
       );
       message.retry();
     }
