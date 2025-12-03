@@ -58,26 +58,18 @@ export class R2Storage {
         const end =
           typeof performance !== "undefined" ? performance.now() : Date.now();
 
-        // CRITICAL: If we got a Cache API hit but R2 doesn't have it,
-        // write to R2 to trigger event notifications for indexing.
-        // Only sync .zip files (not .tar.gz) since event notification is .zip-only
+        // CRITICAL: Always write to R2 on Cache hit to trigger event notifications.
+        // R2 put is idempotent - safe to overwrite. No need to check if exists.
         if (this.bucket && key.endsWith(".zip")) {
-          try {
-            const r2Exists = await this.bucket.get(key);
-            if (!r2Exists) {
-              console.log(
-                `[R2Storage] Cache hit but R2 miss - writing to R2 for event trigger: ${key}`,
-              );
-              await this.bucket.put(key, buf, {
-                httpMetadata: {
-                  contentType: contentTypeForKey(key),
-                  cacheControl: "public, max-age=604800",
-                },
-              });
-            }
-          } catch {
-            // Best-effort R2 sync, don't fail the request
-          }
+          console.log(`[R2Storage] Cache hit - syncing to R2: ${key}`);
+          this.bucket
+            .put(key, buf, {
+              httpMetadata: {
+                contentType: contentTypeForKey(key),
+                cacheControl: "public, max-age=604800",
+              },
+            })
+            .catch((e) => console.error(`[R2Storage] R2 sync failed: ${e}`));
         }
 
         return {
@@ -239,6 +231,40 @@ export class R2Storage {
         const text = await hit.text();
         const end =
           typeof performance !== "undefined" ? performance.now() : Date.now();
+
+        // CRITICAL: When extracted file hits cache, ensure the ZIP is in R2
+        // File key: by-url/.../archive/v87.zip/files/43-JHN.usfm
+        // ZIP key:  by-url/.../archive/v87.zip
+        const zipMatch = key.match(/^(by-url\/.*\.zip)\/files\//);
+        if (zipMatch && this.bucket) {
+          const zipKey = zipMatch[1];
+          // Fire-and-forget: check R2, download from DCS if missing
+          (async () => {
+            try {
+              const exists = await this.bucket!.head(zipKey);
+              if (!exists) {
+                // Reconstruct URL: by-url/git.door43.org/org/repo/archive/v.zip -> https://git.door43.org/org/repo/archive/v.zip
+                const url = "https://" + zipKey.replace(/^by-url\//, "");
+                console.log(
+                  `[R2Storage] File cache hit but ZIP missing - fetching: ${url}`,
+                );
+                const resp = await fetch(url);
+                if (resp.ok) {
+                  const buf = await resp.arrayBuffer();
+                  // Validate ZIP magic bytes
+                  const arr = new Uint8Array(buf);
+                  if (arr[0] === 0x50 && arr[1] === 0x4b) {
+                    await this.bucket!.put(zipKey, buf);
+                    console.log(`[R2Storage] Stored ZIP in R2: ${zipKey}`);
+                  }
+                }
+              }
+            } catch (e) {
+              console.error(`[R2Storage] ZIP sync failed: ${e}`);
+            }
+          })();
+        }
+
         return {
           data: text,
           source: "cache",

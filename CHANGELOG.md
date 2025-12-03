@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.10] - 2025-12-03
+
+### Fixed
+
+- **Extracted file cache hits now sync ZIP to R2**: The actual fix!
+- When cached extracted file (USFM) is returned, check if ZIP exists in R2
+- If ZIP missing, download from DCS and store in R2 (fire-and-forget)
+- This triggers R2 event notification for indexer
+- File key `by-url/.../v87.zip/files/43-JHN.usfm` → ZIP key `by-url/.../v87.zip`
+
 ## [7.7.9] - 2025-12-03
 
 ### Fixed
