@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.1] - 2025-12-03
+
+### Fixed
+
+- Force redeploy to clear memory cache for fresh indexing pipeline test
+
 ## [7.7.0] - 2025-12-03
 
 ### Changed
