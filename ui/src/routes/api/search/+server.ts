@@ -143,10 +143,12 @@ interface SearchResponse {
 	resource?: string;
 	reference?: string;
 	chunk_level?: string;
+	// AI response fields - positioned before hits for visibility
+	used_ai?: boolean; // Whether AI/LLM was used for this request
+	ai_response?: string; // AI-generated summary (only when useAI=true)
+	// Result fields
 	total_hits: number;
 	hits: SearchHit[];
-	ai_response?: string; // AI-generated summary (only when useAI=true)
-	used_ai?: boolean; // Whether AI/LLM was used for this request
 	message?: string;
 	error?: string;
 	_trace?: EdgeXRayTrace;
@@ -683,10 +685,12 @@ async function executeSearch(
 			resource,
 			reference,
 			chunk_level,
-			total_hits: totalHits,
-			hits: hits.slice(0, limit),
+			// AI response fields first for visibility
 			used_ai: usedAISearch,
 			...(usedAISearch && searchResults.response ? { ai_response: searchResults.response } : {}),
+			// Then hits
+			total_hits: totalHits,
+			hits: hits.slice(0, limit),
 			_trace: tracer.getTrace()
 		};
 
