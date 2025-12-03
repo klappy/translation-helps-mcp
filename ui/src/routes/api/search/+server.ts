@@ -463,9 +463,13 @@ async function executeSearch(
 		// Execute AI Search query
 		let searchResults;
 		try {
+			const aiSearchStart = Date.now();
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
 			searchResults = await autorag.aiSearch({
 				query
+			});
+			logger.info('[Search] AI Search call completed', {
+				aiSearchDuration: Date.now() - aiSearchStart
 			});
 		} catch (searchError) {
 			const errorMessage = searchError instanceof Error ? searchError.message : String(searchError);
@@ -494,13 +498,20 @@ async function executeSearch(
 
 		// AutoRAG returns { response: string, data: AutoRAGSearchResult[] }
 		const searchData = searchResults.data || [];
+		logger.info('[Search] Raw results count', { rawCount: searchData.length });
 
 		// Format results
+		const formatStart = Date.now();
 		let hits: SearchHit[] = searchData.map((match: any, index: number) =>
 			formatHit(match, index, query)
 		);
+		logger.info('[Search] Formatting completed', {
+			formatDuration: Date.now() - formatStart,
+			hitsBeforeFilter: hits.length
+		});
 
 		// Apply filters
+		const filterStart = Date.now();
 
 		// Language filter
 		hits = hits.filter((hit) => hit.language === language);
@@ -544,6 +555,11 @@ async function executeSearch(
 
 		// Sort by score descending
 		hits.sort((a, b) => b.score - a.score);
+
+		logger.info('[Search] Filtering completed', {
+			filterDuration: Date.now() - filterStart,
+			hitsAfterFilter: hits.length
+		});
 
 		const took_ms = Date.now() - startTime;
 		const totalHits = hits.length;
