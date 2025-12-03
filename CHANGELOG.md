@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.10.0](https://github.com/klappy/translation-helps-mcp/compare/v7.9.0...v7.10.0) (2025-12-03)
+
+### Fixed
+
+- **Translation Academy search index**: TA articles now properly merged during indexing
+  - Previously, article pieces (title.md, sub-title.md, 01.md) overwrote each other
+  - Now merges all pieces into single article files during ZIP extraction
+  - Output structure: `translate/figs-metaphor.md` instead of orphaned `01.md` files
+  - Preserves category folders (translate, checking, process, intro) in search index
+
 ## [7.9.0](https://github.com/klappy/translation-helps-mcp/compare/v7.8.9...v7.9.0) (2025-12-03)
 
 ### Performance

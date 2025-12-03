@@ -403,3 +403,157 @@ export function isIndexableFile(filePath: string): boolean {
   const lowerPath = filePath.toLowerCase();
   return INDEXABLE_EXTENSIONS.some((ext) => lowerPath.endsWith(ext));
 }
+
+// =============================================================================
+// Translation Academy Article Merging Utilities
+// =============================================================================
+
+/**
+ * TA article piece with path and content
+ */
+export interface TAArticlePiece {
+  path: string;
+  content: string;
+}
+
+/**
+ * Check if a file path is part of a Translation Academy article structure.
+ * TA articles are folders containing title.md, sub-title.md, and numbered files (01.md, 02.md, etc.)
+ *
+ * @param filePath - Path like "translate/figs-metaphor/01.md" or "en_ta-v87/translate/figs-metaphor/title.md"
+ * @returns true if this looks like a TA article piece
+ */
+export function isTranslationAcademyArticle(filePath: string): boolean {
+  const lowerPath = filePath.toLowerCase();
+
+  // Must be a markdown file
+  if (!lowerPath.endsWith(".md")) return false;
+
+  // Get the filename
+  const fileName = filePath.split("/").pop()?.toLowerCase() || "";
+
+  // TA article pieces are: title.md, sub-title.md, or numbered files (01.md, 02.md, etc.)
+  const isTAPiece =
+    fileName === "title.md" ||
+    fileName === "sub-title.md" ||
+    /^\d{2}\.md$/.test(fileName);
+
+  return isTAPiece;
+}
+
+/**
+ * Get the sort order for a TA article piece filename.
+ * title.md = 0, sub-title.md = 1, numbered files sorted numerically after.
+ */
+function getTAPieceSortOrder(filePath: string): number {
+  const fileName = filePath.split("/").pop()?.toLowerCase() || "";
+
+  if (fileName === "title.md") return 0;
+  if (fileName === "sub-title.md") return 1;
+
+  // Numbered files: extract number and add offset so they come after title/subtitle
+  const numMatch = fileName.match(/^(\d{2})\.md$/);
+  if (numMatch) {
+    return 10 + parseInt(numMatch[1], 10);
+  }
+
+  // Unknown files go at the end
+  return 999;
+}
+
+/**
+ * Sort TA article piece file paths in the correct order:
+ * title.md -> sub-title.md -> 01.md -> 02.md -> ...
+ *
+ * @param files - Array of file paths
+ * @returns Sorted array of file paths
+ */
+export function sortTAArticlePieces(files: string[]): string[] {
+  return [...files].sort(
+    (a, b) => getTAPieceSortOrder(a) - getTAPieceSortOrder(b),
+  );
+}
+
+/**
+ * Get the article folder path from a TA article piece path.
+ * e.g., "en_ta-v87/translate/figs-metaphor/01.md" -> "en_ta-v87/translate/figs-metaphor"
+ *
+ * @param filePath - Full path to a TA article piece
+ * @returns Parent folder path (the article folder)
+ */
+export function getTAArticleFolder(filePath: string): string {
+  const parts = filePath.split("/");
+  parts.pop(); // Remove filename
+  return parts.join("/");
+}
+
+/**
+ * Group TA article files by their parent article folder.
+ *
+ * @param filePaths - Array of file paths from the ZIP
+ * @returns Map of article folder path -> array of piece file paths
+ */
+export function groupTAArticleFiles(
+  filePaths: string[],
+): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+
+  for (const filePath of filePaths) {
+    if (!isTranslationAcademyArticle(filePath)) continue;
+
+    const articleFolder = getTAArticleFolder(filePath);
+    if (!articleFolder) continue;
+
+    const existing = groups.get(articleFolder) || [];
+    existing.push(filePath);
+    groups.set(articleFolder, existing);
+  }
+
+  return groups;
+}
+
+/**
+ * Merge TA article pieces into a single markdown string.
+ * - title.md content becomes an H1 heading
+ * - sub-title.md content becomes an H2 heading
+ * - numbered files (01.md, 02.md) are included as-is
+ *
+ * @param pieces - Array of article pieces with path and content, should be pre-sorted
+ * @returns Merged markdown content
+ */
+export function mergeTAArticleContent(pieces: TAArticlePiece[]): string {
+  const contentParts: string[] = [];
+
+  for (const piece of pieces) {
+    const fileName = piece.path.split("/").pop()?.toLowerCase() || "";
+    const trimmedContent = piece.content.trim();
+
+    if (!trimmedContent) continue;
+
+    if (fileName === "title.md") {
+      // Title becomes H1 - remove any existing heading markers
+      const titleText = trimmedContent.replace(/^#+\s*/, "");
+      contentParts.push(`# ${titleText}`);
+    } else if (fileName === "sub-title.md") {
+      // Subtitle becomes H2 - remove any existing heading markers
+      const subtitleText = trimmedContent.replace(/^#+\s*/, "");
+      contentParts.push(`## ${subtitleText}`);
+    } else {
+      // Other files (01.md, 02.md, etc.) - include as-is
+      contentParts.push(trimmedContent);
+    }
+  }
+
+  return contentParts.join("\n\n");
+}
+
+/**
+ * Get the article ID from an article folder path.
+ * e.g., "en_ta-v87/translate/figs-metaphor" -> "figs-metaphor"
+ *
+ * @param articleFolder - Full article folder path
+ * @returns Article ID (folder name)
+ */
+export function getTAArticleId(articleFolder: string): string {
+  return articleFolder.split("/").pop() || articleFolder;
+}

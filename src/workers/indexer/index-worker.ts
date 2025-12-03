@@ -446,13 +446,42 @@ function processMarkdownFile(
   }
 
   const pathParts = parsed.filePath.split("/");
+
+  // Extract article ID from filename (works for both TW single files and TA merged files)
+  // e.g., "kt/grace.md" -> "grace", "translate/figs-metaphor.md" -> "figs-metaphor"
   const articleId =
     pathParts[pathParts.length - 1].replace(/\.md$/i, "") ||
     pathParts[pathParts.length - 2];
 
-  let category: "kt" | "names" | "other" = "other";
-  if (parsed.filePath.includes("/kt/")) category = "kt";
-  else if (parsed.filePath.includes("/names/")) category = "names";
+  // Determine category from path
+  // Check for category folders - handle both "/category/" and "category/" patterns
+  let category:
+    | "kt"
+    | "names"
+    | "other"
+    | "translate"
+    | "checking"
+    | "process"
+    | "intro" = "other";
+  const pathLower = parsed.filePath.toLowerCase();
+  if (pathLower.includes("/kt/") || pathLower.startsWith("kt/"))
+    category = "kt";
+  else if (pathLower.includes("/names/") || pathLower.startsWith("names/"))
+    category = "names";
+  else if (
+    pathLower.includes("/translate/") ||
+    pathLower.startsWith("translate/")
+  )
+    category = "translate";
+  else if (
+    pathLower.includes("/checking/") ||
+    pathLower.startsWith("checking/")
+  )
+    category = "checking";
+  else if (pathLower.includes("/process/") || pathLower.startsWith("process/"))
+    category = "process";
+  else if (pathLower.includes("/intro/") || pathLower.startsWith("intro/"))
+    category = "intro";
 
   const cleanedContent = content
     .replace(/\r\n/g, "\n")
@@ -490,13 +519,17 @@ function processMarkdownFile(
           ...baseMetadata,
           article_id: articleId,
           article_title: title,
+          category, // Include category for TA as well
         } as TranslationAcademyMetadata);
 
-  // Use proper path structure: category/articleId for TW, articleId for TA
+  // Build output path:
+  // - TW: category/articleId.md (e.g., kt/grace.md)
+  // - TA: category/articleId.md (e.g., translate/figs-metaphor.md)
+  // This ensures unique paths and preserves organizational structure
   const relativePath =
     parsed.resourceType === "tw"
       ? `${category}/${articleId}.md`
-      : `${articleId}.md`;
+      : `${category}/${articleId}.md`;
 
   return {
     path: `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${relativePath}`,

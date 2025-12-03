@@ -123,6 +123,8 @@ export interface TranslationWordsMetadata extends CommonMetadata {
 export interface TranslationAcademyMetadata extends CommonMetadata {
   article_id: string;
   article_title: string;
+  /** Category of the article: translate, checking, process, intro */
+  category?: "translate" | "checking" | "process" | "intro" | "other";
   /** Number of sections in the article */
   section_count?: number;
   summary?: string;

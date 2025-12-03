@@ -19,26 +19,39 @@ async function fetchWithTimeout(
   }
 }
 
-async function isHealthy(baseUrl: string): Promise<boolean> {
+async function isHealthy(
+  baseUrl: string,
+  verbose = false,
+): Promise<{ healthy: boolean; reason?: string }> {
+  const healthUrl = `${baseUrl.replace(/\/$/, "")}/api/health`;
   try {
-    const res = await fetchWithTimeout(
-      `${baseUrl.replace(/\/$/, "")}/api/health`,
-      {},
-      2000,
-    );
-    if (!res.ok) return false;
+    const res = await fetchWithTimeout(healthUrl, {}, 2000);
+    if (!res.ok) {
+      return { healthy: false, reason: `HTTP ${res.status}` };
+    }
     const text = await res.text();
     const json = JSON.parse(text);
-    // Require status to be healthy to consider ready
-    return json?.status === "healthy";
-  } catch {
-    return false;
+    const healthy = json?.status === "healthy";
+    if (!healthy && verbose) {
+      console.log(
+        `  Health check returned status: ${json?.status || "undefined"}`,
+      );
+    }
+    return { healthy, reason: healthy ? undefined : `status=${json?.status}` };
+  } catch (err: unknown) {
+    const msg =
+      err instanceof Error
+        ? err.name === "AbortError"
+          ? "timeout"
+          : err.message
+        : "unknown error";
+    return { healthy: false, reason: msg };
   }
 }
 
 async function waitForReady(
   baseUrl: string,
-  maxWaitMs = 45000,
+  maxWaitMs = 15000,
   intervalMs = 500,
 ): Promise<void> {
   const start = Date.now();
@@ -72,7 +85,7 @@ export async function getBaseUrl(): Promise<string> {
   for (const port of DEFAULT_PORTS) {
     const candidate = `http://localhost:${port}`;
     try {
-      await waitForReady(candidate, 10000, 300);
+      await waitForReady(candidate, 5000, 300);
       resolvedBaseUrl = candidate;
       return resolvedBaseUrl;
     } catch {

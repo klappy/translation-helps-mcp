@@ -4,7 +4,7 @@ echo "🚀 Running pre-push checks..."
 
 # Quick build to catch obvious issues
 echo "🏗️ Building..."
-npm run build >/dev/null 2>&1 || {
+npm run build 2>&1 | tail -20 || {
   echo "❌ Build failed. Aborting push."
   exit 1
 }
@@ -13,7 +13,7 @@ npm run build >/dev/null 2>&1 || {
 # Check if Wrangler is running on port 8787
 if lsof -i :8787 >/dev/null 2>&1; then
   echo "🧪 Running smoke tests..."
-  npm run test:smoke >/dev/null 2>&1 || {
+  npm run test:smoke || {
     echo "❌ Smoke tests failed. Aborting push."
     exit 1
   }
