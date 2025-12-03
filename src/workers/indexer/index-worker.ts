@@ -14,10 +14,10 @@ import type {
   R2EventNotification,
   ResourceType,
   ScriptureMetadata,
-  TranslationNotesMetadata,
-  TranslationWordsMetadata,
   TranslationAcademyMetadata,
+  TranslationNotesMetadata,
   TranslationQuestionsMetadata,
+  TranslationWordsMetadata,
 } from "./types.js";
 import { triggerAISearchReindex } from "./utils/ai-search-trigger.js";
 import { generateMarkdownWithFrontmatter } from "./utils/markdown-generator.js";
@@ -492,10 +492,14 @@ function processMarkdownFile(
           article_title: title,
         } as TranslationAcademyMetadata);
 
-  const safePath = parsed.filePath.replace(/\.md$/i, "").replace(/\//g, "_");
+  // Use proper path structure: category/articleId for TW, articleId for TA
+  const relativePath =
+    parsed.resourceType === "tw"
+      ? `${category}/${articleId}.md`
+      : `${articleId}.md`;
 
   return {
-    path: `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${safePath}.md`,
+    path: `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${relativePath}`,
     content: cleanedContent,
     metadata,
   };

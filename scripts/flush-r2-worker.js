@@ -37,17 +37,23 @@ export default {
 
       let deleted = 0;
       let cursor = undefined;
+      const BATCH_SIZE = 25; // Parallel delete batch size (conservative)
 
-      console.log("Starting bucket flush...");
+      console.log("Starting bucket flush with parallel deletes...");
 
-      // List and delete in batches
+      // List and delete in parallel batches
       do {
-        const listed = await bucket.list({ cursor, limit: 1000 });
+        const listed = await bucket.list({ cursor, limit: 500 });
+        const keys = listed.objects.map((obj) => obj.key);
 
-        for (const obj of listed.objects) {
-          await bucket.delete(obj.key);
-          deleted++;
-          console.log(`Deleted: ${obj.key}`);
+        // Delete in parallel batches of BATCH_SIZE
+        for (let i = 0; i < keys.length; i += BATCH_SIZE) {
+          const batch = keys.slice(i, i + BATCH_SIZE);
+          const results = await Promise.allSettled(
+            batch.map((key) => bucket.delete(key)),
+          );
+          deleted += results.filter((r) => r.status === "fulfilled").length;
+          console.log(`Deleted batch: ${deleted} total`);
         }
 
         cursor = listed.truncated ? listed.cursor : undefined;

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.8.9](https://github.com/klappy/translation-helps-mcp/compare/v7.8.8...v7.8.9) (2025-12-03)
+
+### Fixed
+
+- **TW/TA index paths**: Fixed path generation bug that created duplicate entries
+  - Was: `en_tw_bible_kt_love.md` (underscores replacing slashes)
+  - Now: `kt/love.md` (proper category/articleId structure)
+- **Flush script**: Improved with parallel batch deletes for faster bucket clearing
+
 ## [7.8.6](https://github.com/klappy/translation-helps-mcp/compare/v7.8.5...v7.8.6) (2025-12-03)
 
 ### Fixed
