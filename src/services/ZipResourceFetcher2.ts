@@ -2372,7 +2372,17 @@ export class ZipResourceFetcher2 {
       try {
         // R2 + Cache API cache for extracted file content
         if (zipCacheKey) {
-          const cleanInner = filePath.replace(/^(\.\/|\/)+/, "");
+          // Strip repo prefix from path (ZIP paths include root folder like "en_ta/")
+          // but ingredient paths don't - need consistency for cache lookups
+          let cleanInner = filePath.replace(/^(\.\/|\/)+/, "");
+          const firstSlash = cleanInner.indexOf("/");
+          if (firstSlash > 0) {
+            const firstSegment = cleanInner.substring(0, firstSlash);
+            // Check if first segment looks like a repo name (lang_resource pattern)
+            if (/^[a-z]{2,3}(-[a-z0-9]+)?_[a-z]+$/i.test(firstSegment)) {
+              cleanInner = cleanInner.substring(firstSlash + 1);
+            }
+          }
           const fileKey = `${zipCacheKey}/files/${cleanInner}`;
           const { bucket, caches } = getR2Env();
           const r2 = new R2Storage(bucket as any, caches as any);
@@ -2557,7 +2567,19 @@ export class ZipResourceFetcher2 {
         if (decodedContent !== null) {
           if (zipCacheKey) {
             try {
-              const cleanInner = filePath.replace(/^(\.\/|\/)+/, "");
+              // Strip repo prefix from path (ZIP paths include root folder like "en_ta/")
+              // but ingredient paths don't - need consistency for cache lookups
+              let cleanInner = filePath.replace(/^(\.\/|\/)+/, "");
+              // Detect and strip repo prefix: first segment that matches repo name pattern
+              // e.g., "en_ta/translate/..." -> "translate/..."
+              const firstSlash = cleanInner.indexOf("/");
+              if (firstSlash > 0) {
+                const firstSegment = cleanInner.substring(0, firstSlash);
+                // Check if first segment looks like a repo name (lang_resource pattern)
+                if (/^[a-z]{2,3}(-[a-z0-9]+)?_[a-z]+$/i.test(firstSegment)) {
+                  cleanInner = cleanInner.substring(firstSlash + 1);
+                }
+              }
               const fileKey = `${zipCacheKey}/files/${cleanInner}`;
               const { bucket, caches } = getR2Env();
               const r2 = new R2Storage(bucket as any, caches as any);
