@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.10.3](https://github.com/klappy/translation-helps-mcp/compare/v7.10.2...v7.10.3) (2025-12-03)
+
 ### [7.10.2](https://github.com/klappy/translation-helps-mcp/compare/v7.10.1...v7.10.2) (2025-12-03)
 
 ### Bug Fixes
