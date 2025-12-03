@@ -59,7 +59,8 @@ export class R2Storage {
           typeof performance !== "undefined" ? performance.now() : Date.now();
 
         // CRITICAL: If we got a Cache API hit but R2 doesn't have it,
-        // write to R2 to trigger event notifications for indexing
+        // write to R2 to trigger event notifications for indexing.
+        // Only sync .zip files (not .tar.gz) since event notification is .zip-only
         if (this.bucket && key.endsWith(".zip")) {
           try {
             const r2Exists = await this.bucket.get(key);

@@ -227,14 +227,14 @@ export async function fetchScripture(
         // This downloads ZIP once, caches it, and extracts the USFM file
         const ingredientPath = ingredient.path.replace(/^\.\//, "");
 
-        // Get catalog data to find ref tag and zipball URL
-        // ZipResourceFetcher2 will fetch catalog internally, but we need it for refTag/zipballUrl
-        // For now, use "master" as default ref - ZipResourceFetcher2 will handle catalog fetching
-        const refTag = "master"; // Default, ZipResourceFetcher2 will resolve actual ref from catalog
-        const zipballUrl = null; // ZipResourceFetcher2 will get from catalog
+        // Extract ref tag and zipball URL from catalog metadata
+        // The resource object should have catalog.prod.branch_or_tag_name and catalog.prod.zipball_url
+        const catalogProd = (resource as any)?.catalog?.prod;
+        const refTag = catalogProd?.branch_or_tag_name || "master";
+        const zipballUrl = catalogProd?.zipball_url || null;
 
         logger.info(
-          `📦 Using ZIP-based download for ${resource.name} (ref: ${refTag})`,
+          `📦 Using ZIP-based download for ${resource.name} (ref: ${refTag}, hasZipUrl: ${!!zipballUrl})`,
         );
 
         // Download ZIP (cached in R2) and extract USFM file (cached extraction)

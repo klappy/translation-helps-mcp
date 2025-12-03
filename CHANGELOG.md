@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.3] - 2025-12-03
+
+### Fixed
+
+- **Critical**: Scripture now uses proper version tag from catalog (was hardcoded "master")
+- Scripture ZIPs now use versioned keys (e.g., v87.zip) matching other resources
+- Only sync .zip files to R2 (not .tar.gz) to avoid duplicate indexing events
+
 ## [7.7.2] - 2025-12-03
 
 ### Fixed
