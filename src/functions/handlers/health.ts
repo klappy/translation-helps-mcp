@@ -9,6 +9,7 @@ import { getVersion } from "../../version.js";
 import { getKVCache } from "../kv-cache.js";
 import type { PlatformHandler } from "../platform-adapter.js";
 import { unifiedCache } from "../unified-cache.js";
+import { getR2Env } from "../r2-env.js";
 
 export const healthHandler: PlatformHandler = async (request) => {
   try {
@@ -16,17 +17,18 @@ export const healthHandler: PlatformHandler = async (request) => {
     const url = new URL(request.url);
     const clearCache = url.searchParams.get("clearCache") === "true";
     const clearKv = url.searchParams.get("clearKv") === "true";
+    const clearEdgeCache = url.searchParams.get("clearEdgeCache") === "true";
 
     let cacheInfo = {} as Record<string, unknown>;
 
-    // Handle cache clearing
+    // Handle memory cache clearing
     if (clearCache) {
       await unifiedCache.clear();
       cacheInfo = {
         cacheCleared: true,
-        message: "All cache entries have been cleared",
+        message: "All memory cache entries have been cleared",
       };
-      logger.warn("Cache manually cleared via health endpoint");
+      logger.warn("Memory cache manually cleared via health endpoint");
     }
 
     // Optionally clear KV-backed caches (zip, zipfile, catalog)
@@ -53,6 +55,61 @@ export const healthHandler: PlatformHandler = async (request) => {
           kvClearError: String(error),
         };
         logger.error("KV clear error via health endpoint", {
+          error: String(error),
+        });
+      }
+    }
+
+    // Clear Cloudflare Edge Cache API (where ZIPs are cached)
+    // This is needed to force fresh R2 lookups and trigger indexing events
+    if (clearEdgeCache) {
+      try {
+        const { caches: cacheStorage } = getR2Env();
+        // @ts-expect-error - caches.default exists in Cloudflare Workers
+        const defaultCache =
+          cacheStorage?.default ?? (globalThis as any).caches?.default;
+        if (defaultCache) {
+          // We can't enumerate Cache API keys, but we can delete known patterns
+          // The caller should provide specific keys to delete via query param
+          const keysParam = url.searchParams.get("cacheKeys");
+          if (keysParam) {
+            const keys = keysParam.split(",");
+            let deleted = 0;
+            for (const key of keys) {
+              const req = new Request(`https://r2.local/${key.trim()}`);
+              const wasDeleted = await defaultCache.delete(req);
+              if (wasDeleted) deleted++;
+            }
+            cacheInfo = {
+              ...cacheInfo,
+              edgeCacheCleared: true,
+              edgeCacheDeletedKeys: deleted,
+            };
+            logger.warn("Edge cache entries cleared via health endpoint", {
+              deleted,
+            });
+          } else {
+            cacheInfo = {
+              ...cacheInfo,
+              edgeCacheCleared: false,
+              edgeCacheMessage:
+                "Provide cacheKeys param with comma-separated R2 keys to delete from edge cache",
+            };
+          }
+        } else {
+          cacheInfo = {
+            ...cacheInfo,
+            edgeCacheCleared: false,
+            edgeCacheMessage: "Edge cache not available in this environment",
+          };
+        }
+      } catch (error) {
+        cacheInfo = {
+          ...cacheInfo,
+          edgeCacheCleared: false,
+          edgeCacheError: String(error),
+        };
+        logger.error("Edge cache clear error via health endpoint", {
           error: String(error),
         });
       }

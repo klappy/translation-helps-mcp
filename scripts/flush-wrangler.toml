@@ -19,4 +19,5 @@ binding = "ZIP_FILES"
 bucket_name = "translation-helps-mcp-zip-persistence"
 # preview_bucket_name must equal bucket_name to access production bucket in dev mode
 preview_bucket_name = "translation-helps-mcp-zip-persistence"
+# To check search index: translation-helps-search-index
 

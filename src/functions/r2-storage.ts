@@ -57,6 +57,28 @@ export class R2Storage {
         const buf = await hit.arrayBuffer();
         const end =
           typeof performance !== "undefined" ? performance.now() : Date.now();
+
+        // CRITICAL: If we got a Cache API hit but R2 doesn't have it,
+        // write to R2 to trigger event notifications for indexing
+        if (this.bucket && key.endsWith(".zip")) {
+          try {
+            const r2Exists = await this.bucket.get(key);
+            if (!r2Exists) {
+              console.log(
+                `[R2Storage] Cache hit but R2 miss - writing to R2 for event trigger: ${key}`,
+              );
+              await this.bucket.put(key, buf, {
+                httpMetadata: {
+                  contentType: contentTypeForKey(key),
+                  cacheControl: "public, max-age=604800",
+                },
+              });
+            }
+          } catch {
+            // Best-effort R2 sync, don't fail the request
+          }
+        }
+
         return {
           data: new Uint8Array(buf),
           source: "cache",
@@ -142,6 +164,30 @@ export class R2Storage {
           },
         }),
       );
+    }
+  }
+
+  /**
+   * Delete a ZIP from both R2 bucket AND Cache API
+   * This is necessary to fully invalidate cached ZIPs
+   */
+  async deleteZipWithCache(key: string): Promise<void> {
+    // Delete from R2
+    if (this.bucket && "delete" in this.bucket) {
+      try {
+        await (this.bucket as any).delete(key);
+      } catch {
+        // ignore delete errors
+      }
+    }
+    // Delete from Cache API
+    const c = this.defaultCache;
+    if (c) {
+      try {
+        await c.delete(new Request(`https://r2.local/${key}`));
+      } catch {
+        // ignore cache delete errors
+      }
     }
   }
 

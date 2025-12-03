@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.2] - 2025-12-03
+
+### Fixed
+
+- **Critical**: Cache API hits now sync to R2 to trigger indexing events
+- ZIPs served from edge cache but missing from R2 are now written to R2
+- Added `clearEdgeCache` param to health endpoint for manual cache busting
+
 ## [7.7.1] - 2025-12-03
 
 ### Fixed

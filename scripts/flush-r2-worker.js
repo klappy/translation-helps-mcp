@@ -81,6 +81,29 @@ export default {
       });
     }
 
+    if (url.pathname === "/list") {
+      const bucket = env.ZIP_FILES;
+
+      if (!bucket) {
+        return new Response("No R2 bucket bound", { status: 500 });
+      }
+
+      const keys = [];
+      let cursor = undefined;
+
+      do {
+        const listed = await bucket.list({ cursor, limit: 100 });
+        for (const obj of listed.objects) {
+          keys.push(`${obj.key} (${obj.size} bytes)`);
+        }
+        cursor = listed.truncated ? listed.cursor : undefined;
+      } while (cursor && keys.length < 100);
+
+      return new Response(keys.join("\n") || "(empty)", {
+        status: 200,
+      });
+    }
+
     return new Response(
       `
 R2 Bucket Flush Tool
