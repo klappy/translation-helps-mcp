@@ -2,11 +2,24 @@
 
 Event-driven worker that automatically indexes Translation Helps content for AI Search.
 
-## Architecture
+## Architecture (v2 - Two-Queue Pipeline)
 
 ```
-ZIP cached in R2 → R2 Event → Queue → Indexer Worker → Search Index Bucket → AI Search
+┌──────────────────────────────────────────────────────────────────┐
+│  ZIP Event → Unzip Worker (list + extract) → writes files to R2 │
+│                                                    ↓             │
+│                    R2 Event (extracted file) → Index Worker      │
+│                           ↑                                      │
+│    Main API extractions ──┘                                      │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+**Key Features:**
+
+- **Two Queues:** Separates ZIP extraction from indexing for better resource management
+- **Memory Efficient:** Extracts one file at a time to stay within Cloudflare Workers limits
+- **Universal Indexing:** Files extracted by the main API also trigger indexing via R2 events
+- **Consistent Keys:** All R2 keys use normalized `by-url/...` format
 
 ## Setup
 
@@ -23,9 +36,12 @@ npx wrangler login
 This creates:
 
 - `translation-helps-search-index` R2 bucket
-- `zip-indexing-queue` queue
-- `zip-indexing-dlq` dead letter queue
-- R2 event notification for `.zip` files
+- `zip-unzip-queue` for ZIP file events
+- `zip-indexing-queue` for extracted file events
+- Dead letter queues for both
+- R2 event notifications:
+  - `.zip` → `zip-unzip-queue`
+  - `.usfm`, `.tsv`, `.md`, `.txt`, `.json` → `zip-indexing-queue`
 
 ### 2. Configure AI Search (Cloudflare Dashboard)
 
@@ -77,76 +93,109 @@ npx wrangler secret put CF_API_TOKEN
 
 ### 6. Deploy the Worker
 
+Deployment is handled automatically via GitHub hooks when you push to main.
+
+For manual deployment:
+
 ```bash
 cd src/workers/indexer
 npm install
 npx wrangler deploy
 ```
 
-## Development
+## How It Works
 
-### Local Development
+### Queue 1: Unzip Queue (`zip-unzip-queue`)
 
-```bash
-cd src/workers/indexer
-npm run dev
-```
+When a ZIP file is cached in R2:
 
-### View Logs
+1. R2 event notification triggers `zip-unzip-queue`
+2. Unzip Worker downloads ZIP from R2
+3. Lists files using fflate filter (no full decompression)
+4. Extracts files ONE at a time to avoid memory limits
+5. Writes each file to R2, which triggers Queue 2
 
-```bash
-npx wrangler tail
-```
+### Queue 2: Index Queue (`zip-indexing-queue`)
+
+When an extracted file lands in R2:
+
+1. R2 event notification triggers `zip-indexing-queue`
+2. Index Worker reads the file from R2
+3. Parses and cleans content based on file type:
+   - `.usfm` → Scripture (USFM → Markdown)
+   - `.tsv` → Notes, Questions, Word Links
+   - `.md` → Translation Words, Academy
+4. Writes clean chunk to search index bucket
+5. Triggers AI Search reindex
 
 ## File Structure
 
 ```
 src/workers/indexer/
-├── index.ts                 # Queue consumer entry point
-├── wrangler.toml            # Worker configuration
+├── index.ts                 # Pipeline router (dispatches to handlers)
+├── unzip-worker.ts          # ZIP extraction handler
+├── index-worker.ts          # File indexing handler
+├── wrangler.toml            # Worker configuration (two queues)
 ├── package.json             # Dependencies
 ├── tsconfig.json            # TypeScript config
 ├── types.ts                 # Type definitions
-├── chunkers/
-│   ├── scripture-chunker.ts # Multi-level: verse, passage, chapter
-│   ├── notes-chunker.ts     # Single level: note
-│   ├── words-chunker.ts     # Single level: article
-│   ├── academy-chunker.ts   # Two levels: section, article
-│   └── questions-chunker.ts # Single level: question
+├── chunkers/                # Legacy chunkers (for batch processing)
+│   ├── scripture-chunker.ts
+│   ├── notes-chunker.ts
+│   ├── words-chunker.ts
+│   ├── academy-chunker.ts
+│   └── questions-chunker.ts
 └── utils/
     ├── markdown-generator.ts # YAML frontmatter generation
     ├── ai-search-trigger.ts  # Reindex API call
+    ├── parallel.ts           # Parallel processing utilities
     └── zip-handler.ts        # ZIP extraction utilities
+```
+
+## R2 Key Format
+
+All extracted files use the normalized format:
+
+```
+by-url/git.door43.org/{org}/{repo}/archive/{version}.zip/files/{filepath}
+```
+
+Example:
+
+```
+by-url/git.door43.org/unfoldingWord/en_ult/archive/v87.zip/files/43-JHN.usfm
 ```
 
 ## Chunk Levels
 
-| Resource              | Levels                  | Description                                 |
-| --------------------- | ----------------------- | ------------------------------------------- |
-| Scripture             | verse, passage, chapter | Multi-level for precise and thematic search |
-| Translation Notes     | note                    | One chunk per note                          |
-| Translation Words     | article                 | One chunk per word definition               |
-| Translation Academy   | section, article        | Two levels for navigation and overview      |
-| Translation Questions | question                | One chunk per Q&A pair                      |
-
-## Version Handling
-
-- Version is included in file paths: `en/unfoldingWord/ult/v86/JHN/3/...`
-- Multiple versions can coexist
-- R2 lifecycle rule auto-deletes after 90 days
-- AI Search reindexes every 6 hours (or on manual trigger)
-- LLM compares versions to pick latest: `v86 > v85`
+| Resource              | Level   | Description                     |
+| --------------------- | ------- | ------------------------------- |
+| Scripture             | book    | One chunk per book              |
+| Translation Notes     | book    | One chunk per book of notes     |
+| Translation Words     | article | One chunk per word definition   |
+| Translation Academy   | article | One chunk per academy article   |
+| Translation Questions | book    | One chunk per book of questions |
 
 ## Monitoring
 
 ### Queue Health
 
 ```bash
-# Check queue depth
+# Check unzip queue
+npx wrangler queues info zip-unzip-queue
+
+# Check indexing queue
 npx wrangler queues info zip-indexing-queue
 
-# Check dead letter queue
+# Check dead letter queues
+npx wrangler queues info zip-unzip-dlq
 npx wrangler queues info zip-indexing-dlq
+```
+
+### View Logs
+
+```bash
+npx wrangler tail --config src/workers/indexer/wrangler.toml
 ```
 
 ### R2 Bucket Stats
@@ -155,3 +204,10 @@ npx wrangler queues info zip-indexing-dlq
 # List objects in search index bucket
 npx wrangler r2 object list translation-helps-search-index --prefix "en/"
 ```
+
+## Version Handling
+
+- Version is included in file paths: `en/unfoldingWord/ult/v87/JHN.md`
+- Multiple versions can coexist
+- R2 lifecycle rule auto-deletes after 90 days
+- AI Search reindexes every 6 hours (or on manual trigger)

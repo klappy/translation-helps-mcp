@@ -25,7 +25,7 @@ import type {
   IndexChunk,
   TranslationAcademyMetadata,
 } from "../types.js";
-import { extractAllFiles, ExtractedFile } from "../utils/zip-handler.js";
+import { extractAllFiles, type ExtractedFile } from "../utils/zip-handler.js";
 
 /**
  * Parsed academy article

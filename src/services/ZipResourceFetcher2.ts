@@ -795,10 +795,12 @@ export class ZipResourceFetcher2 {
         return null;
       }
 
-      // Build cache key for extracted file
-      const zipCacheKey = ref
-        ? `zip:${organization}/${repository}:${ref}`
-        : `zip:${organization}/${repository}`;
+      // Build cache key for extracted file using normalized URL format
+      const effectiveRef = ref || "master";
+      const zipUrl =
+        zipballUrl ||
+        `https://git.door43.org/${organization}/${repository}/archive/${encodeURIComponent(effectiveRef)}.zip`;
+      const zipCacheKey = r2KeyFromUrl(zipUrl).key;
 
       // Extract USFM file from ZIP (cached extraction)
       const usfmContent = await this.extractFileFromZip(
@@ -946,11 +948,17 @@ export class ZipResourceFetcher2 {
       );
       if (!zipData) return [];
 
+      // Build normalized R2 key for extracted files
+      const zipUrl =
+        zipballUrl ||
+        `https://git.door43.org/${resource.owner}/${resource.name}/archive/${encodeURIComponent(refTag)}.zip`;
+      const zipKeyForFiles = r2KeyFromUrl(zipUrl).key;
+
       const tsvContent = await this.extractFileFromZip(
         zipData,
         targetIngredient.path,
         resource.name,
-        `zip:${resource.owner}/${resource.name}:${refTag}`,
+        zipKeyForFiles,
       );
 
       if (!tsvContent) return [];
@@ -1389,7 +1397,7 @@ export class ZipResourceFetcher2 {
                   zipData,
                   altPath,
                   resource.name,
-                  `zip:${resource.owner}/${resource.name}:${refTag}`,
+                  zipKeyForFiles,
                 );
                 if (tryContent) {
                   content = tryContent;
@@ -1710,7 +1718,7 @@ export class ZipResourceFetcher2 {
           zipData,
           modulePath,
           resource.name,
-          `zip:${resource.owner}/${resource.name}:${refTag}`,
+          zipKeyForFiles,
         );
         if (!content) {
           const repoPrefixed = `${resource.name.replace(/\/$/, "")}/${modulePath.replace(/^\//, "")}`;
@@ -1718,7 +1726,7 @@ export class ZipResourceFetcher2 {
             zipData,
             repoPrefixed,
             resource.name,
-            `zip:${resource.owner}/${resource.name}:${refTag}`,
+            zipKeyForFiles,
           );
         }
         if (!content) return { modules: [] };
@@ -1940,9 +1948,6 @@ export class ZipResourceFetcher2 {
     ref?: string | null,
     zipballUrl?: string | null,
   ): Promise<Uint8Array | null> {
-    const _inFlightKey = ref
-      ? `zip:${organization}/${repository}:${ref}`
-      : `zip:${organization}/${repository}`;
     const task = (async () => {
       try {
         // Build preferred URLs

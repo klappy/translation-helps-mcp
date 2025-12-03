@@ -1,28 +1,43 @@
-# Search Indexer Worker Configuration
-# This worker consumes R2 event notifications when ZIP files are cached
-# and populates the search index bucket with cleaned, chunked content.
+# Search Indexing Pipeline Worker Configuration
+#
+# Event-Driven Pipeline v2:
+#   ZIP files (.zip) → zip-unzip-queue → Unzip logic → extracts to R2
+#   Extracted files (.usfm, .tsv, .md) → zip-indexing-queue → Index logic → search index
+#
+# Both queues route to the same worker, which dispatches based on R2 key pattern.
 
 name = "translation-helps-indexer"
 main = "index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# Source bucket (read ZIPs)
+# Source bucket (read ZIPs and extracted files, write extracted files)
 [[r2_buckets]]
 binding = "SOURCE_BUCKET"
 bucket_name = "translation-helps-mcp-zip-persistence"
 
-# Destination bucket (write clean chunks)
+# Destination bucket (write clean chunks for AI Search)
 [[r2_buckets]]
 binding = "SEARCH_INDEX_BUCKET"
 bucket_name = "translation-helps-search-index"
 
-# Queue consumer configuration
+# Queue 1: Unzip Queue - receives ZIP file events
+# Extracts files one-at-a-time and writes to R2 (which triggers indexing)
+[[queues.consumers]]
+queue = "zip-unzip-queue"
+max_batch_size = 1
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "zip-unzip-dlq"
+
+# Queue 2: Indexing Queue - receives extracted file events  
+# Cleans content and writes chunks to search index bucket
 [[queues.consumers]]
 queue = "zip-indexing-queue"
 max_batch_size = 10
 max_batch_timeout = 30
 max_retries = 3
+max_concurrency = 20
 dead_letter_queue = "zip-indexing-dlq"
 
 # Environment variables for AI Search reindex trigger
@@ -30,7 +45,8 @@ dead_letter_queue = "zip-indexing-dlq"
 # CF_ACCOUNT_ID is set via deploy command from GitHub secrets
 AI_SEARCH_INDEX_ID = "translation-helps-search"
 
-# CF_API_TOKEN stored as secret (npx wrangler secret put CF_API_TOKEN --config src/workers/indexer/wrangler.toml)
+# CF_API_TOKEN stored as secret:
+# npx wrangler secret put CF_API_TOKEN --config src/workers/indexer/wrangler.toml
 
 # Observability settings for logging
 [observability]

@@ -25,7 +25,7 @@ import type {
   IndexChunk,
   TranslationWordsMetadata,
 } from "../types.js";
-import { extractAllFiles, ExtractedFile } from "../utils/zip-handler.js";
+import { extractAllFiles, type ExtractedFile } from "../utils/zip-handler.js";
 
 /**
  * Parsed word article

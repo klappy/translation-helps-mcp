@@ -244,3 +244,162 @@ export function getZipStats(zipBuffer: ArrayBuffer): {
 
   return { fileCount, totalSize, fileTypes };
 }
+
+/**
+ * List files in a ZIP archive without decompressing content (memory efficient)
+ *
+ * Uses fflate's filter callback to enumerate files by rejecting all decompressions.
+ * This reads the ZIP central directory without allocating memory for file contents.
+ *
+ * @param zipBuffer - The ZIP file as an ArrayBuffer
+ * @returns Array of file paths (excluding directories and system files)
+ */
+export function listFilesOnly(zipBuffer: ArrayBuffer): string[] {
+  const zipData = new Uint8Array(zipBuffer);
+  const archiveType = detectArchiveType(zipData);
+
+  if (archiveType === "gzip") {
+    // For TAR.GZ, we must decompress to get file list
+    // Fall back to full extraction for TAR archives
+    const tarData = gunzipSync(zipData);
+    const files = parseTar(tarData);
+    return [...files.keys()].filter(
+      (path) =>
+        !path.endsWith("/") &&
+        !path.includes("__MACOSX") &&
+        !path.startsWith("."),
+    );
+  }
+
+  if (archiveType !== "zip") {
+    console.error(`[ZIP Handler] Cannot list files: unknown archive type`);
+    return [];
+  }
+
+  const filePaths: string[] = [];
+
+  try {
+    // Use filter callback to enumerate files without decompressing
+    // fflate calls the filter for each file before decompressing
+    unzipSync(zipData, {
+      filter: (file) => {
+        // Collect file path
+        if (
+          !file.name.endsWith("/") &&
+          !file.name.includes("__MACOSX") &&
+          !file.name.startsWith(".")
+        ) {
+          filePaths.push(file.name);
+        }
+        // Return false to skip decompression - we only want the file list
+        return false;
+      },
+    });
+  } catch (_err) {
+    // Expected - we rejected everything, fflate may throw or return empty
+    // The filePaths array is already populated from the filter callback
+  }
+
+  console.log(
+    `[ZIP Handler] Listed ${filePaths.length} files without decompression`,
+  );
+  return filePaths;
+}
+
+/**
+ * Extract a single file from a ZIP archive using selective decompression
+ *
+ * More memory-efficient than extractAllFiles() for single file extraction.
+ * Uses fflate's filter callback to only decompress the target file.
+ *
+ * @param zipBuffer - The ZIP file as an ArrayBuffer
+ * @param targetPath - Path of the file to extract (can be partial match)
+ * @returns The extracted file content as string, or null if not found
+ */
+export function extractSingleFile(
+  zipBuffer: ArrayBuffer,
+  targetPath: string,
+): string | null {
+  const zipData = new Uint8Array(zipBuffer);
+  const archiveType = detectArchiveType(zipData);
+
+  if (archiveType === "gzip") {
+    // For TAR.GZ, decompress and find the file
+    const tarData = gunzipSync(zipData);
+    const files = parseTar(tarData);
+
+    // Try exact match first, then partial match
+    let data = files.get(targetPath);
+    if (!data) {
+      // Try partial match (file might be in a subdirectory)
+      for (const [path, fileData] of files.entries()) {
+        if (path.endsWith(`/${targetPath}`) || path === targetPath) {
+          data = fileData;
+          break;
+        }
+      }
+    }
+
+    if (!data) return null;
+
+    try {
+      return strFromU8(data);
+    } catch (_err) {
+      console.warn(
+        `[ZIP Handler] Could not decode file as UTF-8: ${targetPath}`,
+      );
+      return null;
+    }
+  }
+
+  if (archiveType !== "zip") {
+    console.error(`[ZIP Handler] Cannot extract: unknown archive type`);
+    return null;
+  }
+
+  try {
+    // Use filter callback to only decompress the target file
+    const result = unzipSync(zipData, {
+      filter: (file) => {
+        // Match exact path or path ending with target
+        return file.name === targetPath || file.name.endsWith(`/${targetPath}`);
+      },
+    });
+
+    // Find the extracted file in results
+    for (const [path, data] of Object.entries(result)) {
+      if (path === targetPath || path.endsWith(`/${targetPath}`)) {
+        try {
+          return strFromU8(data);
+        } catch (_err) {
+          console.warn(`[ZIP Handler] Could not decode file as UTF-8: ${path}`);
+          return null;
+        }
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error(`[ZIP Handler] Error extracting ${targetPath}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Extensions that should trigger indexing when extracted to R2
+ */
+export const INDEXABLE_EXTENSIONS = [
+  ".usfm",
+  ".tsv",
+  ".md",
+  ".txt",
+  ".json",
+] as const;
+
+/**
+ * Check if a file path should be indexed
+ */
+export function isIndexableFile(filePath: string): boolean {
+  const lowerPath = filePath.toLowerCase();
+  return INDEXABLE_EXTENSIONS.some((ext) => lowerPath.endsWith(ext));
+}
