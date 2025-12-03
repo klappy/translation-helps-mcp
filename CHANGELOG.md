@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.6] - 2025-12-03
+
+### Fixed
+
+- **Critical**: ResourceCatalogInfo now includes catalog metadata with version info
+- v7.7.3 fix was broken - resource.catalog didn't exist on the interface
+- Added catalog.prod.branch_or_tag_name and catalog.prod.zipball_url to ResourceCatalogInfo
+- resource-detector.ts now passes through catalog metadata from DCS API
+- Added warning log when falling back to 'master' due to missing version tag
+
 ## [7.7.5] - 2025-12-03
 
 ### Fixed

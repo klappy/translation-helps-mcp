@@ -236,6 +236,14 @@ export interface ResourceCatalogInfo {
     path: string;
   }>;
   url?: string;
+  owner?: string;
+  // Catalog metadata for version info
+  catalog?: {
+    prod?: {
+      branch_or_tag_name?: string;
+      zipball_url?: string;
+    };
+  };
 }
 
 export interface ResourceAvailability {
@@ -344,11 +352,14 @@ export async function discoverAvailableResources(
             resource.description,
           subject,
           url: `https://git.door43.org/${organization}/${resource.name}`,
+          owner: resource.owner || organization,
           ingredients:
             resource.ingredients ||
             resource.door43_metadata?.ingredients ||
             resource.metadata?.ingredients ||
             [],
+          // Include catalog metadata for version info (needed for ZIP URLs)
+          catalog: resource.catalog || resource.repo?.catalog,
         }));
 
         logger.debug(`Found resources`, { subject, count: resources.length });

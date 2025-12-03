@@ -228,10 +228,16 @@ export async function fetchScripture(
         const ingredientPath = ingredient.path.replace(/^\.\//, "");
 
         // Extract ref tag and zipball URL from catalog metadata
-        // The resource object should have catalog.prod.branch_or_tag_name and catalog.prod.zipball_url
-        const catalogProd = (resource as any)?.catalog?.prod;
+        // ResourceCatalogInfo now includes catalog.prod.branch_or_tag_name and catalog.prod.zipball_url
+        const catalogProd = resource.catalog?.prod;
         const refTag = catalogProd?.branch_or_tag_name || "master";
         const zipballUrl = catalogProd?.zipball_url || null;
+
+        if (!catalogProd?.branch_or_tag_name) {
+          logger.warn(
+            `⚠️ No version tag in catalog for ${resource.name}, falling back to 'master'`,
+          );
+        }
 
         logger.info(
           `📦 Using ZIP-based download for ${resource.name} (ref: ${refTag}, hasZipUrl: ${!!zipballUrl})`,
