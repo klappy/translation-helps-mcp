@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.7] - 2025-12-03
+
+### Performance
+
+- Removed blocking R2 check from extracted file cache reads (was adding 400ms+ latency)
+- ZIP syncing now only happens at the ZIP layer (getOrDownloadZip), not on every file read
+- Cached file reads are fast again (10-40ms instead of 400ms+)
+
 ## [7.7.6] - 2025-12-03
 
 ### Fixed
