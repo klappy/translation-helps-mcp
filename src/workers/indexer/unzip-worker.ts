@@ -49,6 +49,50 @@ function isTranslationAcademyZip(key: string): boolean {
 }
 
 /**
+ * Detect and strip the repo root prefix from ZIP file paths.
+ * ZIP archives typically have a root folder like "en_ta-v87/" or "en_ult-v87/"
+ * that wraps all content. The API ingredients don't include this prefix,
+ * so we need to strip it for path consistency.
+ *
+ * @param filePaths - Array of file paths from the ZIP
+ * @returns The common root prefix to strip (empty string if none detected)
+ */
+function detectRepoRootPrefix(filePaths: string[]): string {
+  if (filePaths.length === 0) return "";
+
+  // Get first path segment from first file
+  const firstPath = filePaths[0].replace(/^(\.\/|\/)+/, "");
+  const firstSlash = firstPath.indexOf("/");
+  if (firstSlash === -1) return ""; // No subdirectory structure
+
+  const potentialRoot = firstPath.substring(0, firstSlash + 1); // Include trailing slash
+
+  // Verify ALL files share this root (common pattern for repo archives)
+  // Check a sample to be efficient
+  const samplesToCheck = Math.min(filePaths.length, 20);
+  for (let i = 0; i < samplesToCheck; i++) {
+    const path = filePaths[i].replace(/^(\.\/|\/)+/, "");
+    if (!path.startsWith(potentialRoot)) {
+      return ""; // Not a common root, don't strip anything
+    }
+  }
+
+  return potentialRoot;
+}
+
+/**
+ * Strip the repo root prefix from a file path.
+ * E.g., "en_ta-v87/translate/figs-metaphor/01.md" -> "translate/figs-metaphor/01.md"
+ */
+function stripRepoPrefix(filePath: string, repoPrefix: string): string {
+  const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
+  if (repoPrefix && cleanPath.startsWith(repoPrefix)) {
+    return cleanPath.substring(repoPrefix.length);
+  }
+  return cleanPath;
+}
+
+/**
  * Process a single ZIP file - extract files one at a time to R2
  * For Translation Academy, merges article pieces into single files.
  */
@@ -94,6 +138,15 @@ async function processZipFile(
     console.log(
       `[Unzip Worker] ${indexableFiles.length} indexable files (.usfm, .tsv, .md, .txt, .json)`,
     );
+
+    // Detect repo root prefix to strip (ZIP archives wrap content in a root folder)
+    // This ensures R2 keys match what the API expects (without repo prefix)
+    const repoPrefix = detectRepoRootPrefix(filePaths);
+    if (repoPrefix) {
+      console.log(
+        `[Unzip Worker] Detected repo prefix to strip: "${repoPrefix}"`,
+      );
+    }
 
     // Check if this is a Translation Academy resource
     const isTA = isTranslationAcademyZip(key);
@@ -145,8 +198,9 @@ async function processZipFile(
           const articleId = getTAArticleId(articleFolder);
 
           // Build output path: replace article folder with single .md file
-          // e.g., "en_ta-v87/translate/figs-metaphor" -> "en_ta-v87/translate/figs-metaphor.md"
-          const cleanArticleFolder = articleFolder.replace(/^(\.\/|\/)+/, "");
+          // Strip repo prefix so path matches API ingredient paths
+          // e.g., "en_ta-v87/translate/figs-metaphor" -> "translate/figs-metaphor.md"
+          const cleanArticleFolder = stripRepoPrefix(articleFolder, repoPrefix);
           const outputKey = `${key}/files/${cleanArticleFolder}.md`;
 
           // Write merged article to R2
@@ -189,7 +243,8 @@ async function processZipFile(
             continue;
           }
 
-          const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
+          // Strip repo prefix so path matches API ingredient paths
+          const cleanPath = stripRepoPrefix(filePath, repoPrefix);
           const outputKey = `${key}/files/${cleanPath}`;
 
           const ext = cleanPath.toLowerCase();
@@ -234,8 +289,8 @@ async function processZipFile(
           }
 
           // Build R2 key for extracted file: {zipKey}/files/{filePath}
-          // This matches the format used by ZipResourceFetcher2.extractFileFromZip()
-          const cleanPath = filePath.replace(/^(\.\/|\/)+/, "");
+          // Strip repo prefix so path matches API ingredient paths
+          const cleanPath = stripRepoPrefix(filePath, repoPrefix);
           const outputKey = `${key}/files/${cleanPath}`;
 
           // Determine content type
