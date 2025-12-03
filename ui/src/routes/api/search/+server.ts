@@ -472,7 +472,7 @@ async function executeSearch(
 				} as SearchResponse,
 				{
 					headers: {
-						'X-XRay-Trace': JSON.stringify(trace),
+						'X-XRay-Trace': btoa(JSON.stringify(trace)),
 						'X-Response-Time': `${Date.now() - startTime}ms`,
 						'X-Trace-Id': trace.traceId
 					}
@@ -574,7 +574,7 @@ async function executeSearch(
 				} as SearchResponse,
 				{
 					headers: {
-						'X-XRay-Trace': JSON.stringify(trace),
+						'X-XRay-Trace': btoa(JSON.stringify(trace)),
 						'X-Response-Time': `${Date.now() - startTime}ms`,
 						'X-Trace-Id': trace.traceId
 					}
@@ -663,11 +663,11 @@ async function executeSearch(
 			aiSearchFilters: aiSearchFilter
 		});
 
-		// Return with X-Ray trace in headers for MCP client
+		// Return with X-Ray trace in headers for MCP client (base64 encoded)
 		const trace = tracer.getTrace();
 		return json(response, {
 			headers: {
-				'X-XRay-Trace': JSON.stringify(trace),
+				'X-XRay-Trace': btoa(JSON.stringify(trace)),
 				'X-Response-Time': `${took_ms}ms`,
 				'X-Trace-Id': trace.traceId
 			}
