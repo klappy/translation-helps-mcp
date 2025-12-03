@@ -32,3 +32,11 @@ AI_SEARCH_INDEX_ID = "translation-helps-search"
 
 # CF_API_TOKEN stored as secret (npx wrangler secret put CF_API_TOKEN --config src/workers/indexer/wrangler.toml)
 
+# Observability settings for logging
+[observability]
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true

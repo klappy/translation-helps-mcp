@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.8] - 2025-12-03
+
+### Fixed
+
+- **Indexer**: Added TAR.GZ support - some files stored under .zip keys are actually TAR.GZ
+- Indexer now detects archive type from magic bytes and handles both formats
+- Added GZIP decompression and TAR parsing to zip-handler
+- This fixes DLQ failures when TAR.GZ data was synced to R2 under .zip keys
+
 ## [7.7.7] - 2025-12-03
 
 ### Performance

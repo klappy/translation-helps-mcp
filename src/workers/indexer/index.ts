@@ -176,15 +176,24 @@ async function processZipFile(
 
   try {
     // Download ZIP from source bucket
+    console.log(`[Indexer] Fetching ZIP from R2: ${key}`);
+    const fetchStart = Date.now();
     const zipObject = await env.SOURCE_BUCKET.get(key);
     if (!zipObject) {
       throw new Error(`ZIP not found in source bucket: ${key}`);
     }
 
     const zipBuffer = await zipObject.arrayBuffer();
-    console.log(`[Indexer] Downloaded ZIP: ${zipBuffer.byteLength} bytes`);
+    const fetchDuration = Date.now() - fetchStart;
+    console.log(
+      `[Indexer] Downloaded ZIP: ${zipBuffer.byteLength} bytes in ${fetchDuration}ms`,
+    );
 
     // Route to appropriate chunker based on resource type
+    console.log(
+      `[Indexer] Starting chunker for resource type: ${parsed.resource}`,
+    );
+    const chunkerStart = Date.now();
     let chunks: IndexChunk[];
     switch (parsed.resource) {
       case "scripture":
@@ -215,8 +224,9 @@ async function processZipFile(
         };
     }
 
+    const chunkerDuration = Date.now() - chunkerStart;
     console.log(
-      `[Indexer] Generated ${chunks.length} chunks, writing with interleaved parallelism...`,
+      `[Indexer] Generated ${chunks.length} chunks in ${chunkerDuration}ms, writing with interleaved parallelism...`,
     );
 
     // Write chunks with interleaved CPU/IO parallelism
@@ -295,12 +305,22 @@ export default {
           message.ack();
         } else {
           // Complete failure - let it retry
+          console.error(
+            `[Indexer] Complete failure for ${result.zipKey}, retrying. Errors: ${result.errors.join("; ")}`,
+          );
           message.retry();
         }
       } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        const errorStack = err instanceof Error ? err.stack : "";
         console.error(
-          `[Indexer] Fatal error processing ${notification.object.key}:`,
-          err,
+          `[Indexer] FATAL ERROR processing ${notification.object.key}:`,
+          {
+            error: errorMsg,
+            stack: errorStack,
+            size: notification.object.size,
+            key: notification.object.key,
+          },
         );
         message.retry();
       }
