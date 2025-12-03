@@ -53,17 +53,31 @@ async function waitForReady(
   baseUrl: string,
   maxWaitMs = 15000,
   intervalMs = 500,
+  verbose = true,
 ): Promise<void> {
   const start = Date.now();
+  let lastReason = "";
+  let attempts = 0;
+
   while (Date.now() - start < maxWaitMs) {
-    if (await isHealthy(baseUrl)) return;
+    attempts++;
+    const result = await isHealthy(baseUrl, verbose);
+    if (result.healthy) {
+      if (verbose && attempts > 1) {
+        console.log(`  Server ready after ${attempts} attempts`);
+      }
+      return;
+    }
+    lastReason = result.reason || "unknown";
     await new Promise((r) => setTimeout(r, intervalMs));
   }
+
   // Final check to surface more helpful error
-  const finalOk = await isHealthy(baseUrl);
-  if (!finalOk) {
+  const finalResult = await isHealthy(baseUrl, true);
+  if (!finalResult.healthy) {
+    const elapsed = Math.round((Date.now() - start) / 1000);
     throw new Error(
-      `API readiness timed out after ${Math.round(maxWaitMs / 1000)}s at ${baseUrl}`,
+      `API readiness timed out after ${elapsed}s at ${baseUrl} (${attempts} attempts, last error: ${lastReason})`,
     );
   }
 }
@@ -76,24 +90,37 @@ export async function getBaseUrl(): Promise<string> {
     process.env.BASE_URL ||
     process.env.API_BASE_URL;
   if (envUrl && /^https?:\/\//.test(envUrl)) {
+    console.log(`Using TEST_BASE_URL: ${envUrl}`);
     resolvedBaseUrl = envUrl;
     return resolvedBaseUrl;
   }
   // If envUrl exists but is not absolute, ignore it
 
   // Probe common local ports
+  const triedPorts: { port: number; error: string }[] = [];
+  console.log(`Probing local ports: ${DEFAULT_PORTS.join(", ")}...`);
+
   for (const port of DEFAULT_PORTS) {
     const candidate = `http://localhost:${port}`;
     try {
-      await waitForReady(candidate, 5000, 300);
+      await waitForReady(candidate, 5000, 300, false);
+      console.log(`Found server on port ${port}`);
       resolvedBaseUrl = candidate;
       return resolvedBaseUrl;
-    } catch {
-      // try next
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "unknown error";
+      triedPorts.push({ port, error: msg });
     }
   }
 
+  // Log what we tried
+  console.log("No server found on any port:");
+  for (const { port, error } of triedPorts) {
+    console.log(`  - Port ${port}: ${error}`);
+  }
+
   // Fallback
+  console.log("Falling back to port 8175");
   resolvedBaseUrl = "http://localhost:8175";
   return resolvedBaseUrl;
 }

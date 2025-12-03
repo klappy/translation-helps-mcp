@@ -454,7 +454,6 @@ function processMarkdownFile(
     pathParts[pathParts.length - 2];
 
   // Determine category from path
-  // Check for category folders - handle both "/category/" and "category/" patterns
   let category:
     | "kt"
     | "names"
@@ -463,25 +462,12 @@ function processMarkdownFile(
     | "checking"
     | "process"
     | "intro" = "other";
-  const pathLower = parsed.filePath.toLowerCase();
-  if (pathLower.includes("/kt/") || pathLower.startsWith("kt/"))
-    category = "kt";
-  else if (pathLower.includes("/names/") || pathLower.startsWith("names/"))
-    category = "names";
-  else if (
-    pathLower.includes("/translate/") ||
-    pathLower.startsWith("translate/")
-  )
-    category = "translate";
-  else if (
-    pathLower.includes("/checking/") ||
-    pathLower.startsWith("checking/")
-  )
-    category = "checking";
-  else if (pathLower.includes("/process/") || pathLower.startsWith("process/"))
-    category = "process";
-  else if (pathLower.includes("/intro/") || pathLower.startsWith("intro/"))
-    category = "intro";
+  if (parsed.filePath.includes("/kt/")) category = "kt";
+  else if (parsed.filePath.includes("/names/")) category = "names";
+  else if (parsed.filePath.includes("/translate/")) category = "translate";
+  else if (parsed.filePath.includes("/checking/")) category = "checking";
+  else if (parsed.filePath.includes("/process/")) category = "process";
+  else if (parsed.filePath.includes("/intro/")) category = "intro";
 
   const cleanedContent = content
     .replace(/\r\n/g, "\n")
