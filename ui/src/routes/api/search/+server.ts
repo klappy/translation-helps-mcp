@@ -474,7 +474,9 @@ async function executeSearch(
 					headers: {
 						'X-XRay-Trace': btoa(JSON.stringify(trace)),
 						'X-Response-Time': `${Date.now() - startTime}ms`,
-						'X-Trace-Id': trace.traceId
+						'X-Trace-Id': trace.traceId,
+						'X-Cache-Status': 'miss',
+						'X-Endpoint': 'search-biblical-resources'
 					}
 				}
 			);
@@ -576,7 +578,9 @@ async function executeSearch(
 					headers: {
 						'X-XRay-Trace': btoa(JSON.stringify(trace)),
 						'X-Response-Time': `${Date.now() - startTime}ms`,
-						'X-Trace-Id': trace.traceId
+						'X-Trace-Id': trace.traceId,
+						'X-Cache-Status': 'miss',
+						'X-Endpoint': 'search-biblical-resources'
 					}
 				}
 			);
@@ -663,13 +667,23 @@ async function executeSearch(
 			aiSearchFilters: aiSearchFilter
 		});
 
-		// Return with X-Ray trace in headers for MCP client (base64 encoded)
+		// Return with X-Ray trace in headers for MCP client (base64 encoded, matching simpleEndpoint.ts pattern)
 		const trace = tracer.getTrace();
+		const cacheStats = trace.cacheStats || { hits: 0, misses: 0 };
+		const cacheStatus =
+			cacheStats.hits > 0 && cacheStats.misses === 0
+				? 'hit'
+				: cacheStats.hits > 0
+					? 'partial'
+					: 'miss';
+
 		return json(response, {
 			headers: {
 				'X-XRay-Trace': btoa(JSON.stringify(trace)),
 				'X-Response-Time': `${took_ms}ms`,
-				'X-Trace-Id': trace.traceId
+				'X-Trace-Id': trace.traceId,
+				'X-Cache-Status': cacheStatus,
+				'X-Endpoint': 'search-biblical-resources'
 			}
 		});
 	} catch (error) {
