@@ -24,6 +24,7 @@ import type { Env, R2EventNotification } from "./types.js";
 // Import handlers
 import { processZipFiles } from "./unzip-worker.js";
 import { processExtractedFiles } from "./index-worker.js";
+import { triggerAISearchReindex } from "./utils/ai-search-trigger.js";
 
 /**
  * Determine message type from R2 key
@@ -43,6 +44,80 @@ function getMessageType(key: string): "zip" | "extracted" | "unknown" {
  * Routes messages to appropriate handler based on R2 key pattern
  */
 export default {
+  /**
+   * HTTP handler for diagnostics and manual reindex trigger
+   */
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Health check
+    if (url.pathname === "/" || url.pathname === "/health") {
+      return new Response(
+        JSON.stringify(
+          {
+            status: "ok",
+            worker: "translation-helps-indexer",
+            env: {
+              CF_ACCOUNT_ID: env.CF_ACCOUNT_ID
+                ? `set (${env.CF_ACCOUNT_ID.substring(0, 8)}...)`
+                : "⚠️ MISSING",
+              AI_SEARCH_INDEX_ID: env.AI_SEARCH_INDEX_ID || "⚠️ MISSING",
+              CF_API_TOKEN: env.CF_API_TOKEN
+                ? `set (${env.CF_API_TOKEN.substring(0, 8)}...)`
+                : "⚠️ MISSING",
+            },
+            timestamp: new Date().toISOString(),
+          },
+          null,
+          2,
+        ),
+        {
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Manual reindex trigger for debugging
+    if (url.pathname === "/reindex") {
+      console.log("[HTTP] Manual reindex trigger requested");
+      try {
+        await triggerAISearchReindex(env);
+        return new Response(
+          JSON.stringify(
+            {
+              status: "triggered",
+              message: "Check worker logs for results",
+              timestamp: new Date().toISOString(),
+            },
+            null,
+            2,
+          ),
+          {
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      } catch (error) {
+        return new Response(
+          JSON.stringify(
+            {
+              status: "error",
+              error: error instanceof Error ? error.message : String(error),
+              timestamp: new Date().toISOString(),
+            },
+            null,
+            2,
+          ),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+
+    return new Response("Not Found", { status: 404 });
+  },
+
   async queue(
     batch: MessageBatch<R2EventNotification>,
     env: Env,
