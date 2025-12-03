@@ -2006,6 +2006,30 @@ export class ZipResourceFetcher2 {
               } catch {
                 // ignore trace add errors
               }
+
+              // CRITICAL: If ZIP came from Cache API but doesn't exist in R2,
+              // we need to store it to trigger the indexing event notification!
+              if (source === "cache" && bucket) {
+                // Fire-and-forget R2 sync to avoid blocking the response
+                (async () => {
+                  try {
+                    const zipExists = await bucket.get(zipKey);
+                    if (!zipExists) {
+                      console.log(
+                        `[ZIP] Cache API hit but ZIP missing from R2 - storing for event trigger: ${zipKey}`,
+                      );
+                      // Store the cached ZIP data in R2 (data is already Uint8Array)
+                      await bucket.put(zipKey, data);
+                      console.log(
+                        `[ZIP] Stored ZIP in R2 for indexing: ${zipKey}`,
+                      );
+                    }
+                  } catch (e) {
+                    console.error(`[ZIP] Failed to sync ZIP to R2: ${e}`);
+                  }
+                })();
+              }
+
               return data;
             }
           }

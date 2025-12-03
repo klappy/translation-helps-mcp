@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.9] - 2025-12-03
+
+### Fixed
+
+- **Scripture ZIP caching**: Added R2 sync for ZIP Cache API hits (was only syncing TAR.GZ)
+- This is the actual fix for scripture ZIP files not triggering indexer events
+- When Cache API returns a cached ZIP but R2 is empty, now stores ZIP in R2 (fire-and-forget)
+- This triggers R2 event notification for the indexer queue
+
 ## [7.7.8] - 2025-12-03
 
 ### Fixed
