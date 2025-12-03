@@ -6,6 +6,10 @@
  *
  * Architecture:
  * ZIP cached in R2 → R2 Event → Queue → This Worker → Search Index Bucket → AI Search
+ *
+ * Performance optimizations:
+ * - Book-level chunking (66 files vs 31,000 for scripture)
+ * - Interleaved CPU/IO with controlled concurrency
  */
 
 import type { MessageBatch } from "@cloudflare/workers-types";
@@ -16,6 +20,7 @@ import { processScripture } from "./chunkers/scripture-chunker.js";
 import { processTranslationWords } from "./chunkers/words-chunker.js";
 import type {
   Env,
+  IndexChunk,
   IndexingResult,
   ParsedZipKey,
   R2EventNotification,
@@ -23,6 +28,11 @@ import type {
 } from "./types.js";
 import { triggerAISearchReindex } from "./utils/ai-search-trigger.js";
 import { generateMarkdownWithFrontmatter } from "./utils/markdown-generator.js";
+import {
+  processWithInterleaving,
+  summarizeWriteResults,
+  WriteResult,
+} from "./utils/parallel.js";
 
 /**
  * Parse a ZIP key to extract resource information
@@ -81,7 +91,12 @@ function parseZipKey(key: string): ParsedZipKey | null {
 function determineResourceType(resourceName: string): ResourceType {
   const name = resourceName.toLowerCase();
 
-  if (name.includes("ult") || name.includes("ust") || name.includes("ueb")) {
+  if (
+    name.includes("ult") ||
+    name.includes("ust") ||
+    name.includes("ueb") ||
+    name.includes("t4t")
+  ) {
     return "scripture";
   }
   if (name === "tn" || name.includes("_tn")) {
@@ -108,6 +123,31 @@ function determineResourceType(resourceName: string): ResourceType {
 }
 
 /**
+ * Write a single chunk to R2 with markdown frontmatter
+ */
+async function writeChunk(env: Env, chunk: IndexChunk): Promise<WriteResult> {
+  try {
+    const markdown = generateMarkdownWithFrontmatter(
+      chunk.content,
+      chunk.metadata,
+    );
+    await env.SEARCH_INDEX_BUCKET.put(chunk.path, markdown, {
+      customMetadata: {
+        language: chunk.metadata.language,
+        organization: chunk.metadata.organization,
+        resource: chunk.metadata.resource,
+        chunk_level: chunk.metadata.chunk_level,
+        version: chunk.metadata.version,
+      },
+    });
+    return { path: chunk.path, success: true };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    return { path: chunk.path, success: false, error: errorMsg };
+  }
+}
+
+/**
  * Process a single ZIP file and populate the search index
  */
 async function processZipFile(
@@ -117,7 +157,6 @@ async function processZipFile(
   const startTime = Date.now();
   const { key } = notification.object;
   const errors: string[] = [];
-  let chunksWritten = 0;
 
   console.log(`[Indexer] Processing ZIP: ${key}`);
 
@@ -146,7 +185,7 @@ async function processZipFile(
     console.log(`[Indexer] Downloaded ZIP: ${zipBuffer.byteLength} bytes`);
 
     // Route to appropriate chunker based on resource type
-    let chunks;
+    let chunks: IndexChunk[];
     switch (parsed.resource) {
       case "scripture":
         chunks = await processScripture(zipBuffer, parsed, env);
@@ -176,43 +215,45 @@ async function processZipFile(
         };
     }
 
-    // Write chunks to search index bucket
-    for (const chunk of chunks) {
-      try {
-        const markdown = generateMarkdownWithFrontmatter(
-          chunk.content,
-          chunk.metadata,
-        );
-        await env.SEARCH_INDEX_BUCKET.put(chunk.path, markdown, {
-          customMetadata: {
-            language: chunk.metadata.language,
-            organization: chunk.metadata.organization,
-            resource: chunk.metadata.resource,
-            chunk_level: chunk.metadata.chunk_level,
-            version: chunk.metadata.version,
-          },
-        });
-        chunksWritten++;
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        errors.push(`Failed to write chunk ${chunk.path}: ${errorMsg}`);
-      }
-    }
+    console.log(
+      `[Indexer] Generated ${chunks.length} chunks, writing with interleaved parallelism...`,
+    );
 
-    console.log(`[Indexer] Wrote ${chunksWritten} chunks for ${key}`);
+    // Write chunks with interleaved CPU/IO parallelism
+    const writeResults = await processWithInterleaving(
+      chunks,
+      (chunk) => writeChunk(env, chunk),
+      10, // Concurrency limit
+    );
+
+    // Summarize results
+    const summary = summarizeWriteResults(writeResults);
+    errors.push(...summary.errors);
+
+    console.log(
+      `[Indexer] Wrote ${summary.successful}/${summary.total} chunks for ${key} (${summary.failed} failed)`,
+    );
+
+    return {
+      zipKey: key,
+      resourceType: parsed.resource,
+      chunksWritten: summary.successful,
+      errors,
+      durationMs: Date.now() - startTime,
+    };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     errors.push(errorMsg);
     console.error(`[Indexer] Error processing ${key}: ${errorMsg}`);
-  }
 
-  return {
-    zipKey: key,
-    resourceType: parsed.resource,
-    chunksWritten,
-    errors,
-    durationMs: Date.now() - startTime,
-  };
+    return {
+      zipKey: key,
+      resourceType: parsed.resource,
+      chunksWritten: 0,
+      errors,
+      durationMs: Date.now() - startTime,
+    };
+  }
 }
 
 /**
@@ -280,10 +321,12 @@ export default {
     }
 
     // Log summary
+    const totalDuration = results.reduce((sum, r) => sum + r.durationMs, 0);
     console.log(`[Indexer] Batch complete:`, {
       messagesProcessed: batch.messages.length,
       totalChunksWritten: totalChunks,
       totalErrors: results.reduce((sum, r) => sum + r.errors.length, 0),
+      totalDurationMs: totalDuration,
     });
   },
 };

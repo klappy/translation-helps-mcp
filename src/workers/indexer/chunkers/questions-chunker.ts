@@ -1,8 +1,23 @@
 /**
- * Translation Questions Chunker
+ * Translation Questions Chunker (Book-Level)
  *
- * Processes Translation Questions ZIP files and generates question-level chunks.
- * Each Q&A pair is stored as a separate .md file.
+ * Processes Translation Questions ZIP files and generates ONE chunk per book.
+ * Each book is a single markdown file with C:V headers for Q&A pairs.
+ *
+ * Output format:
+ * ```markdown
+ * # Translation Questions: Genesis
+ *
+ * ## Chapter 1
+ *
+ * ### 1:1
+ * **Q:** What did God create in the beginning?
+ * **A:** God created the heavens and the earth.
+ *
+ * ### 1:2
+ * **Q:** What was the state of the earth?
+ * **A:** The earth was formless and empty.
+ * ```
  */
 
 import type {
@@ -87,10 +102,8 @@ const BOOK_NAMES: Record<string, string> = {
  * Parsed question from TSV
  */
 interface ParsedQuestion {
-  book: string;
   chapter: number;
   verse: number;
-  questionId: string;
   questionText: string;
   answerText: string;
 }
@@ -99,7 +112,7 @@ interface ParsedQuestion {
  * Parse TSV content to extract questions
  * TSV format: Reference, ID, Tags, Quote, Occurrence, Question, Answer
  */
-function parseTSV(tsv: string, book: string): ParsedQuestion[] {
+function parseTSV(tsv: string): ParsedQuestion[] {
   const questions: ParsedQuestion[] = [];
   const lines = tsv.split("\n");
 
@@ -111,7 +124,7 @@ function parseTSV(tsv: string, book: string): ParsedQuestion[] {
     const columns = line.split("\t");
     if (columns.length < 7) continue;
 
-    const [reference, id, _tags, _quote, _occurrence, question, answer] =
+    const [reference, _id, _tags, _quote, _occurrence, question, answer] =
       columns;
 
     // Parse reference (e.g., "3:16")
@@ -127,10 +140,8 @@ function parseTSV(tsv: string, book: string): ParsedQuestion[] {
     if (!question || !answer) continue;
 
     questions.push({
-      book: book.toUpperCase(),
       chapter,
       verse,
-      questionId: id || `q${i}`,
       questionText: cleanText(question),
       answerText: cleanText(answer),
     });
@@ -167,7 +178,57 @@ function extractBookFromPath(path: string): string | null {
 }
 
 /**
- * Process a Translation Questions ZIP file and generate chunks
+ * Generate markdown content for a book's questions with C:V format
+ */
+function generateQuestionsMarkdown(
+  bookName: string,
+  questions: ParsedQuestion[],
+): string {
+  const lines: string[] = [];
+  lines.push(`# Translation Questions: ${bookName}`);
+  lines.push("");
+
+  // Group questions by chapter, then verse
+  const chapterMap = new Map<number, Map<number, ParsedQuestion[]>>();
+  for (const question of questions) {
+    if (!chapterMap.has(question.chapter)) {
+      chapterMap.set(question.chapter, new Map());
+    }
+    const verseMap = chapterMap.get(question.chapter)!;
+    if (!verseMap.has(question.verse)) {
+      verseMap.set(question.verse, []);
+    }
+    verseMap.get(question.verse)!.push(question);
+  }
+
+  // Sort chapters
+  const sortedChapters = [...chapterMap.keys()].sort((a, b) => a - b);
+
+  for (const chapter of sortedChapters) {
+    lines.push(`## Chapter ${chapter}`);
+    lines.push("");
+
+    const verseMap = chapterMap.get(chapter)!;
+    const sortedVerses = [...verseMap.keys()].sort((a, b) => a - b);
+
+    for (const verse of sortedVerses) {
+      // C:V header for self-documenting snippets
+      lines.push(`### ${chapter}:${verse}`);
+
+      const verseQuestions = verseMap.get(verse)!;
+      for (const q of verseQuestions) {
+        lines.push(`**Q:** ${q.questionText}`);
+        lines.push(`**A:** ${q.answerText}`);
+        lines.push("");
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Process a Translation Questions ZIP file and generate book-level chunks
  */
 export async function processTranslationQuestions(
   zipBuffer: ArrayBuffer,
@@ -181,11 +242,11 @@ export async function processTranslationQuestions(
 
   // Find TSV files
   const tsvFiles = files.filter((f) => f.path.endsWith(".tsv"));
-
   console.log(`[Questions Chunker] Found ${tsvFiles.length} TSV files`);
 
+  // Group files by book
+  const bookFiles = new Map<string, typeof tsvFiles>();
   for (const file of tsvFiles) {
-    // Extract book code from path
     const book = extractBookFromPath(file.path);
     if (!book) {
       console.log(
@@ -199,52 +260,68 @@ export async function processTranslationQuestions(
       continue;
     }
 
-    console.log(`[Questions Chunker] Processing questions for: ${book}`);
-
-    const questions = parseTSV(file.content, book);
-    console.log(
-      `[Questions Chunker] Parsed ${questions.length} questions from ${book}`,
-    );
-
-    // Track question number per verse for unique IDs
-    const verseQuestionCount = new Map<string, number>();
-
-    for (const q of questions) {
-      const verseKey = `${q.chapter}:${q.verse}`;
-      const qNum = (verseQuestionCount.get(verseKey) || 0) + 1;
-      verseQuestionCount.set(verseKey, qNum);
-
-      const basePath = `${parsed.language}/${parsed.organization}/tq/${parsed.version}/${q.book}/${q.chapter}`;
-
-      const metadata: TranslationQuestionsMetadata = {
-        language: parsed.language,
-        language_name: parsed.language === "en" ? "English" : parsed.language,
-        organization: parsed.organization,
-        resource: "tq",
-        resource_name: "Translation Questions",
-        version: parsed.version,
-        chunk_level: "question",
-        indexed_at: new Date().toISOString(),
-        book: q.book,
-        book_name: BOOK_NAMES[q.book] || q.book,
-        chapter: q.chapter,
-        verse: q.verse,
-        question_id: q.questionId,
-        question_text: q.questionText,
-        answer_text: q.answerText,
-      };
-
-      // Format as Q&A
-      const content = `**Question:** ${q.questionText}\n\n**Answer:** ${q.answerText}`;
-
-      chunks.push({
-        path: `${basePath}/${q.verse}-q${qNum}.md`,
-        content,
-        metadata,
-      });
+    if (!bookFiles.has(book)) {
+      bookFiles.set(book, []);
     }
+    bookFiles.get(book)!.push(file);
   }
 
-  console.log(`[Questions Chunker] Generated ${chunks.length} total chunks`);
+  console.log(`[Questions Chunker] Found ${bookFiles.size} books`);
+
+  for (const [book, files] of bookFiles) {
+    const bookName = BOOK_NAMES[book] || book;
+    console.log(`[Questions Chunker] Processing book: ${book} (${bookName})`);
+
+    // Combine questions from all files for this book
+    const allQuestions: ParsedQuestion[] = [];
+    for (const file of files) {
+      const questions = parseTSV(file.content);
+      allQuestions.push(...questions);
+    }
+
+    console.log(
+      `[Questions Chunker] Parsed ${allQuestions.length} questions from ${book}`,
+    );
+
+    if (allQuestions.length === 0) {
+      console.log(`[Questions Chunker] Skipping ${book} - no questions found`);
+      continue;
+    }
+
+    // Collect unique chapters
+    const chapters = [...new Set(allQuestions.map((q) => q.chapter))].sort(
+      (a, b) => a - b,
+    );
+
+    // Generate markdown content
+    const content = generateQuestionsMarkdown(bookName, allQuestions);
+
+    // Create metadata
+    const metadata: TranslationQuestionsMetadata = {
+      language: parsed.language,
+      language_name: parsed.language === "en" ? "English" : parsed.language,
+      organization: parsed.organization,
+      resource: "tq",
+      resource_name: "Translation Questions",
+      version: parsed.version,
+      chunk_level: "book",
+      indexed_at: new Date().toISOString(),
+      book: book,
+      book_name: bookName,
+      question_count: allQuestions.length,
+      chapters_covered: chapters,
+    };
+
+    // Create chunk path: lang/org/tq/version/BOOK.md
+    const chunkPath = `${parsed.language}/${parsed.organization}/tq/${parsed.version}/${book}.md`;
+
+    chunks.push({
+      path: chunkPath,
+      content,
+      metadata,
+    });
+  }
+
+  console.log(`[Questions Chunker] Generated ${chunks.length} book chunks`);
   return chunks;
 }

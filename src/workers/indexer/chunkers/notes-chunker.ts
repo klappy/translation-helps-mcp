@@ -1,8 +1,21 @@
 /**
- * Translation Notes Chunker
+ * Translation Notes Chunker (Book-Level)
  *
- * Processes Translation Notes ZIP files and generates note-level chunks.
- * Each note is stored as a separate .md file with rich metadata.
+ * Processes Translation Notes ZIP files and generates ONE chunk per book.
+ * Each book is a single markdown file with C:V headers and inline TA references.
+ *
+ * Output format:
+ * ```markdown
+ * # Translation Notes: Genesis
+ *
+ * ## Chapter 1
+ *
+ * ### 1:1
+ * **"In the beginning"** - This phrase refers to the start of creation. (See: figs-explicit)
+ *
+ * ### 1:2
+ * **"formless and empty"** - This is a merism meaning completely without form. (See: figs-merism)
+ * ```
  */
 
 import type {
@@ -87,20 +100,18 @@ const BOOK_NAMES: Record<string, string> = {
  * Parsed note from TSV
  */
 interface ParsedNote {
-  book: string;
   chapter: number;
   verse: number;
-  noteId: string;
-  supportReference: string;
   phrase: string;
   note: string;
+  taReference?: string; // Translation Academy module ID
 }
 
 /**
  * Parse TSV content to extract notes
  * TSV format: Reference, ID, Tags, SupportReference, Quote, Occurrence, Note
  */
-function parseTSV(tsv: string, book: string): ParsedNote[] {
+function parseTSV(tsv: string): ParsedNote[] {
   const notes: ParsedNote[] = [];
   const lines = tsv.split("\n");
 
@@ -112,7 +123,7 @@ function parseTSV(tsv: string, book: string): ParsedNote[] {
     const columns = line.split("\t");
     if (columns.length < 7) continue;
 
-    const [reference, id, _tags, supportReference, quote, _occurrence, note] =
+    const [reference, _id, _tags, supportReference, quote, _occurrence, note] =
       columns;
 
     // Parse reference (e.g., "3:16" or "front:intro")
@@ -124,14 +135,21 @@ function parseTSV(tsv: string, book: string): ParsedNote[] {
 
     if (isNaN(chapter) || isNaN(verse)) continue;
 
+    // Extract TA module from supportReference (e.g., "rc://*/ta/man/translate/figs-metaphor")
+    let taReference: string | undefined;
+    if (supportReference) {
+      const taMatch = supportReference.match(/\/([^/]+)$/);
+      if (taMatch) {
+        taReference = taMatch[1];
+      }
+    }
+
     notes.push({
-      book: book.toUpperCase(),
       chapter,
       verse,
-      noteId: id || `note-${i}`,
-      supportReference: supportReference || "",
       phrase: quote || "",
       note: cleanNoteContent(note || ""),
+      taReference,
     });
   }
 
@@ -177,7 +195,62 @@ function extractBookFromPath(path: string): string | null {
 }
 
 /**
- * Process a Translation Notes ZIP file and generate chunks
+ * Generate markdown content for a book's notes with C:V format
+ */
+function generateNotesMarkdown(bookName: string, notes: ParsedNote[]): string {
+  const lines: string[] = [];
+  lines.push(`# Translation Notes: ${bookName}`);
+  lines.push("");
+
+  // Group notes by chapter, then verse
+  const chapterMap = new Map<number, Map<number, ParsedNote[]>>();
+  for (const note of notes) {
+    if (!chapterMap.has(note.chapter)) {
+      chapterMap.set(note.chapter, new Map());
+    }
+    const verseMap = chapterMap.get(note.chapter)!;
+    if (!verseMap.has(note.verse)) {
+      verseMap.set(note.verse, []);
+    }
+    verseMap.get(note.verse)!.push(note);
+  }
+
+  // Sort chapters
+  const sortedChapters = [...chapterMap.keys()].sort((a, b) => a - b);
+
+  for (const chapter of sortedChapters) {
+    lines.push(`## Chapter ${chapter}`);
+    lines.push("");
+
+    const verseMap = chapterMap.get(chapter)!;
+    const sortedVerses = [...verseMap.keys()].sort((a, b) => a - b);
+
+    for (const verse of sortedVerses) {
+      // C:V header for self-documenting snippets
+      lines.push(`### ${chapter}:${verse}`);
+
+      const verseNotes = verseMap.get(verse)!;
+      for (const note of verseNotes) {
+        // Format: **"phrase"** - note content (See: ta-module)
+        let noteLine = "";
+        if (note.phrase) {
+          noteLine += `**"${note.phrase}"** - `;
+        }
+        noteLine += note.note;
+        if (note.taReference) {
+          noteLine += ` (See: ${note.taReference})`;
+        }
+        lines.push(noteLine);
+        lines.push("");
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Process a Translation Notes ZIP file and generate book-level chunks
  */
 export async function processTranslationNotes(
   zipBuffer: ArrayBuffer,
@@ -189,13 +262,13 @@ export async function processTranslationNotes(
 
   console.log(`[Notes Chunker] Processing ${files.length} files from ZIP`);
 
-  // Find TSV files
+  // Find TSV files and group by book
   const tsvFiles = files.filter((f) => f.path.endsWith(".tsv"));
-
   console.log(`[Notes Chunker] Found ${tsvFiles.length} TSV files`);
 
+  // Group files by book
+  const bookFiles = new Map<string, typeof tsvFiles>();
   for (const file of tsvFiles) {
-    // Extract book code from path
     const book = extractBookFromPath(file.path);
     if (!book) {
       console.log(`[Notes Chunker] Could not extract book from: ${file.path}`);
@@ -207,47 +280,70 @@ export async function processTranslationNotes(
       continue;
     }
 
-    console.log(`[Notes Chunker] Processing notes for: ${book}`);
-
-    const notes = parseTSV(file.content, book);
-    console.log(`[Notes Chunker] Parsed ${notes.length} notes from ${book}`);
-
-    for (const note of notes) {
-      const basePath = `${parsed.language}/${parsed.organization}/tn/${parsed.version}/${note.book}/${note.chapter}`;
-
-      const metadata: TranslationNotesMetadata = {
-        language: parsed.language,
-        language_name: parsed.language === "en" ? "English" : parsed.language,
-        organization: parsed.organization,
-        resource: "tn",
-        resource_name: "Translation Notes",
-        version: parsed.version,
-        chunk_level: "note",
-        indexed_at: new Date().toISOString(),
-        book: note.book,
-        book_name: BOOK_NAMES[note.book] || note.book,
-        chapter: note.chapter,
-        verse: note.verse,
-        phrase: note.phrase,
-        note_id: note.noteId,
-        support_reference: note.supportReference || undefined,
-      };
-
-      // Create content with phrase context
-      let content = "";
-      if (note.phrase) {
-        content += `**"${note.phrase}"**\n\n`;
-      }
-      content += note.note;
-
-      chunks.push({
-        path: `${basePath}/${note.verse}-${note.noteId}.md`,
-        content,
-        metadata,
-      });
+    if (!bookFiles.has(book)) {
+      bookFiles.set(book, []);
     }
+    bookFiles.get(book)!.push(file);
   }
 
-  console.log(`[Notes Chunker] Generated ${chunks.length} total chunks`);
+  console.log(`[Notes Chunker] Found ${bookFiles.size} books`);
+
+  for (const [book, files] of bookFiles) {
+    const bookName = BOOK_NAMES[book] || book;
+    console.log(`[Notes Chunker] Processing book: ${book} (${bookName})`);
+
+    // Combine notes from all files for this book
+    const allNotes: ParsedNote[] = [];
+    for (const file of files) {
+      const notes = parseTSV(file.content);
+      allNotes.push(...notes);
+    }
+
+    console.log(`[Notes Chunker] Parsed ${allNotes.length} notes from ${book}`);
+
+    if (allNotes.length === 0) {
+      console.log(`[Notes Chunker] Skipping ${book} - no notes found`);
+      continue;
+    }
+
+    // Collect unique chapters and TA references
+    const chapters = [...new Set(allNotes.map((n) => n.chapter))].sort(
+      (a, b) => a - b,
+    );
+    const taReferences = [
+      ...new Set(allNotes.map((n) => n.taReference).filter(Boolean)),
+    ] as string[];
+
+    // Generate markdown content
+    const content = generateNotesMarkdown(bookName, allNotes);
+
+    // Create metadata
+    const metadata: TranslationNotesMetadata = {
+      language: parsed.language,
+      language_name: parsed.language === "en" ? "English" : parsed.language,
+      organization: parsed.organization,
+      resource: "tn",
+      resource_name: "Translation Notes",
+      version: parsed.version,
+      chunk_level: "book",
+      indexed_at: new Date().toISOString(),
+      book: book,
+      book_name: bookName,
+      note_count: allNotes.length,
+      chapters_covered: chapters,
+      ta_references: taReferences.length > 0 ? taReferences : undefined,
+    };
+
+    // Create chunk path: lang/org/tn/version/BOOK.md
+    const chunkPath = `${parsed.language}/${parsed.organization}/tn/${parsed.version}/${book}.md`;
+
+    chunks.push({
+      path: chunkPath,
+      content,
+      metadata,
+    });
+  }
+
+  console.log(`[Notes Chunker] Generated ${chunks.length} book chunks`);
   return chunks;
 }

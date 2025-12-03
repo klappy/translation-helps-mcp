@@ -1,8 +1,22 @@
 /**
- * Translation Words Chunker
+ * Translation Words Chunker (Article-Level with Roll-Up)
  *
- * Processes Translation Words ZIP files and generates article-level chunks.
- * Each word/term definition is stored as a separate .md file.
+ * Processes Translation Words ZIP files and generates ONE chunk per word/term.
+ * Rolls up multi-file articles (01.md, 02.md, etc.) into single files.
+ *
+ * Output format:
+ * ```markdown
+ * # Grace
+ *
+ * Grace is God's unmerited favor toward sinners...
+ *
+ * ## Definition
+ * ...
+ *
+ * ## Related Terms
+ * - mercy
+ * - forgiveness
+ * ```
  */
 
 import type {
@@ -11,7 +25,7 @@ import type {
   IndexChunk,
   TranslationWordsMetadata,
 } from "../types.js";
-import { extractAllFiles } from "../utils/zip-handler.js";
+import { extractAllFiles, ExtractedFile } from "../utils/zip-handler.js";
 
 /**
  * Parsed word article
@@ -36,84 +50,143 @@ function extractCategory(path: string): "kt" | "names" | "other" {
 }
 
 /**
- * Extract article ID from file path
+ * Extract article folder ID from file path
+ * e.g., bible/kt/grace/01.md -> grace
  * e.g., bible/kt/grace.md -> grace
  */
-function extractArticleId(path: string): string {
-  const match = path.match(/\/([^/]+)\.md$/i);
-  return match ? match[1] : path;
+function extractArticleFolder(path: string): string {
+  // Remove file extension
+  const withoutExt = path.replace(/\.md$/i, "");
+
+  // Split path
+  const parts = withoutExt.split("/");
+
+  // Check if last part is numeric (multi-file article)
+  const lastPart = parts[parts.length - 1];
+  if (/^\d+$/.test(lastPart)) {
+    // Multi-file: bible/kt/grace/01 -> grace
+    return parts[parts.length - 2] || lastPart;
+  }
+
+  // Single file: bible/kt/grace -> grace
+  return lastPart;
 }
 
 /**
- * Parse markdown content to extract article info
+ * Extract title from markdown content
  */
-function parseArticle(path: string, content: string): ParsedArticle {
-  const category = extractCategory(path);
-  const id = extractArticleId(path);
-
-  // Extract title from first heading
+function extractTitle(content: string): string {
   const titleMatch = content.match(/^#\s+(.+)$/m);
-  const title = titleMatch ? titleMatch[1].trim() : id;
+  return titleMatch ? titleMatch[1].trim() : "";
+}
 
-  // Extract related terms (usually in "See also" section)
+/**
+ * Extract related terms (usually in "See also" section)
+ */
+function extractRelated(content: string): string[] {
   const related: string[] = [];
   const seeAlsoMatch = content.match(
     /##?\s*See\s+also[:\s]*\n([\s\S]*?)(?=\n##|\n$|$)/i,
   );
+
   if (seeAlsoMatch) {
     const seeAlsoContent = seeAlsoMatch[1];
     // Find markdown links
     const linkMatches = seeAlsoContent.matchAll(/\[([^\]]+)\]\([^)]+\)/g);
     for (const match of linkMatches) {
-      related.push(match[1]);
+      if (!related.includes(match[1])) {
+        related.push(match[1]);
+      }
     }
     // Find plain list items
     const listMatches = seeAlsoContent.matchAll(/^\s*\*\s+(.+)$/gm);
     for (const match of listMatches) {
-      if (!match[1].includes("[")) {
-        related.push(match[1].trim());
+      const item = match[1].trim();
+      if (!item.includes("[") && !related.includes(item)) {
+        related.push(item);
       }
     }
   }
 
-  // Extract Bible references
-  const bibleReferences: string[] = [];
+  return related;
+}
+
+/**
+ * Extract Bible references
+ */
+function extractBibleReferences(content: string): string[] {
+  const references: string[] = [];
   const refMatch = content.match(
     /##?\s*Bible\s+References?[:\s]*\n([\s\S]*?)(?=\n##|\n$|$)/i,
   );
+
   if (refMatch) {
     const refContent = refMatch[1];
-    // Find references in list format
     const listMatches = refContent.matchAll(/^\s*\*\s+(.+)$/gm);
     for (const match of listMatches) {
-      bibleReferences.push(match[1].trim());
+      references.push(match[1].trim());
     }
   }
 
-  // Clean content - remove the "See also" and "Bible References" sections for main content
-  let cleanContent = content;
-  cleanContent = cleanContent.replace(
-    /##?\s*See\s+also[:\s]*\n[\s\S]*?(?=\n##|\n$|$)/gi,
-    "",
-  );
-  cleanContent = cleanContent.replace(
-    /##?\s*Bible\s+References?[:\s]*\n[\s\S]*?(?=\n##|\n$|$)/gi,
-    "",
-  );
-  cleanContent = cleanContent.trim();
+  return references;
+}
+
+/**
+ * Clean article content - keep it but don't strip sections
+ * We want the full content for search
+ */
+function cleanContent(content: string): string {
+  // Convert markdown links to plain text with context
+  let cleaned = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
+
+  // Remove rc:// links
+  cleaned = cleaned.replace(/rc:\/\/[^\s)]+/g, "");
+
+  // Normalize whitespace
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
+  return cleaned.trim();
+}
+
+/**
+ * Parse and combine article files into a single article
+ */
+function parseArticle(
+  articleId: string,
+  files: ExtractedFile[],
+): ParsedArticle {
+  // Sort files by path to ensure correct order (01.md, 02.md, etc.)
+  const sortedFiles = files.sort((a, b) => a.path.localeCompare(b.path));
+
+  // Combine content
+  const combinedContent = sortedFiles.map((f) => f.content).join("\n\n");
+
+  // Get category from first file
+  const category = extractCategory(sortedFiles[0].path);
+
+  // Extract title from first file (should have the main heading)
+  let title = extractTitle(combinedContent);
+  if (!title) {
+    // Fallback to article ID with first letter capitalized
+    title = articleId.charAt(0).toUpperCase() + articleId.slice(1);
+  }
+
+  // Extract related terms and references
+  const related = extractRelated(combinedContent);
+  const bibleReferences = extractBibleReferences(combinedContent);
 
   return {
-    id,
+    id: articleId,
     title,
     category,
-    content: cleanContent,
+    content: cleanContent(combinedContent),
     related,
     bibleReferences,
   };
 }
 
 /**
- * Process a Translation Words ZIP file and generate chunks
+ * Process a Translation Words ZIP file and generate article-level chunks
  */
 export async function processTranslationWords(
   zipBuffer: ArrayBuffer,
@@ -130,15 +203,38 @@ export async function processTranslationWords(
     (f) => f.path.endsWith(".md") && f.path.includes("/bible/"),
   );
 
-  console.log(`[Words Chunker] Found ${mdFiles.length} word articles`);
+  console.log(`[Words Chunker] Found ${mdFiles.length} markdown files`);
+
+  // Group files by article folder (to roll up multi-file articles)
+  const articleFiles = new Map<string, ExtractedFile[]>();
 
   for (const file of mdFiles) {
     // Skip index/intro files
-    if (file.path.includes("index.md") || file.path.includes("intro.md")) {
+    if (
+      file.path.includes("index.md") ||
+      file.path.includes("intro.md") ||
+      file.path.endsWith("/README.md")
+    ) {
       continue;
     }
 
-    const article = parseArticle(file.path, file.content);
+    const articleId = extractArticleFolder(file.path);
+    if (!articleFiles.has(articleId)) {
+      articleFiles.set(articleId, []);
+    }
+    articleFiles.get(articleId)!.push(file);
+  }
+
+  console.log(`[Words Chunker] Found ${articleFiles.size} unique articles`);
+
+  for (const [articleId, files] of articleFiles) {
+    const article = parseArticle(articleId, files);
+
+    // Skip empty articles
+    if (!article.content || article.content.length < 10) {
+      console.log(`[Words Chunker] Skipping empty article: ${articleId}`);
+      continue;
+    }
 
     const metadata: TranslationWordsMetadata = {
       language: parsed.language,
@@ -159,15 +255,16 @@ export async function processTranslationWords(
           : undefined,
     };
 
-    const basePath = `${parsed.language}/${parsed.organization}/tw/${parsed.version}/${article.category}`;
+    // Create chunk path: lang/org/tw/version/category/articleId.md
+    const chunkPath = `${parsed.language}/${parsed.organization}/tw/${parsed.version}/${article.category}/${article.id}.md`;
 
     chunks.push({
-      path: `${basePath}/${article.id}.md`,
+      path: chunkPath,
       content: article.content,
       metadata,
     });
   }
 
-  console.log(`[Words Chunker] Generated ${chunks.length} total chunks`);
+  console.log(`[Words Chunker] Generated ${chunks.length} article chunks`);
   return chunks;
 }

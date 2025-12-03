@@ -1,10 +1,18 @@
 /**
- * Scripture Chunker
+ * Scripture Chunker (Book-Level)
  *
- * Processes scripture ZIP files and generates multi-level chunks:
- * - Verse level: Individual verses for precise lookups
- * - Passage level: Pericopes (story units) for thematic search
- * - Chapter level: Full chapters with summaries
+ * Processes scripture ZIP files and generates ONE chunk per book.
+ * Each book is a single markdown file with C:V format for self-documenting snippets.
+ *
+ * Output format:
+ * ```markdown
+ * # Genesis
+ *
+ * ## Chapter 1
+ *
+ * 1:1 In the beginning God created the heavens and the earth.
+ * 1:2 The earth was formless and empty...
+ * ```
  */
 
 import type {
@@ -12,7 +20,6 @@ import type {
   ParsedZipKey,
   IndexChunk,
   ScriptureMetadata,
-  ChunkLevel,
 } from "../types.js";
 import { extractAllFiles } from "../utils/zip-handler.js";
 
@@ -91,10 +98,11 @@ const RESOURCE_NAMES: Record<string, string> = {
   ult: "Unfoldingword Literal Text",
   ust: "Unfoldingword Simplified Text",
   ueb: "Unfoldingword Easy-to-Read Bible",
+  t4t: "Translation for Translators",
 };
 
 /**
- * Parse a verse from USFM content
+ * Parsed verse from USFM
  */
 interface ParsedVerse {
   chapter: number;
@@ -103,20 +111,7 @@ interface ParsedVerse {
 }
 
 /**
- * Parse a section/passage from USFM content
- */
-interface ParsedSection {
-  title: string;
-  startChapter: number;
-  startVerse: number;
-  endChapter: number;
-  endVerse: number;
-  text: string;
-  verses: ParsedVerse[];
-}
-
-/**
- * Clean USFM content by removing alignment markers
+ * Clean USFM content by removing alignment markers and formatting
  * Produces clean, readable text
  */
 function cleanUSFM(usfm: string): string {
@@ -199,62 +194,16 @@ function parseUSFMVerses(usfm: string): ParsedVerse[] {
 }
 
 /**
- * Parse USFM content to extract sections (passages)
- * Uses \s markers and paragraph breaks as boundaries
+ * Extract section titles from USFM \s markers
  */
-function parseUSFMSections(
-  usfm: string,
-  verses: ParsedVerse[],
-): ParsedSection[] {
-  const sections: ParsedSection[] = [];
-
-  // Find section markers: \s, \s1, \s2
+function extractSections(usfm: string): string[] {
+  const sections: string[] = [];
   const sectionMatches = [...usfm.matchAll(/\\s\d?\s+([^\n\\]+)/g)];
 
-  if (sectionMatches.length === 0) {
-    // No section markers - group by ~10 verses
-    return groupVersesIntoPassages(verses, 10);
-  }
-
-  // Build sections from markers
-  for (let i = 0; i < sectionMatches.length; i++) {
-    const match = sectionMatches[i];
+  for (const match of sectionMatches) {
     const title = match[1].trim();
-    const startIndex = match.index!;
-    const endIndex = sectionMatches[i + 1]?.index ?? usfm.length;
-
-    // Find verses in this section
-    const sectionText = usfm.slice(startIndex, endIndex);
-    const sectionVerses: ParsedVerse[] = [];
-
-    // Get verse references from the section text
-    const verseRefs = [...sectionText.matchAll(/\\c\s+(\d+)|\\v\s+(\d+)/g)];
-    let currentChapter = 0;
-
-    for (const ref of verseRefs) {
-      if (ref[1]) {
-        currentChapter = parseInt(ref[1], 10);
-      } else if (ref[2] && currentChapter > 0) {
-        const verseNum = parseInt(ref[2], 10);
-        const verse = verses.find(
-          (v) => v.chapter === currentChapter && v.verse === verseNum,
-        );
-        if (verse) {
-          sectionVerses.push(verse);
-        }
-      }
-    }
-
-    if (sectionVerses.length > 0) {
-      sections.push({
-        title,
-        startChapter: sectionVerses[0].chapter,
-        startVerse: sectionVerses[0].verse,
-        endChapter: sectionVerses[sectionVerses.length - 1].chapter,
-        endVerse: sectionVerses[sectionVerses.length - 1].verse,
-        text: sectionVerses.map((v) => v.text).join(" "),
-        verses: sectionVerses,
-      });
+    if (title && !sections.includes(title)) {
+      sections.push(title);
     }
   }
 
@@ -262,82 +211,45 @@ function parseUSFMSections(
 }
 
 /**
- * Group verses into passages when no section markers exist
+ * Generate markdown content for a book with C:V format
  */
-function groupVersesIntoPassages(
-  verses: ParsedVerse[],
-  targetSize: number,
-): ParsedSection[] {
-  const sections: ParsedSection[] = [];
-  let currentSection: ParsedVerse[] = [];
+function generateBookMarkdown(bookName: string, verses: ParsedVerse[]): string {
+  const lines: string[] = [];
+  lines.push(`# ${bookName}`);
+  lines.push("");
 
+  // Group verses by chapter
+  const chapterMap = new Map<number, ParsedVerse[]>();
   for (const verse of verses) {
-    currentSection.push(verse);
-
-    if (currentSection.length >= targetSize) {
-      sections.push(versesToSection(currentSection));
-      currentSection = [];
+    if (!chapterMap.has(verse.chapter)) {
+      chapterMap.set(verse.chapter, []);
     }
+    chapterMap.get(verse.chapter)!.push(verse);
   }
 
-  if (currentSection.length > 0) {
-    sections.push(versesToSection(currentSection));
+  // Sort chapters
+  const sortedChapters = [...chapterMap.keys()].sort((a, b) => a - b);
+
+  for (const chapter of sortedChapters) {
+    lines.push(`## Chapter ${chapter}`);
+    lines.push("");
+
+    const chapterVerses = chapterMap.get(chapter)!;
+    // Sort verses within chapter
+    chapterVerses.sort((a, b) => a.verse - b.verse);
+
+    for (const verse of chapterVerses) {
+      // C:V format for self-documenting snippets
+      lines.push(`${chapter}:${verse.verse} ${verse.text}`);
+    }
+    lines.push("");
   }
 
-  return sections;
+  return lines.join("\n");
 }
 
 /**
- * Convert an array of verses to a section
- */
-function versesToSection(verses: ParsedVerse[]): ParsedSection {
-  return {
-    title: `${verses[0].chapter}:${verses[0].verse}-${verses[verses.length - 1].verse}`,
-    startChapter: verses[0].chapter,
-    startVerse: verses[0].verse,
-    endChapter: verses[verses.length - 1].chapter,
-    endVerse: verses[verses.length - 1].verse,
-    text: verses.map((v) => v.text).join(" "),
-    verses,
-  };
-}
-
-/**
- * Create common metadata for scripture
- */
-function createScriptureMetadata(
-  parsed: ParsedZipKey,
-  book: string,
-  chapter: number,
-  chunkLevel: ChunkLevel,
-): Omit<
-  ScriptureMetadata,
-  | "verse"
-  | "verse_start"
-  | "verse_end"
-  | "passage_title"
-  | "themes"
-  | "summary"
-  | "passages_in_chapter"
-> {
-  return {
-    language: parsed.language,
-    language_name: parsed.language === "en" ? "English" : parsed.language,
-    organization: parsed.organization,
-    resource: parsed.resourceName,
-    resource_name:
-      RESOURCE_NAMES[parsed.resourceName.toLowerCase()] || parsed.resourceName,
-    version: parsed.version,
-    chunk_level: chunkLevel,
-    indexed_at: new Date().toISOString(),
-    book: book.toUpperCase(),
-    book_name: BOOK_NAMES[book.toUpperCase()] || book,
-    chapter,
-  };
-}
-
-/**
- * Process a scripture ZIP file and generate chunks
+ * Process a scripture ZIP file and generate book-level chunks
  */
 export async function processScripture(
   zipBuffer: ArrayBuffer,
@@ -367,112 +279,58 @@ export async function processScripture(
     }
 
     const book = bookMatch[2].toUpperCase();
-    console.log(`[Scripture Chunker] Processing book: ${book}`);
+    const bookName = BOOK_NAMES[book] || book;
+    console.log(`[Scripture Chunker] Processing book: ${book} (${bookName})`);
 
-    // Parse verses
+    // Parse verses from USFM
     const verses = parseUSFMVerses(file.content);
     console.log(
       `[Scripture Chunker] Parsed ${verses.length} verses from ${book}`,
     );
 
-    // Parse sections/passages
-    const sections = parseUSFMSections(file.content, verses);
-    console.log(
-      `[Scripture Chunker] Parsed ${sections.length} sections from ${book}`,
-    );
-
-    // Group by chapter
-    const chapterMap = new Map<number, ParsedVerse[]>();
-    for (const verse of verses) {
-      if (!chapterMap.has(verse.chapter)) {
-        chapterMap.set(verse.chapter, []);
-      }
-      chapterMap.get(verse.chapter)!.push(verse);
+    if (verses.length === 0) {
+      console.log(`[Scripture Chunker] Skipping ${book} - no verses found`);
+      continue;
     }
 
-    // Generate verse-level chunks
-    for (const verse of verses) {
-      const basePath = `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${book}/${verse.chapter}/verses`;
+    // Extract sections from USFM \s markers
+    const sections = extractSections(file.content);
 
-      // Get context (previous and next verse text)
-      const verseIndex = verses.indexOf(verse);
-      const contextBefore =
-        verseIndex > 0 ? verses[verseIndex - 1].text.slice(0, 100) : undefined;
-      const contextAfter =
-        verseIndex < verses.length - 1
-          ? verses[verseIndex + 1].text.slice(0, 100)
-          : undefined;
+    // Count unique chapters
+    const chapters = new Set(verses.map((v) => v.chapter));
 
-      const metadata: ScriptureMetadata = {
-        ...createScriptureMetadata(parsed, book, verse.chapter, "verse"),
-        verse: verse.verse,
-        context_before: contextBefore,
-        context_after: contextAfter,
-      };
+    // Generate markdown content
+    const content = generateBookMarkdown(bookName, verses);
 
-      chunks.push({
-        path: `${basePath}/${verse.verse}.md`,
-        content: verse.text,
-        metadata,
-      });
-    }
+    // Create metadata
+    const metadata: ScriptureMetadata = {
+      language: parsed.language,
+      language_name: parsed.language === "en" ? "English" : parsed.language,
+      organization: parsed.organization,
+      resource: parsed.resourceName,
+      resource_name:
+        RESOURCE_NAMES[parsed.resourceName.toLowerCase()] ||
+        parsed.resourceName,
+      version: parsed.version,
+      chunk_level: "book",
+      indexed_at: new Date().toISOString(),
+      book: book,
+      book_name: bookName,
+      verse_count: verses.length,
+      chapter_count: chapters.size,
+      sections: sections.length > 0 ? sections : undefined,
+    };
 
-    // Generate passage-level chunks
-    for (const section of sections) {
-      const basePath = `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${book}/${section.startChapter}/passages`;
+    // Create chunk path: lang/org/resource/version/BOOK.md
+    const chunkPath = `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${book}.md`;
 
-      const metadata: ScriptureMetadata = {
-        ...createScriptureMetadata(
-          parsed,
-          book,
-          section.startChapter,
-          "passage",
-        ),
-        verse_start: section.startVerse,
-        verse_end: section.endVerse,
-        passage_title: section.title,
-        themes: [], // TODO: Extract themes from section heading
-      };
-
-      const fileName =
-        section.startChapter === section.endChapter
-          ? `${section.startVerse}-${section.endVerse}.md`
-          : `${section.startChapter}_${section.startVerse}-${section.endChapter}_${section.endVerse}.md`;
-
-      chunks.push({
-        path: `${basePath}/${fileName}`,
-        content: section.text,
-        metadata,
-      });
-    }
-
-    // Generate chapter-level chunks
-    for (const [chapter, chapterVerses] of chapterMap) {
-      const basePath = `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${book}/${chapter}`;
-
-      // Find passages in this chapter
-      const chapterSections = sections.filter(
-        (s) => s.startChapter === chapter || s.endChapter === chapter,
-      );
-
-      const metadata: ScriptureMetadata = {
-        ...createScriptureMetadata(parsed, book, chapter, "chapter"),
-        passages_in_chapter: chapterSections.map((s) => s.title),
-        summary: `${BOOK_NAMES[book] || book} Chapter ${chapter} - ${chapterVerses.length} verses`,
-      };
-
-      const chapterText = chapterVerses
-        .map((v) => `${v.verse} ${v.text}`)
-        .join("\n");
-
-      chunks.push({
-        path: `${basePath}/chapter.md`,
-        content: chapterText,
-        metadata,
-      });
-    }
+    chunks.push({
+      path: chunkPath,
+      content,
+      metadata,
+    });
   }
 
-  console.log(`[Scripture Chunker] Generated ${chunks.length} total chunks`);
+  console.log(`[Scripture Chunker] Generated ${chunks.length} book chunks`);
   return chunks;
 }

@@ -1,9 +1,22 @@
 /**
- * Translation Academy Chunker
+ * Translation Academy Chunker (Article-Level Only)
  *
- * Processes Translation Academy ZIP files and generates two-level chunks:
- * - Section level: Individual sections (## headers) for precise lookups
- * - Article level: Full articles with summaries for broader context
+ * Processes Translation Academy ZIP files and generates ONE chunk per article.
+ * Rolls up multi-file articles (01.md, 02.md, etc.) into single files.
+ * No section-level chunking - just full articles for broader context.
+ *
+ * Output format:
+ * ```markdown
+ * # Metaphor
+ *
+ * A metaphor is a figure of speech in which one thing represents another...
+ *
+ * ## Description
+ * ...
+ *
+ * ## Examples
+ * ...
+ * ```
  */
 
 import type {
@@ -12,16 +25,7 @@ import type {
   IndexChunk,
   TranslationAcademyMetadata,
 } from "../types.js";
-import { extractAllFiles } from "../utils/zip-handler.js";
-
-/**
- * Parsed section from an article
- */
-interface ParsedSection {
-  number: number;
-  title: string;
-  content: string;
-}
+import { extractAllFiles, ExtractedFile } from "../utils/zip-handler.js";
 
 /**
  * Parsed academy article
@@ -29,20 +33,24 @@ interface ParsedSection {
 interface ParsedArticle {
   id: string;
   title: string;
-  fullContent: string;
-  sections: ParsedSection[];
+  content: string;
+  sectionCount: number;
   summary: string;
 }
 
 /**
- * Extract article ID from file path
+ * Extract article folder ID from file path
  * Paths like: translate/figs-metaphor/01.md or checking/accuracy/01.md
  */
-function extractArticleId(path: string): string {
-  // Get the folder name as article ID
-  const parts = path.split("/");
-  // Find the folder that's not translate/checking/process/intro and not a number
-  for (let i = parts.length - 2; i >= 0; i--) {
+function extractArticleFolder(path: string): string {
+  // Remove file extension
+  const withoutExt = path.replace(/\.md$/i, "");
+
+  // Split path
+  const parts = withoutExt.split("/");
+
+  // Find the article folder (not translate/checking/process/intro and not numeric)
+  for (let i = parts.length - 1; i >= 0; i--) {
     const part = parts[i];
     if (
       part &&
@@ -52,52 +60,8 @@ function extractArticleId(path: string): string {
       return part;
     }
   }
+
   return parts[parts.length - 2] || "unknown";
-}
-
-/**
- * Parse markdown content into sections
- */
-function parseArticleSections(content: string): ParsedSection[] {
-  const sections: ParsedSection[] = [];
-
-  // Split by ## headers
-  const parts = content.split(/^##\s+/m);
-
-  // First part is intro (before any ## header)
-  if (parts[0].trim()) {
-    sections.push({
-      number: 0,
-      title: "Introduction",
-      content: parts[0].trim(),
-    });
-  }
-
-  // Process each section
-  for (let i = 1; i < parts.length; i++) {
-    const part = parts[i];
-    const newlineIndex = part.indexOf("\n");
-
-    if (newlineIndex === -1) {
-      // Section header with no content
-      sections.push({
-        number: i,
-        title: part.trim(),
-        content: "",
-      });
-    } else {
-      const title = part.slice(0, newlineIndex).trim();
-      const sectionContent = part.slice(newlineIndex + 1).trim();
-
-      sections.push({
-        number: i,
-        title,
-        content: sectionContent,
-      });
-    }
-  }
-
-  return sections;
 }
 
 /**
@@ -105,7 +69,15 @@ function parseArticleSections(content: string): ParsedSection[] {
  */
 function extractTitle(content: string): string {
   const titleMatch = content.match(/^#\s+(.+)$/m);
-  return titleMatch ? titleMatch[1].trim() : "Untitled";
+  return titleMatch ? titleMatch[1].trim() : "";
+}
+
+/**
+ * Count sections (## headers) in content
+ */
+function countSections(content: string): number {
+  const matches = content.match(/^##\s+/gm);
+  return matches ? matches.length : 0;
 }
 
 /**
@@ -134,25 +106,60 @@ function generateSummary(content: string): string {
 }
 
 /**
- * Parse a full article
+ * Clean article content
  */
-function parseArticle(path: string, content: string): ParsedArticle {
-  const id = extractArticleId(path);
-  const title = extractTitle(content);
-  const sections = parseArticleSections(content);
-  const summary = generateSummary(content);
+function cleanContent(content: string): string {
+  // Convert markdown links to plain text with context
+  let cleaned = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
+
+  // Remove rc:// links
+  cleaned = cleaned.replace(/rc:\/\/[^\s)]+/g, "");
+
+  // Normalize whitespace
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
+  return cleaned.trim();
+}
+
+/**
+ * Parse and combine article files into a single article
+ */
+function parseArticle(
+  articleId: string,
+  files: ExtractedFile[],
+): ParsedArticle {
+  // Sort files by path to ensure correct order (01.md, 02.md, etc.)
+  const sortedFiles = files.sort((a, b) => a.path.localeCompare(b.path));
+
+  // Combine content
+  const combinedContent = sortedFiles.map((f) => f.content).join("\n\n");
+
+  // Extract title from combined content
+  let title = extractTitle(combinedContent);
+  if (!title) {
+    // Convert article ID to title format (figs-metaphor -> Figures of Speech - Metaphor)
+    title = articleId
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  // Count sections
+  const sectionCount = countSections(combinedContent);
+
+  // Generate summary
+  const summary = generateSummary(combinedContent);
 
   return {
-    id,
+    id: articleId,
     title,
-    fullContent: content,
-    sections,
+    content: cleanContent(combinedContent),
+    sectionCount,
     summary,
   };
 }
 
 /**
- * Process a Translation Academy ZIP file and generate chunks
+ * Process a Translation Academy ZIP file and generate article-level chunks
  */
 export async function processTranslationAcademy(
   zipBuffer: ArrayBuffer,
@@ -169,8 +176,8 @@ export async function processTranslationAcademy(
 
   console.log(`[Academy Chunker] Found ${mdFiles.length} markdown files`);
 
-  // Group files by article (folder)
-  const articleFiles = new Map<string, typeof mdFiles>();
+  // Group files by article folder (to roll up multi-file articles)
+  const articleFiles = new Map<string, ExtractedFile[]>();
 
   for (const file of mdFiles) {
     // Skip table of contents and index files
@@ -182,62 +189,25 @@ export async function processTranslationAcademy(
       continue;
     }
 
-    const articleId = extractArticleId(file.path);
+    const articleId = extractArticleFolder(file.path);
     if (!articleFiles.has(articleId)) {
       articleFiles.set(articleId, []);
     }
     articleFiles.get(articleId)!.push(file);
   }
 
-  console.log(`[Academy Chunker] Found ${articleFiles.size} articles`);
+  console.log(`[Academy Chunker] Found ${articleFiles.size} unique articles`);
 
   for (const [articleId, files] of articleFiles) {
-    // Combine all files for this article
-    const combinedContent = files
-      .sort((a, b) => a.path.localeCompare(b.path))
-      .map((f) => f.content)
-      .join("\n\n");
+    const article = parseArticle(articleId, files);
 
-    const article = parseArticle(files[0].path, combinedContent);
-
-    const basePath = `${parsed.language}/${parsed.organization}/ta/${parsed.version}/${articleId}`;
-
-    // Generate section-level chunks
-    for (const section of article.sections) {
-      if (!section.content) continue;
-
-      const sectionMetadata: TranslationAcademyMetadata = {
-        language: parsed.language,
-        language_name: parsed.language === "en" ? "English" : parsed.language,
-        organization: parsed.organization,
-        resource: "ta",
-        resource_name: "Translation Academy",
-        version: parsed.version,
-        chunk_level: "section",
-        indexed_at: new Date().toISOString(),
-        article_id: articleId,
-        article_title: article.title,
-        section: section.number,
-        section_title: section.title,
-        total_sections: article.sections.length,
-      };
-
-      // Create safe filename from section title
-      const safeTitle = section.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
-        .slice(0, 50);
-
-      chunks.push({
-        path: `${basePath}/${section.number}-${safeTitle || "section"}.md`,
-        content: section.content,
-        metadata: sectionMetadata,
-      });
+    // Skip empty articles
+    if (!article.content || article.content.length < 10) {
+      console.log(`[Academy Chunker] Skipping empty article: ${articleId}`);
+      continue;
     }
 
-    // Generate article-level chunk (full content)
-    const articleMetadata: TranslationAcademyMetadata = {
+    const metadata: TranslationAcademyMetadata = {
       language: parsed.language,
       language_name: parsed.language === "en" ? "English" : parsed.language,
       organization: parsed.organization,
@@ -246,19 +216,23 @@ export async function processTranslationAcademy(
       version: parsed.version,
       chunk_level: "article",
       indexed_at: new Date().toISOString(),
-      article_id: articleId,
+      article_id: article.id,
       article_title: article.title,
-      total_sections: article.sections.length,
-      summary: article.summary,
+      section_count:
+        article.sectionCount > 0 ? article.sectionCount : undefined,
+      summary: article.summary || undefined,
     };
 
+    // Create chunk path: lang/org/ta/version/articleId.md
+    const chunkPath = `${parsed.language}/${parsed.organization}/ta/${parsed.version}/${article.id}.md`;
+
     chunks.push({
-      path: `${basePath}/_full.md`,
-      content: article.fullContent,
-      metadata: articleMetadata,
+      path: chunkPath,
+      content: article.content,
+      metadata,
     });
   }
 
-  console.log(`[Academy Chunker] Generated ${chunks.length} total chunks`);
+  console.log(`[Academy Chunker] Generated ${chunks.length} article chunks`);
   return chunks;
 }

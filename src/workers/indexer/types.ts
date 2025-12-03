@@ -49,9 +49,13 @@ export type ResourceType =
   | "obs";
 
 /**
- * Chunk levels for multi-level indexing
+ * Chunk levels for indexing
+ * - book: Full book content (primary for scripture, notes, questions)
+ * - article: Single article (TW, TA)
+ * - verse/passage/chapter/note/section/question: Legacy granular levels
  */
 export type ChunkLevel =
+  | "book"
   | "verse"
   | "passage"
   | "chapter"
@@ -75,39 +79,35 @@ export interface CommonMetadata {
 }
 
 /**
- * Scripture-specific metadata
+ * Scripture-specific metadata (book-level)
  */
 export interface ScriptureMetadata extends CommonMetadata {
   book: string;
   book_name: string;
-  chapter: number;
-  verse?: number;
-  verse_start?: number;
-  verse_end?: number;
-  passage_title?: string;
-  passage_type?: string;
-  themes?: string[];
-  context_before?: string;
-  context_after?: string;
-  summary?: string;
-  passages_in_chapter?: string[];
+  /** Total verses in the book */
+  verse_count: number;
+  /** Total chapters in the book */
+  chapter_count: number;
+  /** Section titles extracted from USFM \s markers */
+  sections?: string[];
 }
 
 /**
- * Translation Notes metadata
+ * Translation Notes metadata (book-level)
  */
 export interface TranslationNotesMetadata extends CommonMetadata {
   book: string;
   book_name: string;
-  chapter: number;
-  verse: number;
-  phrase: string;
-  note_id: string;
-  support_reference?: string;
+  /** Total notes in the book */
+  note_count: number;
+  /** Chapters that have notes */
+  chapters_covered: number[];
+  /** Unique Translation Academy modules referenced */
+  ta_references?: string[];
 }
 
 /**
- * Translation Words metadata
+ * Translation Words metadata (article-level)
  */
 export interface TranslationWordsMetadata extends CommonMetadata {
   article_id: string;
@@ -118,28 +118,26 @@ export interface TranslationWordsMetadata extends CommonMetadata {
 }
 
 /**
- * Translation Academy metadata
+ * Translation Academy metadata (article-level)
  */
 export interface TranslationAcademyMetadata extends CommonMetadata {
   article_id: string;
   article_title: string;
-  section?: number;
-  section_title?: string;
-  total_sections?: number;
+  /** Number of sections in the article */
+  section_count?: number;
   summary?: string;
 }
 
 /**
- * Translation Questions metadata
+ * Translation Questions metadata (book-level)
  */
 export interface TranslationQuestionsMetadata extends CommonMetadata {
   book: string;
   book_name: string;
-  chapter: number;
-  verse: number;
-  question_id: string;
-  question_text: string;
-  answer_text: string;
+  /** Total questions in the book */
+  question_count: number;
+  /** Chapters that have questions */
+  chapters_covered: number[];
 }
 
 /**
