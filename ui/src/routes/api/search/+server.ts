@@ -22,6 +22,7 @@
  * Antifragile: Graceful fallback if AI Search unavailable
  */
 
+import { EdgeXRayTracer, type EdgeXRayTrace } from '$lib/../../../src/functions/edge-xray.js';
 import { logger } from '$lib/../../../src/utils/logger.js';
 import {
 	BOOK_CODES,
@@ -145,6 +146,7 @@ interface SearchResponse {
 	hits: SearchHit[];
 	message?: string;
 	error?: string;
+	_trace?: EdgeXRayTrace;
 }
 
 // =============================================================================
@@ -386,6 +388,9 @@ async function executeSearch(
 ): Promise<Response> {
 	const startTime = Date.now();
 
+	// Create X-Ray tracer for performance debugging
+	const tracer = new EdgeXRayTracer(`search-${Date.now()}`, 'search-biblical-resources');
+
 	try {
 		const {
 			query,
@@ -445,6 +450,13 @@ async function executeSearch(
 
 		if (!ai) {
 			logger.warn('[Search] AI binding not available');
+			tracer.addApiCall({
+				url: 'ai-search://binding-check',
+				duration: Date.now() - startTime,
+				status: 503,
+				size: 0,
+				cached: false
+			});
 			return json({
 				took_ms: Date.now() - startTime,
 				query,
@@ -453,7 +465,8 @@ async function executeSearch(
 				total_hits: 0,
 				hits: [],
 				message:
-					'AI binding not available. Ensure [ai] binding is configured in wrangler.toml and AI Search index is set up.'
+					'AI binding not available. Ensure [ai] binding is configured in wrangler.toml and AI Search index is set up.',
+				_trace: tracer.getTrace()
 			} as SearchResponse);
 		}
 
@@ -489,6 +502,7 @@ async function executeSearch(
 
 		// Execute AI Search query with filters
 		let searchResults;
+		let aiSearchDuration = 0;
 		try {
 			const aiSearchStart = Date.now();
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
@@ -497,9 +511,21 @@ async function executeSearch(
 				filter: aiSearchFilter,
 				max_num_results: Math.min(limit, 100) // Limit at source
 			});
+			aiSearchDuration = Date.now() - aiSearchStart;
+
+			// Track AI Search call in tracer
+			tracer.addApiCall({
+				url: `ai-search://${AI_SEARCH_INDEX}?query=${encodeURIComponent(query)}&filters=${Object.keys(aiSearchFilter).length}`,
+				duration: aiSearchDuration,
+				status: 200,
+				size: JSON.stringify(searchResults.data || []).length,
+				cached: false
+			});
+
 			logger.info('[Search] AI Search call completed', {
-				aiSearchDuration: Date.now() - aiSearchStart,
-				filterCount: Object.keys(aiSearchFilter).length
+				aiSearchDuration,
+				filterCount: Object.keys(aiSearchFilter).length,
+				resultCount: searchResults.data?.length || 0
 			});
 		} catch (searchError) {
 			const errorMessage = searchError instanceof Error ? searchError.message : String(searchError);
@@ -507,6 +533,15 @@ async function executeSearch(
 				error: errorMessage,
 				indexName: AI_SEARCH_INDEX,
 				query
+			});
+
+			// Track failed call
+			tracer.addApiCall({
+				url: `ai-search://${AI_SEARCH_INDEX}?query=${encodeURIComponent(query)}`,
+				duration: Date.now() - startTime,
+				status: 500,
+				size: 0,
+				cached: false
 			});
 
 			const isApiIssue =
@@ -522,7 +557,8 @@ async function executeSearch(
 				error: errorMessage,
 				message: isApiIssue
 					? 'AI Search (AutoRAG) is not available. This may be a local development limitation.'
-					: 'AI Search query failed. The index may not be ready or may not have indexed content yet.'
+					: 'AI Search query failed. The index may not be ready or may not have indexed content yet.',
+				_trace: tracer.getTrace()
 			} as SearchResponse);
 		}
 
@@ -535,8 +571,19 @@ async function executeSearch(
 		let hits: SearchHit[] = searchData.map((match: any, index: number) =>
 			formatHit(match, index, query)
 		);
+		const formatDuration = Date.now() - formatStart;
+
+		// Track formatting as internal operation
+		tracer.addApiCall({
+			url: `internal://format-results?count=${hits.length}`,
+			duration: formatDuration,
+			status: 200,
+			size: hits.length,
+			cached: false
+		});
+
 		logger.info('[Search] Formatting completed', {
-			formatDuration: Date.now() - formatStart,
+			formatDuration,
 			hitsBeforeFilter: hits.length
 		});
 
@@ -556,8 +603,19 @@ async function executeSearch(
 		// Sort by score descending (AI Search should return sorted, but ensure)
 		hits.sort((a, b) => b.score - a.score);
 
+		const filterDuration = Date.now() - filterStart;
+
+		// Track filtering as internal operation
+		tracer.addApiCall({
+			url: `internal://filter-sort?from=${searchData.length}&to=${hits.length}`,
+			duration: filterDuration,
+			status: 200,
+			size: hits.length,
+			cached: false
+		});
+
 		logger.info('[Search] Post-filter completed', {
-			filterDuration: Date.now() - filterStart,
+			filterDuration,
 			hitsAfterFilter: hits.length
 		});
 
@@ -573,7 +631,8 @@ async function executeSearch(
 			reference,
 			chunk_level,
 			total_hits: totalHits,
-			hits: hits.slice(0, limit)
+			hits: hits.slice(0, limit),
+			_trace: tracer.getTrace()
 		};
 
 		logger.info('[Search] AI Search completed', {

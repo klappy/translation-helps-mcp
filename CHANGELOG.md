@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.8.5](https://github.com/klappy/translation-helps-mcp/compare/v7.8.4...v7.8.5) (2025-12-03)
+
+### Added
+
+- **X-Ray tracing for Search**: Added EdgeXRayTracer to search endpoint for performance debugging
+  - Tracks AI Search call duration
+  - Tracks result formatting duration
+  - Tracks client-side filtering duration
+  - Returns `_trace` object in response for visibility
+
 ## [7.8.4](https://github.com/klappy/translation-helps-mcp/compare/v7.8.0...v7.8.4) (2025-12-03)
 
 ### Performance
