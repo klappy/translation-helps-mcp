@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.0] - 2025-12-03
+
+### Changed
+
+- Indexer now uses book-level chunking instead of verse-level (470x fewer R2 writes)
+- Scripture, Notes, Questions aggregate to one file per book with C:V format
+- Translation Words and Academy roll up multi-file articles into single files
+- Added interleaved CPU/IO parallel processing with controlled concurrency
+- Notes now include inline Translation Academy references: (See: figs-metaphor)
+- Rich metadata: verse_count, chapter_count, ta_references, chapters_covered
+
+### Performance
+
+- Scripture indexing: 66 files instead of 31,000 per resource
+- Eliminated timeouts from excessive R2 write operations
+- True parallel processing interleaves CPU and IO work
+
 ## [7.6.1] - 2025-12-02
 
 ### Fixed
