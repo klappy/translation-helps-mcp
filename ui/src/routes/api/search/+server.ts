@@ -460,16 +460,46 @@ async function executeSearch(
 		// Parse reference if provided
 		const parsedRef = reference ? parseReferenceForFilter(reference) : null;
 
-		// Execute AI Search query
+		// Build AI Search filters from request parameters
+		// Push filters to AI Search for server-side filtering (much faster than client-side)
+		const aiSearchFilter: Record<string, string> = {};
+
+		// Always filter by language and organization
+		aiSearchFilter.language = language;
+		aiSearchFilter.organization = organization;
+
+		// Optional filters
+		if (resource && resource !== 'scripture') {
+			aiSearchFilter.resource = resource;
+		}
+		if (chunk_level) {
+			aiSearchFilter.chunk_level = chunk_level;
+		}
+		if (bookParam || parsedRef?.book) {
+			aiSearchFilter.book = (bookParam || parsedRef?.book)!.toUpperCase();
+		}
+		if (chapterParam !== undefined || parsedRef?.chapter !== undefined) {
+			aiSearchFilter.chapter = String(chapterParam ?? parsedRef?.chapter);
+		}
+		if (articleId) {
+			aiSearchFilter.article_id = articleId.toLowerCase();
+		}
+
+		logger.info('[Search] AI Search filters', { aiSearchFilter });
+
+		// Execute AI Search query with filters
 		let searchResults;
 		try {
 			const aiSearchStart = Date.now();
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
 			searchResults = await autorag.aiSearch({
-				query
+				query,
+				filter: aiSearchFilter,
+				max_num_results: Math.min(limit, 100) // Limit at source
 			});
 			logger.info('[Search] AI Search call completed', {
-				aiSearchDuration: Date.now() - aiSearchStart
+				aiSearchDuration: Date.now() - aiSearchStart,
+				filterCount: Object.keys(aiSearchFilter).length
 			});
 		} catch (searchError) {
 			const errorMessage = searchError instanceof Error ? searchError.message : String(searchError);
@@ -510,53 +540,23 @@ async function executeSearch(
 			hitsBeforeFilter: hits.length
 		});
 
-		// Apply filters
+		// Client-side filtering (minimal - most filtering done by AI Search)
 		const filterStart = Date.now();
 
-		// Language filter
-		hits = hits.filter((hit) => hit.language === language);
-
-		// Organization filter
-		hits = hits.filter((hit) => hit.organization.toLowerCase() === organization.toLowerCase());
-
-		// Resource filter
-		if (resource && resource !== 'scripture') {
-			hits = hits.filter((hit) => hit.resource === resource);
-		} else if (resource === 'scripture') {
+		// Scripture resource filter (AI Search may not handle "scripture" alias)
+		if (resource === 'scripture') {
 			hits = hits.filter((hit) => ['ult', 'ust', 'ueb', 'scripture'].includes(hit.resource));
 		}
 
-		// Include helps filter
+		// Include helps filter (exclude helps if false)
 		if (!includeHelps) {
 			hits = hits.filter((hit) => ['ult', 'ust', 'ueb', 'scripture'].includes(hit.resource));
 		}
 
-		// Chunk level filter
-		if (chunk_level) {
-			hits = hits.filter((hit) => hit.chunk_level === chunk_level);
-		}
-
-		// Book filter (from reference or explicit)
-		const bookFilter = bookParam || parsedRef?.book;
-		if (bookFilter) {
-			hits = hits.filter((hit) => hit.book?.toUpperCase() === bookFilter.toUpperCase());
-		}
-
-		// Chapter filter (from reference or explicit)
-		const chapterFilter = chapterParam || parsedRef?.chapter;
-		if (chapterFilter !== undefined) {
-			hits = hits.filter((hit) => hit.chapter === chapterFilter);
-		}
-
-		// Article ID filter
-		if (articleId) {
-			hits = hits.filter((hit) => hit.article_id?.toLowerCase() === articleId.toLowerCase());
-		}
-
-		// Sort by score descending
+		// Sort by score descending (AI Search should return sorted, but ensure)
 		hits.sort((a, b) => b.score - a.score);
 
-		logger.info('[Search] Filtering completed', {
+		logger.info('[Search] Post-filter completed', {
 			filterDuration: Date.now() - filterStart,
 			hitsAfterFilter: hits.length
 		});
@@ -581,15 +581,7 @@ async function executeSearch(
 			totalHits,
 			returnedHits: response.hits.length,
 			rawMatchCount: searchData.length,
-			filters: {
-				language,
-				organization,
-				resource,
-				chunk_level,
-				book: bookFilter,
-				chapter: chapterFilter,
-				articleId
-			}
+			aiSearchFilters: aiSearchFilter
 		});
 
 		return json(response);

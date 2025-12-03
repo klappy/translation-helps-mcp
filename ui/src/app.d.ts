@@ -34,11 +34,18 @@ interface AutoRAGResponse {
 	data: AutoRAGSearchResult[];
 }
 
+interface AutoRAGSearchOptions {
+	query: string;
+	filter?: Record<string, string | string[]>; // Metadata filters
+	rewrite_query?: boolean; // Whether to rewrite query using AI
+	max_num_results?: number; // Limit results (default varies)
+}
+
 interface AutoRAGInstance {
 	// Search with AI-generated response
-	aiSearch(options: { query: string }): Promise<AutoRAGResponse>;
+	aiSearch(options: AutoRAGSearchOptions): Promise<AutoRAGResponse>;
 	// Direct search without AI generation (if available)
-	search?(options: { query: string }): Promise<{ data: AutoRAGSearchResult[] }>;
+	search?(options: AutoRAGSearchOptions): Promise<{ data: AutoRAGSearchResult[] }>;
 }
 
 interface AIBinding {

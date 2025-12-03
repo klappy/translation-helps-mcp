@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.8.4](https://github.com/klappy/translation-helps-mcp/compare/v7.8.0...v7.8.4) (2025-12-03)
+
+### Performance
+
+- **Search 3-5x faster**: Push filters to AI Search instead of client-side filtering
+  - Filters (language, org, resource, book, chapter, articleId) now passed to `aiSearch()`
+  - Added `max_num_results` to limit at source
+  - Removed 9 redundant client-side filter passes
+  - Expected: 7s → 2s (matching CF dashboard performance)
+
+### Fixed
+
+- **Indexer reindex trigger**: Added missing `CF_ACCOUNT_ID` secret for AI Search reindex
+- **ZipResourceFetcher2**: Fixed regex to extract version from new `by-url/...` format
+- **Index Worker**: Fixed potential undefined error in TSV parsing
+
 ## [7.8.0](https://github.com/klappy/translation-helps-mcp/compare/v7.7.13...v7.8.0) (2025-12-03)
 
 ### Features
