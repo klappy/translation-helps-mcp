@@ -87,6 +87,16 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
         return;
       }
 
+      // 404 means the endpoint doesn't exist - AI Search may sync automatically
+      if (response.status === 404) {
+        console.log(
+          "[AI Search Trigger] ⚠️ Reindex API endpoint not found (404). AI Search may sync automatically from R2 bucket.",
+        );
+        // Don't spam logs - mark as "triggered" to rate limit
+        lastTriggerTime = now;
+        return;
+      }
+
       // Log non-rate-limit errors but don't throw
       console.error(
         `[AI Search Trigger] ❌ API ERROR: ${response.status} ${response.statusText} - ${body}`,
