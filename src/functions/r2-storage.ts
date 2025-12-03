@@ -292,6 +292,35 @@ export class R2Storage {
         }),
       );
     }
+
+    // Also sync ZIP to R2 on R2 file hits (extracted file in R2 but ZIP might not be)
+    const zipMatch = key.match(/^(by-url\/.*\.zip)\/files\//);
+    if (zipMatch) {
+      const zipKey = zipMatch[1];
+      (async () => {
+        try {
+          const exists = await this.bucket!.head(zipKey);
+          if (!exists) {
+            const url = "https://" + zipKey.replace(/^by-url\//, "");
+            console.log(
+              `[R2Storage] File R2 hit but ZIP missing - fetching: ${url}`,
+            );
+            const resp = await fetch(url);
+            if (resp.ok) {
+              const buf = await resp.arrayBuffer();
+              const arr = new Uint8Array(buf);
+              if (arr[0] === 0x50 && arr[1] === 0x4b) {
+                await this.bucket!.put(zipKey, buf);
+                console.log(`[R2Storage] Stored ZIP in R2: ${zipKey}`);
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`[R2Storage] ZIP sync failed: ${e}`);
+        }
+      })();
+    }
+
     const end =
       typeof performance !== "undefined" ? performance.now() : Date.now();
     return {
