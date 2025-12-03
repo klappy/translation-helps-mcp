@@ -88,6 +88,14 @@ export const SEARCH_BIBLICAL_RESOURCES_CONFIG: EndpointConfig = {
         "Include translation helps (notes, words, academy) in results",
       example: true,
     },
+    useAI: {
+      type: "boolean" as const,
+      required: false,
+      default: false,
+      description:
+        "Use AI/LLM to generate a summary response. Much slower (~15-20s vs ~2-4s) but includes AI-generated insights.",
+      example: false,
+    },
   },
 
   dataSource: {

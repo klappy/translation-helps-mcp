@@ -77,6 +77,7 @@ interface SearchRequest {
 	articleId?: string; // For TW/TA: "grace", "figs-metaphor"
 	limit?: number;
 	includeHelps?: boolean;
+	useAI?: boolean; // Use AI/LLM to generate response summary (slower: ~20s vs ~4s)
 }
 
 /**
@@ -144,6 +145,8 @@ interface SearchResponse {
 	chunk_level?: string;
 	total_hits: number;
 	hits: SearchHit[];
+	ai_response?: string; // AI-generated summary (only when useAI=true)
+	used_ai?: boolean; // Whether AI/LLM was used for this request
 	message?: string;
 	error?: string;
 	_trace?: EdgeXRayTrace;
@@ -403,7 +406,8 @@ async function executeSearch(
 			chunk_level,
 			articleId,
 			limit = 50,
-			includeHelps = true
+			includeHelps = true,
+			useAI = false // Default to fast vector-only search
 		} = params;
 
 		// Normalize resource type
@@ -510,34 +514,59 @@ async function executeSearch(
 			aiSearchFilter.article_id = articleId.toLowerCase();
 		}
 
-		logger.info('[Search] AI Search filters', { aiSearchFilter });
+		logger.info('[Search] AI Search filters', { aiSearchFilter, useAI });
 
-		// Execute AI Search query with filters
-		let searchResults;
+		// Execute search query with filters
+		// Default: Use .search() for fast vector-only retrieval (~2-4s)
+		// With useAI=true: Use .aiSearch() for LLM-enhanced response (~15-20s)
+		let searchResults: { data: any[]; response?: string };
 		let aiSearchDuration = 0;
+		let usedAISearch = false;
+
 		try {
 			const aiSearchStart = Date.now();
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
-			searchResults = await autorag.aiSearch({
+
+			const searchOptions = {
 				query,
 				filter: aiSearchFilter,
 				max_num_results: Math.min(limit, 100) // Limit at source
-			});
+			};
+
+			if (useAI) {
+				// Use aiSearch for LLM-enhanced response (slower but includes AI summary)
+				logger.info('[Search] Using aiSearch (LLM mode) - expect ~15-20s response time');
+				searchResults = await autorag.aiSearch(searchOptions);
+				usedAISearch = true;
+			} else if (typeof autorag.search === 'function') {
+				// Use search for fast vector-only retrieval (no LLM)
+				logger.info('[Search] Using search (vector-only mode) - expect ~2-4s response time');
+				searchResults = await autorag.search(searchOptions);
+			} else {
+				// Fallback to aiSearch if search method doesn't exist
+				logger.warn('[Search] search() method not available, falling back to aiSearch()');
+				searchResults = await autorag.aiSearch(searchOptions);
+				usedAISearch = true;
+			}
+
 			aiSearchDuration = Date.now() - aiSearchStart;
 
-			// Track AI Search call in tracer
+			// Track search call in tracer
+			const searchMode = usedAISearch ? 'ai-search' : 'vector-search';
 			tracer.addApiCall({
-				url: `ai-search://${AI_SEARCH_INDEX}?query=${encodeURIComponent(query)}&filters=${Object.keys(aiSearchFilter).length}`,
+				url: `${searchMode}://${AI_SEARCH_INDEX}?query=${encodeURIComponent(query)}&filters=${Object.keys(aiSearchFilter).length}`,
 				duration: aiSearchDuration,
 				status: 200,
 				size: JSON.stringify(searchResults.data || []).length,
 				cached: false
 			});
 
-			logger.info('[Search] AI Search call completed', {
+			logger.info('[Search] Search call completed', {
 				aiSearchDuration,
 				filterCount: Object.keys(aiSearchFilter).length,
-				resultCount: searchResults.data?.length || 0
+				resultCount: searchResults.data?.length || 0,
+				usedAISearch,
+				hasAIResponse: !!searchResults.response
 			});
 		} catch (searchError) {
 			const errorMessage = searchError instanceof Error ? searchError.message : String(searchError);
@@ -656,6 +685,8 @@ async function executeSearch(
 			chunk_level,
 			total_hits: totalHits,
 			hits: hits.slice(0, limit),
+			used_ai: usedAISearch,
+			...(usedAISearch && searchResults.response ? { ai_response: searchResults.response } : {}),
 			_trace: tracer.getTrace()
 		};
 
@@ -735,6 +766,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 	const limit = limitParam ? parseInt(limitParam, 10) : 50;
 	const includeHelpsParam = url.searchParams.get('includeHelps');
 	const includeHelps = includeHelpsParam !== 'false';
+	const useAIParam = url.searchParams.get('useAI');
+	const useAI = useAIParam === 'true'; // Explicit opt-in for slow LLM mode
 
 	const params: SearchRequest = {
 		query,
@@ -747,7 +780,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		chunk_level,
 		articleId,
 		limit,
-		includeHelps
+		includeHelps,
+		useAI
 	};
 
 	return executeSearch(params, platform);

@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.9.0](https://github.com/klappy/translation-helps-mcp/compare/v7.8.9...v7.9.0) (2025-12-03)
+
+### Performance
+
+- **Search 5-7x faster**: Default to vector-only search (~2-4s) instead of full RAG (~15-20s)
+  - Uses `.search()` method for fast vector retrieval (no LLM response generation)
+  - Previous `aiSearch()` was generating an AI summary we never used
+  - Added `useAI` flag to opt-in to slower LLM-enhanced search when needed
+  - Dashboard now shows warning about ~20s response time when AI mode enabled
+
+### Added
+
+- **useAI parameter**: New optional boolean parameter for search endpoint
+  - `useAI=false` (default): Fast vector-only search (~2-4s)
+  - `useAI=true`: Full RAG with AI-generated summary (~15-20s)
+  - Returns `ai_response` field when AI mode is enabled
+  - Returns `used_ai` field to indicate which mode was used
+
 ## [7.8.9](https://github.com/klappy/translation-helps-mcp/compare/v7.8.8...v7.8.9) (2025-12-03)
 
 ### Fixed
