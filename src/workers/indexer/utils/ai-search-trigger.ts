@@ -30,6 +30,8 @@ const MIN_TRIGGER_INTERVAL_MS = 30_000; // 30 seconds
 export async function triggerAISearchReindex(env: Env): Promise<void> {
   const now = Date.now();
 
+  console.log(`[AI Search Trigger] === REINDEX TRIGGER CALLED ===`);
+
   // Rate limit check
   if (now - lastTriggerTime < MIN_TRIGGER_INTERVAL_MS) {
     console.log(
@@ -38,20 +40,28 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
     return;
   }
 
-  // Validate environment
+  // Validate environment - LOG ACTUAL VALUES for debugging
+  console.log(`[AI Search Trigger] Environment check:`);
+  console.log(
+    `  CF_ACCOUNT_ID: ${env.CF_ACCOUNT_ID ? `set (${env.CF_ACCOUNT_ID.substring(0, 8)}...)` : "⚠️ MISSING"}`,
+  );
+  console.log(
+    `  AI_SEARCH_INDEX_ID: ${env.AI_SEARCH_INDEX_ID || "⚠️ MISSING"}`,
+  );
+  console.log(
+    `  CF_API_TOKEN: ${env.CF_API_TOKEN ? `set (${env.CF_API_TOKEN.substring(0, 8)}...)` : "⚠️ MISSING"}`,
+  );
+
   if (!env.CF_ACCOUNT_ID || !env.AI_SEARCH_INDEX_ID || !env.CF_API_TOKEN) {
-    console.warn("[AI Search Trigger] Missing required environment variables");
-    console.warn(`  CF_ACCOUNT_ID: ${env.CF_ACCOUNT_ID ? "set" : "missing"}`);
-    console.warn(
-      `  AI_SEARCH_INDEX_ID: ${env.AI_SEARCH_INDEX_ID ? "set" : "missing"}`,
+    console.error(
+      "[AI Search Trigger] ❌ MISSING REQUIRED ENV VARS - CANNOT TRIGGER REINDEX",
     );
-    console.warn(`  CF_API_TOKEN: ${env.CF_API_TOKEN ? "set" : "missing"}`);
     return;
   }
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai-search/indexes/${env.AI_SEARCH_INDEX_ID}/reindex`;
 
-  console.log(`[AI Search Trigger] Triggering reindex: ${url}`);
+  console.log(`[AI Search Trigger] Calling reindex API: ${url}`);
 
   try {
     const response = await fetch(url, {
@@ -62,9 +72,13 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
       },
     });
 
-    if (!response.ok) {
-      const body = await response.text();
+    const body = await response.text();
+    console.log(
+      `[AI Search Trigger] Response: ${response.status} ${response.statusText}`,
+    );
+    console.log(`[AI Search Trigger] Body: ${body}`);
 
+    if (!response.ok) {
       // Check for rate limit response - don't update lastTriggerTime to allow retry
       if (response.status === 429) {
         console.log(
@@ -75,7 +89,7 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
 
       // Log non-rate-limit errors but don't throw
       console.error(
-        `[AI Search Trigger] API error: ${response.status} ${response.statusText} - ${body}`,
+        `[AI Search Trigger] ❌ API ERROR: ${response.status} ${response.statusText} - ${body}`,
       );
       return;
     }
@@ -83,12 +97,11 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
     // Only update lastTriggerTime on SUCCESS
     lastTriggerTime = now;
 
-    const result = await response.json();
-    console.log("[AI Search Trigger] Reindex triggered successfully:", result);
+    console.log("[AI Search Trigger] ✅ Reindex triggered successfully!");
   } catch (error) {
     // Log but don't throw - content is already in R2 and will be indexed
     // on the next automatic 6-hour sync. No need to block queue processing.
-    console.error("[AI Search Trigger] Failed to trigger reindex:", error);
+    console.error("[AI Search Trigger] ❌ EXCEPTION:", error);
   }
 }
 
