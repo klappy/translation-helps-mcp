@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.8.6](https://github.com/klappy/translation-helps-mcp/compare/v7.8.5...v7.8.6) (2025-12-03)
+
+### Fixed
+
+- **Search X-Ray trace visibility**: Added trace to response headers for MCP UI
+  - Added `X-XRay-Trace` header with JSON trace data
+  - Added `X-Response-Time` and `X-Trace-Id` headers
+  - MCP tools page now renders trace visualization for search
+
 ## [7.8.5](https://github.com/klappy/translation-helps-mcp/compare/v7.8.4...v7.8.5) (2025-12-03)
 
 ### Added

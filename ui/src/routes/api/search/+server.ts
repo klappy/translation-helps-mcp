@@ -457,17 +457,27 @@ async function executeSearch(
 				size: 0,
 				cached: false
 			});
-			return json({
-				took_ms: Date.now() - startTime,
-				query,
-				language,
-				organization,
-				total_hits: 0,
-				hits: [],
-				message:
-					'AI binding not available. Ensure [ai] binding is configured in wrangler.toml and AI Search index is set up.',
-				_trace: tracer.getTrace()
-			} as SearchResponse);
+			const trace = tracer.getTrace();
+			return json(
+				{
+					took_ms: Date.now() - startTime,
+					query,
+					language,
+					organization,
+					total_hits: 0,
+					hits: [],
+					message:
+						'AI binding not available. Ensure [ai] binding is configured in wrangler.toml and AI Search index is set up.',
+					_trace: trace
+				} as SearchResponse,
+				{
+					headers: {
+						'X-XRay-Trace': JSON.stringify(trace),
+						'X-Response-Time': `${Date.now() - startTime}ms`,
+						'X-Trace-Id': trace.traceId
+					}
+				}
+			);
 		}
 
 		// Parse reference if provided
@@ -547,19 +557,29 @@ async function executeSearch(
 			const isApiIssue =
 				errorMessage.includes('not a function') || errorMessage.includes('autorag');
 
-			return json({
-				took_ms: Date.now() - startTime,
-				query,
-				language,
-				organization,
-				total_hits: 0,
-				hits: [],
-				error: errorMessage,
-				message: isApiIssue
-					? 'AI Search (AutoRAG) is not available. This may be a local development limitation.'
-					: 'AI Search query failed. The index may not be ready or may not have indexed content yet.',
-				_trace: tracer.getTrace()
-			} as SearchResponse);
+			const trace = tracer.getTrace();
+			return json(
+				{
+					took_ms: Date.now() - startTime,
+					query,
+					language,
+					organization,
+					total_hits: 0,
+					hits: [],
+					error: errorMessage,
+					message: isApiIssue
+						? 'AI Search (AutoRAG) is not available. This may be a local development limitation.'
+						: 'AI Search query failed. The index may not be ready or may not have indexed content yet.',
+					_trace: trace
+				} as SearchResponse,
+				{
+					headers: {
+						'X-XRay-Trace': JSON.stringify(trace),
+						'X-Response-Time': `${Date.now() - startTime}ms`,
+						'X-Trace-Id': trace.traceId
+					}
+				}
+			);
 		}
 
 		// AutoRAG returns { response: string, data: AutoRAGSearchResult[] }
@@ -643,7 +663,15 @@ async function executeSearch(
 			aiSearchFilters: aiSearchFilter
 		});
 
-		return json(response);
+		// Return with X-Ray trace in headers for MCP client
+		const trace = tracer.getTrace();
+		return json(response, {
+			headers: {
+				'X-XRay-Trace': JSON.stringify(trace),
+				'X-Response-Time': `${took_ms}ms`,
+				'X-Trace-Id': trace.traceId
+			}
+		});
 	} catch (error) {
 		logger.error('[Search] Search failed', {
 			error: error instanceof Error ? error.message : String(error)
