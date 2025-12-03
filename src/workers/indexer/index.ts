@@ -115,6 +115,32 @@ export default {
       }
     }
 
+    // List AI Search indexes to debug
+    if (url.pathname === "/list-indexes") {
+      const listUrl = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai-search/indexes`;
+      try {
+        const response = await fetch(listUrl, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${env.CF_API_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const body = await response.text();
+        return new Response(body, {
+          status: response.status,
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (error) {
+        return new Response(
+          JSON.stringify({
+            error: error instanceof Error ? error.message : String(error),
+          }),
+          { status: 500, headers: { "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     return new Response("Not Found", { status: 404 });
   },
 
