@@ -1,6 +1,17 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## [7.8.0](https://github.com/klappy/translation-helps-mcp/compare/v7.7.13...v7.8.0) (2025-12-03)
+
+### Features
+
+- **Event-Driven Indexing Pipeline v2**: Complete rewrite of the search indexing architecture
+  - Two-queue system: ZIP extraction and file indexing are now separate
+  - Memory efficient: Extracts files one-at-a-time to stay within Cloudflare Workers limits
+  - Universal indexing: Files from the main API now also trigger indexing via R2 events
+  - Consistent R2 keys: All keys normalized to `by-url/...` format
+  - No more missed files: Anything that lands in R2 gets indexed automatically
 
 ## [7.7.12] - 2025-12-03
 

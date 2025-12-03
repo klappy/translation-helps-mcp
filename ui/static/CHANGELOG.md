@@ -1,6 +1,112 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## [7.8.0](https://github.com/klappy/translation-helps-mcp/compare/v7.7.13...v7.8.0) (2025-12-03)
+
+### Features
+
+- **Event-Driven Indexing Pipeline v2**: Complete rewrite of the search indexing architecture
+  - Two-queue system: ZIP extraction and file indexing are now separate
+  - Memory efficient: Extracts files one-at-a-time to stay within Cloudflare Workers limits
+  - Universal indexing: Files from the main API now also trigger indexing via R2 events
+  - Consistent R2 keys: All keys normalized to `by-url/...` format
+  - No more missed files: Anything that lands in R2 gets indexed automatically
+
+## [7.7.12] - 2025-12-03
+
+### Changed
+
+- **Versioned Cache API keys**: Cache keys now include app version prefix
+- New deploy = new version = cache miss = fresh R2 lookup = indexer events fire
+- Removed ALL duplicate sync garbage - versioned cache handles it automatically
+- KISS: No more complex sync logic between Cache API and R2
+- Cache URL: `https://r2.local/v{VERSION}/{key}` instead of `https://r2.local/{key}`
+
+## [7.7.10] - 2025-12-03
+
+### Fixed
+
+- **Extracted file cache hits now sync ZIP to R2**: The actual fix!
+- When cached extracted file (USFM) is returned, check if ZIP exists in R2
+- If ZIP missing, download from DCS and store in R2 (fire-and-forget)
+- This triggers R2 event notification for indexer
+- File key `by-url/.../v87.zip/files/43-JHN.usfm` → ZIP key `by-url/.../v87.zip`
+
+## [7.7.9] - 2025-12-03
+
+### Fixed
+
+- **Scripture ZIP caching**: Added R2 sync for ZIP Cache API hits (was only syncing TAR.GZ)
+- This is the actual fix for scripture ZIP files not triggering indexer events
+- When Cache API returns a cached ZIP but R2 is empty, now stores ZIP in R2 (fire-and-forget)
+- This triggers R2 event notification for the indexer queue
+
+## [7.7.8] - 2025-12-03
+
+### Fixed
+
+- **Indexer**: Added TAR.GZ support - some files stored under .zip keys are actually TAR.GZ
+- Indexer now detects archive type from magic bytes and handles both formats
+- Added GZIP decompression and TAR parsing to zip-handler
+- This fixes DLQ failures when TAR.GZ data was synced to R2 under .zip keys
+
+## [7.7.7] - 2025-12-03
+
+### Performance
+
+- Removed blocking R2 check from extracted file cache reads (was adding 400ms+ latency)
+- ZIP syncing now only happens at the ZIP layer (getOrDownloadZip), not on every file read
+- Cached file reads are fast again (10-40ms instead of 400ms+)
+
+## [7.7.6] - 2025-12-03
+
+### Fixed
+
+- **Critical**: ResourceCatalogInfo now includes catalog metadata with version info
+- v7.7.3 fix was broken - resource.catalog didn't exist on the interface
+- Added catalog.prod.branch_or_tag_name and catalog.prod.zipball_url to ResourceCatalogInfo
+- resource-detector.ts now passes through catalog metadata from DCS API
+- Added warning log when falling back to 'master' due to missing version tag
+
+## [7.7.5] - 2025-12-03
+
+### Fixed
+
+- **Critical**: When EXTRACTED FILE is cached but ZIP missing from R2, download ZIP
+- This was the root cause - getScripture checks extracted file cache FIRST
+- If file cached, ZIP never fetched → no R2 write → no indexing event
+- Now downloads ZIP in background when serving cached extracted files
+
+## [7.7.4] - 2025-12-03
+
+### Fixed
+
+- **Critical**: When TAR.GZ hits Cache API but ZIP missing from R2, download and store ZIP
+- This ensures indexing events fire even when TAR.GZ is cached from previous sessions
+- Indexer receives proper ZIP format (not TAR.GZ stored under .zip key)
+
+## [7.7.3] - 2025-12-03
+
+### Fixed
+
+- **Critical**: Scripture now uses proper version tag from catalog (was hardcoded "master")
+- Scripture ZIPs now use versioned keys (e.g., v87.zip) matching other resources
+- Only sync .zip files to R2 (not .tar.gz) to avoid duplicate indexing events
+
+## [7.7.2] - 2025-12-03
+
+### Fixed
+
+- **Critical**: Cache API hits now sync to R2 to trigger indexing events
+- ZIPs served from edge cache but missing from R2 are now written to R2
+- Added `clearEdgeCache` param to health endpoint for manual cache busting
+
+## [7.7.1] - 2025-12-03
+
+### Fixed
+
+- Force redeploy to clear memory cache for fresh indexing pipeline test
 
 ## [7.7.0] - 2025-12-03
 

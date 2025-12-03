@@ -19,8 +19,8 @@ import type { ParsedReference } from "../parsers/referenceParser.js";
 import { logger } from "../utils/logger.js";
 import {
   cleanContentWithMetadata,
-  type ResourceType,
   type CleanResult,
+  type ResourceType,
 } from "./ContentCleaners.js";
 
 interface CatalogResource {
@@ -2410,8 +2410,19 @@ export class ZipResourceFetcher2 {
         const cleanPath = filePath.replace(/^\.\//, "");
 
         // Get the ref tag from the cache key if available
-        const refMatch = (zipCacheKey || "").match(/:([^:]+)$/);
-        const ref = refMatch ? refMatch[1] : null;
+        // New format: by-url/git.door43.org/{org}/{repo}/archive/{version}.zip
+        // Old format (legacy): zip:owner/repo:ref
+        const key = zipCacheKey || "";
+        let ref: string | null = null;
+        if (key.startsWith("by-url/")) {
+          // Extract version from: .../archive/{version}.zip
+          const archiveMatch = key.match(/\/archive\/([^/]+)\.zip/);
+          ref = archiveMatch ? archiveMatch[1] : null;
+        } else {
+          // Legacy format: zip:owner/repo:ref
+          const refMatch = key.match(/:([^:]+)$/);
+          ref = refMatch ? refMatch[1] : null;
+        }
 
         const possiblePaths = [
           cleanPath,

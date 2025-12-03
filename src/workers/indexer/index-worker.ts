@@ -365,7 +365,7 @@ function processTSVFile(
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split("\t");
-    const ref = refIdx >= 0 ? cols[refIdx] : "";
+    const ref = (refIdx >= 0 ? cols[refIdx] : "") ?? "";
     const chapterMatch = ref.match(/^(\d+):/);
     if (chapterMatch) chaptersSet.add(parseInt(chapterMatch[1], 10));
 
