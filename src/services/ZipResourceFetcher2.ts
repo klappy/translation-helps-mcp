@@ -615,6 +615,39 @@ export class ZipResourceFetcher2 {
             size,
             cached: isCacheHit,
           });
+
+          // CRITICAL: Extracted file was cached but ZIP might be missing from R2!
+          // Ensure ZIP exists in R2 to trigger indexing event notification.
+          if (bucket) {
+            const zipExists = await bucket.get(r2Key);
+            if (!zipExists) {
+              console.log(
+                `[ZIP] Extracted file cached but ZIP missing from R2 - downloading for indexer: ${r2Key}`,
+              );
+              // Fire-and-forget: download ZIP and store in R2 for indexing
+              // Don't await - we already have the content, just need to trigger the event
+              (async () => {
+                try {
+                  const zipResp = await fetch(zipUrl, {
+                    headers: this.getClientHeaders(),
+                  });
+                  if (zipResp.ok) {
+                    const zipBuf = await zipResp.arrayBuffer();
+                    const zipArr = new Uint8Array(zipBuf);
+                    // Validate ZIP header
+                    if (zipArr[0] === 0x50 && zipArr[1] === 0x4b) {
+                      await r2.putZip(r2Key, zipBuf);
+                      console.log(
+                        `[ZIP] Stored ZIP in R2 for indexing: ${r2Key}`,
+                      );
+                    }
+                  }
+                } catch (e) {
+                  console.error(`[ZIP] Background ZIP fetch failed: ${e}`);
+                }
+              })();
+            }
+          }
         } catch {
           // ignore tracer issues
         }

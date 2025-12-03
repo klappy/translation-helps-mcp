@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.5] - 2025-12-03
+
+### Fixed
+
+- **Critical**: When EXTRACTED FILE is cached but ZIP missing from R2, download ZIP
+- This was the root cause - getScripture checks extracted file cache FIRST
+- If file cached, ZIP never fetched → no R2 write → no indexing event
+- Now downloads ZIP in background when serving cached extracted files
+
 ## [7.7.4] - 2025-12-03
 
 ### Fixed
