@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.4] - 2025-12-03
+
+### Fixed
+
+- **Critical**: When TAR.GZ hits Cache API but ZIP missing from R2, download and store ZIP
+- This ensures indexing events fire even when TAR.GZ is cached from previous sessions
+- Indexer receives proper ZIP format (not TAR.GZ stored under .zip key)
+
 ## [7.7.3] - 2025-12-03
 
 ### Fixed

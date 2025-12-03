@@ -2042,6 +2042,38 @@ export class ZipResourceFetcher2 {
               } catch {
                 // ignore trace add errors
               }
+
+              // CRITICAL: If TAR.GZ came from Cache API but ZIP doesn't exist in R2,
+              // we need to download the actual ZIP and store it to trigger the indexing event.
+              // The event notification only fires for .zip suffix, and indexer needs ZIP format!
+              if (source === "cache" && bucket) {
+                try {
+                  const zipExists = await bucket.get(zipKey);
+                  if (!zipExists) {
+                    console.log(
+                      `[ZIP] TAR.GZ cache hit but ZIP missing from R2 - downloading ZIP for event trigger: ${zipUrl}`,
+                    );
+                    // Download the actual ZIP (not TAR.GZ) for proper indexer processing
+                    const zipResponse = await fetch(zipUrl, {
+                      headers: this.getClientHeaders(),
+                    });
+                    if (zipResponse.ok) {
+                      const zipBuffer = await zipResponse.arrayBuffer();
+                      const zipData = new Uint8Array(zipBuffer);
+                      // Validate it's actually a ZIP
+                      if (zipData[0] === 0x50 && zipData[1] === 0x4b) {
+                        await r2.putZip(zipKey, zipBuffer);
+                        console.log(
+                          `[ZIP] Stored ZIP in R2 for indexing: ${zipKey}`,
+                        );
+                      }
+                    }
+                  }
+                } catch (e) {
+                  console.error(`[ZIP] Failed to sync ZIP to R2: ${e}`);
+                }
+              }
+
               return data;
             }
           }
