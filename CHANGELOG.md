@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [7.7.12] - 2025-12-03
+
+### Changed
+
+- **Versioned Cache API keys**: Cache keys now include app version prefix
+- New deploy = new version = cache miss = fresh R2 lookup = indexer events fire
+- Removed ALL duplicate sync garbage - versioned cache handles it automatically
+- KISS: No more complex sync logic between Cache API and R2
+- Cache URL: `https://r2.local/v{VERSION}/{key}` instead of `https://r2.local/{key}`
+
 ## [7.7.10] - 2025-12-03
 
 ### Fixed

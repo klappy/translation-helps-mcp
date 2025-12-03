@@ -1,3 +1,5 @@
+import { getVersion } from "../version.js";
+
 export interface R2LikeBucket {
   get(key: string): Promise<{
     body: ReadableStream | null;
@@ -13,6 +15,8 @@ export interface R2LikeBucket {
       customMetadata?: Record<string, string>;
     },
   ): Promise<void>;
+  head?(key: string): Promise<unknown | null>;
+  delete?(key: string): Promise<void>;
 }
 
 function contentTypeForKey(key: string): string {
@@ -22,11 +26,27 @@ function contentTypeForKey(key: string): string {
   return "application/zip";
 }
 
+/**
+ * R2 Storage with versioned Cache API layer
+ *
+ * Cache API keys are versioned by app version, so new deploys get fresh caches.
+ * This eliminates the need for complex sync logic between Cache API and R2.
+ *
+ * Flow:
+ * 1. New deploy = new version = cache miss
+ * 2. Cache miss = read from R2
+ * 3. R2 miss = download from origin = write to R2 = R2 event fires
+ * 4. Indexer receives R2 event and processes the ZIP
+ */
 export class R2Storage {
+  private appVersion: string;
+
   constructor(
     private bucket: R2LikeBucket | undefined,
     private cacheStorage: CacheStorage | undefined,
-  ) {}
+  ) {
+    this.appVersion = getVersion();
+  }
 
   private get defaultCache(): Cache | null {
     try {
@@ -41,6 +61,14 @@ export class R2Storage {
     }
   }
 
+  /**
+   * Create a versioned cache request URL
+   * New version = new URL = cache miss = fresh data from R2
+   */
+  private cacheRequest(key: string): Request {
+    return new Request(`https://r2.local/v${this.appVersion}/${key}`);
+  }
+
   async getZipWithInfo(key: string): Promise<{
     data: Uint8Array | null;
     source: "cache" | "r2" | "miss";
@@ -49,29 +77,16 @@ export class R2Storage {
   }> {
     const start =
       typeof performance !== "undefined" ? performance.now() : Date.now();
-    const req = new Request(`https://r2.local/${key}`);
+    const req = this.cacheRequest(key);
     const c = this.defaultCache;
+
+    // Try versioned cache first
     if (c) {
       const hit = await c.match(req);
       if (hit) {
         const buf = await hit.arrayBuffer();
         const end =
           typeof performance !== "undefined" ? performance.now() : Date.now();
-
-        // CRITICAL: Always write to R2 on Cache hit to trigger event notifications.
-        // R2 put is idempotent - safe to overwrite. No need to check if exists.
-        if (this.bucket && key.endsWith(".zip")) {
-          console.log(`[R2Storage] Cache hit - syncing to R2: ${key}`);
-          this.bucket
-            .put(key, buf, {
-              httpMetadata: {
-                contentType: contentTypeForKey(key),
-                cacheControl: "public, max-age=604800",
-              },
-            })
-            .catch((e) => console.error(`[R2Storage] R2 sync failed: ${e}`));
-        }
-
         return {
           data: new Uint8Array(buf),
           source: "cache",
@@ -83,11 +98,17 @@ export class R2Storage {
         };
       }
     }
+
+    // Cache miss - read from R2
     if (!this.bucket)
       return { data: null, source: "miss", durationMs: 1, size: 0 };
+
     const obj = await this.bucket.get(key);
     if (!obj) return { data: null, source: "miss", durationMs: 1, size: 0 };
+
     const buf = await obj.arrayBuffer();
+
+    // Populate versioned cache for next request
     if (c) {
       await c.put(
         req,
@@ -99,6 +120,7 @@ export class R2Storage {
         }),
       );
     }
+
     const end =
       typeof performance !== "undefined" ? performance.now() : Date.now();
     return {
@@ -110,8 +132,9 @@ export class R2Storage {
   }
 
   async getZip(key: string): Promise<Uint8Array | null> {
-    const req = new Request(`https://r2.local/${key}`);
+    const req = this.cacheRequest(key);
     const c = this.defaultCache;
+
     if (c) {
       const hit = await c.match(req);
       if (hit) {
@@ -119,9 +142,11 @@ export class R2Storage {
         return new Uint8Array(buf);
       }
     }
+
     if (!this.bucket) return null;
     const obj = await this.bucket.get(key);
     if (!obj) return null;
+
     const buf = await obj.arrayBuffer();
     if (c) {
       await c.put(
@@ -139,6 +164,8 @@ export class R2Storage {
 
   async putZip(key: string, buf: ArrayBuffer, meta?: Record<string, string>) {
     if (!this.bucket) return;
+
+    // Write to R2 first (triggers event notifications)
     await this.bucket.put(key, buf, {
       httpMetadata: {
         contentType: contentTypeForKey(key),
@@ -146,10 +173,12 @@ export class R2Storage {
       },
       customMetadata: meta,
     });
+
+    // Then populate versioned cache
     const c = this.defaultCache;
     if (c) {
       await c.put(
-        new Request(`https://r2.local/${key}`),
+        this.cacheRequest(key),
         new Response(buf, {
           headers: {
             "Content-Type": contentTypeForKey(key),
@@ -160,43 +189,46 @@ export class R2Storage {
     }
   }
 
-  /**
-   * Delete a ZIP from both R2 bucket AND Cache API
-   * This is necessary to fully invalidate cached ZIPs
-   */
-  async deleteZipWithCache(key: string): Promise<void> {
-    // Delete from R2
-    if (this.bucket && "delete" in this.bucket) {
-      try {
-        await (this.bucket as any).delete(key);
-      } catch {
-        // ignore delete errors
-      }
-    }
-    // Delete from Cache API
+  async deleteZip(key: string) {
+    // Delete from versioned cache
     const c = this.defaultCache;
     if (c) {
       try {
-        await c.delete(new Request(`https://r2.local/${key}`));
+        await c.delete(this.cacheRequest(key));
       } catch {
         // ignore cache delete errors
       }
     }
+    // Delete from R2
+    if (this.bucket?.delete) {
+      try {
+        await this.bucket.delete(key);
+      } catch {
+        // ignore R2 delete errors
+      }
+    }
+  }
+
+  async deleteZipWithCache(key: string): Promise<void> {
+    await this.deleteZip(key);
   }
 
   async getFile(
     key: string,
     contentType = "text/plain",
   ): Promise<string | null> {
-    const req = new Request(`https://r2.local/${key}`);
+    const req = this.cacheRequest(key);
     const c = this.defaultCache;
+
     if (c) {
       const hit = await c.match(req);
       if (hit) return await hit.text();
     }
+
     if (!this.bucket) return null;
     const obj = await this.bucket.get(key);
     if (!obj) return null;
+
     const text = await obj.text();
     if (c) {
       await c.put(
@@ -223,48 +255,16 @@ export class R2Storage {
   }> {
     const start =
       typeof performance !== "undefined" ? performance.now() : Date.now();
-    const req = new Request(`https://r2.local/${key}`);
+    const req = this.cacheRequest(key);
     const c = this.defaultCache;
+
+    // Try versioned cache first
     if (c) {
       const hit = await c.match(req);
       if (hit) {
         const text = await hit.text();
         const end =
           typeof performance !== "undefined" ? performance.now() : Date.now();
-
-        // CRITICAL: When extracted file hits cache, ensure the ZIP is in R2
-        // File key: by-url/.../archive/v87.zip/files/43-JHN.usfm
-        // ZIP key:  by-url/.../archive/v87.zip
-        const zipMatch = key.match(/^(by-url\/.*\.zip)\/files\//);
-        if (zipMatch && this.bucket) {
-          const zipKey = zipMatch[1];
-          // Fire-and-forget: check R2, download from DCS if missing
-          (async () => {
-            try {
-              const exists = await this.bucket!.head(zipKey);
-              if (!exists) {
-                // Reconstruct URL: by-url/git.door43.org/org/repo/archive/v.zip -> https://git.door43.org/org/repo/archive/v.zip
-                const url = "https://" + zipKey.replace(/^by-url\//, "");
-                console.log(
-                  `[R2Storage] File cache hit but ZIP missing - fetching: ${url}`,
-                );
-                const resp = await fetch(url);
-                if (resp.ok) {
-                  const buf = await resp.arrayBuffer();
-                  // Validate ZIP magic bytes
-                  const arr = new Uint8Array(buf);
-                  if (arr[0] === 0x50 && arr[1] === 0x4b) {
-                    await this.bucket!.put(zipKey, buf);
-                    console.log(`[R2Storage] Stored ZIP in R2: ${zipKey}`);
-                  }
-                }
-              }
-            } catch (e) {
-              console.error(`[R2Storage] ZIP sync failed: ${e}`);
-            }
-          })();
-        }
-
         return {
           data: text,
           source: "cache",
@@ -276,11 +276,17 @@ export class R2Storage {
         };
       }
     }
+
+    // Cache miss - read from R2
     if (!this.bucket)
       return { data: null, source: "miss", durationMs: 1, size: 0 };
+
     const obj = await this.bucket.get(key);
     if (!obj) return { data: null, source: "miss", durationMs: 1, size: 0 };
+
     const text = await obj.text();
+
+    // Populate versioned cache
     if (c) {
       await c.put(
         req,
@@ -291,34 +297,6 @@ export class R2Storage {
           },
         }),
       );
-    }
-
-    // Also sync ZIP to R2 on R2 file hits (extracted file in R2 but ZIP might not be)
-    const zipMatch = key.match(/^(by-url\/.*\.zip)\/files\//);
-    if (zipMatch) {
-      const zipKey = zipMatch[1];
-      (async () => {
-        try {
-          const exists = await this.bucket!.head(zipKey);
-          if (!exists) {
-            const url = "https://" + zipKey.replace(/^by-url\//, "");
-            console.log(
-              `[R2Storage] File R2 hit but ZIP missing - fetching: ${url}`,
-            );
-            const resp = await fetch(url);
-            if (resp.ok) {
-              const buf = await resp.arrayBuffer();
-              const arr = new Uint8Array(buf);
-              if (arr[0] === 0x50 && arr[1] === 0x4b) {
-                await this.bucket!.put(zipKey, buf);
-                console.log(`[R2Storage] Stored ZIP in R2: ${zipKey}`);
-              }
-            }
-          }
-        } catch (e) {
-          console.error(`[R2Storage] ZIP sync failed: ${e}`);
-        }
-      })();
     }
 
     const end =
@@ -338,6 +316,8 @@ export class R2Storage {
     meta?: Record<string, string>,
   ) {
     if (!this.bucket) return;
+
+    // Write to R2 first
     await this.bucket.put(key, text, {
       httpMetadata: {
         contentType,
@@ -345,10 +325,12 @@ export class R2Storage {
       },
       customMetadata: meta,
     });
+
+    // Then populate versioned cache
     const c = this.defaultCache;
     if (c) {
       await c.put(
-        new Request(`https://r2.local/${key}`),
+        this.cacheRequest(key),
         new Response(text, {
           headers: {
             "Content-Type": contentType,
@@ -356,26 +338,6 @@ export class R2Storage {
           },
         }),
       );
-    }
-  }
-
-  async deleteZip(key: string) {
-    // Delete from cache
-    const c = this.defaultCache;
-    if (c) {
-      try {
-        await c.delete(new Request(`https://r2.local/${key}`));
-      } catch {
-        // ignore cache delete errors
-      }
-    }
-    // Delete from R2
-    if (this.bucket) {
-      try {
-        await this.bucket.delete(key);
-      } catch {
-        // ignore R2 delete errors
-      }
     }
   }
 }
