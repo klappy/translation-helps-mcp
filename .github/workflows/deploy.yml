@@ -73,4 +73,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: src/workers/indexer
+          # CF_ACCOUNT_ID passed as var, CF_API_TOKEN passed as secret
+          # The CLOUDFLARE_API_TOKEN needs AI Search: Edit permission for reindex trigger
           command: deploy --var CF_ACCOUNT_ID:${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          secrets: |
+            CF_API_TOKEN
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
