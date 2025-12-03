@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.10.2](https://github.com/klappy/translation-helps-mcp/compare/v7.10.1...v7.10.2) (2025-12-03)
+
+### Bug Fixes
+
+- strip repo prefix from R2 paths for API consistency ([c0dec19](https://github.com/klappy/translation-helps-mcp/commit/c0dec19750200f500d67b8e36560ae80d563363c))
+
 ### [7.10.1](https://github.com/klappy/translation-helps-mcp/compare/v7.10.0...v7.10.1) (2025-12-03)
 
 ## [7.10.0](https://github.com/klappy/translation-helps-mcp/compare/v7.9.0...v7.10.0) (2025-12-03)
