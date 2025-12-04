@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.2](https://github.com/klappy/translation-helps-mcp/compare/v7.11.1...v7.11.2) (2025-12-04)
+
+### Features
+
+- **Strict Tool-Only Mode**: Chat now ALWAYS uses tools - never answers from training data
+- **Verbatim Scripture Quoting**: All scripture is quoted exactly as returned, never paraphrased
+- **Mandatory Citations**: Every piece of information includes its source citation
+- **Fixed Tool Registry**: MCP now only exposes implemented tools (removed browse_translation_words, get_languages)
+
+### Bug Fixes
+
+- Fix tool_choice to use 'required' instead of 'auto' to force tool usage
+- Add fetch_translation_word, fetch_translation_word_links, fetch_translation_academy to MCP tools list
+
 ### [7.11.1](https://github.com/klappy/translation-helps-mcp/compare/v7.11.0...v7.11.1) (2025-12-04)
 
 ### Bug Fixes
