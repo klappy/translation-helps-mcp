@@ -96,10 +96,11 @@ export async function orchestratedChat(
 
 				// Track orchestrator events
 				if (event === 'orchestrator:thinking') {
-					// Mark orchestrator LLM start if not already started
+					// Mark orchestrator LLM start if not already started (and not already completed)
 					const existing = xrayTimeline.find(
-						(t) => t.type === 'llm' && t.name === 'Orchestrator Planning' && !t.endTime
+						(t) => t.type === 'llm' && t.name === 'Orchestrator Planning'
 					);
+					// Only create entry if none exists at all (prevents duplicates after completion)
 					if (!existing) {
 						addTimelineEntry({
 							type: 'llm',
@@ -126,14 +127,21 @@ export async function orchestratedChat(
 				// Track agent LLM calls
 				if (event === 'agent:start') {
 					const eventData = data as { agent?: string; task?: string };
-					addTimelineEntry({
-						type: 'llm',
-						name: `${eventData.agent} Agent`,
-						description: eventData.task,
-						startTime: now,
-						agent: eventData.agent,
-						model: WORKERS_AI_MODEL
-					});
+					// Only create entry if this agent doesn't already have an uncompleted entry
+					// (prevents duplicates from emit in both index.ts and individual agent files)
+					const existing = xrayTimeline.find(
+						(t) => t.type === 'llm' && t.agent === eventData.agent && !t.endTime
+					);
+					if (!existing) {
+						addTimelineEntry({
+							type: 'llm',
+							name: `${eventData.agent} Agent`,
+							description: eventData.task,
+							startTime: now,
+							agent: eventData.agent,
+							model: WORKERS_AI_MODEL
+						});
+					}
 				}
 
 				// Track agent tool calls
