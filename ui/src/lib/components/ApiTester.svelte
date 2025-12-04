@@ -70,8 +70,9 @@
 
 	async function copyResponse() {
 		try {
-			const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-			await navigator.clipboard.writeText(text);
+			// Extract actual content for copying (not JSON wrapper)
+			const extracted = extractMarkdownContent(result);
+			await navigator.clipboard.writeText(extracted.content);
 			copiedResponse = true;
 			setTimeout(() => {
 				copiedResponse = false;
@@ -125,6 +126,42 @@
 			default:
 				return '❓';
 		}
+	}
+
+	// Extract markdown/text content from MCP response format
+	// MCP responses come as { content: [{ type: 'text', text: '...' }] }
+	function extractMarkdownContent(data: any): { content: string; isMarkdown: boolean } {
+		// Direct string
+		if (typeof data === 'string') {
+			const isMarkdown = data.startsWith('---') || data.startsWith('#');
+			return { content: data, isMarkdown };
+		}
+
+		// MCP response format: { content: [{ type: 'text', text: '...' }] }
+		if (data?.content && Array.isArray(data.content)) {
+			const textContent = data.content.find((c: any) => c.type === 'text');
+			if (textContent?.text) {
+				const text = textContent.text;
+				// Check if it looks like markdown (YAML frontmatter or headers)
+				const isMarkdown = text.startsWith('---') || text.startsWith('#');
+				return { content: text, isMarkdown };
+			}
+		}
+
+		// Legacy format: { data: '...' } with markdown
+		if (data?.data && typeof data.data === 'string') {
+			const isMarkdown =
+				data.metadata?.format === 'markdown' ||
+				data.data.startsWith('---') ||
+				data.data.startsWith('#');
+			return { content: data.data, isMarkdown };
+		}
+
+		// Not markdown - return stringified JSON
+		return {
+			content: typeof data === 'string' ? data : JSON.stringify(data, null, 2),
+			isMarkdown: false
+		};
 	}
 </script>
 
@@ -462,6 +499,7 @@
 
 	<!-- Response Display -->
 	{#if result}
+		{@const extractedContent = extractMarkdownContent(result)}
 		<div class="rounded-lg border border-white/10 bg-black/20">
 			<details class="group" open>
 				<summary
@@ -469,6 +507,9 @@
 				>
 					<span class="transform transition-transform group-open:rotate-90">▶</span>
 					Response Data
+					{#if extractedContent.isMarkdown}
+						<span class="rounded bg-emerald-600/20 px-2 py-0.5 text-xs text-emerald-400">MD</span>
+					{/if}
 					<button
 						type="button"
 						on:click|stopPropagation={() => copyResponse()}
@@ -477,33 +518,17 @@
 						{copiedResponse ? '✓ Copied!' : 'Copy'}
 					</button>
 					<span class="ml-auto text-xs text-gray-500">
-						{(typeof result === 'string'
-							? result.length
-							: JSON.stringify(result).length
-						).toLocaleString()} chars
+						{extractedContent.content.length.toLocaleString()} chars
 					</span>
 				</summary>
 				<div class="border-t border-white/10 p-4">
-					{#if typeof result === 'string'}
+					{#if extractedContent.isMarkdown}
+						<!-- Render markdown/text content directly -->
+						<pre
+							class="overflow-x-auto text-sm leading-relaxed break-words whitespace-pre-wrap text-gray-200">{extractedContent.content}</pre>
+					{:else if typeof result === 'string'}
 						<pre
 							class="overflow-x-auto text-xs break-words whitespace-pre-wrap text-gray-300 lg:text-sm">{result}</pre>
-					{:else if result?.metadata?.format === 'markdown' && typeof result?.data === 'string'}
-						<!-- JSON response with markdown content -->
-						<div class="space-y-4">
-							<div class="border-b border-white/10 pb-2 text-xs text-gray-500">
-								<strong>Format:</strong> Markdown |
-								{#if result.metadata.category}<strong>Category:</strong>
-									{result.metadata.category} |
-								{/if}
-								{#if result.metadata.moduleCount}<strong>Modules:</strong>
-									{result.metadata.moduleCount} |
-								{/if}
-								<strong>Source:</strong>
-								{result.metadata.source || 'N/A'}
-							</div>
-							<pre
-								class="overflow-x-auto text-xs break-words whitespace-pre-wrap text-gray-300 lg:text-sm">{result.data}</pre>
-						</div>
 					{:else}
 						<pre
 							class="overflow-x-auto text-xs break-words whitespace-pre-wrap text-gray-300 lg:text-sm">{JSON.stringify(
