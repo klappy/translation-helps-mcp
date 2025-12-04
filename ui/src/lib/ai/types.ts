@@ -38,7 +38,7 @@ export interface WorkersAIResponse {
 export interface WorkersAIRunOptions {
 	messages: WorkersAIMessage[];
 	tools?: WorkersAIToolDefinition[];
-	tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+	tool_choice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
 	stream?: boolean;
 	max_tokens?: number;
 	temperature?: number;

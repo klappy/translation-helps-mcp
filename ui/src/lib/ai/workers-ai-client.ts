@@ -56,12 +56,18 @@ export async function callWorkersAI(
 	messages: WorkersAIMessage[],
 	options: {
 		tools?: WorkersAIToolDefinition[];
-		toolChoice?: 'auto' | 'none';
+		toolChoice?: 'auto' | 'none' | 'required';
 		maxTokens?: number;
 		temperature?: number;
 	} = {}
 ): Promise<{ response: string; toolCalls?: WorkersAIToolCall[]; error?: string }> {
-	const { tools, toolChoice = 'auto', maxTokens = 2000, temperature = 0.3 } = options;
+	// Default to 'required' when tools are present to force tool usage
+	const {
+		tools,
+		toolChoice = tools?.length ? 'required' : 'auto',
+		maxTokens = 2000,
+		temperature = 0.3
+	} = options;
 
 	try {
 		logger.info('Calling Workers AI', {
@@ -116,7 +122,7 @@ export async function callWorkersAIStream(
 	messages: WorkersAIMessage[],
 	options: {
 		tools?: WorkersAIToolDefinition[];
-		toolChoice?: 'auto' | 'none';
+		toolChoice?: 'auto' | 'none' | 'required';
 		maxTokens?: number;
 		temperature?: number;
 		onToolCalls?: (toolCalls: WorkersAIToolCall[]) => Promise<WorkersAIMessage[]>;
@@ -127,7 +133,8 @@ export async function callWorkersAIStream(
 ): Promise<ReadableStream<Uint8Array>> {
 	const {
 		tools,
-		toolChoice = 'auto',
+		// Default to 'required' when tools are present to force tool usage
+		toolChoice = tools?.length ? 'required' : 'auto',
 		maxTokens = 2000,
 		temperature = 0.3,
 		onToolCalls,

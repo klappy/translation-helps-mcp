@@ -94,14 +94,6 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							}
 						},
 						{
-							name: 'get_languages',
-							description: 'Get available languages for translation resources',
-							inputSchema: {
-								type: 'object',
-								properties: {}
-							}
-						},
-						{
 							name: 'fetch_translation_questions',
 							description:
 								'Fetch translation questions for a specific Bible reference. Supports optional search parameter to filter results.',
@@ -120,25 +112,25 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							}
 						},
 						{
-							name: 'browse_translation_words',
-							description: 'Browse and search translation words by category or term',
+							name: 'fetch_translation_word',
+							description:
+								'Get the definition and usage of a biblical term (e.g., grace, love, faith, covenant). Use this for word meaning questions.',
 							inputSchema: {
 								type: 'object',
 								properties: {
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' },
-									category: {
+									term: {
 										type: 'string',
-										description: 'Filter by category (kt, names, other)'
+										description: 'The biblical term to look up (e.g., "grace", "love", "faith")'
 									},
-									search: { type: 'string', description: 'Search term to filter words' },
-									limit: { type: 'number', default: 50, description: 'Maximum number of results' }
-								}
+									language: { type: 'string', default: 'en' },
+									organization: { type: 'string', default: 'unfoldingWord' }
+								},
+								required: ['term']
 							}
 						},
 						{
-							name: 'get_context',
-							description: 'Get contextual information for a Bible reference',
+							name: 'fetch_translation_word_links',
+							description: 'Get the list of translation words linked to a specific Bible reference',
 							inputSchema: {
 								type: 'object',
 								properties: {
@@ -150,50 +142,21 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 							}
 						},
 						{
-							name: 'extract_references',
-							description: 'Extract and parse Bible references from text',
+							name: 'fetch_translation_academy',
+							description:
+								'Get translation academy articles about translation concepts (e.g., metaphor, idiom, figures of speech)',
 							inputSchema: {
 								type: 'object',
 								properties: {
-									text: { type: 'string', description: 'Text containing Bible references' },
-									includeContext: {
-										type: 'boolean',
-										default: false,
-										description: 'Include context around references'
-									}
-								},
-								required: ['text']
-							}
-						},
-						{
-							name: 'fetch_resources',
-							description: 'Fetch multiple types of translation resources for a reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
-									language: { type: 'string', default: 'en' },
-									organization: { type: 'string', default: 'unfoldingWord' },
-									resources: {
-										type: 'array',
-										items: { type: 'string' },
-										default: ['scripture', 'notes', 'questions', 'words']
-									}
-								},
-								required: ['reference']
-							}
-						},
-						{
-							name: 'get_words_for_reference',
-							description: 'Get translation words specifically linked to a Bible reference',
-							inputSchema: {
-								type: 'object',
-								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
+									moduleId: {
+										type: 'string',
+										description:
+											'Academy module ID (e.g., "figs-metaphor", "figs-idiom", "translate-names")'
+									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' }
 								},
-								required: ['reference']
+								required: ['moduleId']
 							}
 						},
 						{
