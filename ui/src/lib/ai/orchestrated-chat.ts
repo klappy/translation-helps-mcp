@@ -9,11 +9,14 @@ import {
 	DEFAULT_ORCHESTRATION_CONFIG,
 	ORCHESTRATOR_PROMPT,
 	PLANNING_TOOL,
+	EXECUTE_PROMPT_TOOL,
 	SYNTHESIS_PROMPT,
 	buildSynthesisContext,
 	executeAgent,
 	getAgentDisplayName,
 	parseOrchestratorPlan,
+	parseExecutePromptArgs,
+	extractCitationsFromPromptResult,
 	type AgentName,
 	type AgentResponse,
 	type AgentTask,
@@ -245,80 +248,218 @@ export async function orchestratedChat(
 				const planStart = Date.now();
 				emit('orchestrator:thinking', { delta: 'Analyzing your question...\n' });
 
-				const plan = await planAgentDispatch(ai, userMessage, chatHistory, emit);
+				const planningResult = await planAgentDispatch(ai, userMessage, chatHistory, emit);
 				timings.planning = Date.now() - planStart;
 
-				if (!plan || plan.agents.length === 0) {
+				if (!planningResult) {
 					emit('error', { message: 'Failed to create execution plan' });
 					controller.close();
 					return;
 				}
 
-				emit('orchestrator:plan', { plan });
-				emit('orchestrator:thinking', {
-					delta: `\nDispatching ${plan.agents.length} specialist${plan.agents.length > 1 ? 's' : ''}...\n`
-				});
+				let agentResults: AgentResponse[] = [];
+				let plan: OrchestratorPlan | null = null;
 
-				// PHASE 2: Parallel Agent Execution
-				const agentStart = Date.now();
-				const agentResults = await executeAgentsInParallel(
-					ai,
-					plan.agents,
-					mcpTools,
-					executeToolFn,
-					emit,
-					finalConfig.parallelExecution
-				);
-				timings.agentExecution = Date.now() - agentStart;
-
-				// PHASE 3: Check for iteration
-				const lowConfidenceAgents = agentResults.filter(
-					(r) => !r.success || r.confidence < finalConfig.confidenceThreshold
-				);
-
-				let iterationResults: AgentResponse[] = [];
-
-				if (
-					lowConfidenceAgents.length > 0 &&
-					plan.needsIteration &&
-					finalConfig.maxIterations > 1
-				) {
-					emit('orchestrator:iterating', {
-						reason: `${lowConfidenceAgents.length} agent(s) need more information`
+				// PHASE 2: Execute based on planning result (prompt OR agents)
+				if (planningResult.type === 'prompt') {
+					// Execute MCP prompt workflow
+					emit('prompt:start', {
+						promptName: planningResult.promptName,
+						reference: planningResult.reference
 					});
 
-					// Plan follow-up tasks based on suggestions from failed/low-confidence agents
-					const followUpTasks = await planIterationTasks(
-						ai,
-						userMessage,
-						agentResults,
-						finalConfig.confidenceThreshold,
-						emit
-					);
+					addTimelineEntry({
+						type: 'tool',
+						name: `MCP Prompt: ${planningResult.promptName}`,
+						description: `Executing ${planningResult.promptName} for ${planningResult.reference}`,
+						startTime: Date.now()
+					});
 
-					if (followUpTasks.length > 0) {
-						emit('orchestrator:thinking', {
-							delta: `\nDispatching ${followUpTasks.length} follow-up agent(s)...\n`
+					const promptStart = Date.now();
+
+					try {
+						// Call the execute-prompt API endpoint
+						const promptResponse = await fetch('/api/execute-prompt', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								promptName: planningResult.promptName,
+								parameters: {
+									reference: planningResult.reference,
+									language: planningResult.language
+								}
+							})
 						});
 
-						iterationResults = await executeAgentsInParallel(
+						const promptResult = await promptResponse.json();
+						timings.agentExecution = Date.now() - promptStart;
+
+						// Mark prompt tool call as complete
+						const promptEntry = xrayTimeline.find(
+							(t) => t.type === 'tool' && t.name.includes('MCP Prompt') && !t.endTime
+						);
+						if (promptEntry) {
+							promptEntry.endTime = Date.now();
+							promptEntry.duration = promptEntry.endTime - promptEntry.startTime;
+							promptEntry.success = promptResponse.ok;
+						}
+
+						emit('prompt:complete', {
+							promptName: planningResult.promptName,
+							success: promptResponse.ok
+						});
+
+						// Convert prompt result to agent-like format for synthesis
+						const citations = extractCitationsFromPromptResult(
+							promptResult as Record<string, unknown>,
+							planningResult.reference
+						);
+
+						agentResults.push({
+							agent: 'prompt' as AgentName,
+							success: promptResponse.ok,
+							findings: promptResult,
+							summary: `Executed ${planningResult.promptName} for ${planningResult.reference}`,
+							citations,
+							confidence: promptResponse.ok ? 0.9 : 0.1
+						});
+
+						// Create a pseudo-plan for X-Ray tracking
+						plan = {
+							reasoning: `Using ${planningResult.promptName} workflow`,
+							agents: [
+								{
+									agent: 'prompt' as AgentName,
+									task: `${planningResult.promptName} for ${planningResult.reference}`,
+									priority: 'high'
+								}
+							],
+							needsIteration: false
+						};
+
+						emit('orchestrator:plan', { plan });
+					} catch (promptError) {
+						console.error('Prompt execution failed:', promptError);
+						timings.agentExecution = Date.now() - promptStart;
+
+						emit('prompt:error', {
+							promptName: planningResult.promptName,
+							error: promptError instanceof Error ? promptError.message : 'Unknown error'
+						});
+
+						// Fall back to dispatching agents
+						emit('orchestrator:thinking', {
+							delta: '\nPrompt failed, falling back to agents...\n'
+						});
+
+						// Create a fallback plan with relevant agents
+						plan = {
+							reasoning: 'Prompt failed, dispatching agents as fallback',
+							agents: [
+								{
+									agent: 'scripture' as AgentName,
+									task: `Fetch scripture for ${planningResult.reference}`,
+									priority: 'high'
+								},
+								{
+									agent: 'notes' as AgentName,
+									task: `Get translation notes for ${planningResult.reference}`,
+									priority: 'normal'
+								}
+							],
+							needsIteration: false
+						};
+
+						emit('orchestrator:plan', { plan });
+						emit('orchestrator:thinking', {
+							delta: `\nDispatching ${plan.agents.length} specialist${plan.agents.length > 1 ? 's' : ''}...\n`
+						});
+
+						agentResults = await executeAgentsInParallel(
 							ai,
-							followUpTasks,
+							plan.agents,
 							mcpTools,
 							executeToolFn,
 							emit,
 							finalConfig.parallelExecution
 						);
+					}
+				} else {
+					// Execute agents as before
+					plan = planningResult.plan;
 
-						// Merge iteration results with original results
-						for (const iterResult of iterationResults) {
-							const existingIdx = agentResults.findIndex((r) => r.agent === iterResult.agent);
-							if (existingIdx >= 0 && iterResult.success) {
-								// Replace failed result with successful iteration result
-								agentResults[existingIdx] = iterResult;
-							} else if (existingIdx < 0) {
-								// Add new agent result
-								agentResults.push(iterResult);
+					if (plan.agents.length === 0) {
+						emit('error', { message: 'No agents to dispatch' });
+						controller.close();
+						return;
+					}
+
+					emit('orchestrator:plan', { plan });
+					emit('orchestrator:thinking', {
+						delta: `\nDispatching ${plan.agents.length} specialist${plan.agents.length > 1 ? 's' : ''}...\n`
+					});
+
+					// PHASE 2: Parallel Agent Execution
+					const agentStart = Date.now();
+					agentResults = await executeAgentsInParallel(
+						ai,
+						plan.agents,
+						mcpTools,
+						executeToolFn,
+						emit,
+						finalConfig.parallelExecution
+					);
+					timings.agentExecution = Date.now() - agentStart;
+
+					// PHASE 3: Check for iteration
+					const lowConfidenceAgents = agentResults.filter(
+						(r) => !r.success || r.confidence < finalConfig.confidenceThreshold
+					);
+
+					let iterationResults: AgentResponse[] = [];
+
+					if (
+						lowConfidenceAgents.length > 0 &&
+						plan.needsIteration &&
+						finalConfig.maxIterations > 1
+					) {
+						emit('orchestrator:iterating', {
+							reason: `${lowConfidenceAgents.length} agent(s) need more information`
+						});
+
+						// Plan follow-up tasks based on suggestions from failed/low-confidence agents
+						const followUpTasks = await planIterationTasks(
+							ai,
+							userMessage,
+							agentResults,
+							finalConfig.confidenceThreshold,
+							emit
+						);
+
+						if (followUpTasks.length > 0) {
+							emit('orchestrator:thinking', {
+								delta: `\nDispatching ${followUpTasks.length} follow-up agent(s)...\n`
+							});
+
+							iterationResults = await executeAgentsInParallel(
+								ai,
+								followUpTasks,
+								mcpTools,
+								executeToolFn,
+								emit,
+								finalConfig.parallelExecution
+							);
+
+							// Merge iteration results with original results
+							for (const iterResult of iterationResults) {
+								const existingIdx = agentResults.findIndex((r) => r.agent === iterResult.agent);
+								if (existingIdx >= 0 && iterResult.success) {
+									// Replace failed result with successful iteration result
+									agentResults[existingIdx] = iterResult;
+								} else if (existingIdx < 0) {
+									// Add new agent result
+									agentResults.push(iterResult);
+								}
 							}
 						}
 					}
@@ -357,7 +498,7 @@ export async function orchestratedChat(
 					summary: {
 						llmCalls: llmCalls.length,
 						toolCalls: toolCalls.length,
-						agentsDispatched: plan.agents.length,
+						agentsDispatched: plan?.agents.length || 0,
 						agentsSuccessful: agentResults.filter((r) => r.success).length,
 						agentsFailed: agentResults.filter((r) => !r.success).length
 					},
@@ -396,7 +537,7 @@ export async function orchestratedChat(
 
 					// Agent details
 					agents: {
-						dispatched: plan.agents.length,
+						dispatched: plan?.agents.length || 0,
 						successful: agentResults.filter((r) => r.success).length,
 						failed: agentResults.filter((r) => !r.success).length,
 						details: agentResults.map((r) => ({
@@ -423,14 +564,21 @@ export async function orchestratedChat(
 }
 
 /**
- * Plan which agents to dispatch using the orchestrator
+ * Result type for orchestrator planning - can be either agents or a prompt
+ */
+export type PlanningResult =
+	| { type: 'agents'; plan: OrchestratorPlan }
+	| { type: 'prompt'; promptName: string; reference: string; language: string };
+
+/**
+ * Plan which agents to dispatch OR which prompt to execute using the orchestrator
  */
 async function planAgentDispatch(
 	ai: AIBinding,
 	userMessage: string,
 	chatHistory: Array<{ role: string; content: string }>,
 	emit: StreamEmitter
-): Promise<OrchestratorPlan | null> {
+): Promise<PlanningResult | null> {
 	// Build context from recent history
 	const recentHistory = chatHistory.slice(-4).map((msg) => ({
 		role: msg.role as 'user' | 'assistant',
@@ -446,7 +594,7 @@ async function planAgentDispatch(
 	try {
 		const result = await ai.run(WORKERS_AI_MODEL, {
 			messages,
-			tools: [PLANNING_TOOL],
+			tools: [PLANNING_TOOL, EXECUTE_PROMPT_TOOL],
 			tool_choice: 'required'
 		});
 
@@ -471,18 +619,38 @@ async function planAgentDispatch(
 			const functionArgs =
 				typeof rawArgs === 'string' ? rawArgs : (rawArgs as Record<string, unknown>);
 
+			// Handle execute_prompt tool call
+			if (functionName === 'execute_prompt') {
+				const promptArgs = parseExecutePromptArgs(functionArgs);
+				if (promptArgs) {
+					emit('orchestrator:thinking', {
+						delta: `\nUsing ${promptArgs.promptName} workflow for ${promptArgs.reference}...\n`
+					});
+					return {
+						type: 'prompt',
+						promptName: promptArgs.promptName,
+						reference: promptArgs.reference,
+						language: promptArgs.language
+					};
+				}
+			}
+
+			// Handle dispatch_agents tool call
 			if (functionName === 'dispatch_agents') {
 				const plan = parseOrchestratorPlan(functionArgs);
 				if (plan) {
 					emit('orchestrator:thinking', { delta: `\n${plan.reasoning}\n` });
 					return {
-						reasoning: plan.reasoning,
-						agents: plan.agents.map((a) => ({
-							agent: a.agent as AgentName,
-							task: a.task,
-							priority: a.priority as 'high' | 'normal' | 'low'
-						})),
-						needsIteration: plan.needsIteration
+						type: 'agents',
+						plan: {
+							reasoning: plan.reasoning,
+							agents: plan.agents.map((a) => ({
+								agent: a.agent as AgentName,
+								task: a.task,
+								priority: a.priority as 'high' | 'normal' | 'low'
+							})),
+							needsIteration: plan.needsIteration
+						}
 					};
 				}
 			}
@@ -494,15 +662,18 @@ async function planAgentDispatch(
 				if (possiblePlan.reasoning && Array.isArray(possiblePlan.agents)) {
 					emit('orchestrator:thinking', { delta: `\n${possiblePlan.reasoning}\n` });
 					return {
-						reasoning: possiblePlan.reasoning as string,
-						agents: (
-							possiblePlan.agents as Array<{ agent: string; task: string; priority: string }>
-						).map((a) => ({
-							agent: a.agent as AgentName,
-							task: a.task,
-							priority: a.priority as 'high' | 'normal' | 'low'
-						})),
-						needsIteration: (possiblePlan.needsIteration as boolean) || false
+						type: 'agents',
+						plan: {
+							reasoning: possiblePlan.reasoning as string,
+							agents: (
+								possiblePlan.agents as Array<{ agent: string; task: string; priority: string }>
+							).map((a) => ({
+								agent: a.agent as AgentName,
+								task: a.task,
+								priority: a.priority as 'high' | 'normal' | 'low'
+							})),
+							needsIteration: (possiblePlan.needsIteration as boolean) || false
+						}
 					};
 				}
 			}
@@ -515,13 +686,16 @@ async function planAgentDispatch(
 				if (parsed.reasoning && Array.isArray(parsed.agents)) {
 					emit('orchestrator:thinking', { delta: `\n${parsed.reasoning}\n` });
 					return {
-						reasoning: parsed.reasoning,
-						agents: parsed.agents.map((a: { agent: string; task: string; priority: string }) => ({
-							agent: a.agent as AgentName,
-							task: a.task,
-							priority: a.priority as 'high' | 'normal' | 'low'
-						})),
-						needsIteration: parsed.needsIteration || false
+						type: 'agents',
+						plan: {
+							reasoning: parsed.reasoning,
+							agents: parsed.agents.map((a: { agent: string; task: string; priority: string }) => ({
+								agent: a.agent as AgentName,
+								task: a.task,
+								priority: a.priority as 'high' | 'normal' | 'low'
+							})),
+							needsIteration: parsed.needsIteration || false
+						}
 					};
 				}
 			} catch {

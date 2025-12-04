@@ -21,15 +21,31 @@ You have specialized assistants who each excel at ONE thing:
 4. **Translation Academy Agent**: Gets articles about translation concepts
 5. **Search Agent**: Searches across all resources for broad queries
 
+## MCP PROMPTS (Pre-defined Workflows)
+You also have access to complete prompt workflows that chain multiple tools:
+
+1. **translation-helps-for-passage**: Complete translation help (scripture + notes + questions + words + academy)
+   - Use for: "Help me translate X", "Give me everything for X", "Comprehensive help for X"
+   
+2. **get-translation-words-for-passage**: All word definitions for a passage
+   - Use for: "What terms are in X?", "Dictionary entries for X"
+   
+3. **get-translation-academy-for-passage**: Training articles from notes
+   - Use for: "What concepts should I know for X?", "Training for translating X"
+
 ## YOUR ROLE
 1. **Analyze** the user's question to understand what they need
-2. **Plan** which team members to dispatch (usually 2-3)
-3. **Assign** clear, focused tasks to each agent
-4. **Wait** for their reports
-5. **Synthesize** findings into a unified, well-cited response
-6. **Iterate** if needed - send another round if information is incomplete
+2. **Decide** whether to use a prompt workflow OR dispatch individual agents
+3. **Execute** the chosen approach
+4. **Synthesize** findings into a unified, well-cited response
+5. **Iterate** if needed - dispatch agents for follow-up after a prompt
 
-## PLANNING RULES
+## DECISION RULES
+- **Use execute_prompt** for comprehensive/complete requests about a passage
+- **Use dispatch_agents** for specific questions, follow-ups, or when prompt results are insufficient
+- You can use BOTH: run a prompt first, then dispatch agents to dig deeper
+
+## PLANNING RULES (for dispatch_agents)
 - Scripture questions → Scripture Agent + Notes Agent
 - Term definitions → Words Agent (+ Scripture Agent for examples)
 - "What does X mean" → Notes Agent + Words Agent + Scripture Agent
@@ -37,8 +53,8 @@ You have specialized assistants who each excel at ONE thing:
 - Translation concepts → Academy Agent
 - Questions about people/places → Words Agent (names category)
 
-## OUTPUT FORMAT (For Planning)
-You MUST call the dispatch_agents function with your plan. Structure it as:
+## OUTPUT FORMAT (For Planning with Agents)
+Call dispatch_agents function with:
 {
   "reasoning": "Why I'm choosing these agents...",
   "agents": [
@@ -48,10 +64,18 @@ You MUST call the dispatch_agents function with your plan. Structure it as:
   "needsIteration": false
 }
 
+## OUTPUT FORMAT (For Prompt Workflows)
+Call execute_prompt function with:
+{
+  "promptName": "translation-helps-for-passage",
+  "reference": "John 3:16",
+  "language": "en"
+}
+
 ## SYNTHESIS RULES
-- ONLY use information from agent reports
+- ONLY use information from agent/prompt reports
 - CITE every piece of information with source
-- If an agent failed, acknowledge it and work with what you have
+- If an agent or prompt failed, acknowledge it and work with what you have
 - Organize response logically with headers
 - End with 2-3 follow-up questions based on findings
 
@@ -134,6 +158,146 @@ export const PLANNING_TOOL: WorkersAIToolDefinition = {
 		}
 	}
 };
+
+/**
+ * Execute prompt tool definition for running pre-defined MCP prompt workflows
+ */
+export const EXECUTE_PROMPT_TOOL: WorkersAIToolDefinition = {
+	type: 'function',
+	function: {
+		name: 'execute_prompt',
+		description:
+			'Execute a pre-defined MCP prompt workflow for comprehensive requests. Use this for complete translation help, getting all word definitions, or finding all training articles for a passage.',
+		parameters: {
+			type: 'object',
+			properties: {
+				promptName: {
+					type: 'string',
+					enum: [
+						'translation-helps-for-passage',
+						'get-translation-words-for-passage',
+						'get-translation-academy-for-passage'
+					],
+					description:
+						'Which prompt workflow to execute: translation-helps-for-passage (complete help), get-translation-words-for-passage (all word definitions), get-translation-academy-for-passage (training articles)'
+				},
+				reference: {
+					type: 'string',
+					description: 'Bible reference (e.g., "John 3:16", "Genesis 1:1-3", "Romans 8")'
+				},
+				language: {
+					type: 'string',
+					description: 'Language code (default: "en")'
+				}
+			},
+			required: ['promptName', 'reference']
+		}
+	}
+};
+
+/**
+ * Parse execute_prompt tool call arguments
+ */
+export function parseExecutePromptArgs(toolCallArgs: string | Record<string, unknown>): {
+	promptName: string;
+	reference: string;
+	language: string;
+} | null {
+	try {
+		const parsed = typeof toolCallArgs === 'string' ? JSON.parse(toolCallArgs) : toolCallArgs;
+
+		if (!parsed.promptName || !parsed.reference) {
+			return null;
+		}
+
+		return {
+			promptName: parsed.promptName,
+			reference: parsed.reference,
+			language: parsed.language || 'en'
+		};
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Extract citations from prompt execution result
+ */
+export function extractCitationsFromPromptResult(
+	promptResult: Record<string, unknown>,
+	reference: string
+): Array<{ source: string; reference?: string; content: string }> {
+	const citations: Array<{ source: string; reference?: string; content: string }> = [];
+
+	// Extract scripture citation
+	if (promptResult.scripture) {
+		const scripture = promptResult.scripture as { text?: string };
+		if (scripture.text) {
+			citations.push({
+				source: 'Scripture',
+				reference: reference,
+				content: scripture.text.substring(0, 200) + (scripture.text.length > 200 ? '...' : '')
+			});
+		}
+	}
+
+	// Extract word citations
+	if (Array.isArray(promptResult.words)) {
+		for (const word of promptResult.words as Array<{ title?: string; term?: string }>) {
+			if (word.title || word.term) {
+				citations.push({
+					source: 'Translation Words',
+					reference: word.title || word.term,
+					content: `Definition for ${word.title || word.term}`
+				});
+			}
+		}
+	}
+
+	// Extract notes citation
+	if (promptResult.notes) {
+		const notes = promptResult.notes as { items?: unknown[]; notes?: unknown[] };
+		const noteCount = notes.items?.length || notes.notes?.length || 0;
+		if (noteCount > 0) {
+			citations.push({
+				source: 'Translation Notes',
+				reference: reference,
+				content: `${noteCount} translation notes`
+			});
+		}
+	}
+
+	// Extract questions citation
+	if (promptResult.questions) {
+		const questions = promptResult.questions as { count?: number; items?: unknown[] };
+		const questionCount = questions.count || questions.items?.length || 0;
+		if (questionCount > 0) {
+			citations.push({
+				source: 'Translation Questions',
+				reference: reference,
+				content: `${questionCount} comprehension questions`
+			});
+		}
+	}
+
+	// Extract academy citations
+	if (Array.isArray(promptResult.academyArticles)) {
+		for (const article of promptResult.academyArticles as Array<{
+			title?: string;
+			moduleId?: string;
+		}>) {
+			if (article.title || article.moduleId) {
+				citations.push({
+					source: 'Translation Academy',
+					reference: article.title || article.moduleId,
+					content: `Training article: ${article.title || article.moduleId}`
+				});
+			}
+		}
+	}
+
+	return citations;
+}
 
 /**
  * Parse orchestrator plan from tool call response

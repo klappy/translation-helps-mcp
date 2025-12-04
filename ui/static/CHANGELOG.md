@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.14.0](https://github.com/klappy/translation-helps-mcp/compare/v7.13.5...v7.14.0) (2025-12-04)
+
+### Features
+
+- **orchestration:** Integrate MCP Prompts into orchestrated chat system
+  - Orchestrator can now choose between pre-defined prompt workflows and individual agents
+  - Added `execute_prompt` tool for running comprehensive MCP prompt workflows
+  - Prompts like "translation-helps-for-passage" chain 6+ tool calls for complete translation help
+  - Orchestrator intelligently decides: prompts for comprehensive requests, agents for specific queries
+  - UI shows prompt execution with real-time progress in ThinkingBubble
+
+- **prompts:** Fix MCP Prompts after default format change to markdown
+  - All internal fetch calls in execute-prompt endpoint now explicitly request JSON format
+  - Prompts continue to work correctly while endpoints default to markdown
+
+- **scripture:** include full title from DCS catalog in scripture responses
+
+### Bug Fixes
+
+- **orchestration:** fix userMessage reference in planIterationTasks
+- **search-agent:** correctly parse hit count from markdown MCP response
+- **xray:** correct tool timing and add TTFT metric
+- **xray:** prevent duplicate timeline entries for orchestrator and agents
+
 ### [7.13.7](https://github.com/klappy/translation-helps-mcp/compare/v7.13.6...v7.13.7) (2025-12-04)
 
 ### Bug Fixes

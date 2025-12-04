@@ -335,6 +335,54 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 				}
 				break;
 
+			case 'prompt:start':
+				// MCP Prompt workflow started
+				orchestratorStatus = 'dispatching';
+				const promptName = eventData.promptName as string;
+				const reference = eventData.reference as string;
+				agentStreams = [
+					{
+						agent: 'prompt',
+						name: `MCP Prompt: ${promptName}`,
+						icon: '⚡',
+						task: `Executing ${promptName} for ${reference}`,
+						status: 'thinking' as const,
+						thoughts: `Running comprehensive workflow for ${reference}...`,
+						toolCalls: []
+					}
+				];
+				break;
+
+			case 'prompt:complete':
+				// MCP Prompt workflow completed
+				const promptSuccess = eventData.success as boolean;
+				agentStreams = agentStreams.map((a) =>
+					a.agent === 'prompt'
+						? {
+								...a,
+								status: promptSuccess ? ('complete' as const) : ('error' as const),
+								summary: promptSuccess
+									? 'Prompt workflow completed successfully'
+									: 'Prompt workflow failed'
+							}
+						: a
+				);
+				break;
+
+			case 'prompt:error':
+				// MCP Prompt workflow failed
+				const promptError = (eventData.error as string) || 'Unknown error';
+				agentStreams = agentStreams.map((a) =>
+					a.agent === 'prompt'
+						? {
+								...a,
+								status: 'error' as const,
+								error: promptError
+							}
+						: a
+				);
+				break;
+
 			case 'agent:start':
 				const startAgent = eventData.agent as string;
 				agentStreams = agentStreams.map((a) =>
