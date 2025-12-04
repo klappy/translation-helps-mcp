@@ -43,7 +43,7 @@ export interface Citation {
 /**
  * Available agent names
  */
-export type AgentName = 'scripture' | 'notes' | 'words' | 'academy' | 'search';
+export type AgentName = 'scripture' | 'notes' | 'words' | 'academy' | 'search' | 'prompt';
 
 /**
  * Tool executor function type
@@ -158,7 +158,8 @@ export const AGENT_DISPLAY_INFO: Record<AgentName, { displayName: string; icon: 
 	notes: { displayName: 'Translation Notes Agent', icon: '📝' },
 	words: { displayName: 'Translation Words Agent', icon: '📚' },
 	academy: { displayName: 'Translation Academy Agent', icon: '🎓' },
-	search: { displayName: 'Search Agent', icon: '🔍' }
+	search: { displayName: 'Search Agent', icon: '🔍' },
+	prompt: { displayName: 'MCP Prompt Workflow', icon: '⚡' }
 };
 
 /**

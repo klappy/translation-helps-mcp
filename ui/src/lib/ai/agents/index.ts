@@ -12,7 +12,10 @@ export {
 	ORCHESTRATOR_PROMPT,
 	SYNTHESIS_PROMPT,
 	PLANNING_TOOL,
+	EXECUTE_PROMPT_TOOL,
 	parseOrchestratorPlan,
+	parseExecutePromptArgs,
+	extractCitationsFromPromptResult,
 	buildSynthesisContext
 } from './orchestrator.js';
 

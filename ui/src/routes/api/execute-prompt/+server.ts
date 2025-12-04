@@ -241,7 +241,7 @@ async function executeTranslationHelpsPrompt(
 	// Step 1: Fetch scripture
 	try {
 		const scriptureRes = await trackedFetchCall(
-			`/api/fetch-scripture?reference=${encodeURIComponent(reference)}&language=${language}`
+			`/api/fetch-scripture?reference=${encodeURIComponent(reference)}&language=${language}&format=json`
 		);
 		if (scriptureRes.ok) {
 			const scriptureData = await scriptureRes.json();
@@ -274,7 +274,7 @@ async function executeTranslationHelpsPrompt(
 	// Step 2: Fetch questions
 	try {
 		const questionsRes = await trackedFetchCall(
-			`/api/fetch-translation-questions?reference=${encodeURIComponent(reference)}&language=${language}`
+			`/api/fetch-translation-questions?reference=${encodeURIComponent(reference)}&language=${language}&format=json`
 		);
 		if (questionsRes.ok) {
 			const questionsData = await questionsRes.json();
@@ -291,7 +291,7 @@ async function executeTranslationHelpsPrompt(
 	let wordLinks: any[] = [];
 	try {
 		const linksRes = await trackedFetchCall(
-			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}`
+			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}&format=json`
 		);
 		if (linksRes.ok) {
 			const linksData = await linksRes.json();
@@ -316,7 +316,7 @@ async function executeTranslationHelpsPrompt(
 			});
 
 			// Use the path parameter from the link (it has category and .md extension)
-			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`;
+			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}&format=json`;
 			console.log(`Fetching word article: ${url}`);
 			const wordRes = await trackedFetchCall(url);
 			if (wordRes.ok) {
@@ -330,7 +330,7 @@ async function executeTranslationHelpsPrompt(
 					// Try fetching using rcLink instead as fallback
 					try {
 						const fallbackRes = await trackedFetchCall(
-							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}`
+							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}&format=json`
 						);
 						if (fallbackRes.ok) {
 							const fallbackData = await fallbackRes.json();
@@ -412,7 +412,7 @@ async function executeTranslationHelpsPrompt(
 	// Step 5: Fetch notes
 	try {
 		const notesRes = await trackedFetchCall(
-			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
+			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}&format=json`
 		);
 		if (notesRes.ok) {
 			results.notes = await notesRes.json();
@@ -428,7 +428,7 @@ async function executeTranslationHelpsPrompt(
 		// Limit to first 5
 		try {
 			const academyRes = await trackedFetchCall(
-				`/api/fetch-translation-academy?rcLink=${encodeURIComponent(ref)}&language=${language}`
+				`/api/fetch-translation-academy?rcLink=${encodeURIComponent(ref)}&language=${language}&format=json`
 			);
 			if (academyRes.ok) {
 				const academyData = await academyRes.json();
@@ -443,7 +443,7 @@ async function executeTranslationHelpsPrompt(
 					if (moduleId) {
 						try {
 							const fallbackRes = await trackedFetchCall(
-								`/api/fetch-translation-academy?moduleId=${encodeURIComponent(moduleId)}&language=${language}`
+								`/api/fetch-translation-academy?moduleId=${encodeURIComponent(moduleId)}&language=${language}&format=json`
 							);
 							if (fallbackRes.ok) {
 								const fallbackData = await fallbackRes.json();
@@ -543,7 +543,7 @@ async function executeWordsPrompt(
 	let wordLinks: any[] = [];
 	try {
 		const linksRes = await trackedFetchCall(
-			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}`
+			`/api/fetch-translation-word-links?reference=${encodeURIComponent(reference)}&language=${language}&format=json`
 		);
 		if (linksRes.ok) {
 			const linksData = await linksRes.json();
@@ -565,7 +565,7 @@ async function executeWordsPrompt(
 				category: link.category
 			});
 
-			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}`;
+			const url = `/api/fetch-translation-word?path=${encodeURIComponent(link.path)}&language=${language}&format=json`;
 			console.log(`Fetching word article: ${url}`);
 			const wordRes = await trackedFetchCall(url);
 			if (wordRes.ok) {
@@ -577,7 +577,7 @@ async function executeWordsPrompt(
 					);
 					try {
 						const fallbackRes = await trackedFetchCall(
-							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}`
+							`/api/fetch-translation-word?rcLink=${encodeURIComponent(link.rcLink)}&language=${language}&format=json`
 						);
 						if (fallbackRes.ok) {
 							const fallbackData = await fallbackRes.json();
@@ -673,7 +673,7 @@ async function executeAcademyPrompt(
 	// Step 1: Fetch notes (same as main prompt, but not included in results)
 	try {
 		const notesRes = await trackedFetchCall(
-			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}`
+			`/api/fetch-translation-notes?reference=${encodeURIComponent(reference)}&language=${language}&format=json`
 		);
 		if (notesRes.ok) {
 			notesData = await notesRes.json();
@@ -688,7 +688,7 @@ async function executeAcademyPrompt(
 	for (const ref of supportRefs.slice(0, 5)) {
 		try {
 			const academyRes = await trackedFetchCall(
-				`/api/fetch-translation-academy?rcLink=${encodeURIComponent(ref)}&language=${language}`
+				`/api/fetch-translation-academy?rcLink=${encodeURIComponent(ref)}&language=${language}&format=json`
 			);
 			if (academyRes.ok) {
 				const academyData = await academyRes.json();
@@ -701,7 +701,7 @@ async function executeAcademyPrompt(
 					if (moduleId) {
 						try {
 							const fallbackRes = await trackedFetchCall(
-								`/api/fetch-translation-academy?moduleId=${encodeURIComponent(moduleId)}&language=${language}`
+								`/api/fetch-translation-academy?moduleId=${encodeURIComponent(moduleId)}&language=${language}&format=json`
 							);
 							if (fallbackRes.ok) {
 								const fallbackData = await fallbackRes.json();
