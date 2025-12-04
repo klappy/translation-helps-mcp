@@ -40,8 +40,29 @@
 	}
 
 	// Check if this is orchestrated data
-	$: isOrchestrated = data?.orchestration || data?.agents?.length > 0;
-	$: agents = data?.agents || [];
+	$: isOrchestrated =
+		data?.mode === 'orchestrated' || data?.orchestration || data?.agents?.dispatched > 0;
+	$: agents = data?.agents?.details || data?.agents || [];
+	$: timeline = data?.timeline || [];
+	$: summary = data?.summary || {};
+
+	// Group timeline by type for display
+	$: llmCalls = timeline.filter((t: any) => t.type === 'llm');
+	$: toolCalls = timeline.filter((t: any) => t.type === 'tool');
+
+	function getTimelineIcon(entry: any) {
+		if (entry.type === 'llm') {
+			if (entry.name.includes('Orchestrator')) return '🎯';
+			if (entry.name.includes('Synthesis')) return '✨';
+			return '🧠';
+		}
+		return getToolIcon(entry.name);
+	}
+
+	function getTimelineColor(entry: any) {
+		if (entry.type === 'llm') return 'border-purple-500/50 bg-purple-900/20';
+		return 'border-blue-500/50 bg-blue-900/20';
+	}
 </script>
 
 <div
@@ -66,31 +87,121 @@
 			<!-- Summary Section -->
 			<div class="mb-6 rounded-lg bg-gray-800 p-4">
 				<h4 class="mb-3 text-sm font-medium text-gray-300">Summary</h4>
-				<div class="grid {isOrchestrated ? 'grid-cols-3' : 'grid-cols-2'} gap-4">
+				<div class="grid {isOrchestrated ? 'grid-cols-4' : 'grid-cols-2'} gap-3">
 					{#if isOrchestrated}
 						<div class="text-center">
-							<div class="text-2xl font-bold text-white">{agents.length}</div>
+							<div class="text-xl font-bold text-purple-400">
+								{summary.llmCalls || llmCalls.length || 0}
+							</div>
+							<div class="text-xs text-gray-400">LLM Calls</div>
+						</div>
+						<div class="text-center">
+							<div class="text-xl font-bold text-blue-400">
+								{summary.toolCalls || toolCalls.length || 0}
+							</div>
+							<div class="text-xs text-gray-400">Tool Calls</div>
+						</div>
+						<div class="text-center">
+							<div class="text-xl font-bold text-green-400">
+								{summary.agentsDispatched || agents.length || 0}
+							</div>
 							<div class="text-xs text-gray-400">Agents</div>
+						</div>
+					{:else}
+						<div class="text-center">
+							<div class="text-2xl font-bold text-white">{data.tools?.length || 0}</div>
+							<div class="text-xs text-gray-400">Tools Used</div>
 						</div>
 					{/if}
 					<div class="text-center">
-						<div class="text-2xl font-bold text-white">{data.tools?.length || 0}</div>
-						<div class="text-xs text-gray-400">Tools Used</div>
-					</div>
-					<div class="text-center">
-						<div class="text-2xl font-bold text-white">{formatDuration(data.totalTime)}</div>
+						<div class="text-xl font-bold text-white">{formatDuration(data.totalTime)}</div>
 						<div class="text-xs text-gray-400">Total Time</div>
 					</div>
 				</div>
 				{#if isOrchestrated}
 					<div class="mt-3 border-t border-gray-700 pt-3">
-						<div class="flex items-center gap-2 text-xs text-blue-400">
-							<span>🧠</span>
-							<span>Multi-Agent Orchestration</span>
+						<div class="flex items-center justify-between">
+							<div class="flex items-center gap-2 text-xs text-blue-400">
+								<span>🧠</span>
+								<span>Multi-Agent Orchestration</span>
+							</div>
+							{#if summary.agentsSuccessful !== undefined}
+								<div class="text-xs">
+									<span class="text-green-400">{summary.agentsSuccessful} ✓</span>
+									{#if summary.agentsFailed > 0}
+										<span class="ml-2 text-red-400">{summary.agentsFailed} ✗</span>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					</div>
 				{/if}
 			</div>
+
+			<!-- Execution Timeline Section (for orchestrated requests) -->
+			{#if isOrchestrated && timeline.length > 0}
+				<div class="mb-6">
+					<h4 class="mb-3 text-sm font-medium text-gray-300">
+						<span class="mr-2">⏱️</span>Execution Timeline
+					</h4>
+					<div class="relative space-y-2">
+						<!-- Timeline connector line -->
+						<div class="absolute top-0 bottom-0 left-4 w-0.5 bg-gray-700"></div>
+
+						{#each timeline as entry, index}
+							<div class="relative flex items-start gap-3 pl-2">
+								<!-- Timeline dot -->
+								<div
+									class="relative z-10 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-sm
+									{entry.type === 'llm'
+										? 'bg-purple-900 ring-2 ring-purple-500/50'
+										: 'bg-blue-900 ring-2 ring-blue-500/50'}"
+								>
+									{getTimelineIcon(entry)}
+								</div>
+
+								<!-- Timeline content -->
+								<div class="flex-1 rounded-lg border {getTimelineColor(entry)} p-2">
+									<div class="flex items-center justify-between">
+										<div class="flex items-center gap-2">
+											<span class="text-sm font-medium text-white">{entry.name}</span>
+											{#if entry.agent}
+												<span class="text-xs text-gray-500">({entry.agent})</span>
+											{/if}
+											{#if entry.success === false}
+												<span class="rounded bg-red-900/50 px-1.5 py-0.5 text-xs text-red-300"
+													>Failed</span
+												>
+											{:else if entry.success}
+												<span class="text-xs text-green-400">✓</span>
+											{/if}
+										</div>
+										{#if entry.duration}
+											<span class="flex items-center gap-1 text-xs text-gray-400">
+												<Clock class="h-3 w-3" />
+												{formatDuration(entry.duration)}
+											</span>
+										{/if}
+									</div>
+									{#if entry.description}
+										<div class="mt-1 truncate text-xs text-gray-400">{entry.description}</div>
+									{/if}
+									{#if entry.model}
+										<div class="mt-1 text-xs text-purple-400/70">
+											{entry.model.split('/').pop()}
+										</div>
+									{/if}
+									{#if entry.preview}
+										<div class="mt-1 truncate text-xs text-gray-500">
+											{entry.preview.substring(0, 80)}...
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
 
 			<!-- Timing Breakdown Section -->
 			{#if data.timings?.breakdown}

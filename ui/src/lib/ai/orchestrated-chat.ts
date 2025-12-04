@@ -44,8 +44,26 @@ export async function orchestratedChat(
 
 	return new ReadableStream<Uint8Array>({
 		start: async (controller) => {
-			// X-Ray data collection
+			// Comprehensive X-Ray data collection for full execution visibility
 			const startTime = Date.now();
+
+			// Timeline of ALL operations (LLM calls + tool calls)
+			const xrayTimeline: Array<{
+				type: 'llm' | 'tool' | 'phase';
+				name: string;
+				description?: string;
+				startTime: number;
+				endTime?: number;
+				duration?: number;
+				agent?: string;
+				model?: string;
+				params?: Record<string, unknown>;
+				success?: boolean;
+				preview?: string;
+				tokens?: { input?: number; output?: number };
+			}> = [];
+
+			// Legacy tool calls array for backwards compatibility
 			const xrayToolCalls: Array<{
 				name: string;
 				endpoint?: string;
@@ -55,15 +73,91 @@ export async function orchestratedChat(
 				preview?: string;
 				agent?: string;
 			}> = [];
+
 			const timings: Record<string, number> = {};
+
+			// Helper to add timeline entry
+			const addTimelineEntry = (entry: (typeof xrayTimeline)[0]) => {
+				xrayTimeline.push(entry);
+			};
 
 			const emit: StreamEmitter = (event: string, data: unknown) => {
 				const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 				controller.enqueue(encoder.encode(msg));
 
-				// Collect X-Ray data from agent events
+				const now = Date.now();
+
+				// Track orchestrator events
+				if (event === 'orchestrator:thinking') {
+					// Mark orchestrator LLM start if not already started
+					const existing = xrayTimeline.find(
+						(t) => t.type === 'llm' && t.name === 'Orchestrator Planning' && !t.endTime
+					);
+					if (!existing) {
+						addTimelineEntry({
+							type: 'llm',
+							name: 'Orchestrator Planning',
+							description: 'Planning which agents to dispatch',
+							startTime: now,
+							model: WORKERS_AI_MODEL
+						});
+					}
+				}
+
+				if (event === 'orchestrator:plan') {
+					// Mark orchestrator LLM complete
+					const entry = xrayTimeline.find(
+						(t) => t.type === 'llm' && t.name === 'Orchestrator Planning' && !t.endTime
+					);
+					if (entry) {
+						entry.endTime = now;
+						entry.duration = now - entry.startTime;
+						entry.success = true;
+					}
+				}
+
+				// Track agent LLM calls
+				if (event === 'agent:start') {
+					const eventData = data as { agent?: string; task?: string };
+					addTimelineEntry({
+						type: 'llm',
+						name: `${eventData.agent} Agent`,
+						description: eventData.task,
+						startTime: now,
+						agent: eventData.agent,
+						model: WORKERS_AI_MODEL
+					});
+				}
+
+				// Track agent tool calls
 				if (event === 'agent:tool:start') {
 					const eventData = data as { agent?: string; tool?: string; args?: unknown };
+
+					// Mark agent LLM as complete (it decided to call a tool)
+					const agentLlm = xrayTimeline.find(
+						(t) =>
+							t.type === 'llm' &&
+							t.agent === eventData.agent &&
+							!t.endTime &&
+							t.name.includes('Agent')
+					);
+					if (agentLlm && !agentLlm.endTime) {
+						agentLlm.endTime = now;
+						agentLlm.duration = now - agentLlm.startTime;
+						agentLlm.success = true;
+					}
+
+					// Add tool call to timeline
+					addTimelineEntry({
+						type: 'tool',
+						name: eventData.tool || 'unknown',
+						description: `Tool call from ${eventData.agent}`,
+						startTime: now,
+						agent: eventData.agent,
+						params: eventData.args as Record<string, unknown>
+					});
+
+					// Legacy support
 					xrayToolCalls.push({
 						name: eventData.tool || 'unknown',
 						endpoint: `/api/mcp (${eventData.tool})`,
@@ -71,16 +165,62 @@ export async function orchestratedChat(
 						agent: eventData.agent
 					});
 				}
+
 				if (event === 'agent:tool:result') {
 					const eventData = data as { agent?: string; tool?: string; preview?: string };
+
+					// Update timeline entry
+					const toolEntry = xrayTimeline.find(
+						(t) =>
+							t.type === 'tool' &&
+							t.name === eventData.tool &&
+							t.agent === eventData.agent &&
+							!t.endTime
+					);
+					if (toolEntry) {
+						toolEntry.endTime = now;
+						toolEntry.duration = now - toolEntry.startTime;
+						toolEntry.success = true;
+						toolEntry.preview = eventData.preview;
+					}
+
+					// Legacy support
 					const lastCall = xrayToolCalls.find(
 						(c) => c.name === eventData.tool && c.agent === eventData.agent && !c.duration
 					);
 					if (lastCall) {
-						lastCall.duration = Date.now() - startTime;
+						lastCall.duration = now - startTime;
 						lastCall.success = true;
 						lastCall.preview = eventData.preview;
 					}
+				}
+
+				if (event === 'agent:summary' || event === 'agent:error') {
+					const eventData = data as { agent?: string; success?: boolean; error?: string };
+					// Mark any unclosed agent LLM entries as complete
+					const agentLlm = xrayTimeline.find(
+						(t) =>
+							t.type === 'llm' &&
+							t.agent === eventData.agent &&
+							!t.endTime &&
+							t.name.includes('Agent')
+					);
+					if (agentLlm) {
+						agentLlm.endTime = now;
+						agentLlm.duration = now - agentLlm.startTime;
+						agentLlm.success = event === 'agent:summary' ? (eventData.success ?? true) : false;
+					}
+				}
+
+				// Track synthesis
+				if (event === 'synthesis:start') {
+					addTimelineEntry({
+						type: 'llm',
+						name: 'Response Synthesis',
+						description: 'Synthesizing final response from agent findings',
+						startTime: now,
+						model: WORKERS_AI_MODEL
+					});
 				}
 			};
 
@@ -178,21 +318,66 @@ export async function orchestratedChat(
 				// Calculate total time
 				const totalTime = Date.now() - startTime;
 
-				// Emit X-Ray data for debugging panel
+				// Mark synthesis as complete
+				const synthesisEntry = xrayTimeline.find(
+					(t) => t.type === 'llm' && t.name === 'Response Synthesis' && !t.endTime
+				);
+				if (synthesisEntry) {
+					synthesisEntry.endTime = Date.now();
+					synthesisEntry.duration = synthesisEntry.endTime - synthesisEntry.startTime;
+					synthesisEntry.success = true;
+				}
+
+				// Count LLM calls vs tool calls
+				const llmCalls = xrayTimeline.filter((t) => t.type === 'llm');
+				const toolCalls = xrayTimeline.filter((t) => t.type === 'tool');
+
+				// Emit comprehensive X-Ray data for debugging panel
 				const xrayData = {
 					totalTime,
+					mode: 'orchestrated',
+
+					// High-level summary
+					summary: {
+						llmCalls: llmCalls.length,
+						toolCalls: toolCalls.length,
+						agentsDispatched: plan.agents.length,
+						agentsSuccessful: agentResults.filter((r) => r.success).length,
+						agentsFailed: agentResults.filter((r) => !r.success).length
+					},
+
+					// Phase timings
 					timings: {
 						planning: timings.planning,
 						agentExecution: timings.agentExecution,
-						synthesis: timings.synthesis
+						synthesis: timings.synthesis,
+						total: totalTime
 					},
+
+					// Full execution timeline (NEW - shows everything)
+					timeline: xrayTimeline.map((entry) => ({
+						type: entry.type,
+						name: entry.name,
+						description: entry.description,
+						duration: entry.duration,
+						agent: entry.agent,
+						model: entry.model,
+						success: entry.success,
+						preview: entry.preview,
+						params: entry.params
+					})),
+
+					// Legacy: API/tool calls for backwards compatibility
 					apiCalls: xrayToolCalls,
 					tools: xrayToolCalls.map((c) => ({
 						name: c.name,
 						duration: c.duration,
 						success: c.success,
-						params: c.params
+						params: c.params,
+						agent: c.agent
 					})),
+
+					// Agent details
 					agents: {
 						dispatched: plan.agents.length,
 						successful: agentResults.filter((r) => r.success).length,
@@ -204,8 +389,7 @@ export async function orchestratedChat(
 							confidence: r.confidence,
 							summary: r.summary
 						}))
-					},
-					mode: 'orchestrated'
+					}
 				};
 
 				emit('xray', xrayData);

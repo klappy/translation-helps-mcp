@@ -71,5 +71,9 @@ export async function executeAgent(
 	if (!executor) {
 		throw new Error(`Unknown agent: ${agentName}`);
 	}
+
+	// Emit agent start for X-Ray timeline tracking
+	emit('agent:start', { agent: agentName, task: task.task });
+
 	return executor(ai, task, tools, executeToolFn, emit);
 }
