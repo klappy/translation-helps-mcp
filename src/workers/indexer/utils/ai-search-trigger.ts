@@ -67,42 +67,61 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
       },
     });
 
-    const body = await response.text();
+    const bodyText = await response.text();
     console.log(
       `[AI Search Trigger] Response: ${response.status} ${response.statusText}`,
     );
-    console.log(`[AI Search Trigger] Body: ${body}`);
 
+    // Check HTTP status first
     if (!response.ok) {
-      // Check for rate limit response - don't update lastTriggerTime to allow retry
       if (response.status === 429) {
         console.log(
           "[AI Search Trigger] Rate limited by API - will retry on next batch",
         );
         return;
       }
-
-      // 404 means the endpoint doesn't exist - AI Search may sync automatically
       if (response.status === 404) {
-        console.log(
-          "[AI Search Trigger] ⚠️ Reindex API endpoint not found (404). AI Search may sync automatically from R2 bucket.",
-        );
-        // Don't spam logs - mark as "triggered" to rate limit
-        lastTriggerTime = now;
+        console.log("[AI Search Trigger] ⚠️ Endpoint not found (404)");
+        lastTriggerTime = now; // Rate limit retries
         return;
       }
-
-      // Log non-rate-limit errors but don't throw
       console.error(
-        `[AI Search Trigger] ❌ API ERROR: ${response.status} ${response.statusText} - ${body}`,
+        `[AI Search Trigger] ❌ HTTP ${response.status}: ${bodyText}`,
       );
       return;
     }
 
-    // Only update lastTriggerTime on SUCCESS
-    lastTriggerTime = now;
+    // Parse and validate Cloudflare API response envelope
+    let result: {
+      success?: boolean;
+      errors?: Array<{ message: string }>;
+      result?: { job_id?: string };
+    };
+    try {
+      result = JSON.parse(bodyText);
+    } catch {
+      console.error(
+        `[AI Search Trigger] ❌ Invalid JSON response: ${bodyText}`,
+      );
+      return;
+    }
 
-    console.log("[AI Search Trigger] ✅ Reindex triggered successfully!");
+    // Cloudflare API can return 200 with success: false
+    if (!result.success) {
+      const errorMsg =
+        result.errors?.map((e) => e.message).join(", ") || "Unknown error";
+      console.error(
+        `[AI Search Trigger] ❌ API returned success=false: ${errorMsg}`,
+      );
+      return;
+    }
+
+    // Success - update rate limit timer
+    lastTriggerTime = now;
+    const jobId = result.result?.job_id || "unknown";
+    console.log(
+      `[AI Search Trigger] ✅ Sync triggered successfully (job_id: ${jobId})`,
+    );
   } catch (error) {
     // Log but don't throw - content is already in R2 and will be indexed
     // on the next automatic 6-hour sync. No need to block queue processing.
