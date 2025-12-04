@@ -219,7 +219,7 @@ export async function callWorkersAIStream(
 					const content = finalResult.response || '';
 					for (let i = 0; i < content.length; i += 10) {
 						const chunk = content.slice(i, i + 10);
-						emit(controller, 'content', { delta: chunk });
+						emit(controller, 'llm:delta', { text: chunk });
 						// Small delay for streaming effect
 						await new Promise((r) => setTimeout(r, 5));
 					}
@@ -246,7 +246,7 @@ export async function callWorkersAIStream(
 					const content = result.response || '';
 					for (let i = 0; i < content.length; i += 10) {
 						const chunk = content.slice(i, i + 10);
-						emit(controller, 'content', { delta: chunk });
+						emit(controller, 'llm:delta', { text: chunk });
 						await new Promise((r) => setTimeout(r, 5));
 					}
 
