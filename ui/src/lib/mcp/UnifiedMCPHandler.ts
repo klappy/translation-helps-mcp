@@ -66,7 +66,36 @@ export class UnifiedMCPHandler {
 		const response = await this.fetchFn(`${base}${tool.endpoint}?${params}`);
 
 		if (!response.ok) {
-			throw new Error(`Tool endpoint failed: ${response.status}`);
+			// Try to get more helpful error message from the response
+			let errorDetail = '';
+			try {
+				const errorBody = await response.json();
+				errorDetail = errorBody.message || errorBody.error || '';
+			} catch {
+				// Couldn't parse error body
+			}
+
+			// Provide helpful guidance based on the tool and error
+			let helpfulMessage = `Tool '${toolName}' failed with status ${response.status}.`;
+
+			if (response.status === 404) {
+				if (toolName === 'fetch_translation_word') {
+					const term = args.term || args.path || 'unknown';
+					helpfulMessage =
+						`Term '${term}' not found in Translation Words. ` +
+						`This resource uses English terms (like 'love', 'grace', 'faith'), not Greek/Hebrew words. ` +
+						`If looking for a Greek term like 'agape' or 'phileo', try searching for 'love' instead. ` +
+						`You can also use search_biblical_resources to find related content.`;
+				} else if (toolName === 'fetch_translation_academy') {
+					helpfulMessage =
+						`Module not found in Translation Academy. ` +
+						`Try using search_biblical_resources to find the correct module ID.`;
+				} else {
+					helpfulMessage = `Resource not found. ${errorDetail}`;
+				}
+			}
+
+			throw new Error(helpfulMessage);
 		}
 
 		// Capture diagnostic headers for metrics/debugging

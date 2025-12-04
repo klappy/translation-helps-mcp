@@ -91,6 +91,15 @@
 									<div class="flex items-center gap-2">
 										<span class="text-xl">{getToolIcon(tool.name)}</span>
 										<span class="font-medium text-white">{tool.name}</span>
+										{#if tool.error || tool.status === 404}
+											<span class="rounded bg-red-900/50 px-1.5 py-0.5 text-xs text-red-300"
+												>Failed</span
+											>
+										{:else if tool.responseSize}
+											<span class="rounded bg-green-900/50 px-1.5 py-0.5 text-xs text-green-300"
+												>{Math.round((tool.responseSize / 1024) * 10) / 10}KB</span
+											>
+										{/if}
 									</div>
 									<div class="flex items-center gap-3 text-sm">
 										<span class="flex items-center gap-1">
@@ -165,13 +174,25 @@
 									{#if tool.response}
 										<div class="mb-2 text-sm">
 											<span class="font-medium text-gray-400">Response:</span>
+											{#if tool.responseSize}
+												<span class="ml-2 text-xs text-gray-500"
+													>({Math.round((tool.responseSize / 1024) * 10) / 10}KB)</span
+												>
+											{/if}
 											<pre
-												class="mt-1 rounded p-2 font-mono text-xs text-gray-300"
+												class="mt-1 max-h-48 overflow-y-auto rounded p-2 font-mono text-xs text-gray-300"
 												style="background-color: #0f172a;">{JSON.stringify(
 													tool.response,
 													null,
 													2
-												).substring(0, 200)}...</pre>
+												).substring(0, 500)}{JSON.stringify(tool.response, null, 2).length > 500
+													? '...'
+													: ''}</pre>
+										</div>
+									{:else if tool.error}
+										<div class="mb-2 text-sm">
+											<span class="font-medium text-red-400">Error:</span>
+											<span class="ml-2 text-xs text-red-300">{tool.error}</span>
 										</div>
 									{/if}
 									{#if tool.status}

@@ -202,6 +202,9 @@ export async function callWorkersAIStream(
 				name: string;
 				args: string;
 				duration: number;
+				response?: unknown;
+				responseSize?: number;
+				hasError?: boolean;
 			}> = [];
 
 			try {
@@ -235,12 +238,39 @@ export async function callWorkersAIStream(
 					const toolResults = await onToolCalls(result.tool_calls);
 					detailedTimings.toolExecution = Date.now() - toolExecStart;
 
-					// Track individual tool timings (from onToolCalls metadata if available)
-					result.tool_calls.forEach((tc, _i) => {
+					// Track individual tool timings with response data for X-Ray
+					result.tool_calls.forEach((tc, i) => {
+						// Get the corresponding tool result
+						const toolResult = toolResults[i];
+						let responseData: unknown = null;
+						let hasError = false;
+						let responseSize = 0;
+
+						if (toolResult?.content) {
+							try {
+								responseData = JSON.parse(toolResult.content);
+								responseSize = toolResult.content.length;
+								// Check if response indicates an error
+								if (
+									typeof responseData === 'object' &&
+									responseData !== null &&
+									'error' in responseData
+								) {
+									hasError = true;
+								}
+							} catch {
+								responseData = toolResult.content;
+								responseSize = toolResult.content.length;
+							}
+						}
+
 						toolExecutions.push({
 							name: tc.function.name,
 							args: tc.function.arguments,
-							duration: Math.round(detailedTimings.toolExecution / result.tool_calls!.length)
+							duration: Math.round(detailedTimings.toolExecution / result.tool_calls!.length),
+							response: responseData,
+							responseSize,
+							hasError
 						});
 					});
 
@@ -279,13 +309,17 @@ export async function callWorkersAIStream(
 					const totalTime = detailedTimings.total || 0;
 					emit(controller, 'xray', {
 						...xrayInit,
-						// UI expects 'tools' array with id, name, duration, params
+						// UI expects 'tools' array with id, name, duration, params, response
 						tools: toolExecutions.map((t, i) => ({
 							id: `tool-${i}`,
 							name: t.name,
 							duration: t.duration,
 							params: typeof t.args === 'string' ? JSON.parse(t.args) : t.args,
-							cacheStatus: 'miss'
+							cacheStatus: 'miss',
+							response: t.response,
+							responseSize: t.responseSize,
+							error: t.hasError ? 'Tool returned an error' : undefined,
+							status: t.hasError ? 404 : 200
 						})),
 						totalTime,
 						timings: {

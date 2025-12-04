@@ -49,28 +49,26 @@
 	// Rich starter suggestions (shown before conversation starts)
 	const suggestions = [
 		{
-			title: 'Find a specific Bible verse with exact formatting',
-			prompt:
-				'Show me John 3:16 in ULT. Use verse number without a period and no blank lines between verses.',
-			description: 'Ask for a verse with your preferred translation and formatting.'
+			title: 'Find a specific Bible verse',
+			prompt: 'Show me John 3:16 in both ULT and UST translations.',
+			description: 'Fetch scripture text from available translations.'
 		},
 		{
-			title: 'Explore translation notes for a chapter',
+			title: 'Explore translation notes for a passage',
 			prompt:
-				'What do the Translation Notes say about Titus 1? Summarize key translation issues and include links to the specific notes.',
-			description: 'Deep-dive notes with source links you can follow.'
+				'What do the Translation Notes say about Romans 8:28? Include the key translation issues.',
+			description: 'Deep-dive into verse-specific translation guidance.'
 		},
 		{
 			title: 'Define a biblical term from Translation Words',
 			prompt:
-				"Define 'agape' from Translation Words and explain how it differs from 'phileo', with 2–3 scripture examples.",
-			description: 'Grounded definitions and distinctions from TW, with examples.'
+				"What does Translation Words say about 'love'? Include the different types of love mentioned.",
+			description: 'Grounded definitions from the Translation Words library.'
 		},
 		{
-			title: 'Study questions to guide a passage review',
-			prompt:
-				'Give me study questions for Genesis 1 that focus on literary structure, repeated words, and the order of creation.',
-			description: 'Structured prompts drawn from official resources.'
+			title: 'Look up a biblical figure',
+			prompt: 'Who is Paul according to Translation Words? Include key facts about his life.',
+			description: 'Biographical information from the Names category.'
 		}
 	];
 
