@@ -259,16 +259,6 @@ export async function callWorkersAIStream(
 					const finalLlmStart = Date.now();
 					emit(controller, 'llm:start', { started: true });
 
-					// Emit X-Ray data BEFORE streaming starts so UI can show it
-					emit(controller, 'xray', {
-						...xrayInit,
-						toolCalls: toolExecutions,
-						timings: {
-							...detailedTimings,
-							toolDiscovery: timings.toolDiscovery || 0
-						}
-					});
-
 					// Make final call WITH stream: true for real streaming
 					const streamResponse = (await ai.run(WORKERS_AI_MODEL, {
 						messages: finalMessages,
@@ -280,26 +270,30 @@ export async function callWorkersAIStream(
 					// Read from the actual stream and forward to client
 					await streamWorkersAIResponse(streamResponse, controller, emit);
 
+					// Calculate final timings AFTER streaming completes
 					detailedTimings.finalLlmCall = Date.now() - finalLlmStart;
 					detailedTimings.total = Date.now() - startTime;
 
-					// Emit final done event with all timings
+					// Emit X-Ray with COMPLETE timings after streaming
+					emit(controller, 'xray', {
+						...xrayInit,
+						toolCalls: toolExecutions,
+						timings: {
+							toolDiscovery: timings.toolDiscovery || 0,
+							initialLlmCall: detailedTimings.initialLlmCall || 0,
+							toolExecution: detailedTimings.toolExecution || 0,
+							finalLlmCall: detailedTimings.finalLlmCall || 0,
+							total: detailedTimings.total || 0
+						}
+					});
+
+					// Emit final done event
 					emit(controller, 'done', {
 						timings: detailedTimings
 					});
 				} else {
 					// No tool calls - stream response directly
 					emit(controller, 'llm:start', { started: true });
-
-					// Emit X-Ray data
-					emit(controller, 'xray', {
-						...xrayInit,
-						toolCalls: [],
-						timings: {
-							...detailedTimings,
-							toolDiscovery: timings.toolDiscovery || 0
-						}
-					});
 
 					// If we got a response without tools, stream it
 					if (result.response) {
@@ -317,7 +311,22 @@ export async function callWorkersAIStream(
 						await streamWorkersAIResponse(streamResponse, controller, emit);
 					}
 
+					// Calculate total timing AFTER streaming completes
 					detailedTimings.total = Date.now() - startTime;
+
+					// Emit X-Ray with COMPLETE timings after streaming
+					emit(controller, 'xray', {
+						...xrayInit,
+						toolCalls: [],
+						timings: {
+							toolDiscovery: timings.toolDiscovery || 0,
+							initialLlmCall: detailedTimings.initialLlmCall || 0,
+							toolExecution: 0,
+							finalLlmCall: 0,
+							total: detailedTimings.total || 0
+						}
+					});
+
 					emit(controller, 'done', {
 						timings: detailedTimings
 					});
