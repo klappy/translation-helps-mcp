@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.13.2](https://github.com/klappy/translation-helps-mcp/compare/v7.13.1...v7.13.2) (2025-12-04)
+
+### Bug Fixes
+
+- remove hardcoded parsing from agents - trust the LLM to read markdown ([1cce3f8](https://github.com/klappy/translation-helps-mcp/commit/1cce3f84c546210377bea9a84156b2e24e3ad37e))
+
 ### [7.13.1](https://github.com/klappy/translation-helps-mcp/compare/v7.13.0...v7.13.1) (2025-12-04)
 
 ### Features
