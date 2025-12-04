@@ -2,6 +2,7 @@
 
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 
 /**
  * Sync version from root package.json to ui/package.json and ui/src/lib/version.ts
@@ -51,6 +52,24 @@ try {
       JSON.stringify(uiPackage, null, "\t") + "\n",
     );
     console.log(`✅ UI package.json version synced to ${version}`);
+
+    // Update UI package-lock.json to match the new version
+    const uiDir = path.join(rootDir, "ui");
+    const uiLockPath = path.join(uiDir, "package-lock.json");
+    if (fs.existsSync(uiLockPath)) {
+      try {
+        console.log(`🔄 Updating UI package-lock.json...`);
+        execSync("npm install --package-lock-only --ignore-scripts", {
+          cwd: uiDir,
+          stdio: "pipe",
+        });
+        console.log(`✅ UI package-lock.json version synced to ${version}`);
+      } catch (lockError) {
+        console.log(
+          `⚠️  Could not update UI package-lock.json: ${lockError.message}`,
+        );
+      }
+    }
   } else {
     console.log(`⚠️  UI package.json not found at ${uiPackagePath}, skipping`);
   }
