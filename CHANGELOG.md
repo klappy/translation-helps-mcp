@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.13.3](https://github.com/klappy/translation-helps-mcp/compare/v7.13.2...v7.13.3) (2025-12-04)
+
+### Bug Fixes
+
+- default format to md for LLM-friendly output across all layers ([a77d37e](https://github.com/klappy/translation-helps-mcp/commit/a77d37e1dc8e95e662a00aaeb3f8ddee970154f1))
+
 ### [7.13.2](https://github.com/klappy/translation-helps-mcp/compare/v7.13.1...v7.13.2) (2025-12-04)
 
 ### Bug Fixes
