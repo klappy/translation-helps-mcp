@@ -278,8 +278,11 @@ export async function orchestratedChat(
 					const promptStart = Date.now();
 
 					try {
-						// Call the execute-prompt API endpoint
-						const promptResponse = await fetch('/api/execute-prompt', {
+						// Call the execute-prompt API endpoint (use absolute URL for server-side)
+						const promptUrl = finalConfig.baseUrl
+							? `${finalConfig.baseUrl}/api/execute-prompt`
+							: '/api/execute-prompt';
+						const promptResponse = await fetch(promptUrl, {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json' },
 							body: JSON.stringify({

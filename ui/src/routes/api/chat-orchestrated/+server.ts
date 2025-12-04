@@ -103,7 +103,8 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			maxIterations: config.maxIterations ?? 2,
 			confidenceThreshold: config.confidenceThreshold ?? 0.5,
 			enableStreaming: true,
-			parallelExecution: config.parallelExecution ?? true
+			parallelExecution: config.parallelExecution ?? true,
+			baseUrl: baseUrl
 		});
 
 		return new Response(stream, {

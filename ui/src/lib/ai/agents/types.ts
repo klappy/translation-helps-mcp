@@ -138,6 +138,7 @@ export interface OrchestrationConfig {
 	confidenceThreshold: number;
 	enableStreaming: boolean;
 	parallelExecution: boolean;
+	baseUrl?: string;
 }
 
 /**
@@ -147,7 +148,8 @@ export const DEFAULT_ORCHESTRATION_CONFIG: OrchestrationConfig = {
 	maxIterations: 2,
 	confidenceThreshold: 0.5,
 	enableStreaming: true,
-	parallelExecution: true
+	parallelExecution: true,
+	baseUrl: ''
 };
 
 /**
