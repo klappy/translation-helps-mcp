@@ -46,11 +46,8 @@ export interface WorkersAIRunOptions {
 
 /**
  * Cloudflare AI Binding interface
- * Matches the platform.env.AI binding type from app.d.ts
+ * Matches the platform.env.AI binding type
  */
 export interface AIBinding {
-	// AutoRAG - returns an instance for a specific AI Search index
-	autorag(indexName: string): AutoRAGInstance;
-	// Workers AI model inference
 	run(model: string, inputs: WorkersAIRunOptions): Promise<WorkersAIResponse>;
 }
