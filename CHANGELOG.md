@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.13.6](https://github.com/klappy/translation-helps-mcp/compare/v7.13.5...v7.13.6) (2025-12-04)
+
+### Features
+
+- **scripture:** include full title from DCS catalog in scripture responses
+  - Add `fullTitle` field (e.g., "unfoldingWord® Literal Text") alongside short `translation` (e.g., "ULT v87")
+  - LLM can now choose between brevity ("ULT v87") or full official name based on context
+  - Prevents hallucination of resource names by providing accurate catalog metadata
+
 ### [7.13.5](https://github.com/klappy/translation-helps-mcp/compare/v7.13.4...v7.13.5) (2025-12-04)
 
 ### Bug Fixes

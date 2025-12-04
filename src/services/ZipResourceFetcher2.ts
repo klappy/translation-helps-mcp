@@ -27,6 +27,7 @@ interface CatalogResource {
   name: string;
   repo: string;
   owner: string;
+  title?: string; // Full title from catalog e.g. "unfoldingWord® Literal Text"
   catalog?: {
     prod?: { branch_or_tag_name?: string; zipball_url?: string };
     preprod?: { branch_or_tag_name?: string; zipball_url?: string };
@@ -492,6 +493,7 @@ export class ZipResourceFetcher2 {
           return {
             owner: resource.owner,
             name: resource.name,
+            title: resource.title, // Full title from catalog
             ingredientPath: ingredient.path,
             refTag,
             zipballUrl,
@@ -503,6 +505,7 @@ export class ZipResourceFetcher2 {
           ): v is {
             owner: string;
             name: string;
+            title?: string;
             ingredientPath: string;
             refTag: string | null;
             zipballUrl: string | null;
@@ -514,6 +517,7 @@ export class ZipResourceFetcher2 {
         const altTargets: Array<{
           owner: string;
           name: string;
+          title?: string;
           ingredientPath: string;
           refTag: string | null;
           zipballUrl: string | null;
@@ -556,6 +560,7 @@ export class ZipResourceFetcher2 {
             altTargets.push({
               owner: resource.owner,
               name: resource.name,
+              title: metaRes?.title, // Full title from catalog
               ingredientPath: ingredient.path,
               refTag,
               zipballUrl,
@@ -654,6 +659,8 @@ export class ZipResourceFetcher2 {
           results.push({
             text: verseText,
             translation: withVersion,
+            // @ts-expect-error - Full title from DCS catalog for LLM context (e.g. "unfoldingWord® Literal Text")
+            fullTitle: t.title,
             // @ts-expect-error - Adding organization tracking for accurate source attribution
             actualOrganization: t.owner,
           });
@@ -751,6 +758,8 @@ export class ZipResourceFetcher2 {
           results.push({
             text: verseText,
             translation: withVersion,
+            // @ts-expect-error - Full title from DCS catalog for LLM context (e.g. "unfoldingWord® Literal Text")
+            fullTitle: t.title,
             // @ts-expect-error - Adding organization tracking for accurate source attribution
             actualOrganization: t.owner,
           });

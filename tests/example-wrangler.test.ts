@@ -22,6 +22,7 @@ describe("Example Wrangler Tests", () => {
       reference: "John 3:16",
       language: "en",
       organization: "unfoldingWord",
+      format: "json",
     });
 
     expect(status).toBe(200);
@@ -38,6 +39,7 @@ describe("Example Wrangler Tests", () => {
         reference: "John 3:16",
         language: "en",
         organization: "unfoldingWord",
+        format: "json",
       },
     );
 
@@ -51,6 +53,7 @@ describe("Example Wrangler Tests", () => {
       reference: "NotABook 99:99",
       language: "en",
       organization: "unfoldingWord",
+      format: "json",
     });
 
     // API currently returns 500 for invalid references

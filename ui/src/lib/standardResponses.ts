@@ -95,9 +95,11 @@ export function createScriptureResponse(
 	const realMetadata = firstWithMetadata?.metadata || {};
 
 	// Clean up scripture items - remove redundant fields
+	// Include fullTitle for LLM context (e.g. "unfoldingWord® Literal Text")
 	const cleanScripture = scripture.map((s) => ({
 		text: s.text,
 		translation: s.translation,
+		...(s.fullTitle && { fullTitle: s.fullTitle }),
 		...(s.reference !== reference && { reference: s.reference })
 	}));
 

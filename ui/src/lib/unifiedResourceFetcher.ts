@@ -19,6 +19,7 @@ import { edgeLogger as logger } from './edgeLogger.js';
 export interface ScriptureResult {
 	text: string;
 	translation: string;
+	fullTitle?: string; // Full title from DCS catalog (e.g. "unfoldingWord® Literal Text")
 	actualOrganization?: string;
 }
 

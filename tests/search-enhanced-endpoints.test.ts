@@ -13,7 +13,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   // Test that search parameter validation works
   it("should reject invalid search queries", async () => {
     const response = await fetch(
-      `${BASE_URL}/api/fetch-scripture?reference=John 3:16&search=a`,
+      `${BASE_URL}/api/fetch-scripture?reference=John 3:16&search=a&format=json`,
     );
     expect(response.status).toBe(400); // Too short (< 2 chars)
   });
@@ -21,7 +21,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   // Test scripture endpoint with search
   it("should filter scripture by search query", async () => {
     const response = await fetch(
-      `${BASE_URL}/api/fetch-scripture?reference=John 3&search=love&language=en&organization=unfoldingWord`,
+      `${BASE_URL}/api/fetch-scripture?reference=John 3&search=love&language=en&organization=unfoldingWord&format=json`,
     );
     expect(response.ok).toBe(true);
 
@@ -43,7 +43,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   // Test that endpoints work WITHOUT search (backward compatibility)
   it("should work without search parameter (backward compatibility)", async () => {
     const response = await fetch(
-      `${BASE_URL}/api/fetch-scripture?reference=John 3:16&language=en&organization=unfoldingWord`,
+      `${BASE_URL}/api/fetch-scripture?reference=John 3:16&language=en&organization=unfoldingWord&format=json`,
     );
     expect(response.ok).toBe(true);
 
@@ -55,7 +55,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   // Test translation notes with search
   it("should filter translation notes by search query", async () => {
     const response = await fetch(
-      `${BASE_URL}/api/fetch-translation-notes?reference=John 3:16&search=born&language=en&organization=unfoldingWord`,
+      `${BASE_URL}/api/fetch-translation-notes?reference=John 3:16&search=born&language=en&organization=unfoldingWord&format=json`,
     );
 
     if (response.ok) {
@@ -73,7 +73,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   // Test translation questions with search
   it("should filter translation questions by search query", async () => {
     const response = await fetch(
-      `${BASE_URL}/api/fetch-translation-questions?reference=John 3&search=believe&language=en&organization=unfoldingWord`,
+      `${BASE_URL}/api/fetch-translation-questions?reference=John 3&search=believe&language=en&organization=unfoldingWord&format=json`,
     );
 
     if (response.ok) {
@@ -88,7 +88,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   // Test translation word with search
   it("should validate translation word relevance with search", async () => {
     const response = await fetch(
-      `${BASE_URL}/api/fetch-translation-word?term=grace&search=undeserved&language=en&organization=unfoldingWord`,
+      `${BASE_URL}/api/fetch-translation-word?term=grace&search=undeserved&language=en&organization=unfoldingWord&format=json`,
     );
 
     if (response.ok) {
@@ -106,7 +106,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   // Test translation academy with search
   it("should validate translation academy relevance with search", async () => {
     const response = await fetch(
-      `${BASE_URL}/api/fetch-translation-academy?moduleId=figs-metaphor&search=metaphor&language=en&organization=unfoldingWord`,
+      `${BASE_URL}/api/fetch-translation-academy?moduleId=figs-metaphor&search=metaphor&language=en&organization=unfoldingWord&format=json`,
     );
 
     if (response.ok) {
@@ -122,7 +122,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   // Test that search scores are included when present
   it("should include search scores in results", async () => {
     const response = await fetch(
-      `${BASE_URL}/api/fetch-scripture?reference=John 3:16&search=God&language=en&organization=unfoldingWord`,
+      `${BASE_URL}/api/fetch-scripture?reference=John 3:16&search=God&language=en&organization=unfoldingWord&format=json`,
     );
 
     if (response.ok) {
@@ -144,7 +144,7 @@ describe("Search-Enhanced Endpoints Integration", () => {
   it("should complete search requests within reasonable time", async () => {
     const start = Date.now();
     const response = await fetch(
-      `${BASE_URL}/api/fetch-scripture?reference=John 3&search=love&language=en&organization=unfoldingWord`,
+      `${BASE_URL}/api/fetch-scripture?reference=John 3&search=love&language=en&organization=unfoldingWord&format=json`,
     );
     const elapsed = Date.now() - start;
 

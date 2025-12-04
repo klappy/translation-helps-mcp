@@ -58,9 +58,13 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 			if (verse.reference) {
 				markdown += `### ${verse.reference}\n\n`;
 			}
-			// Add translation attribution
+			// Add translation attribution - include full title if available for LLM context
+			// e.g. "ULT v87 (unfoldingWord® Literal Text)" or just "ULT v87" if no full title
 			if (verse.translation) {
-				markdown += `**${verse.translation}**\n\n`;
+				const titleDisplay = verse.fullTitle
+					? `${verse.translation} (${verse.fullTitle})`
+					: verse.translation;
+				markdown += `**${titleDisplay}**\n\n`;
 			}
 			markdown += `${verse.text}\n\n`;
 		}
@@ -84,8 +88,12 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 			if (verse.reference) {
 				text += `${verse.reference}: `;
 			}
+			// Include full title if available for LLM context
 			if (verse.translation) {
-				text += `[${verse.translation}] `;
+				const titleDisplay = verse.fullTitle
+					? `${verse.translation} (${verse.fullTitle})`
+					: verse.translation;
+				text += `[${titleDisplay}] `;
 			}
 			text += `${verse.text}\n\n`;
 		}

@@ -44,6 +44,7 @@ export interface ScriptureResult {
   scripture?: {
     text: string;
     translation: string;
+    fullTitle?: string; // Full title from DCS catalog (e.g. "unfoldingWord® Literal Text")
     citation: {
       resource: string;
       organization: string;
@@ -63,6 +64,7 @@ export interface ScriptureResult {
   scriptures?: Array<{
     text: string;
     translation: string;
+    fullTitle?: string; // Full title from DCS catalog (e.g. "unfoldingWord® Literal Text")
     citation: {
       resource: string;
       organization: string;
