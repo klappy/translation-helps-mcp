@@ -5,6 +5,8 @@
 	import { afterUpdate, onDestroy, onMount } from 'svelte';
 	import XRayPanel from './XRayPanel.svelte';
 	import DebugSidebar from './DebugSidebar.svelte';
+	import ThinkingBubble from './ThinkingBubble.svelte';
+	import { AGENT_DISPLAY_INFO, type AgentName } from '$lib/ai/agents/types.js';
 
 	// Configure marked for safe HTML rendering
 	marked.setOptions({
@@ -46,29 +48,49 @@
 	// Track which request/streaming session each log belongs to
 	let currentRequestId: string | null = null;
 
+	// Multi-agent orchestration state
+	let useOrchestration = false; // Feature flag - set to true to enable
+	let orchestrationActive = false;
+	let orchestratorStatus: 'planning' | 'dispatching' | 'synthesizing' | 'done' = 'planning';
+	let orchestratorThoughts = '';
+	let agentStreams: Array<{
+		agent: string;
+		name: string;
+		icon: string;
+		task: string;
+		status: 'pending' | 'thinking' | 'tool-calling' | 'complete' | 'error';
+		thoughts: string;
+		toolCalls: Array<{ name: string; args?: string; status: string; preview?: string }>;
+		summary?: string;
+		error?: string;
+	}> = [];
+	let thinkingBubbleExpanded = true;
+
 	// Rich starter suggestions (shown before conversation starts)
 	const suggestions = [
 		{
-			title: 'Find a specific Bible verse',
-			prompt: 'Show me John 3:16 in both ULT and UST translations.',
-			description: 'Fetch scripture text from available translations.'
+			title: 'Find a specific Bible verse with exact formatting',
+			prompt:
+				'Show me John 3:16 in ULT. Use verse number without a period and no blank lines between verses.',
+			description: 'Ask for a verse with your preferred translation and formatting.'
 		},
 		{
-			title: 'Explore translation notes for a passage',
+			title: 'Explore translation notes for a chapter',
 			prompt:
-				'What do the Translation Notes say about Romans 8:28? Include the key translation issues.',
-			description: 'Deep-dive into verse-specific translation guidance.'
+				'What do the Translation Notes say about Titus 1? Summarize key translation issues and include links to the specific notes.',
+			description: 'Deep-dive notes with source links you can follow.'
 		},
 		{
 			title: 'Define a biblical term from Translation Words',
 			prompt:
-				"What does Translation Words say about 'love'? Include the different types of love mentioned.",
-			description: 'Grounded definitions from the Translation Words library.'
+				"Define 'agape' from Translation Words and explain how it differs from 'phileo', with 2–3 scripture examples.",
+			description: 'Grounded definitions and distinctions from TW, with examples.'
 		},
 		{
-			title: 'Look up a biblical figure',
-			prompt: 'Who is Paul according to Translation Words? Include key facts about his life.',
-			description: 'Biographical information from the Names category.'
+			title: 'Study questions to guide a passage review',
+			prompt:
+				'Give me study questions for Genesis 1 that focus on literary structure, repeated words, and the order of creation.',
+			description: 'Structured prompts drawn from official resources.'
 		}
 	];
 
@@ -273,6 +295,135 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		];
 	}
 
+	// Reset orchestration state for new request
+	function resetOrchestrationState() {
+		orchestrationActive = false;
+		orchestratorStatus = 'planning';
+		orchestratorThoughts = '';
+		agentStreams = [];
+		thinkingBubbleExpanded = true;
+	}
+
+	// Handle orchestration streaming events
+	function handleOrchestrationEvent(event: string, data: unknown) {
+		const eventData = data as Record<string, unknown>;
+
+		switch (event) {
+			case 'orchestrator:thinking':
+				orchestrationActive = true;
+				orchestratorStatus = 'planning';
+				orchestratorThoughts += (eventData.delta as string) || '';
+				break;
+
+			case 'orchestrator:plan':
+				orchestratorStatus = 'dispatching';
+				const plan = eventData.plan as { agents: Array<{ agent: string; task: string }> };
+				if (plan?.agents) {
+					agentStreams = plan.agents.map((a) => {
+						const agentName = a.agent as AgentName;
+						const info = AGENT_DISPLAY_INFO[agentName] || { displayName: a.agent, icon: '🤖' };
+						return {
+							agent: a.agent,
+							name: info.displayName,
+							icon: info.icon,
+							task: a.task,
+							status: 'pending' as const,
+							thoughts: '',
+							toolCalls: []
+						};
+					});
+				}
+				break;
+
+			case 'agent:start':
+				const startAgent = eventData.agent as string;
+				agentStreams = agentStreams.map((a) =>
+					a.agent === startAgent ? { ...a, status: 'thinking' as const } : a
+				);
+				break;
+
+			case 'agent:thinking':
+				const thinkingAgent = eventData.agent as string;
+				const delta = (eventData.delta as string) || '';
+				agentStreams = agentStreams.map((a) =>
+					a.agent === thinkingAgent
+						? { ...a, status: 'thinking' as const, thoughts: a.thoughts + delta }
+						: a
+				);
+				break;
+
+			case 'agent:tool:start':
+				const toolAgent = eventData.agent as string;
+				const toolName = eventData.tool as string;
+				const toolArgs = JSON.stringify(eventData.args || {});
+				agentStreams = agentStreams.map((a) =>
+					a.agent === toolAgent
+						? {
+								...a,
+								status: 'tool-calling' as const,
+								toolCalls: [...a.toolCalls, { name: toolName, args: toolArgs, status: 'running' }]
+							}
+						: a
+				);
+				break;
+
+			case 'agent:tool:result':
+				const resultAgent = eventData.agent as string;
+				const resultTool = eventData.tool as string;
+				const preview = (eventData.preview as string) || '';
+				agentStreams = agentStreams.map((a) =>
+					a.agent === resultAgent
+						? {
+								...a,
+								toolCalls: a.toolCalls.map((tc) =>
+									tc.name === resultTool ? { ...tc, status: 'complete', preview } : tc
+								)
+							}
+						: a
+				);
+				break;
+
+			case 'agent:summary':
+				const summaryAgent = eventData.agent as string;
+				const summary = (eventData.summary as string) || '';
+				const success = eventData.success as boolean;
+				agentStreams = agentStreams.map((a) =>
+					a.agent === summaryAgent
+						? { ...a, status: success ? ('complete' as const) : ('error' as const), summary }
+						: a
+				);
+				break;
+
+			case 'agent:error':
+				const errorAgent = eventData.agent as string;
+				const error = (eventData.error as string) || 'Unknown error';
+				agentStreams = agentStreams.map((a) =>
+					a.agent === errorAgent ? { ...a, status: 'error' as const, error } : a
+				);
+				break;
+
+			case 'orchestrator:iterating':
+				orchestratorThoughts += `\n${eventData.reason || 'Gathering more information...'}`;
+				break;
+
+			case 'synthesis:start':
+				orchestratorStatus = 'synthesizing';
+				break;
+
+			case 'done':
+				orchestratorStatus = 'done';
+				// Keep the bubble visible briefly, then collapse
+				setTimeout(() => {
+					thinkingBubbleExpanded = false;
+				}, 1000);
+				break;
+
+			case 'error':
+				orchestratorStatus = 'done';
+				break;
+		}
+	}
+
 	// Send message
 	async function sendMessage() {
 		if (!inputValue.trim() || isLoading) return;
@@ -292,6 +443,9 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 		// Clear logged call IDs for the new request and set new request ID
 		loggedCallIds.clear();
 		currentRequestId = userMessage.id; // Use the user message ID as request ID
+
+		// Reset orchestration state for new request
+		resetOrchestrationState();
 
 		// Add loading message immediately
 		const loadingMessage = {
@@ -418,13 +572,17 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 
 	// Streaming via SSE
 	async function streamChat(userMessage) {
+		// Choose endpoint based on orchestration mode
+		const endpoint = useOrchestration ? '/api/chat-orchestrated' : '/api/chat-stream?stream=1';
+
 		const body = JSON.stringify({
 			message: userMessage.content,
 			chatHistory: messages.slice(0, -2).map((m) => ({ role: m.role, content: m.content })),
-			enableXRay: false
+			enableXRay: false,
+			...(useOrchestration ? { config: { maxIterations: 2, confidenceThreshold: 0.5 } } : {})
 		});
 
-		const response = await fetch('/api/chat-stream?stream=1', {
+		const response = await fetch(endpoint, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -571,6 +729,31 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 							return log;
 						});
 					}
+				} else if (
+					event.startsWith('orchestrator:') ||
+					event.startsWith('agent:') ||
+					event === 'synthesis:start' ||
+					event === 'synthesis:delta' ||
+					event === 'done'
+				) {
+					// Handle orchestration events
+					try {
+						const json = JSON.parse(data);
+						handleOrchestrationEvent(event, json);
+
+						// For synthesis:delta, also update the message content
+						if (event === 'synthesis:delta' && json.delta) {
+							accumulated += json.delta;
+							messages[streamingMessageIndex] = {
+								...messages[streamingMessageIndex],
+								isLoading: false,
+								content: accumulated
+							};
+							messages = [...messages];
+						}
+					} catch {
+						// Ignore parse errors
+					}
 				}
 			}
 		}
@@ -646,6 +829,18 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 					</div>
 				</div>
 			{/if}
+			<!-- Thinking Bubble for orchestration mode -->
+			{#if orchestrationActive && isLoading}
+				<div class="mx-auto mb-4 max-w-4xl">
+					<ThinkingBubble
+						bind:isExpanded={thinkingBubbleExpanded}
+						{agentStreams}
+						{orchestratorStatus}
+						{orchestratorThoughts}
+					/>
+				</div>
+			{/if}
+
 			{#each messages as message (message.id)}
 				<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4">
 					<div class="flex max-w-[80%] items-end space-x-2">

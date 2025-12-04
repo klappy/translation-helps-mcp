@@ -6,9 +6,14 @@
 
 	const dispatch = createEventDispatcher();
 	let expandedTools: Record<string, boolean> = {};
+	let expandedAgents: Record<string, boolean> = {};
 
 	function toggleTool(toolId: string) {
 		expandedTools[toolId] = !expandedTools[toolId];
+	}
+
+	function toggleAgent(agentId: string) {
+		expandedAgents[agentId] = !expandedAgents[agentId];
 	}
 
 	function getToolIcon(toolName: string) {
@@ -20,10 +25,23 @@
 		return '🔧';
 	}
 
+	function getAgentIcon(agentName: string) {
+		if (agentName === 'scripture') return '📖';
+		if (agentName === 'notes') return '📝';
+		if (agentName === 'words') return '📚';
+		if (agentName === 'academy') return '🎓';
+		if (agentName === 'search') return '🔍';
+		return '🤖';
+	}
+
 	function formatDuration(ms: number) {
 		if (ms < 1000) return `${ms}ms`;
 		return `${(ms / 1000).toFixed(2)}s`;
 	}
+
+	// Check if this is orchestrated data
+	$: isOrchestrated = data?.orchestration || data?.agents?.length > 0;
+	$: agents = data?.agents || [];
 </script>
 
 <div
@@ -48,7 +66,13 @@
 			<!-- Summary Section -->
 			<div class="mb-6 rounded-lg bg-gray-800 p-4">
 				<h4 class="mb-3 text-sm font-medium text-gray-300">Summary</h4>
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid {isOrchestrated ? 'grid-cols-3' : 'grid-cols-2'} gap-4">
+					{#if isOrchestrated}
+						<div class="text-center">
+							<div class="text-2xl font-bold text-white">{agents.length}</div>
+							<div class="text-xs text-gray-400">Agents</div>
+						</div>
+					{/if}
 					<div class="text-center">
 						<div class="text-2xl font-bold text-white">{data.tools?.length || 0}</div>
 						<div class="text-xs text-gray-400">Tools Used</div>
@@ -58,6 +82,14 @@
 						<div class="text-xs text-gray-400">Total Time</div>
 					</div>
 				</div>
+				{#if isOrchestrated}
+					<div class="mt-3 border-t border-gray-700 pt-3">
+						<div class="flex items-center gap-2 text-xs text-blue-400">
+							<span>🧠</span>
+							<span>Multi-Agent Orchestration</span>
+						</div>
+					</div>
+				{/if}
 			</div>
 
 			<!-- Timing Breakdown Section -->
@@ -73,6 +105,147 @@
 						{/each}
 					</div>
 				</div>
+			{/if}
+
+			<!-- Agent Execution Section (for orchestrated requests) -->
+			{#if isOrchestrated && agents.length > 0}
+				<div class="mb-6">
+					<h4 class="mb-3 text-sm font-medium text-gray-300">
+						<span class="mr-2">🧠</span>Agent Execution
+					</h4>
+					<div class="space-y-2">
+						{#each agents as agent}
+							{@const hasDetails = agent.toolCalls?.length > 0 || agent.summary || agent.error}
+							<div class="rounded-lg border border-gray-700 bg-gray-800/50">
+								{#if hasDetails}
+									<button
+										class="flex w-full cursor-pointer items-center justify-between p-3 hover:bg-gray-800"
+										on:click={() => toggleAgent(agent.agent || agent.name)}
+									>
+										<div class="flex items-center gap-2">
+											<span class="text-lg">{getAgentIcon(agent.agent || agent.name)}</span>
+											<span class="font-medium text-white capitalize"
+												>{agent.agent || agent.name}</span
+											>
+											{#if agent.success === false || agent.status === 'error'}
+												<span class="rounded bg-red-900/50 px-1.5 py-0.5 text-xs text-red-300"
+													>Failed</span
+												>
+											{:else if agent.success || agent.status === 'complete'}
+												<span class="rounded bg-green-900/50 px-1.5 py-0.5 text-xs text-green-300"
+													>Done</span
+												>
+											{/if}
+										</div>
+										<div class="flex items-center gap-2 text-sm">
+											{#if agent.confidence !== undefined}
+												<span class="text-xs text-gray-500"
+													>{Math.round(agent.confidence * 100)}% conf</span
+												>
+											{/if}
+											{#if agent.duration}
+												<span class="flex items-center gap-1 text-gray-400">
+													<Clock class="h-3 w-3" />
+													{formatDuration(agent.duration)}
+												</span>
+											{/if}
+											{#if expandedAgents[agent.agent || agent.name]}
+												<ChevronDown class="h-4 w-4 text-gray-400" />
+											{:else}
+												<ChevronRight class="h-4 w-4 text-gray-400" />
+											{/if}
+										</div>
+									</button>
+								{:else}
+									<div class="flex items-center justify-between p-3">
+										<div class="flex items-center gap-2">
+											<span class="text-lg">{getAgentIcon(agent.agent || agent.name)}</span>
+											<span class="font-medium text-white capitalize"
+												>{agent.agent || agent.name}</span
+											>
+										</div>
+										<div class="flex items-center gap-2 text-sm text-gray-400">
+											{#if agent.duration}
+												<Clock class="h-3 w-3" />
+												{formatDuration(agent.duration)}
+											{/if}
+										</div>
+									</div>
+								{/if}
+
+								{#if expandedAgents[agent.agent || agent.name] && hasDetails}
+									<div
+										class="border-t border-gray-700 p-3"
+										style="background-color: rgba(15, 23, 42, 0.5);"
+									>
+										{#if agent.task}
+											<div class="mb-2 text-sm">
+												<span class="font-medium text-gray-400">Task:</span>
+												<span class="ml-2 text-gray-300">{agent.task}</span>
+											</div>
+										{/if}
+										{#if agent.summary}
+											<div class="mb-2 text-sm">
+												<span class="font-medium text-gray-400">Summary:</span>
+												<span class="ml-2 text-gray-300">{agent.summary}</span>
+											</div>
+										{/if}
+										{#if agent.error}
+											<div class="mb-2 text-sm">
+												<span class="font-medium text-red-400">Error:</span>
+												<span class="ml-2 text-red-300">{agent.error}</span>
+											</div>
+										{/if}
+										{#if agent.toolCalls && agent.toolCalls.length > 0}
+											<div class="mt-2">
+												<span class="text-sm font-medium text-gray-400">Tool Calls:</span>
+												<div class="mt-1 space-y-1">
+													{#each agent.toolCalls as tc}
+														<div class="rounded bg-gray-900/50 px-2 py-1 text-xs">
+															<span class="text-blue-400">🔧 {tc.name}</span>
+															{#if tc.preview}
+																<span class="ml-2 text-gray-500">→ {tc.preview}</span>
+															{/if}
+														</div>
+													{/each}
+												</div>
+											</div>
+										{/if}
+										{#if agent.citations && agent.citations.length > 0}
+											<div class="mt-2">
+												<span class="text-sm font-medium text-gray-400">Citations:</span>
+												<div class="mt-1 space-y-1">
+													{#each agent.citations as citation}
+														<div class="rounded bg-gray-900/50 px-2 py-1 text-xs text-gray-400">
+															📚 {citation.source}{citation.reference
+																? ` (${citation.reference})`
+																: ''}
+														</div>
+													{/each}
+												</div>
+											</div>
+										{/if}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<!-- Orchestration Plan -->
+				{#if data.orchestration?.plan}
+					<div class="mb-6 rounded-lg bg-gray-800 p-4">
+						<h4 class="mb-3 text-sm font-medium text-gray-300">
+							<span class="mr-2">🎯</span>Orchestration Plan
+						</h4>
+						<p class="text-sm text-gray-400">
+							{data.orchestration.plan.reasoning || 'No reasoning provided'}
+						</p>
+						{#if data.orchestration.plan.needsIteration}
+							<div class="mt-2 text-xs text-yellow-400">⚠️ Iteration was expected</div>
+						{/if}
+					</div>
+				{/if}
 			{/if}
 
 			<!-- Tool List -->

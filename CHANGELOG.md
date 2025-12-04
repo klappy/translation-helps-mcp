@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.12.0](https://github.com/klappy/translation-helps-mcp/compare/v7.11.14...v7.12.0) (2025-12-04)
+
+### Features
+
+- **chat:** Multi-Agent Orchestration Architecture - Specialized sub-agents for scripture, notes, words, academy, and search run in parallel with live streaming of their thoughts
+- **ui:** ThinkingBubble component shows real-time agent activity with expandable agent thought streams
+- **ui:** AgentThoughtStream component displays per-agent progress, tool calls, and summaries
+- **ui:** XRay panel now shows agent execution details for orchestrated requests
+- **api:** New `/api/chat-orchestrated` endpoint for multi-agent chat mode
+- **agents:** Each specialist agent has custom system prompts with tool-specific knowledge and failure handling
+
 ### [7.11.14](https://github.com/klappy/translation-helps-mcp/compare/v7.11.13...v7.11.14) (2025-12-04)
 
 ### [7.11.13](https://github.com/klappy/translation-helps-mcp/compare/v7.11.12...v7.11.13) (2025-12-04)
