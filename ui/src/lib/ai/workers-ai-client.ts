@@ -23,10 +23,10 @@ import type {
 export type {
 	AIBinding,
 	WorkersAIMessage,
-	WorkersAIToolCall,
-	WorkersAIToolDefinition,
 	WorkersAIResponse,
-	WorkersAIRunOptions
+	WorkersAIRunOptions,
+	WorkersAIToolCall,
+	WorkersAIToolDefinition
 } from './types.js';
 
 // Model constant - Llama 4 Scout 17B with MoE architecture

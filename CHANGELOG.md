@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.5](https://github.com/klappy/translation-helps-mcp/compare/v7.11.4...v7.11.5) (2025-12-04)
+
+### Bug Fixes
+
+- **chat:** always include X-Ray data in responses regardless of tool calls ([be6b111](https://github.com/klappy/translation-helps-mcp/commit/be6b111f29ecc5213682a1abc7e06039f1227a70))
+
 ### [7.11.4](https://github.com/klappy/translation-helps-mcp/compare/v7.11.3...v7.11.4) (2025-12-04)
 
 ### Bug Fixes
