@@ -222,6 +222,15 @@ export async function callWorkersAIStream(
 				});
 				detailedTimings.initialLlmCall = Date.now() - initialLlmStart;
 
+				// DEBUG: Log what Workers AI returned
+				logger.info('Workers AI initial response', {
+					hasToolCalls: !!result.tool_calls,
+					toolCallCount: result.tool_calls?.length || 0,
+					hasResponse: !!result.response,
+					responsePreview: result.response?.substring(0, 100),
+					toolChoice
+				});
+
 				// Handle tool calls if present
 				let finalMessages = messages;
 

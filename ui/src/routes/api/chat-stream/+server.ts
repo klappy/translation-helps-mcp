@@ -323,10 +323,10 @@ async function handleStreamingResponse(
 		}
 	};
 
-	// Create streaming response
+	// Create streaming response - toolChoice 'required' forces model to use tools
 	const sseStream = await callWorkersAIStream(ai, messages, {
 		tools,
-		toolChoice: 'auto',
+		toolChoice: 'required',
 		onToolCalls,
 		xrayInit,
 		timings,
