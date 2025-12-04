@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.10](https://github.com/klappy/translation-helps-mcp/compare/v7.11.9...v7.11.10) (2025-12-04)
+
+### Bug Fixes
+
+- **chat:** force tool usage with toolChoice required and fix X-Ray timings ([47e1a06](https://github.com/klappy/translation-helps-mcp/commit/47e1a066278564d5b71b76dad04c111f465d6d58))
+
 ### [7.11.9](https://github.com/klappy/translation-helps-mcp/compare/v7.11.8...v7.11.9) (2025-12-04)
 
 ### Bug Fixes

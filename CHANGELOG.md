@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.11](https://github.com/klappy/translation-helps-mcp/compare/v7.11.10...v7.11.11) (2025-12-04)
+
+### Bug Fixes
+
+- **xray:** format X-Ray data to match UI panel expectations ([33f43b2](https://github.com/klappy/translation-helps-mcp/commit/33f43b2572c5d83e404b6f5b491c29769d759243))
+
 ### [7.11.10](https://github.com/klappy/translation-helps-mcp/compare/v7.11.9...v7.11.10) (2025-12-04)
 
 ### Bug Fixes
