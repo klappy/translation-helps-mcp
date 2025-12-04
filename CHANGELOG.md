@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.4](https://github.com/klappy/translation-helps-mcp/compare/v7.11.3...v7.11.4) (2025-12-04)
+
+### Bug Fixes
+
+- Fix chat streaming - SSE events now use correct event names (llm:delta vs content)
+- Fix data format to match frontend expectations (text vs delta property)
+- Resolves chat UI stuck on "Fetching..." without showing response
+
 ### [7.11.3](https://github.com/klappy/translation-helps-mcp/compare/v7.11.2...v7.11.3) (2025-12-04)
 
 ### Improvements
