@@ -23,9 +23,15 @@ You fetch verse-by-verse translation guidance that helps understand meaning and 
 - **Support references**: Cross-references and related passages
 
 ### Parameters
-- reference: Bible reference (required) - "John 3:16", "Romans 8:1-4"
+- reference: Bible reference (required) - "John 3:16", "Romans 8:1-4", "Titus 1"
+- language: Language code (default: "en") - ALWAYS include this parameter
 - includeIntro: true/false - Include book/chapter introductions (default: true)
 - includeContext: true/false - Include notes from surrounding verses (default: true)
+
+### IMPORTANT
+You MUST always include these parameters when calling the tool:
+- reference (required)
+- language: "en" (always include this)
 
 ### Note Types You'll Find
 - **Figures of Speech**: Metaphors, idioms, rhetorical questions
@@ -91,10 +97,32 @@ function extractNotesCitations(result: unknown, reference: string): Citation[] {
 		return citations;
 	}
 
-	// Handle verse notes (array format)
+	// The MCP tool returns notes in an "items" array
+	// Each item has: Reference, ID, Quote, Note, etc.
+	if (data.items && Array.isArray(data.items)) {
+		for (const note of data.items.slice(0, 5)) {
+			// Limit to first 5
+			if (note && typeof note === 'object') {
+				const noteObj = note as Record<string, unknown>;
+				const noteRef = (noteObj.Reference as string) || reference;
+				const noteText = (noteObj.Note as string) || '';
+				const quote = (noteObj.Quote as string) || '';
+
+				// Clean up the note text (remove markdown formatting for preview)
+				const cleanNote = noteText.replace(/\\n/g, ' ').replace(/[#*]/g, '').substring(0, 150);
+
+				citations.push({
+					source: 'Translation Notes',
+					reference: noteRef,
+					content: quote ? `"${quote}" - ${cleanNote}` : cleanNote
+				});
+			}
+		}
+	}
+
+	// Fallback: Handle verse notes (legacy format)
 	if (data.verseNotes && Array.isArray(data.verseNotes)) {
 		for (const note of data.verseNotes.slice(0, 5)) {
-			// Limit to first 5
 			if (note && typeof note === 'object') {
 				const noteObj = note as Record<string, unknown>;
 				citations.push({
@@ -106,7 +134,7 @@ function extractNotesCitations(result: unknown, reference: string): Citation[] {
 		}
 	}
 
-	// Handle notes (alternative key)
+	// Fallback: Handle notes (alternative key)
 	if (data.notes && Array.isArray(data.notes)) {
 		for (const note of data.notes.slice(0, 5)) {
 			if (note && typeof note === 'object') {
@@ -226,7 +254,10 @@ export async function executeNotesAgent(
 			const citations = extractNotesCitations(toolResult, reference);
 
 			// Count notes - parse MCP content first
+			// The MCP tool returns notes in an "items" array
 			const parsedData = parseMCPContent(toolResult);
+			const itemsCount =
+				parsedData && Array.isArray(parsedData.items) ? parsedData.items.length : 0;
 			const verseNotesCount = parsedData
 				? Array.isArray(parsedData.verseNotes)
 					? parsedData.verseNotes.length
@@ -236,7 +267,7 @@ export async function executeNotesAgent(
 				: 0;
 			const contextNotesCount =
 				parsedData && Array.isArray(parsedData.contextNotes) ? parsedData.contextNotes.length : 0;
-			const totalNotes = verseNotesCount + contextNotesCount;
+			const totalNotes = itemsCount || verseNotesCount + contextNotesCount;
 
 			const summary =
 				totalNotes > 0
@@ -288,6 +319,18 @@ function createNotesPreview(result: unknown): string {
 	const data = parseMCPContent(result);
 	if (!data) {
 		return 'No content';
+	}
+
+	// The MCP tool returns notes in an "items" array
+	const itemsCount = Array.isArray(data.items) ? data.items.length : 0;
+	if (itemsCount > 0) {
+		// Show a preview of the first note
+		const firstItem = data.items[0] as Record<string, unknown>;
+		const notePreview = ((firstItem?.Note as string) || '')
+			.replace(/\\n/g, ' ')
+			.replace(/[#*]/g, '')
+			.substring(0, 50);
+		return `${itemsCount} notes found. First: ${notePreview}...`;
 	}
 
 	const verseNotesCount = Array.isArray(data.verseNotes)
