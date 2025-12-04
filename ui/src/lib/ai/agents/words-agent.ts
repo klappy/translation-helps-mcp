@@ -61,84 +61,35 @@ export const WORDS_AGENT_TOOLS: string[] = [
 ];
 
 /**
- * Extract words-specific citations from tool result
+ * Extract raw text content from MCP response
+ * NO PARSING - the LLM synthesizer will read and understand the markdown directly
  */
-function extractWordsCitations(result: unknown, term: string): Citation[] {
-	const citations: Citation[] = [];
-
-	if (!result || typeof result !== 'object') {
-		return citations;
-	}
-
+function extractRawContent(result: unknown): string {
+	if (!result || typeof result !== 'object') return '';
 	const data = result as Record<string, unknown>;
-
-	// Handle MCP content format
 	if (Array.isArray(data.content)) {
 		const textContent = data.content.find((c: { type: string }) => c.type === 'text');
 		if (textContent && typeof textContent === 'object' && 'text' in textContent) {
-			try {
-				const parsed = JSON.parse(textContent.text as string);
-
-				// Handle single term response (term, title, definition, etc.)
-				if (parsed.term && parsed.definition) {
-					citations.push({
-						source: 'Translation Words',
-						reference: parsed.term,
-						content: parsed.definition?.substring(0, 200) || 'Definition content'
-					});
-				}
-				// Handle multiple articles format
-				else if (parsed.articles && Array.isArray(parsed.articles)) {
-					for (const article of parsed.articles) {
-						citations.push({
-							source: 'Translation Words',
-							reference: article.term || article.id || term,
-							content:
-								article.markdown?.substring(0, 200) ||
-								article.content?.substring(0, 200) ||
-								'Article content'
-						});
-					}
-				}
-			} catch {
-				// Plain text response
-				citations.push({
-					source: 'Translation Words',
-					reference: term,
-					content: (textContent.text as string).substring(0, 200)
-				});
-			}
+			return textContent.text as string;
 		}
 	}
+	return '';
+}
 
-	// Handle direct articles format
-	if (data.articles && Array.isArray(data.articles)) {
-		for (const article of data.articles) {
-			if (article && typeof article === 'object') {
-				const articleObj = article as Record<string, unknown>;
-				citations.push({
-					source: 'Translation Words',
-					reference: (articleObj.term as string) || (articleObj.id as string) || term,
-					content: (
-						(articleObj.markdown as string) ||
-						(articleObj.content as string) ||
-						''
-					).substring(0, 200)
-				});
-			}
-		}
-	}
+/**
+ * Create a simple citation - the LLM will understand the content
+ */
+function extractWordsCitations(result: unknown, term: string): Citation[] {
+	const content = extractRawContent(result);
+	if (!content) return [];
 
-	// Handle translation word links format
-	if (data.translationWordLinks && Array.isArray(data.translationWordLinks)) {
-		citations.push({
-			source: 'Translation Word Links',
+	return [
+		{
+			source: 'Translation Words',
 			reference: term,
-			content: `${data.translationWordLinks.length} linked terms found`
-		});
-	}
-
-	return citations;
+			content: content.substring(0, 500) + (content.length > 500 ? '...' : '')
+		}
+	];
 }
 
 /**

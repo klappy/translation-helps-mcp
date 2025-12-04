@@ -53,65 +53,36 @@ Then call the fetch_scripture tool with appropriate parameters.`;
 export const SCRIPTURE_AGENT_TOOLS: string[] = ['fetch_scripture'];
 
 /**
- * Extract scripture-specific citations from tool result
+ * Extract raw text content from MCP response
+ * NO PARSING - the LLM synthesizer will read and understand the markdown directly
  */
-function extractScriptureCitations(result: unknown, reference: string): Citation[] {
-	const citations: Citation[] = [];
-
-	if (!result || typeof result !== 'object') {
-		return citations;
-	}
-
+function extractRawContent(result: unknown): string {
+	if (!result || typeof result !== 'object') return '';
 	const data = result as Record<string, unknown>;
-
-	// Handle content array format (MCP response)
 	if (Array.isArray(data.content)) {
 		const textContent = data.content.find((c: { type: string }) => c.type === 'text');
 		if (textContent && typeof textContent === 'object' && 'text' in textContent) {
-			const text = textContent.text as string;
-
-			// Try to parse as JSON first
-			try {
-				const parsed = JSON.parse(text);
-				if (parsed.scriptures && Array.isArray(parsed.scriptures)) {
-					for (const scripture of parsed.scriptures) {
-						citations.push({
-							source: scripture.translation || 'ULT',
-							reference: scripture.reference || reference,
-							content: scripture.text || ''
-						});
-					}
-				} else if (parsed.text) {
-					citations.push({
-						source: parsed.translation || 'ULT',
-						reference: reference,
-						content: parsed.text
-					});
-				}
-			} catch {
-				// Plain text response - likely multiple translations separated by newlines
-				const lines = text.split('\n\n');
-				for (const line of lines) {
-					const match = line.match(/^(ULT|UST|[A-Z]+):\s*(.+)/s);
-					if (match) {
-						citations.push({
-							source: match[1],
-							reference: reference,
-							content: match[2].trim()
-						});
-					} else if (line.trim()) {
-						citations.push({
-							source: 'Scripture',
-							reference: reference,
-							content: line.trim()
-						});
-					}
-				}
-			}
+			return textContent.text as string;
 		}
 	}
+	return '';
+}
 
-	return citations;
+/**
+ * Create a simple citation - the LLM will understand the content
+ */
+function extractScriptureCitations(result: unknown, reference: string): Citation[] {
+	const content = extractRawContent(result);
+	if (!content) return [];
+
+	// Just pass through - the synthesizer LLM will read the markdown
+	return [
+		{
+			source: 'Scripture',
+			reference,
+			content: content.substring(0, 500) + (content.length > 500 ? '...' : '')
+		}
+	];
 }
 
 /**

@@ -56,44 +56,35 @@ Then call the fetch_translation_academy tool with the moduleId.`;
 export const ACADEMY_AGENT_TOOLS: string[] = ['fetch_translation_academy'];
 
 /**
- * Extract academy-specific citations from tool result
+ * Extract raw text content from MCP response
+ * NO PARSING - the LLM synthesizer will read and understand the markdown directly
  */
-function extractAcademyCitations(result: unknown, moduleId: string): Citation[] {
-	const citations: Citation[] = [];
-
-	if (!result || typeof result !== 'object') {
-		return citations;
-	}
-
+function extractRawContent(result: unknown): string {
+	if (!result || typeof result !== 'object') return '';
 	const data = result as Record<string, unknown>;
-
-	// Handle direct module content
-	if (data.content && typeof data.content === 'string') {
-		citations.push({
-			source: 'Translation Academy',
-			reference: (data.title as string) || moduleId,
-			content: data.content.substring(0, 300)
-		});
-	}
-
-	// Handle modules array format
-	if (data.modules && Array.isArray(data.modules)) {
-		for (const module of data.modules) {
-			if (module && typeof module === 'object') {
-				const modObj = module as Record<string, unknown>;
-				citations.push({
-					source: 'Translation Academy',
-					reference: (modObj.title as string) || (modObj.id as string) || moduleId,
-					content: ((modObj.markdown as string) || (modObj.content as string) || '').substring(
-						0,
-						300
-					)
-				});
-			}
+	if (Array.isArray(data.content)) {
+		const textContent = data.content.find((c: { type: string }) => c.type === 'text');
+		if (textContent && typeof textContent === 'object' && 'text' in textContent) {
+			return textContent.text as string;
 		}
 	}
+	return '';
+}
 
-	return citations;
+/**
+ * Create a simple citation - the LLM will understand the content
+ */
+function extractAcademyCitations(result: unknown, moduleId: string): Citation[] {
+	const content = extractRawContent(result);
+	if (!content) return [];
+
+	return [
+		{
+			source: 'Translation Academy',
+			reference: moduleId,
+			content: content.substring(0, 500) + (content.length > 500 ? '...' : '')
+		}
+	];
 }
 
 /**

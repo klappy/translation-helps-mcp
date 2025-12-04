@@ -57,58 +57,35 @@ Then call the search_biblical_resources tool.`;
 export const SEARCH_AGENT_TOOLS: string[] = ['search_biblical_resources'];
 
 /**
- * Extract search-specific citations from tool result
+ * Extract raw text content from MCP response
+ * NO PARSING - the LLM synthesizer will read and understand the markdown directly
  */
-function extractSearchCitations(result: unknown, query: string): Citation[] {
-	const citations: Citation[] = [];
-
-	if (!result || typeof result !== 'object') {
-		return citations;
-	}
-
+function extractRawContent(result: unknown): string {
+	if (!result || typeof result !== 'object') return '';
 	const data = result as Record<string, unknown>;
-
-	// Handle MCP content format
 	if (Array.isArray(data.content)) {
 		const textContent = data.content.find((c: { type: string }) => c.type === 'text');
 		if (textContent && typeof textContent === 'object' && 'text' in textContent) {
-			try {
-				const parsed = JSON.parse(textContent.text as string);
-				if (parsed.hits && Array.isArray(parsed.hits)) {
-					for (const hit of parsed.hits.slice(0, 5)) {
-						// Limit to top 5
-						citations.push({
-							source: hit.resource || hit.type || 'Search Result',
-							reference: hit.path || query,
-							content: hit.preview?.substring(0, 150) || 'Match found'
-						});
-					}
-				}
-			} catch {
-				citations.push({
-					source: 'Search Results',
-					reference: query,
-					content: (textContent.text as string).substring(0, 200)
-				});
-			}
+			return textContent.text as string;
 		}
 	}
+	return '';
+}
 
-	// Handle direct hits format
-	if (data.hits && Array.isArray(data.hits)) {
-		for (const hit of data.hits.slice(0, 5)) {
-			if (hit && typeof hit === 'object') {
-				const hitObj = hit as Record<string, unknown>;
-				citations.push({
-					source: (hitObj.resource as string) || (hitObj.type as string) || 'Search Result',
-					reference: (hitObj.path as string) || query,
-					content: ((hitObj.preview as string) || '').substring(0, 150)
-				});
-			}
+/**
+ * Create a simple citation - the LLM will understand the content
+ */
+function extractSearchCitations(result: unknown, query: string): Citation[] {
+	const content = extractRawContent(result);
+	if (!content) return [];
+
+	return [
+		{
+			source: 'Search Results',
+			reference: query,
+			content: content.substring(0, 500) + (content.length > 500 ? '...' : '')
 		}
-	}
-
-	return citations;
+	];
 }
 
 /**

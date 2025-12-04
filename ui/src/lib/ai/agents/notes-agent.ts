@@ -62,92 +62,36 @@ Then call the fetch_translation_notes tool with appropriate parameters.`;
 export const NOTES_AGENT_TOOLS: string[] = ['fetch_translation_notes'];
 
 /**
- * Parse MCP content format to get actual data
- *
- * With format=md, the tool returns markdown directly in the text field.
- * We preserve this as rawMarkdown for direct use by the LLM.
+ * Extract raw text content from MCP response
+ * NO PARSING - the LLM synthesizer will read and understand the markdown directly
  */
-function parseMCPContent(result: unknown): Record<string, unknown> | null {
-	if (!result || typeof result !== 'object') {
-		return null;
-	}
-
+function extractRawContent(result: unknown): string {
+	if (!result || typeof result !== 'object') return '';
 	const data = result as Record<string, unknown>;
-
-	// Handle MCP content format (array with text content)
 	if (Array.isArray(data.content)) {
 		const textContent = data.content.find((c: { type: string }) => c.type === 'text');
 		if (textContent && typeof textContent === 'object' && 'text' in textContent) {
-			const text = textContent.text as string;
-
-			// Check if it's markdown (starts with # or has markdown formatting)
-			if (text.startsWith('#') || text.includes('## ') || text.includes('**')) {
-				return { rawMarkdown: text, isMarkdown: true };
-			}
-
-			// Try to parse as JSON
-			try {
-				return JSON.parse(text);
-			} catch {
-				// Not JSON, return the raw text
-				return { rawText: text };
-			}
+			return textContent.text as string;
 		}
 	}
-
-	// Already in direct format
-	return data;
+	return '';
 }
 
 /**
- * Extract notes-specific citations from tool result
- *
- * With format=md, we just confirm content exists.
- * The markdown itself is passed directly to synthesis.
+ * Create a simple citation - the LLM will understand the content
  */
 function extractNotesCitations(result: unknown, reference: string): Citation[] {
-	const citations: Citation[] = [];
+	const content = extractRawContent(result);
+	if (!content) return [];
 
-	const data = parseMCPContent(result);
-	if (!data) {
-		return citations;
-	}
-
-	// Handle markdown response (format=md)
-	if (data.isMarkdown && data.rawMarkdown) {
-		const markdown = data.rawMarkdown as string;
-		// Extract first heading as preview
-		const headingMatch = markdown.match(/##?\s+([^\n]+)/);
-		const preview = headingMatch ? headingMatch[1].replace(/[#*]/g, '').trim() : 'Notes found';
-
-		citations.push({
+	// Just pass through - the synthesizer LLM will read the markdown
+	return [
+		{
 			source: 'Translation Notes',
-			reference: reference,
-			content: preview.substring(0, 150)
-		});
-		return citations;
-	}
-
-	// Handle JSON response (format=json fallback)
-	if (data.items && Array.isArray(data.items)) {
-		for (const note of data.items.slice(0, 5)) {
-			if (note && typeof note === 'object') {
-				const noteObj = note as Record<string, unknown>;
-				const noteRef = (noteObj.Reference as string) || reference;
-				const noteText = (noteObj.Note as string) || '';
-				const quote = (noteObj.Quote as string) || '';
-				const cleanNote = noteText.replace(/\\n/g, ' ').replace(/[#*]/g, '').substring(0, 150);
-
-				citations.push({
-					source: 'Translation Notes',
-					reference: noteRef,
-					content: quote ? `"${quote}" - ${cleanNote}` : cleanNote
-				});
-			}
+			reference,
+			content: content.substring(0, 500) + (content.length > 500 ? '...' : '')
 		}
-	}
-
-	return citations;
+	];
 }
 
 /**
@@ -239,28 +183,12 @@ export async function executeNotesAgent(
 			// Extract citations
 			const citations = extractNotesCitations(toolResult, reference);
 
-			// Determine if we have content
-			const parsedData = parseMCPContent(toolResult);
-			let hasContent = false;
-			let summary = '';
-
-			// Check markdown format (preferred)
-			if (parsedData?.isMarkdown && parsedData?.rawMarkdown) {
-				const markdown = parsedData.rawMarkdown as string;
-				hasContent = markdown.length > 100 && !markdown.toLowerCase().includes('not found');
-				const headingCount = (markdown.match(/^##\s/gm) || []).length;
-				summary = hasContent
-					? `Found ${headingCount} note sections for ${reference}`
-					: `No notes found for ${reference}`;
-			} else {
-				// JSON format fallback
-				const itemsCount =
-					parsedData && Array.isArray(parsedData.items) ? parsedData.items.length : 0;
-				hasContent = itemsCount > 0;
-				summary = hasContent
-					? `Found ${itemsCount} notes for ${reference}`
-					: `No notes found for ${reference}`;
-			}
+			// Simple content check - LLM will understand the content
+			const content = extractRawContent(toolResult);
+			const hasContent = content.length > 100 && !content.toLowerCase().includes('not found');
+			const summary = hasContent
+				? `Retrieved notes for ${reference}`
+				: `No notes found for ${reference}`;
 
 			emit('agent:summary', { agent: 'notes', summary, success: hasContent });
 
@@ -301,43 +229,10 @@ export async function executeNotesAgent(
 }
 
 /**
- * Create a preview string from notes result
+ * Create a preview string from notes result - SIMPLE
  */
 function createNotesPreview(result: unknown): string {
-	const data = parseMCPContent(result);
-	if (!data) {
-		return 'No content';
-	}
-
-	// Handle markdown response (format=md)
-	if (data.isMarkdown && data.rawMarkdown) {
-		const markdown = data.rawMarkdown as string;
-		// Count headings as rough note count
-		const headingCount = (markdown.match(/^##\s/gm) || []).length;
-		// Extract first heading as preview
-		const headingMatch = markdown.match(/##?\s+([^\n]+)/);
-		const preview = headingMatch ? headingMatch[1].replace(/[#*]/g, '').trim() : '';
-		return headingCount > 0
-			? `${headingCount} sections found. First: ${preview.substring(0, 40)}...`
-			: `Notes content loaded (${markdown.length} chars)`;
-	}
-
-	// Handle JSON response (format=json)
-	const itemsCount = Array.isArray(data.items) ? data.items.length : 0;
-	if (itemsCount > 0) {
-		const firstItem = data.items[0] as Record<string, unknown>;
-		const notePreview = ((firstItem?.Note as string) || '')
-			.replace(/\\n/g, ' ')
-			.replace(/[#*]/g, '')
-			.substring(0, 50);
-		return `${itemsCount} notes found. First: ${notePreview}...`;
-	}
-
-	// Fallback for other formats
-	if (data.rawText) {
-		const preview = (data.rawText as string).substring(0, 50);
-		return `Content: ${preview}...`;
-	}
-
-	return 'No notes found';
+	const content = extractRawContent(result);
+	if (!content) return 'No content';
+	return content.length > 100 ? 'Notes content retrieved' : 'No notes found';
 }
