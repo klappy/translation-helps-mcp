@@ -138,9 +138,10 @@ export async function callWorkersAIStream(
 		maxTokens = 2000,
 		temperature = 0.3,
 		onToolCalls,
-		xrayInit,
-		timings,
-		startTime
+		// X-Ray is always enabled - default to minimal data if not provided
+		xrayInit = { queryType: 'ai-assisted', model: WORKERS_AI_MODEL },
+		timings = {},
+		startTime = Date.now()
 	} = options;
 
 	const encoder = new TextEncoder();
@@ -205,15 +206,14 @@ export async function callWorkersAIStream(
 					// Stream the final response
 					emit(controller, 'llm:start', { started: true });
 
-					if (xrayInit) {
-						emit(controller, 'xray', {
-							...xrayInit,
-							toolCalls: result.tool_calls.map((tc) => ({
-								name: tc.function.name,
-								arguments: tc.function.arguments
-							}))
-						});
-					}
+					// Always emit X-Ray data for debugging visibility
+					emit(controller, 'xray', {
+						...xrayInit,
+						toolCalls: result.tool_calls.map((tc) => ({
+							name: tc.function.name,
+							arguments: tc.function.arguments
+						}))
+					});
 
 					// Stream content character by character for better UX
 					const content = finalResult.response || '';
@@ -239,9 +239,8 @@ export async function callWorkersAIStream(
 					// No tool calls - stream response directly
 					emit(controller, 'llm:start', { started: true });
 
-					if (xrayInit) {
-						emit(controller, 'xray', xrayInit);
-					}
+					// Always emit X-Ray data (with empty toolCalls) for debugging visibility
+					emit(controller, 'xray', { ...xrayInit, toolCalls: [] });
 
 					const content = result.response || '';
 					for (let i = 0; i < content.length; i += 10) {

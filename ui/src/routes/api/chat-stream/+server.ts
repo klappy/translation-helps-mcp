@@ -31,6 +31,7 @@ import type { RequestHandler } from './$types';
 interface ChatRequest {
 	message: string;
 	chatHistory?: Array<{ role: string; content: string }>;
+	// Note: enableXRay is accepted for backwards compatibility but X-Ray is always enabled
 	enableXRay?: boolean;
 }
 
@@ -43,7 +44,11 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 	try {
 		// Parse request
-		const { message, chatHistory = [], enableXRay = false }: ChatRequest = await request.json();
+		const {
+			message,
+			chatHistory = [],
+			enableXRay: _enableXRay = false
+		}: ChatRequest = await request.json();
 
 		if (!message || typeof message !== 'string') {
 			return json(
@@ -58,8 +63,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		logger.info('Chat request received', {
 			messageLength: message.length,
-			historyLength: chatHistory.length,
-			enableXRay
+			historyLength: chatHistory.length
 		});
 
 		// Get Workers AI binding
@@ -115,7 +119,6 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 				mcpTools,
 				baseUrl,
 				serverUrl,
-				enableXRay,
 				timings,
 				startTime
 			);
@@ -129,7 +132,6 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 			mcpTools,
 			baseUrl,
 			serverUrl,
-			enableXRay,
 			timings,
 			startTime
 		);
@@ -152,15 +154,15 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 /**
  * Handle non-streaming chat response
+ * X-Ray data is always included for debugging visibility
  */
 async function handleNonStreamingResponse(
 	ai: AIBinding,
 	message: string,
 	chatHistory: Array<{ role: string; content: string }>,
 	mcpTools: Array<{ name: string; description?: string; inputSchema: Record<string, unknown> }>,
-	baseUrl: string,
+	_baseUrl: string,
 	serverUrl: string,
-	enableXRay: boolean,
 	timings: Record<string, number>,
 	startTime: number
 ): Promise<Response> {
@@ -213,6 +215,7 @@ async function handleNonStreamingResponse(
 	const totalDuration = Date.now() - startTime;
 
 	// Build response matching ChatInterface expectations
+	// X-Ray data is ALWAYS included for debugging visibility
 	const response: Record<string, unknown> = {
 		success: true,
 		content: result.content,
@@ -226,13 +229,10 @@ async function handleNonStreamingResponse(
 			model: WORKERS_AI_MODEL,
 			streaming: false,
 			duration: totalDuration
-		}
+		},
+		// Always include X-Ray data for debugging
+		xrayData: buildXRayData(result.toolCalls, timings, totalDuration)
 	};
-
-	// Add X-ray data if requested
-	if (enableXRay) {
-		response.xrayData = buildXRayData(result.toolCalls, timings, totalDuration);
-	}
 
 	return json(response, {
 		headers: {
@@ -245,15 +245,15 @@ async function handleNonStreamingResponse(
 
 /**
  * Handle streaming chat response via SSE
+ * X-Ray data is always included for debugging visibility
  */
 async function handleStreamingResponse(
 	ai: AIBinding,
 	message: string,
 	chatHistory: Array<{ role: string; content: string }>,
 	mcpTools: Array<{ name: string; description?: string; inputSchema: Record<string, unknown> }>,
-	baseUrl: string,
+	_baseUrl: string,
 	serverUrl: string,
-	enableXRay: boolean,
 	timings: Record<string, number>,
 	startTime: number
 ): Promise<Response> {
@@ -313,17 +313,15 @@ async function handleStreamingResponse(
 		return results;
 	};
 
-	// Build initial X-Ray data
-	const xrayInit = enableXRay
-		? {
-				queryType: 'ai-assisted',
-				model: WORKERS_AI_MODEL,
-				toolsAvailable: mcpTools.length,
-				timings: {
-					toolDiscovery: timings.toolDiscovery || 0
-				}
-			}
-		: undefined;
+	// Build initial X-Ray data - ALWAYS included for debugging visibility
+	const xrayInit = {
+		queryType: 'ai-assisted',
+		model: WORKERS_AI_MODEL,
+		toolsAvailable: mcpTools.length,
+		timings: {
+			toolDiscovery: timings.toolDiscovery || 0
+		}
+	};
 
 	// Create streaming response
 	const sseStream = await callWorkersAIStream(ai, messages, {
