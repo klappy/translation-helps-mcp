@@ -222,15 +222,6 @@ export async function callWorkersAIStream(
 				});
 				detailedTimings.initialLlmCall = Date.now() - initialLlmStart;
 
-				// DEBUG: Log what Workers AI returned
-				logger.info('Workers AI initial response', {
-					hasToolCalls: !!result.tool_calls,
-					toolCallCount: result.tool_calls?.length || 0,
-					hasResponse: !!result.response,
-					responsePreview: result.response?.substring(0, 100),
-					toolChoice
-				});
-
 				// Handle tool calls if present
 				let finalMessages = messages;
 
@@ -284,15 +275,31 @@ export async function callWorkersAIStream(
 					detailedTimings.total = Date.now() - startTime;
 
 					// Emit X-Ray with COMPLETE timings after streaming
+					// Format to match XRayPanel.svelte expectations
+					const totalTime = detailedTimings.total || 0;
 					emit(controller, 'xray', {
 						...xrayInit,
-						toolCalls: toolExecutions,
+						// UI expects 'tools' array with id, name, duration, params
+						tools: toolExecutions.map((t, i) => ({
+							id: `tool-${i}`,
+							name: t.name,
+							duration: t.duration,
+							params: typeof t.args === 'string' ? JSON.parse(t.args) : t.args,
+							cacheStatus: 'miss'
+						})),
+						totalTime,
 						timings: {
 							toolDiscovery: timings.toolDiscovery || 0,
 							initialLlmCall: detailedTimings.initialLlmCall || 0,
 							toolExecution: detailedTimings.toolExecution || 0,
 							finalLlmCall: detailedTimings.finalLlmCall || 0,
-							total: detailedTimings.total || 0
+							total: totalTime,
+							breakdown: {
+								'Tool Discovery': `${timings.toolDiscovery || 0}ms`,
+								'Initial LLM': `${detailedTimings.initialLlmCall || 0}ms`,
+								'Tool Execution': `${detailedTimings.toolExecution || 0}ms`,
+								'Final LLM': `${detailedTimings.finalLlmCall || 0}ms`
+							}
 						}
 					});
 
@@ -322,17 +329,26 @@ export async function callWorkersAIStream(
 
 					// Calculate total timing AFTER streaming completes
 					detailedTimings.total = Date.now() - startTime;
+					const totalTime = detailedTimings.total;
 
 					// Emit X-Ray with COMPLETE timings after streaming
+					// Format to match XRayPanel.svelte expectations
 					emit(controller, 'xray', {
 						...xrayInit,
-						toolCalls: [],
+						tools: [], // Empty - no tools called
+						totalTime,
 						timings: {
 							toolDiscovery: timings.toolDiscovery || 0,
 							initialLlmCall: detailedTimings.initialLlmCall || 0,
 							toolExecution: 0,
 							finalLlmCall: 0,
-							total: detailedTimings.total || 0
+							total: totalTime,
+							breakdown: {
+								'Tool Discovery': `${timings.toolDiscovery || 0}ms`,
+								'Initial LLM': `${detailedTimings.initialLlmCall || 0}ms`,
+								'Tool Execution': '0ms',
+								'Final LLM': '0ms'
+							}
 						}
 					});
 
