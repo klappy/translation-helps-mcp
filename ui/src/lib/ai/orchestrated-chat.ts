@@ -72,9 +72,11 @@ export async function orchestratedChat(
 				success?: boolean;
 				preview?: string;
 				agent?: string;
+				_startTime?: number; // Internal: track when tool call started
 			}> = [];
 
 			const timings: Record<string, number> = {};
+			let ttft: number | null = null; // Time to First Token
 
 			// Helper to add timeline entry
 			const addTimelineEntry = (entry: (typeof xrayTimeline)[0]) => {
@@ -86,6 +88,11 @@ export async function orchestratedChat(
 				controller.enqueue(encoder.encode(msg));
 
 				const now = Date.now();
+
+				// Track TTFT (Time to First Token) - when user first sees content
+				if (event === 'synthesis:delta' && ttft === null) {
+					ttft = now - startTime;
+				}
 
 				// Track orchestrator events
 				if (event === 'orchestrator:thinking') {
@@ -157,12 +164,13 @@ export async function orchestratedChat(
 						params: eventData.args as Record<string, unknown>
 					});
 
-					// Legacy support
+					// Legacy support - store startTime for accurate duration calculation
 					xrayToolCalls.push({
 						name: eventData.tool || 'unknown',
 						endpoint: `/api/mcp (${eventData.tool})`,
 						params: eventData.args as Record<string, unknown>,
-						agent: eventData.agent
+						agent: eventData.agent,
+						_startTime: now // Track when this tool call started
 					});
 				}
 
@@ -184,12 +192,12 @@ export async function orchestratedChat(
 						toolEntry.preview = eventData.preview;
 					}
 
-					// Legacy support
+					// Legacy support - use the tool's own start time, not global
 					const lastCall = xrayToolCalls.find(
 						(c) => c.name === eventData.tool && c.agent === eventData.agent && !c.duration
 					);
 					if (lastCall) {
-						lastCall.duration = now - startTime;
+						lastCall.duration = now - (lastCall._startTime || startTime);
 						lastCall.success = true;
 						lastCall.preview = eventData.preview;
 					}
@@ -348,6 +356,7 @@ export async function orchestratedChat(
 
 					// Phase timings
 					timings: {
+						ttft: ttft, // Time to First Token - when user first sees content
 						planning: timings.planning,
 						agentExecution: timings.agentExecution,
 						synthesis: timings.synthesis,

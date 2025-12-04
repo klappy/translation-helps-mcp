@@ -113,9 +113,17 @@
 							<div class="text-xs text-gray-400">Tools Used</div>
 						</div>
 					{/if}
+					{#if data.timings?.ttft}
+						<div class="text-center">
+							<div class="text-xl font-bold text-emerald-400">
+								{formatDuration(data.timings.ttft)}
+							</div>
+							<div class="text-xs text-gray-400">TTFT</div>
+						</div>
+					{/if}
 					<div class="text-center">
 						<div class="text-xl font-bold text-white">{formatDuration(data.totalTime)}</div>
-						<div class="text-xs text-gray-400">Total Time</div>
+						<div class="text-xs text-gray-400">Total</div>
 					</div>
 				</div>
 				{#if isOrchestrated}

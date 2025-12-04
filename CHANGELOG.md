@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.13.7](https://github.com/klappy/translation-helps-mcp/compare/v7.13.6...v7.13.7) (2025-12-04)
+
+### Bug Fixes
+
+- **xray:** fix tool call timing - was measuring from orchestration start instead of tool start
+  - Tool calls now show accurate ~50ms instead of inflated 5s+ times
+  - Each tool call now tracks its own start time for precise duration calculation
+
+### Features
+
+- **xray:** add TTFT (Time to First Token) metric
+  - Shows how quickly user sees first streaming content
+  - Displayed prominently in X-Ray panel alongside total time
+  - Helps demonstrate responsive UX even with longer total times
+
 ### [7.13.6](https://github.com/klappy/translation-helps-mcp/compare/v7.13.5...v7.13.6) (2025-12-04)
 
 ### Features
