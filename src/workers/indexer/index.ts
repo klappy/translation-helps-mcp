@@ -58,13 +58,9 @@ export default {
             status: "ok",
             worker: "translation-helps-indexer",
             env: {
-              CF_ACCOUNT_ID: env.CF_ACCOUNT_ID
-                ? `set (${env.CF_ACCOUNT_ID.substring(0, 8)}...)`
-                : "⚠️ MISSING",
-              AI_SEARCH_INDEX_ID: env.AI_SEARCH_INDEX_ID || "⚠️ MISSING",
-              CF_API_TOKEN: env.CF_API_TOKEN
-                ? `set (${env.CF_API_TOKEN.substring(0, 8)}...)`
-                : "⚠️ MISSING",
+              CF_ACCOUNT_ID: env.CF_ACCOUNT_ID ? "set" : "missing",
+              AI_SEARCH_INDEX_ID: env.AI_SEARCH_INDEX_ID ? "set" : "missing",
+              CF_API_TOKEN: env.CF_API_TOKEN ? "set" : "missing",
             },
             timestamp: new Date().toISOString(),
           },
@@ -113,40 +109,6 @@ export default {
           },
         );
       }
-    }
-
-    // List AI Search indexes to debug - try multiple API paths
-    if (url.pathname === "/list-indexes") {
-      const paths = [
-        `/accounts/${env.CF_ACCOUNT_ID}/ai-search/indexes`,
-        `/accounts/${env.CF_ACCOUNT_ID}/ai/search/indexes`,
-        `/accounts/${env.CF_ACCOUNT_ID}/autorag/indexes`,
-        `/accounts/${env.CF_ACCOUNT_ID}/vectorize/indexes`,
-      ];
-      const results: Record<string, unknown> = {};
-
-      for (const path of paths) {
-        const testUrl = `https://api.cloudflare.com/client/v4${path}`;
-        try {
-          const response = await fetch(testUrl, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${env.CF_API_TOKEN}`,
-              "Content-Type": "application/json",
-            },
-          });
-          const body = await response.text();
-          results[path] = { status: response.status, body: JSON.parse(body) };
-        } catch (error) {
-          results[path] = {
-            error: error instanceof Error ? error.message : String(error),
-          };
-        }
-      }
-
-      return new Response(JSON.stringify(results, null, 2), {
-        headers: { "Content-Type": "application/json" },
-      });
     }
 
     return new Response("Not Found", { status: 404 });

@@ -40,21 +40,15 @@ export async function triggerAISearchReindex(env: Env): Promise<void> {
     return;
   }
 
-  // Validate environment - LOG ACTUAL VALUES for debugging
-  console.log(`[AI Search Trigger] Environment check:`);
-  console.log(
-    `  CF_ACCOUNT_ID: ${env.CF_ACCOUNT_ID ? `set (${env.CF_ACCOUNT_ID.substring(0, 8)}...)` : "⚠️ MISSING"}`,
-  );
-  console.log(
-    `  AI_SEARCH_INDEX_ID: ${env.AI_SEARCH_INDEX_ID || "⚠️ MISSING"}`,
-  );
-  console.log(
-    `  CF_API_TOKEN: ${env.CF_API_TOKEN ? `set (${env.CF_API_TOKEN.substring(0, 8)}...)` : "⚠️ MISSING"}`,
-  );
-
+  // Validate environment - only log "set" or "missing", never actual values
   if (!env.CF_ACCOUNT_ID || !env.AI_SEARCH_INDEX_ID || !env.CF_API_TOKEN) {
-    console.error(
-      "[AI Search Trigger] ❌ MISSING REQUIRED ENV VARS - CANNOT TRIGGER REINDEX",
+    console.warn(
+      "[AI Search Trigger] Missing required environment variables:",
+      {
+        CF_ACCOUNT_ID: env.CF_ACCOUNT_ID ? "set" : "missing",
+        AI_SEARCH_INDEX_ID: env.AI_SEARCH_INDEX_ID ? "set" : "missing",
+        CF_API_TOKEN: env.CF_API_TOKEN ? "set" : "missing",
+      },
     );
     return;
   }
