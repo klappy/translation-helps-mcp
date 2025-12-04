@@ -63,11 +63,23 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						{
 							name: 'fetch_scripture',
 							description:
-								'Fetch Bible scripture text for a specific reference. Supports optional search parameter to filter results.',
+								'Fetch Bible scripture text for a specific reference. ALWAYS use format: "md" for best results.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									reference: { type: 'string', description: "Bible reference (e.g., 'John 3:16')" },
+									format: {
+										type: 'string',
+										enum: ['json', 'md', 'markdown', 'text'],
+										default: 'md',
+										description:
+											'Output format: ALWAYS use "md" (markdown with YAML frontmatter, LLM-friendly)'
+									},
+									resource: {
+										type: 'string',
+										default: 'all',
+										description: 'Translation(s): "all", "ult", "ust", etc.'
+									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' },
 									search: {

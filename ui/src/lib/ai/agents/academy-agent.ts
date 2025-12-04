@@ -35,20 +35,24 @@ You fetch training content and articles about translation concepts and technique
 - Use lowercase with hyphens: "figs-metaphor", "writing-poetry"
 - Common prefixes: figs- (figures of speech), writing- (writing styles), grammar- (grammar topics)
 
-### Parameters
+### Parameters (REQUIRED)
 - moduleId: The academy module to fetch (e.g., "figs-metaphor")
-- path: Direct path to module file
-- rcLink: RC link format "rc://*/ta/man/translate/figs-metaphor"
+- format: "md" (ALWAYS use "md" for markdown output - this is REQUIRED)
+- language: "en" for English (default)
 
 ## YOUR TASK
-When given a task about translation concepts, determine the appropriate module and fetch it.
-Think through which module best matches the question.
+When given a task, call fetch_translation_academy with these REQUIRED parameters:
+- moduleId: The module ID from the task
+- format: "md" (ALWAYS - this gives you readable markdown)
 
-## THINKING FORMAT
-Before calling the tool, briefly explain what you're doing:
-"This question is about [concept]. The relevant Translation Academy module is [moduleId]..."
+## EXAMPLE TOOL CALL
+For a question about metaphors:
+{
+  "moduleId": "figs-metaphor",
+  "format": "md"
+}
 
-Then call the fetch_translation_academy tool with the moduleId.`;
+CRITICAL: Always include format: "md" - without it you get unusable JSON!`;
 
 /**
  * Tools available to the Academy Agent
@@ -188,10 +192,13 @@ export async function executeAcademyAgent(
 
 			emit('agent:summary', { agent: 'academy', summary, success: !!hasContent });
 
+			// Extract raw content - not MCP wrapper
+			const rawContent = extractRawContent(toolResult);
+
 			return {
 				agent: 'academy',
 				success: !!hasContent,
-				findings: toolResult,
+				findings: rawContent, // RAW TEXT, not MCP wrapper
 				summary,
 				citations,
 				confidence: hasContent ? 0.9 : 0.2

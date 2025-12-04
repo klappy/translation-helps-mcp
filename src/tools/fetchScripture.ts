@@ -154,7 +154,7 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
         };
 
         // Format based on requested format
-        const format = (args.format || "json") as OutputFormat;
+        const format = (args.format || "md") as OutputFormat;
         return formatMCPResponse(responseData, format, "scripture");
       } catch (error) {
         return handleMCPError({

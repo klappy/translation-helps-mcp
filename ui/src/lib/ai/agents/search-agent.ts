@@ -42,14 +42,19 @@ You search across ALL translation resources when specific lookups won't work.
 - Translation Academy modules (translation concepts)
 
 ## YOUR TASK
-When given a task, construct an effective search query and call search_biblical_resources.
-Think through what keywords and filters would find the best results.
+When given a task, call search_biblical_resources with these parameters:
+- query: The search keywords (required)
+- format: "md" (ALWAYS - this gives you readable markdown)
+- reference: Optional filter to specific book/chapter
 
-## THINKING FORMAT
-Before calling the tool, briefly explain what you're doing:
-"Searching for [concept]. Using query: [keywords], reference filter: [if any]..."
+## EXAMPLE TOOL CALL
+For "eternal life":
+{
+  "query": "eternal life",
+  "format": "md"
+}
 
-Then call the search_biblical_resources tool.`;
+CRITICAL: Always include format: "md" - without it you get unusable JSON!`;
 
 /**
  * Tools available to the Search Agent
@@ -187,10 +192,13 @@ export async function executeSearchAgent(
 
 			emit('agent:summary', { agent: 'search', summary, success: hitCount > 0 });
 
+			// Extract raw content - not MCP wrapper
+			const rawContent = extractRawContent(toolResult);
+
 			return {
 				agent: 'search',
 				success: hitCount > 0,
-				findings: toolResult,
+				findings: rawContent, // RAW TEXT, not MCP wrapper
 				summary,
 				citations,
 				confidence: hitCount > 0 ? Math.min(0.9, 0.5 + hitCount * 0.05) : 0.1,

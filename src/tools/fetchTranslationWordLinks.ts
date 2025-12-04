@@ -143,7 +143,7 @@ export async function handleFetchTranslationWordLinks(
     });
 
     // Format based on requested format
-    const format = (args.format || "json") as OutputFormat;
+    const format = (args.format || "md") as OutputFormat;
     return formatMCPResponse(responseData, format, "translation-word-links");
   } catch (error) {
     return handleMCPError({

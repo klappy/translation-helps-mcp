@@ -165,7 +165,7 @@ export function createSimpleEndpoint(config: SimpleEndpointConfig): RequestHandl
 				formatParam = {
 					name: 'format',
 					type: 'string',
-					default: 'json',
+					default: 'md', // Default to markdown - LLM-friendly output!
 					validate: (value) => {
 						const allowedFormats =
 							config.supportsFormats === true

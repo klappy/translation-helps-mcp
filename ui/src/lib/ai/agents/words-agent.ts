@@ -43,14 +43,20 @@ You fetch definitions and articles about biblical terms, names, people, and plac
 - Helpful when unsure of exact term name
 
 ## YOUR TASK
-When given a task, determine the best lookup method and call fetch_translation_word.
+When given a task, call fetch_translation_word with these REQUIRED parameters:
+- term: The English term to look up
+- format: "md" (ALWAYS - this gives you readable markdown)
+
 If asked about a Greek/Hebrew term, translate it to English first.
 
-## THINKING FORMAT
-Before calling the tool, briefly explain what you're doing:
-"Looking up [term] - this is in the [category] category. Using term lookup..."
+## EXAMPLE TOOL CALL
+For "love":
+{
+  "term": "love",
+  "format": "md"
+}
 
-Then call the fetch_translation_word tool with appropriate parameters.`;
+CRITICAL: Always include format: "md" - without it you get unusable JSON!`;
 
 /**
  * Tools available to the Words Agent
@@ -190,10 +196,13 @@ export async function executeWordsAgent(
 
 			emit('agent:summary', { agent: 'words', summary, success: hasContent });
 
+			// Extract raw content - not MCP wrapper
+			const rawContent = extractRawContent(toolResult);
+
 			return {
 				agent: 'words',
 				success: hasContent,
-				findings: toolResult,
+				findings: rawContent, // RAW TEXT, not MCP wrapper
 				summary,
 				citations,
 				confidence: hasContent ? 0.9 : 0.2,

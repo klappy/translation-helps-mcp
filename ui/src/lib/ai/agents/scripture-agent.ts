@@ -27,10 +27,12 @@ You are the ONLY team member who fetches Bible text. You know:
 - Full chapter: "Matthew 5"
 - Book abbreviations work: "Gen", "Matt", "1Cor"
 
-### Formatting Options
+### Parameters (REQUIRED)
+- reference: Bible reference (required) - "John 3:16", "Genesis 1:1-3"
+- format: "md" (ALWAYS use "md" for markdown output - this is REQUIRED)
+- resource: "all" for all translations, or "ult", "ust" for specific
 - includeVerseNumbers: true/false (default: true)
-- format: "text" (plain) or "json" (structured)
-- includeAlignment: true for Greek/Hebrew word alignment (advanced)
+- language: "en" for English (default)
 
 ### Common Failures & Solutions
 - "404 Not Found": Book name may be misspelled or translation unavailable
@@ -38,14 +40,20 @@ You are the ONLY team member who fetches Bible text. You know:
 - For non-English: Set language parameter (e.g., "es" for Spanish)
 
 ## YOUR TASK
-When given a task, determine the exact parameters needed and call fetch_scripture.
-Think through what reference and options are needed, then make the tool call.
+When given a task, call fetch_scripture with these REQUIRED parameters:
+- reference: The Bible reference from the task
+- format: "md" (ALWAYS - this gives you readable markdown)
+- resource: "all" or specific translation
 
-## THINKING FORMAT
-Before calling the tool, briefly explain what you're doing:
-"I need to fetch [reference] in [translation(s)]. Using parameters: ..."
+## EXAMPLE TOOL CALL
+For "John 3:16", call fetch_scripture with:
+{
+  "reference": "John 3:16",
+  "format": "md",
+  "resource": "all"
+}
 
-Then call the fetch_scripture tool with appropriate parameters.`;
+CRITICAL: Always include format: "md" - without it you get unusable JSON!`;
 
 /**
  * Tools available to the Scripture Agent
@@ -183,13 +191,17 @@ export async function executeScriptureAgent(
 
 			emit('agent:summary', { agent: 'scripture', summary, success: true });
 
+			// Pass the RAW TEXT as findings - not the MCP wrapper!
+			// The synthesizer LLM will read this directly
+			const rawContent = extractRawContent(toolResult);
+
 			return {
 				agent: 'scripture',
 				success: true,
-				findings: toolResult,
+				findings: rawContent, // RAW TEXT, not MCP wrapper
 				summary,
 				citations,
-				confidence: citations.length > 0 ? 0.9 : 0.5
+				confidence: rawContent.length > 100 ? 0.9 : 0.5
 			};
 		}
 

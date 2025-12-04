@@ -44,8 +44,10 @@ export const OrganizationParam = z
 export const FormatParam = z
   .enum(["text", "usfm", "json", "md", "markdown"])
   .optional()
-  .default("json")
-  .describe('Output format (default: "json")');
+  .default("md")
+  .describe(
+    'Output format (default: "md" for LLM-friendly markdown with YAML frontmatter)',
+  );
 
 /**
  * Common resource parameter

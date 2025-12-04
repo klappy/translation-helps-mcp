@@ -46,7 +46,7 @@ export class UnifiedMCPHandler {
 		const finalArgs = { ...args };
 		if (!finalArgs.language) finalArgs.language = 'en';
 		if (!finalArgs.organization) finalArgs.organization = 'unfoldingWord';
-		if (!finalArgs.format) finalArgs.format = 'json'; // Default to JSON for structured data
+		if (!finalArgs.format) finalArgs.format = 'md'; // Default to MARKDOWN - LLM-friendly output!
 
 		// Log final parameters (after defaults)
 		console.log(

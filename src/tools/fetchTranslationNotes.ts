@@ -104,7 +104,7 @@ export async function handleFetchTranslationNotes(
 
     // Format response based on requested format
     // Default to markdown for LLM-friendly output
-    const format = (args.format || "json") as OutputFormat;
+    const format = (args.format || "md") as OutputFormat;
     return formatMCPResponse(responseData, format, "translation-notes");
   } catch (error) {
     return handleMCPError({

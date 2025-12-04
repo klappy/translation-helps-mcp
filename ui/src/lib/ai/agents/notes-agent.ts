@@ -195,7 +195,7 @@ export async function executeNotesAgent(
 			return {
 				agent: 'notes',
 				success: hasContent,
-				findings: toolResult,
+				findings: content, // RAW TEXT, not MCP wrapper
 				summary,
 				citations,
 				confidence: hasContent ? 0.85 : 0.3

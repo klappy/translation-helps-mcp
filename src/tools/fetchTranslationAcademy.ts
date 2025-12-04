@@ -150,7 +150,7 @@ export async function handleFetchTranslationAcademy(
     });
 
     // Format based on requested format
-    const format = (args.format || "json") as OutputFormat;
+    const format = (args.format || "md") as OutputFormat;
     return formatMCPResponse(responseData, format, "translation-academy");
   } catch (error) {
     return handleMCPError({

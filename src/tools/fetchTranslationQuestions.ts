@@ -86,7 +86,7 @@ export async function handleFetchTranslationQuestions(
     });
 
     // Format based on requested format
-    const format = (args.format || "json") as OutputFormat;
+    const format = (args.format || "md") as OutputFormat;
     return formatMCPResponse(responseData, format, "translation-questions");
   } catch (error) {
     return handleMCPError({
