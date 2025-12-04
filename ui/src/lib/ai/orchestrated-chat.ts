@@ -573,7 +573,7 @@ async function executeAgentsInParallel(
  */
 async function planIterationTasks(
 	_ai: AIBinding,
-	_userMessage: string,
+	userMessage: string,
 	agentResults: AgentResponse[],
 	confidenceThreshold: number,
 	_emit: StreamEmitter
