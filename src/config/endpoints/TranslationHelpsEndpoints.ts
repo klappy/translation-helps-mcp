@@ -57,9 +57,10 @@ const REFERENCE_PARAMS = {
   format: {
     type: "string" as const,
     required: false,
-    default: "json",
-    description: "Response format",
-    example: "json",
+    default: "md",
+    description:
+      "Response format - 'md' (default) for LLM-friendly markdown with YAML frontmatter",
+    example: "md",
     options: ["json", "md", "text"],
   },
 };
@@ -341,10 +342,11 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
     format: {
       type: "string" as const,
       required: false,
-      description: "Response format",
-      example: "json",
+      description:
+        "Response format - 'md' (default) for LLM-friendly markdown with YAML frontmatter",
+      example: "md",
       options: ["json", "md", "markdown"],
-      default: "json",
+      default: "md",
     },
   },
 
@@ -448,10 +450,10 @@ export const BROWSE_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       type: "string" as const,
       required: false,
       description:
-        "Response format - markdown (default) for LLM-friendly output, json for structured data",
+        "Response format - 'markdown' (default) for LLM-friendly output, json for structured data",
       example: "markdown",
       options: ["markdown", "json"],
-      default: "json",
+      default: "markdown",
     },
   },
 

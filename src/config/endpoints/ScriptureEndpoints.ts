@@ -63,10 +63,10 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
     format: {
       type: "string",
       required: false,
-      default: "json",
+      default: "md",
       description:
-        "Output format - 'json' (default) for structured data, 'text' for plain text with citation, 'md' for markdown, 'usfm' for USFM formatted",
-      example: "json",
+        "Output format - 'md' (default) for LLM-friendly markdown with YAML frontmatter, 'json' for structured data, 'text' for plain text",
+      example: "md",
       options: ["json", "text", "md", "markdown", "usfm"],
     },
     includeAlignment: {
