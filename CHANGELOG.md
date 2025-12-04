@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.13.5](https://github.com/klappy/translation-helps-mcp/compare/v7.13.4...v7.13.5) (2025-12-04)
+
+### Bug Fixes
+
+- endpoint config defaults to md format for MCP Tools UI\n\n- Change format parameter default from json to md in endpoint configs\n- Update ScriptureEndpoints.ts format default to md\n- Update TranslationHelpsEndpoints.ts format default to md\n- This ensures MCP Tools UI form defaults to markdown format ([60254e0](https://github.com/klappy/translation-helps-mcp/commit/60254e0cbfeb4869815a875bc31867116dee85f5))
+
 ### [7.13.4](https://github.com/klappy/translation-helps-mcp/compare/v7.13.3...v7.13.4) (2025-12-04)
 
 ### Bug Fixes
