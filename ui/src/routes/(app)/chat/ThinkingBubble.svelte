@@ -19,13 +19,8 @@
 	export let orchestratorStatus: 'planning' | 'dispatching' | 'synthesizing' | 'done' = 'planning';
 	export let orchestratorThoughts = '';
 
-	// Auto-collapse when synthesis starts
-	$: if (orchestratorStatus === 'synthesizing' && isExpanded) {
-		// Give a moment for the user to see the transition
-		setTimeout(() => {
-			isExpanded = false;
-		}, 500);
-	}
+	// No auto-collapse - let users read the agent details at their own pace
+	// The bubble stays expanded until the user manually collapses it
 
 	// Count agents by status
 	$: activeAgents = agentStreams.filter(

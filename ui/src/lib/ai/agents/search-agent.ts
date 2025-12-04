@@ -149,7 +149,7 @@ export async function executeSearchAgent(
 
 	try {
 		// Call LLM to decide tool parameters
-		const result = await ai.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+		const result = await ai.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
 			messages,
 			tools: searchTools,
 			tool_choice: 'required'
@@ -160,11 +160,30 @@ export async function executeSearchAgent(
 			emit('agent:thinking', { agent: 'search', delta: result.response });
 		}
 
-		// Handle tool calls
+		// Handle tool calls - support both OpenAI and Workers AI formats
 		if (result.tool_calls && result.tool_calls.length > 0) {
 			const toolCall = result.tool_calls[0];
-			const toolName = toolCall.function.name;
-			const toolArgs = JSON.parse(toolCall.function.arguments);
+
+			// Workers AI format: { name, arguments: object }
+			// OpenAI format: { function: { name, arguments: string } }
+			const toolName = toolCall.function?.name || (toolCall as unknown as { name?: string }).name;
+			const rawArgs =
+				toolCall.function?.arguments || (toolCall as unknown as { arguments?: unknown }).arguments;
+			const toolArgs =
+				typeof rawArgs === 'string' ? JSON.parse(rawArgs) : (rawArgs as Record<string, unknown>);
+
+			if (!toolName) {
+				emit('agent:error', { agent: 'search', error: 'Could not determine tool name' });
+				return {
+					agent: 'search',
+					success: false,
+					findings: null,
+					summary: 'Failed: Could not parse tool call',
+					citations: [],
+					confidence: 0,
+					error: 'Could not parse tool call'
+				};
+			}
 
 			emit('agent:tool:start', { agent: 'search', tool: toolName, args: toolArgs });
 

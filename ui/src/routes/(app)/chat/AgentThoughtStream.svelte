@@ -14,12 +14,8 @@
 
 	let expanded = true;
 
-	// Auto-collapse when complete (with delay for reading)
-	$: if (agent.status === 'complete' && expanded) {
-		setTimeout(() => {
-			expanded = false;
-		}, 1500);
-	}
+	// No auto-collapse - let users read the agent details at their own pace
+	// They can manually collapse agents they're done reading
 
 	function getStatusBadge(status: string): { text: string; class: string } {
 		switch (status) {

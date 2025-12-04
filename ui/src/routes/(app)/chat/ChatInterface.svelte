@@ -49,7 +49,7 @@
 	let currentRequestId: string | null = null;
 
 	// Multi-agent orchestration state
-	let useOrchestration = false; // Feature flag - set to true to enable
+	let useOrchestration = true; // Feature flag - enabled for testing
 	let orchestrationActive = false;
 	let orchestratorStatus: 'planning' | 'dispatching' | 'synthesizing' | 'done' = 'planning';
 	let orchestratorThoughts = '';
@@ -829,19 +829,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 					</div>
 				</div>
 			{/if}
-			<!-- Thinking Bubble for orchestration mode -->
-			{#if orchestrationActive && isLoading}
-				<div class="mx-auto mb-4 max-w-4xl">
-					<ThinkingBubble
-						bind:isExpanded={thinkingBubbleExpanded}
-						{agentStreams}
-						{orchestratorStatus}
-						{orchestratorThoughts}
-					/>
-				</div>
-			{/if}
-
-			{#each messages as message (message.id)}
+			{#each messages as message, index (message.id)}
 				<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4">
 					<div class="flex max-w-[80%] items-end space-x-2">
 						{#if message.role === 'assistant'}
@@ -855,6 +843,18 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 						{/if}
 
 						<div>
+							<!-- Thinking Bubble inline with assistant message - shows agent activity -->
+							{#if message.role === 'assistant' && orchestrationActive && agentStreams.length > 0 && index === messages.length - 1}
+								<div class="mb-3">
+									<ThinkingBubble
+										bind:isExpanded={thinkingBubbleExpanded}
+										{agentStreams}
+										{orchestratorStatus}
+										{orchestratorThoughts}
+									/>
+								</div>
+							{/if}
+
 							<div
 								class="rounded-2xl px-4 py-3 {message.role === 'user'
 									? 'bg-gray-700 text-white'

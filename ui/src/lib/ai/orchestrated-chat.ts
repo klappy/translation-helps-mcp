@@ -5,25 +5,26 @@
  * Coordinates the orchestrator and sub-agents to handle user queries.
  */
 
-import type { AIBinding, WorkersAIToolDefinition, WorkersAIMessage } from './types.js';
 import {
+	DEFAULT_ORCHESTRATION_CONFIG,
 	ORCHESTRATOR_PROMPT,
-	SYNTHESIS_PROMPT,
 	PLANNING_TOOL,
-	parseOrchestratorPlan,
+	SYNTHESIS_PROMPT,
 	buildSynthesisContext,
 	executeAgent,
+	getAgentDisplayName,
+	parseOrchestratorPlan,
 	type AgentName,
-	type AgentTask,
 	type AgentResponse,
-	type OrchestratorPlan,
-	type StreamEmitter,
+	type AgentTask,
 	type OrchestrationConfig,
-	DEFAULT_ORCHESTRATION_CONFIG,
-	getAgentDisplayName
+	type OrchestratorPlan,
+	type StreamEmitter
 } from './agents/index.js';
+import type { AIBinding, WorkersAIMessage, WorkersAIToolDefinition } from './types.js';
 
-const WORKERS_AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+// Using Llama 4 Scout for more reliable tool calling
+const WORKERS_AI_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
 
 /**
  * Execute orchestrated chat with streaming
@@ -43,16 +44,53 @@ export async function orchestratedChat(
 
 	return new ReadableStream<Uint8Array>({
 		start: async (controller) => {
+			// X-Ray data collection
+			const startTime = Date.now();
+			const xrayToolCalls: Array<{
+				name: string;
+				endpoint?: string;
+				params?: Record<string, unknown>;
+				duration?: number;
+				success?: boolean;
+				preview?: string;
+				agent?: string;
+			}> = [];
+			const timings: Record<string, number> = {};
+
 			const emit: StreamEmitter = (event: string, data: unknown) => {
 				const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 				controller.enqueue(encoder.encode(msg));
+
+				// Collect X-Ray data from agent events
+				if (event === 'agent:tool:start') {
+					const eventData = data as { agent?: string; tool?: string; args?: unknown };
+					xrayToolCalls.push({
+						name: eventData.tool || 'unknown',
+						endpoint: `/api/mcp (${eventData.tool})`,
+						params: eventData.args as Record<string, unknown>,
+						agent: eventData.agent
+					});
+				}
+				if (event === 'agent:tool:result') {
+					const eventData = data as { agent?: string; tool?: string; preview?: string };
+					const lastCall = xrayToolCalls.find(
+						(c) => c.name === eventData.tool && c.agent === eventData.agent && !c.duration
+					);
+					if (lastCall) {
+						lastCall.duration = Date.now() - startTime;
+						lastCall.success = true;
+						lastCall.preview = eventData.preview;
+					}
+				}
 			};
 
 			try {
 				// PHASE 1: Orchestrator Planning
+				const planStart = Date.now();
 				emit('orchestrator:thinking', { delta: 'Analyzing your question...\n' });
 
 				const plan = await planAgentDispatch(ai, userMessage, chatHistory, emit);
+				timings.planning = Date.now() - planStart;
 
 				if (!plan || plan.agents.length === 0) {
 					emit('error', { message: 'Failed to create execution plan' });
@@ -66,6 +104,7 @@ export async function orchestratedChat(
 				});
 
 				// PHASE 2: Parallel Agent Execution
+				const agentStart = Date.now();
 				const agentResults = await executeAgentsInParallel(
 					ai,
 					plan.agents,
@@ -74,6 +113,7 @@ export async function orchestratedChat(
 					emit,
 					finalConfig.parallelExecution
 				);
+				timings.agentExecution = Date.now() - agentStart;
 
 				// PHASE 3: Check for iteration
 				const lowConfidenceAgents = agentResults.filter(
@@ -129,10 +169,47 @@ export async function orchestratedChat(
 				}
 
 				// PHASE 4: Synthesis
+				const synthesisStart = Date.now();
 				emit('synthesis:start', {});
 
 				await synthesizeResponse(ai, userMessage, agentResults, controller, emit);
+				timings.synthesis = Date.now() - synthesisStart;
 
+				// Calculate total time
+				const totalTime = Date.now() - startTime;
+
+				// Emit X-Ray data for debugging panel
+				const xrayData = {
+					totalTime,
+					timings: {
+						planning: timings.planning,
+						agentExecution: timings.agentExecution,
+						synthesis: timings.synthesis
+					},
+					apiCalls: xrayToolCalls,
+					tools: xrayToolCalls.map((c) => ({
+						name: c.name,
+						duration: c.duration,
+						success: c.success,
+						params: c.params
+					})),
+					agents: {
+						dispatched: plan.agents.length,
+						successful: agentResults.filter((r) => r.success).length,
+						failed: agentResults.filter((r) => !r.success).length,
+						details: agentResults.map((r) => ({
+							name: getAgentDisplayName(r.agent),
+							agent: r.agent,
+							success: r.success,
+							confidence: r.confidence,
+							summary: r.summary
+						}))
+					},
+					mode: 'orchestrated'
+				};
+
+				emit('xray', xrayData);
+				emit('xray:final', xrayData);
 				emit('done', { success: true });
 				controller.close();
 			} catch (error) {
@@ -177,11 +254,24 @@ async function planAgentDispatch(
 			emit('orchestrator:thinking', { delta: result.response });
 		}
 
-		// Parse tool call
+		// Parse tool call - handle different response formats
 		if (result.tool_calls && result.tool_calls.length > 0) {
 			const toolCall = result.tool_calls[0];
-			if (toolCall.function.name === 'dispatch_agents') {
-				const plan = parseOrchestratorPlan(toolCall.function.arguments);
+
+			// Handle both standard OpenAI format and Workers AI format
+			// OpenAI format: { function: { name, arguments: string } }
+			// Workers AI format: { name, arguments: object }
+			const functionName =
+				toolCall.function?.name || (toolCall as unknown as { name?: string }).name;
+			const rawArgs =
+				toolCall.function?.arguments || (toolCall as unknown as { arguments?: unknown }).arguments;
+
+			// Arguments can be a string (OpenAI) or object (Workers AI)
+			const functionArgs =
+				typeof rawArgs === 'string' ? rawArgs : (rawArgs as Record<string, unknown>);
+
+			if (functionName === 'dispatch_agents') {
+				const plan = parseOrchestratorPlan(functionArgs);
 				if (plan) {
 					emit('orchestrator:thinking', { delta: `\n${plan.reasoning}\n` });
 					return {
@@ -195,8 +285,53 @@ async function planAgentDispatch(
 					};
 				}
 			}
+
+			// If the format is completely unexpected, try to parse it as a plan directly
+			// (some models return the plan object directly instead of through tool calling)
+			if (!functionName) {
+				const possiblePlan = toolCall as unknown as Record<string, unknown>;
+				if (possiblePlan.reasoning && Array.isArray(possiblePlan.agents)) {
+					emit('orchestrator:thinking', { delta: `\n${possiblePlan.reasoning}\n` });
+					return {
+						reasoning: possiblePlan.reasoning as string,
+						agents: (
+							possiblePlan.agents as Array<{ agent: string; task: string; priority: string }>
+						).map((a) => ({
+							agent: a.agent as AgentName,
+							task: a.task,
+							priority: a.priority as 'high' | 'normal' | 'low'
+						})),
+						needsIteration: (possiblePlan.needsIteration as boolean) || false
+					};
+				}
+			}
 		}
 
+		// If no tool calls, check if the response contains a plan
+		if (result.response) {
+			try {
+				const parsed = JSON.parse(result.response);
+				if (parsed.reasoning && Array.isArray(parsed.agents)) {
+					emit('orchestrator:thinking', { delta: `\n${parsed.reasoning}\n` });
+					return {
+						reasoning: parsed.reasoning,
+						agents: parsed.agents.map((a: { agent: string; task: string; priority: string }) => ({
+							agent: a.agent as AgentName,
+							task: a.task,
+							priority: a.priority as 'high' | 'normal' | 'low'
+						})),
+						needsIteration: parsed.needsIteration || false
+					};
+				}
+			} catch {
+				// Response is not JSON - that's fine
+			}
+		}
+
+		console.error(
+			'Could not parse orchestrator plan from response:',
+			JSON.stringify(result, null, 2)
+		);
 		return null;
 	} catch (error) {
 		console.error('Planning failed:', error);
@@ -236,11 +371,11 @@ async function executeAgentsInParallel(
  * Plan iteration tasks based on failed or low-confidence agent results
  */
 async function planIterationTasks(
-	ai: AIBinding,
-	userMessage: string,
+	_ai: AIBinding,
+	_userMessage: string,
 	agentResults: AgentResponse[],
 	confidenceThreshold: number,
-	emit: StreamEmitter
+	_emit: StreamEmitter
 ): Promise<AgentTask[]> {
 	const followUpTasks: AgentTask[] = [];
 
@@ -302,8 +437,6 @@ async function synthesizeResponse(
 	controller: ReadableStreamDefaultController<Uint8Array>,
 	emit: StreamEmitter
 ): Promise<void> {
-	const encoder = new TextEncoder();
-
 	// Build synthesis context
 	const synthesisContext = buildSynthesisContext(agentResults);
 
@@ -343,10 +476,14 @@ Please synthesize these findings into a comprehensive, well-cited response.`
 		const reader = streamResponse.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
+		let streamDone = false;
 
-		while (true) {
+		while (!streamDone) {
 			const { done, value } = await reader.read();
-			if (done) break;
+			if (done) {
+				streamDone = true;
+				continue;
+			}
 
 			buffer += decoder.decode(value, { stream: true });
 
@@ -434,18 +571,22 @@ export async function orchestratedChatSimple(
 	const stream = await orchestratedChat(ai, userMessage, chatHistory, mcpTools, executeToolFn);
 	const reader = stream.getReader();
 	const decoder = new TextDecoder();
+	let streamDone = false;
 
-	while (true) {
+	while (!streamDone) {
 		const { done, value } = await reader.read();
-		if (done) break;
+		if (done) {
+			streamDone = true;
+			continue;
+		}
 
 		const text = decoder.decode(value);
 		const lines = text.split('\n');
 
 		for (const line of lines) {
 			if (line.startsWith('event: ')) {
-				const eventType = line.slice(7);
-				continue; // Event type line
+				// Skip event type lines - we parse the data lines
+				continue;
 			}
 			if (line.startsWith('data: ')) {
 				const data = JSON.parse(line.slice(6));

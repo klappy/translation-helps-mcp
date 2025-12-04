@@ -137,22 +137,47 @@ export const PLANNING_TOOL: WorkersAIToolDefinition = {
 
 /**
  * Parse orchestrator plan from tool call response
+ * Handles both string and object arguments, and stringified nested fields
  */
-export function parseOrchestratorPlan(toolCallArgs: string): {
+export function parseOrchestratorPlan(toolCallArgs: string | Record<string, unknown>): {
 	reasoning: string;
 	agents: Array<{ agent: string; task: string; priority: string }>;
 	needsIteration: boolean;
 } | null {
 	try {
-		const parsed = JSON.parse(toolCallArgs);
-		if (parsed.reasoning && Array.isArray(parsed.agents)) {
-			return {
-				reasoning: parsed.reasoning,
-				agents: parsed.agents,
-				needsIteration: parsed.needsIteration ?? false
-			};
+		// If it's a string, parse it first
+		const parsed = typeof toolCallArgs === 'string' ? JSON.parse(toolCallArgs) : toolCallArgs;
+
+		if (!parsed.reasoning) {
+			return null;
 		}
-		return null;
+
+		// Handle agents - could be an array or a JSON string
+		let agents = parsed.agents;
+		if (typeof agents === 'string') {
+			try {
+				agents = JSON.parse(agents);
+			} catch {
+				// Could be a description string, not JSON
+				return null;
+			}
+		}
+
+		if (!Array.isArray(agents)) {
+			return null;
+		}
+
+		// Handle needsIteration - could be boolean or string
+		let needsIteration = parsed.needsIteration;
+		if (typeof needsIteration === 'string') {
+			needsIteration = needsIteration.toLowerCase() === 'true';
+		}
+
+		return {
+			reasoning: parsed.reasoning,
+			agents: agents,
+			needsIteration: needsIteration ?? false
+		};
 	} catch {
 		return null;
 	}
