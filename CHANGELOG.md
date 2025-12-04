@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.6](https://github.com/klappy/translation-helps-mcp/compare/v7.11.5...v7.11.6) (2025-12-04)
+
+### Bug Fixes
+
+- **chat:** real streaming, detailed timings, and citation format ([5925ac0](https://github.com/klappy/translation-helps-mcp/commit/5925ac02dda03cff6ecad1356020748363a6607e))
+
 ### [7.11.5](https://github.com/klappy/translation-helps-mcp/compare/v7.11.4...v7.11.5) (2025-12-04)
 
 ### Bug Fixes
