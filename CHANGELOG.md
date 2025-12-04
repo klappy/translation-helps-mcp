@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.13.4](https://github.com/klappy/translation-helps-mcp/compare/v7.13.3...v7.13.4) (2025-12-04)
+
+### Bug Fixes
+
+- MCP Tools UI renders markdown content directly instead of JSON wrapper ([7c832b0](https://github.com/klappy/translation-helps-mcp/commit/7c832b07d1bd67ace670488bf43096bf47e5f664))
+
 ### [7.13.3](https://github.com/klappy/translation-helps-mcp/compare/v7.13.2...v7.13.3) (2025-12-04)
 
 ### Bug Fixes
