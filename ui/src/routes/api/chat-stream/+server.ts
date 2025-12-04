@@ -16,20 +16,17 @@
  * 4. When answering questions, cite all sources used
  */
 
-import { edgeLogger as logger } from '$lib/edgeLogger.js';
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { callTool, listTools } from '$lib/mcp/client.js';
+import { SYSTEM_PROMPT } from '$lib/ai/system-prompt.js';
 import {
 	WORKERS_AI_MODEL,
-	mcpToolsToWorkersAI,
-	chatWithTools,
 	callWorkersAIStream,
-	type AIBinding,
-	type WorkersAIMessage,
-	type WorkersAIToolCall
+	chatWithTools,
+	mcpToolsToWorkersAI
 } from '$lib/ai/workers-ai-client.js';
-import { SYSTEM_PROMPT } from '$lib/ai/system-prompt.js';
+import { edgeLogger as logger } from '$lib/edgeLogger.js';
+import { callTool, listTools } from '$lib/mcp/client.js';
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
 interface ChatRequest {
 	message: string;
