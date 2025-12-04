@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.9](https://github.com/klappy/translation-helps-mcp/compare/v7.11.8...v7.11.9) (2025-12-04)
+
+### Bug Fixes
+
+- **chat:** explicitly forbid hallucinated translations like KJV ([9a8b7cf](https://github.com/klappy/translation-helps-mcp/commit/9a8b7cfa41ee2736817a1983492a9ea2ed90a4ba))
+
 ### [7.11.8](https://github.com/klappy/translation-helps-mcp/compare/v7.11.7...v7.11.8) (2025-12-04)
 
 ### Bug Fixes
