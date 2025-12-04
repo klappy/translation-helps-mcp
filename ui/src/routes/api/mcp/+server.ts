@@ -114,13 +114,13 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						{
 							name: 'fetch_translation_word',
 							description:
-								'Get the definition and usage of a biblical term (e.g., grace, love, faith, covenant). Use this for word meaning questions.',
+								'Get Translation Word articles including key biblical terms, names of people, names of places, and other important words. The library contains thousands of articles.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									term: {
 										type: 'string',
-										description: 'The biblical term to look up (e.g., "grace", "love", "faith")'
+										description: 'The term, name, or word to look up'
 									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' }
@@ -144,7 +144,7 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						{
 							name: 'fetch_translation_academy',
 							description:
-								'Get translation academy articles about translation concepts (e.g., metaphor, idiom, figures of speech)',
+								'Get Translation Academy articles about translation concepts, techniques, and best practices',
 							inputSchema: {
 								type: 'object',
 								properties: {
