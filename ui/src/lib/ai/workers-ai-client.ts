@@ -304,8 +304,11 @@ export async function callWorkersAIStream(
 					// If we got a response without tools, stream it
 					if (result.response) {
 						// Re-call with streaming for real stream
+						// Include tools and tool_choice to maintain consistency with initial call
 						const streamResponse = (await ai.run(WORKERS_AI_MODEL, {
 							messages,
+							tools,
+							tool_choice: tools?.length ? toolChoice : undefined,
 							max_tokens: maxTokens,
 							temperature,
 							stream: true
