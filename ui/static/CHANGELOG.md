@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.8](https://github.com/klappy/translation-helps-mcp/compare/v7.11.7...v7.11.8) (2025-12-04)
+
+### Bug Fixes
+
+- **chat:** emit X-Ray with complete timings after streaming ([499b1ec](https://github.com/klappy/translation-helps-mcp/commit/499b1ec595084dba2e36fc5cbd3b1216b8d56d1b))
+
 ### [7.11.7](https://github.com/klappy/translation-helps-mcp/compare/v7.11.6...v7.11.7) (2025-12-04)
 
 ### Bug Fixes
