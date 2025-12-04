@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.3](https://github.com/klappy/translation-helps-mcp/compare/v7.11.2...v7.11.3) (2025-12-04)
+
+### Improvements
+
+- Remove all hardcoded examples from system prompt to avoid literal interpretation
+- Add comprehensive formatting guidance for readable responses
+- Update Translation Words description to include names, places, and all article types
+- Improve tool descriptions without hardcoded parameter examples
+- Fix sync-version.js to update ui/package-lock.json during version bumps
+
 ### [7.11.2](https://github.com/klappy/translation-helps-mcp/compare/v7.11.1...v7.11.2) (2025-12-04)
 
 ### Features
