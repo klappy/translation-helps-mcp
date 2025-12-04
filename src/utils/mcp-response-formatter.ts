@@ -1,640 +1,333 @@
 /**
  * MCP Response Formatter
  *
- * Formats MCP tool responses based on the requested format.
- * Supports JSON, Markdown (with YAML frontmatter), and plain text.
+ * Formats MCP tool responses into JSON, Markdown, or Text.
+ * Uses YAML frontmatter for metadata (LLM-friendly).
  *
- * DESIGN PRINCIPLES:
- * - Markdown output is TRUE markdown that can be rendered directly
- * - YAML frontmatter provides structured metadata
- * - LLMs understand markdown naturally - no parsing needed
- * - Consumers should NOT need to know internal JSON structures
+ * This is used by the standalone MCP server (src/index.ts).
+ * The UI uses ui/src/lib/responseFormatter.ts via HTTP endpoints.
  */
-
-import { logger } from "./logger.js";
 
 export type OutputFormat = "json" | "md" | "markdown" | "text";
 
-export interface MCPResponseContent {
-  type: "text";
-  text: string;
-}
-
-export interface MCPResponse {
-  content: MCPResponseContent[];
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * YAML frontmatter serializer
- * Converts an object to YAML frontmatter format
- */
-function toYamlFrontmatter(metadata: Record<string, unknown>): string {
-  const lines: string[] = ["---"];
-
-  for (const [key, value] of Object.entries(metadata)) {
-    if (value === undefined || value === null) continue;
-
-    if (typeof value === "object" && !Array.isArray(value)) {
-      // Skip complex nested objects in frontmatter
-      continue;
-    }
-
-    if (Array.isArray(value)) {
-      if (value.length === 0) continue;
-      // Simple arrays as comma-separated
-      lines.push(`${key}: [${value.map((v) => JSON.stringify(v)).join(", ")}]`);
-    } else if (typeof value === "string") {
-      // Quote strings that might have special characters
-      if (value.includes(":") || value.includes("#") || value.includes("\n")) {
-        lines.push(`${key}: "${value.replace(/"/g, '\\"')}"`);
-      } else {
-        lines.push(`${key}: ${value}`);
-      }
-    } else {
-      lines.push(`${key}: ${value}`);
-    }
-  }
-
-  lines.push("---");
-  return lines.join("\n");
-}
-
-/**
- * Format translation notes as markdown
- */
-export function formatTranslationNotesMarkdown(data: {
+interface ResponseData {
   reference?: string;
   language?: string;
   organization?: string;
-  verseNotes?: Array<{
-    id?: string;
-    reference?: string;
-    note?: string;
-    quote?: string;
-    occurrence?: number;
-    occurrences?: number;
-    supportReference?: string;
-  }>;
-  contextNotes?: Array<{
-    id?: string;
-    reference?: string;
-    note?: string;
-    quote?: string;
-    supportReference?: string;
-  }>;
-  citation?: {
-    resource?: string;
+  metadata?: {
+    responseTime?: number;
+    cached?: boolean;
+    license?: string;
     version?: string;
-    organization?: string;
+    [key: string]: unknown;
   };
-  metadata?: Record<string, unknown>;
-}): string {
-  const frontmatter = toYamlFrontmatter({
-    resource: "Translation Notes",
-    reference: data.reference || "Unknown",
-    language: data.language || "en",
-    organization: data.organization || "unfoldingWord",
-    verse_notes_count: data.verseNotes?.length || 0,
-    context_notes_count: data.contextNotes?.length || 0,
-    version: data.citation?.version,
-    cached: data.metadata?.cached,
-    response_time_ms: data.metadata?.responseTime,
-  });
-
-  const lines: string[] = [frontmatter, ""];
-
-  // Title
-  lines.push(`# Translation Notes: ${data.reference || "Unknown Reference"}`);
-  lines.push("");
-
-  // Context notes (introductions, chapter intros)
-  if (data.contextNotes && data.contextNotes.length > 0) {
-    for (const note of data.contextNotes) {
-      if (note.note) {
-        // Context notes often contain markdown - render as-is
-        lines.push(note.note.replace(/\\n/g, "\n"));
-        lines.push("");
-        lines.push("---");
-        lines.push("");
-      }
-    }
-  }
-
-  // Verse notes
-  if (data.verseNotes && data.verseNotes.length > 0) {
-    for (const note of data.verseNotes) {
-      // Section header for the note
-      const header = note.quote
-        ? `## ${note.reference}: "${note.quote}"`
-        : `## ${note.reference}`;
-      lines.push(header);
-      lines.push("");
-
-      // Quote/occurrence info
-      if (note.quote && note.occurrence !== undefined) {
-        const occTotal = note.occurrences || 1;
-        lines.push(
-          `**Quote:** ${note.quote} (occurrence ${note.occurrence}/${occTotal})`,
-        );
-        lines.push("");
-      }
-
-      // The note content
-      if (note.note) {
-        lines.push(note.note.replace(/\\n/g, "\n"));
-        lines.push("");
-      }
-
-      // Support reference (link to Translation Academy)
-      if (note.supportReference) {
-        lines.push(
-          `**See:** [${note.supportReference}](${note.supportReference})`,
-        );
-        lines.push("");
-      }
-
-      lines.push("---");
-      lines.push("");
-    }
-  }
-
-  // No notes found
-  if (
-    (!data.verseNotes || data.verseNotes.length === 0) &&
-    (!data.contextNotes || data.contextNotes.length === 0)
-  ) {
-    lines.push("*No translation notes found for this reference.*");
-    lines.push("");
-  }
-
-  // Citation
-  if (data.citation) {
-    lines.push("## Source");
-    lines.push(
-      `*${data.citation.resource || "Translation Notes"} ${data.citation.version || ""} · ${data.citation.organization || data.organization || "unfoldingWord"}*`,
-    );
-  }
-
-  return lines.join("\n");
+  [key: string]: unknown;
 }
 
 /**
- * Format scripture as markdown
- */
-export function formatScriptureMarkdown(data: {
-  reference?: string;
-  language?: string;
-  organization?: string;
-  resources?: Array<{
-    resource?: string;
-    text?: string;
-    organization?: string;
-    version?: string;
-  }>;
-  scripture?: {
-    reference?: string;
-    text?: string;
-    resource?: string;
-    language?: string;
-  };
-  metadata?: Record<string, unknown>;
-}): string {
-  const resources = data.resources || (data.scripture ? [data.scripture] : []);
-  const reference = data.reference || data.scripture?.reference || "Unknown";
-
-  const frontmatter = toYamlFrontmatter({
-    resource: "Scripture",
-    reference,
-    language: data.language || "en",
-    organization: data.organization || "unfoldingWord",
-    resources_count: resources.length,
-    cached: data.metadata?.cached,
-    response_time_ms: data.metadata?.responseTime,
-  });
-
-  const lines: string[] = [frontmatter, ""];
-
-  // Title
-  lines.push(`# ${reference}`);
-  lines.push("");
-
-  // Each scripture resource
-  for (const res of resources) {
-    const resourceName = res.resource || "Scripture";
-    lines.push(`## ${resourceName}`);
-    lines.push("");
-
-    if (res.text) {
-      // Check if it's a multi-verse passage
-      const isMultiVerse =
-        res.text.includes("\n") && /^\d+[\. ]/.test(res.text);
-      if (isMultiVerse) {
-        lines.push(res.text);
-      } else {
-        lines.push(`> ${res.text}`);
-      }
-      lines.push("");
-    }
-
-    lines.push(
-      `*— ${reference} (${resourceName}) · ${res.organization || data.organization || "unfoldingWord"}*`,
-    );
-    lines.push("");
-    lines.push("---");
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
-
-/**
- * Format translation questions as markdown
- */
-export function formatTranslationQuestionsMarkdown(data: {
-  reference?: string;
-  language?: string;
-  organization?: string;
-  questions?: Array<{
-    id?: string;
-    reference?: string;
-    question?: string;
-    response?: string;
-  }>;
-  citation?: {
-    resource?: string;
-    version?: string;
-  };
-  metadata?: Record<string, unknown>;
-}): string {
-  const frontmatter = toYamlFrontmatter({
-    resource: "Translation Questions",
-    reference: data.reference || "Unknown",
-    language: data.language || "en",
-    organization: data.organization || "unfoldingWord",
-    questions_count: data.questions?.length || 0,
-    version: data.citation?.version,
-    cached: data.metadata?.cached,
-    response_time_ms: data.metadata?.responseTime,
-  });
-
-  const lines: string[] = [frontmatter, ""];
-
-  lines.push(
-    `# Translation Questions: ${data.reference || "Unknown Reference"}`,
-  );
-  lines.push("");
-
-  if (data.questions && data.questions.length > 0) {
-    for (let i = 0; i < data.questions.length; i++) {
-      const q = data.questions[i];
-      lines.push(`## Question ${i + 1}`);
-      if (q.reference) {
-        lines.push(`*Reference: ${q.reference}*`);
-      }
-      lines.push("");
-      lines.push(`**Q:** ${q.question || ""}`);
-      lines.push("");
-      if (q.response) {
-        lines.push(`**A:** ${q.response}`);
-        lines.push("");
-      }
-      lines.push("---");
-      lines.push("");
-    }
-  } else {
-    lines.push("*No translation questions found for this reference.*");
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
-
-/**
- * Format translation word article as markdown
- */
-export function formatTranslationWordMarkdown(data: {
-  term?: string;
-  title?: string;
-  definition?: string;
-  content?: string;
-  category?: string;
-  seeAlso?: string[];
-  metadata?: Record<string, unknown>;
-}): string {
-  const frontmatter = toYamlFrontmatter({
-    resource: "Translation Word",
-    term: data.term,
-    title: data.title,
-    category: data.category,
-    see_also: data.seeAlso,
-    cached: data.metadata?.cached,
-    response_time_ms: data.metadata?.responseTime,
-  });
-
-  const lines: string[] = [frontmatter, ""];
-
-  // Title from the article
-  lines.push(`# ${data.title || data.term || "Translation Word"}`);
-  lines.push("");
-
-  if (data.category) {
-    lines.push(`*Category: ${data.category}*`);
-    lines.push("");
-  }
-
-  // Definition/content
-  if (data.definition) {
-    lines.push("## Definition");
-    lines.push("");
-    lines.push(data.definition);
-    lines.push("");
-  }
-
-  if (data.content) {
-    // Content is often already markdown
-    lines.push(data.content.replace(/\\n/g, "\n"));
-    lines.push("");
-  }
-
-  // See also
-  if (data.seeAlso && data.seeAlso.length > 0) {
-    lines.push("## See Also");
-    lines.push("");
-    for (const term of data.seeAlso) {
-      lines.push(`- ${term}`);
-    }
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
-
-/**
- * Format translation word links as markdown
- */
-export function formatTranslationWordLinksMarkdown(data: {
-  reference?: string;
-  language?: string;
-  organization?: string;
-  words?: Array<{
-    term?: string;
-    category?: string;
-    occurrence?: number;
-    quote?: string;
-  }>;
-  metadata?: Record<string, unknown>;
-}): string {
-  const frontmatter = toYamlFrontmatter({
-    resource: "Translation Word Links",
-    reference: data.reference || "Unknown",
-    language: data.language || "en",
-    organization: data.organization || "unfoldingWord",
-    words_count: data.words?.length || 0,
-    cached: data.metadata?.cached,
-    response_time_ms: data.metadata?.responseTime,
-  });
-
-  const lines: string[] = [frontmatter, ""];
-
-  lines.push(
-    `# Translation Word Links: ${data.reference || "Unknown Reference"}`,
-  );
-  lines.push("");
-
-  if (data.words && data.words.length > 0) {
-    // Group by category
-    const categories: Record<
-      string,
-      Array<{ term?: string; quote?: string; occurrence?: number }>
-    > = {};
-
-    for (const word of data.words) {
-      const cat = word.category || "other";
-      if (!categories[cat]) categories[cat] = [];
-      categories[cat].push(word);
-    }
-
-    const categoryNames: Record<string, string> = {
-      kt: "Key Terms",
-      names: "Names",
-      other: "Other Terms",
-    };
-
-    for (const [cat, words] of Object.entries(categories)) {
-      lines.push(`## ${categoryNames[cat] || cat}`);
-      lines.push("");
-
-      for (const word of words) {
-        let entry = `- **${word.term || "Unknown"}**`;
-        if (word.quote) {
-          entry += ` — "${word.quote}"`;
-        }
-        if (word.occurrence !== undefined) {
-          entry += ` (${word.occurrence})`;
-        }
-        lines.push(entry);
-      }
-      lines.push("");
-    }
-  } else {
-    lines.push("*No translation word links found for this reference.*");
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
-
-/**
- * Format translation academy article as markdown
- */
-export function formatTranslationAcademyMarkdown(data: {
-  moduleId?: string;
-  title?: string;
-  content?: string;
-  relatedArticles?: string[];
-  metadata?: Record<string, unknown>;
-}): string {
-  const frontmatter = toYamlFrontmatter({
-    resource: "Translation Academy",
-    module_id: data.moduleId,
-    title: data.title,
-    related_articles: data.relatedArticles,
-    cached: data.metadata?.cached,
-    response_time_ms: data.metadata?.responseTime,
-  });
-
-  const lines: string[] = [frontmatter, ""];
-
-  lines.push(`# ${data.title || data.moduleId || "Translation Academy"}`);
-  lines.push("");
-
-  if (data.content) {
-    // Content is already markdown
-    lines.push(data.content.replace(/\\n/g, "\n"));
-    lines.push("");
-  }
-
-  if (data.relatedArticles && data.relatedArticles.length > 0) {
-    lines.push("## Related Articles");
-    lines.push("");
-    for (const article of data.relatedArticles) {
-      lines.push(`- ${article}`);
-    }
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
-
-/**
- * Format search results as markdown
- */
-export function formatSearchResultsMarkdown(data: {
-  query?: string;
-  results?: Array<{
-    type?: string;
-    reference?: string;
-    title?: string;
-    content?: string;
-    score?: number;
-  }>;
-  metadata?: Record<string, unknown>;
-}): string {
-  const frontmatter = toYamlFrontmatter({
-    resource: "Search Results",
-    query: data.query,
-    results_count: data.results?.length || 0,
-    cached: data.metadata?.cached,
-    response_time_ms: data.metadata?.responseTime,
-  });
-
-  const lines: string[] = [frontmatter, ""];
-
-  lines.push(`# Search: "${data.query || ""}"`);
-  lines.push("");
-
-  if (data.results && data.results.length > 0) {
-    for (let i = 0; i < data.results.length; i++) {
-      const result = data.results[i];
-      lines.push(
-        `## ${i + 1}. ${result.title || result.reference || "Result"}`,
-      );
-      if (result.type) {
-        lines.push(`*Type: ${result.type}*`);
-      }
-      if (result.reference) {
-        lines.push(`*Reference: ${result.reference}*`);
-      }
-      lines.push("");
-      if (result.content) {
-        lines.push(result.content.substring(0, 500));
-        if (result.content.length > 500) lines.push("...");
-      }
-      if (result.score !== undefined) {
-        lines.push("");
-        lines.push(`*Relevance: ${(result.score * 100).toFixed(1)}%*`);
-      }
-      lines.push("");
-      lines.push("---");
-      lines.push("");
-    }
-  } else {
-    lines.push("*No results found.*");
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
-
-/**
- * Generic fallback markdown formatter
- */
-export function formatGenericMarkdown(
-  data: unknown,
-  resourceType: string,
-): string {
-  const frontmatter = toYamlFrontmatter({
-    resource: resourceType,
-    format: "generic",
-  });
-
-  const lines: string[] = [frontmatter, ""];
-
-  lines.push(`# ${resourceType}`);
-  lines.push("");
-  lines.push("```json");
-  lines.push(JSON.stringify(data, null, 2));
-  lines.push("```");
-
-  return lines.join("\n");
-}
-
-/**
- * Format MCP response based on requested format
- *
- * @param data - The data to format
- * @param format - The output format (json, md, markdown, text)
- * @param resourceType - Type of resource for markdown formatting
- * @returns MCP-formatted response
+ * Format MCP response with YAML frontmatter for markdown
  */
 export function formatMCPResponse(
-  data: unknown,
-  format: OutputFormat = "json",
-  resourceType: string = "generic",
-): MCPResponse {
-  logger.debug("Formatting MCP response", { format, resourceType });
-
-  let text: string;
-
-  if (format === "md" || format === "markdown") {
-    // Route to appropriate markdown formatter based on resource type
-    const typedData = data as Record<string, unknown>;
-
-    switch (resourceType) {
-      case "translation-notes":
-        text = formatTranslationNotesMarkdown(typedData);
-        break;
-      case "scripture":
-        text = formatScriptureMarkdown(typedData);
-        break;
-      case "translation-questions":
-        text = formatTranslationQuestionsMarkdown(typedData);
-        break;
-      case "translation-word":
-        text = formatTranslationWordMarkdown(typedData);
-        break;
-      case "translation-word-links":
-        text = formatTranslationWordLinksMarkdown(typedData);
-        break;
-      case "translation-academy":
-        text = formatTranslationAcademyMarkdown(typedData);
-        break;
-      case "search":
-        text = formatSearchResultsMarkdown(typedData);
-        break;
-      default:
-        text = formatGenericMarkdown(data, resourceType);
-    }
-  } else if (format === "text") {
-    // Plain text: strip markdown syntax from markdown output
-    const md = formatMCPResponse(data, "md", resourceType);
-    text = (md.content[0]?.text || "")
-      .replace(/^---[\s\S]*?---\n*/m, "") // Remove YAML frontmatter
-      .replace(/^#{1,6}\s+/gm, "") // Remove heading markers
-      .replace(/^\s*>\s?/gm, "") // Remove blockquotes
-      .replace(/\*\*(.*?)\*\*/g, "$1") // Remove bold
-      .replace(/\*(.*?)\*/g, "$1") // Remove italic
-      .replace(/`([^`]+)`/g, "$1") // Remove inline code
-      .replace(/^---+$/gm, "") // Remove horizontal rules
-      .replace(/```[\s\S]*?```/g, "") // Remove code blocks
-      .trim();
-  } else {
-    // JSON format (default)
-    text = JSON.stringify(data, null, 2);
+  data: ResponseData,
+  format: OutputFormat,
+  resourceType: string,
+): { content: Array<{ type: "text"; text: string }> } {
+  if (format === "json") {
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    };
   }
 
+  if (format === "md" || format === "markdown") {
+    const markdown = formatAsMarkdown(data, resourceType);
+    return {
+      content: [{ type: "text", text: markdown }],
+    };
+  }
+
+  if (format === "text") {
+    const text = formatAsText(data, resourceType);
+    return {
+      content: [{ type: "text", text }],
+    };
+  }
+
+  // Default to JSON
   return {
-    content: [{ type: "text", text }],
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
   };
+}
+
+/**
+ * Format as markdown with YAML frontmatter
+ */
+function formatAsMarkdown(data: ResponseData, resourceType: string): string {
+  let md = "";
+
+  // YAML frontmatter
+  md += "---\n";
+  md += `resource: ${resourceType}\n`;
+  if (data.reference) md += `reference: ${data.reference}\n`;
+  if (data.language) md += `language: ${data.language}\n`;
+  if (data.organization) md += `organization: ${data.organization}\n`;
+  if (data.metadata?.responseTime)
+    md += `response_time_ms: ${data.metadata.responseTime}\n`;
+  if (data.metadata?.cached !== undefined)
+    md += `cached: ${data.metadata.cached}\n`;
+  if (data.metadata?.license) md += `license: ${data.metadata.license}\n`;
+  if (data.metadata?.version) md += `version: ${data.metadata.version}\n`;
+  md += "---\n\n";
+
+  // Title
+  md += `# ${formatResourceTitle(resourceType)}: ${data.reference || "Unknown"}\n\n`;
+
+  // Content based on resource type
+  switch (resourceType) {
+    case "translation-notes":
+      md += formatNotesContent(data);
+      break;
+    case "scripture":
+      md += formatScriptureContent(data);
+      break;
+    case "translation-questions":
+      md += formatQuestionsContent(data);
+      break;
+    case "translation-words":
+    case "translation-word-links":
+      md += formatWordsContent(data);
+      break;
+    case "translation-academy":
+      md += formatAcademyContent(data);
+      break;
+    case "search":
+      md += formatSearchContent(data);
+      break;
+    default:
+      md += "```json\n" + JSON.stringify(data, null, 2) + "\n```\n";
+  }
+
+  return md;
+}
+
+function formatResourceTitle(resourceType: string): string {
+  const titles: Record<string, string> = {
+    "translation-notes": "Translation Notes",
+    scripture: "Scripture",
+    "translation-questions": "Translation Questions",
+    "translation-words": "Translation Words",
+    "translation-word-links": "Translation Word Links",
+    "translation-academy": "Translation Academy",
+    search: "Search Results",
+  };
+  return titles[resourceType] || resourceType;
+}
+
+function formatNotesContent(data: ResponseData): string {
+  let md = "";
+
+  const verseNotes = (data.verseNotes as Array<Record<string, unknown>>) || [];
+  const contextNotes =
+    (data.contextNotes as Array<Record<string, unknown>>) || [];
+  const allNotes = [...contextNotes, ...verseNotes];
+
+  if (allNotes.length === 0) {
+    return "*No translation notes found for this reference.*\n";
+  }
+
+  allNotes.forEach((note, index) => {
+    const quote = (note.Quote as string) || (note.quote as string) || "";
+    const noteText =
+      (note.Note as string) ||
+      (note.note as string) ||
+      (note.content as string) ||
+      "";
+    const ref = (note.Reference as string) || (note.reference as string) || "";
+    const id =
+      (note.ID as string) || (note.id as string) || `note-${index + 1}`;
+    const supportRef =
+      (note.SupportReference as string) ||
+      (note.supportReference as string) ||
+      "";
+
+    md += `## ${quote || id}\n\n`;
+
+    // Unescape newlines in note content
+    const unescapedNote = noteText.replace(/\\n/g, "\n");
+    md += `${unescapedNote}\n\n`;
+
+    if (ref && ref !== data.reference) {
+      md += `**Reference**: ${ref}\n\n`;
+    }
+
+    if (supportRef) {
+      md += `**See**: [${supportRef}](${supportRef})\n\n`;
+    }
+
+    md += "---\n\n";
+  });
+
+  return md;
+}
+
+function formatScriptureContent(data: ResponseData): string {
+  let md = "";
+
+  const scripture = (data.scripture as Array<Record<string, unknown>>) || [];
+
+  if (scripture.length === 0) {
+    return "*No scripture found for this reference.*\n";
+  }
+
+  scripture.forEach((verse) => {
+    const translation = (verse.translation as string) || "Scripture";
+    const text = (verse.text as string) || "";
+
+    md += `## ${translation}\n\n`;
+    md += `${text}\n\n`;
+  });
+
+  return md;
+}
+
+function formatQuestionsContent(data: ResponseData): string {
+  let md = "";
+
+  const questions = (data.questions as Array<Record<string, unknown>>) || [];
+
+  if (questions.length === 0) {
+    return "*No translation questions found for this reference.*\n";
+  }
+
+  questions.forEach((q, index) => {
+    const question =
+      (q.Question as string) ||
+      (q.question as string) ||
+      `Question ${index + 1}`;
+    const answer = (q.Response as string) || (q.response as string) || "";
+
+    md += `## ${index + 1}. ${question}\n\n`;
+    if (answer) {
+      md += `**Answer**: ${answer}\n\n`;
+    }
+    md += "---\n\n";
+  });
+
+  return md;
+}
+
+function formatWordsContent(data: ResponseData): string {
+  let md = "";
+
+  const words = (data.words as Array<Record<string, unknown>>) || [];
+  const word = data.word as Record<string, unknown>;
+
+  // Single word result
+  if (word) {
+    md += `## ${(word.term as string) || "Term"}\n\n`;
+    if (word.definition) md += `**Definition**: ${word.definition}\n\n`;
+    if (word.content) {
+      const content = (word.content as string).replace(/\\n/g, "\n");
+      md += `${content}\n\n`;
+    }
+    return md;
+  }
+
+  // Multiple word links
+  if (words.length === 0) {
+    return "*No translation words found for this reference.*\n";
+  }
+
+  words.forEach((w) => {
+    const term = (w.term as string) || (w.word as string) || "";
+    const definition = (w.definition as string) || "";
+
+    md += `## ${term}\n\n`;
+    if (definition) md += `${definition}\n\n`;
+    md += "---\n\n";
+  });
+
+  return md;
+}
+
+function formatAcademyContent(data: ResponseData): string {
+  let md = "";
+
+  const module = data.module as Record<string, unknown>;
+  if (!module) {
+    return "*No translation academy content found.*\n";
+  }
+
+  const title = (module.title as string) || "Module";
+  const content = (module.content as string) || "";
+
+  md += `## ${title}\n\n`;
+  if (content) {
+    const unescapedContent = content.replace(/\\n/g, "\n");
+    md += `${unescapedContent}\n\n`;
+  }
+
+  return md;
+}
+
+function formatSearchContent(data: ResponseData): string {
+  let md = "";
+
+  const results = (data.results as Array<Record<string, unknown>>) || [];
+
+  if (results.length === 0) {
+    return "*No search results found.*\n";
+  }
+
+  results.forEach((result, index) => {
+    const title =
+      (result.title as string) ||
+      (result.reference as string) ||
+      `Result ${index + 1}`;
+    const type = (result.type as string) || "";
+    const content =
+      (result.content as string) || (result.snippet as string) || "";
+
+    md += `## ${index + 1}. ${title}\n\n`;
+    if (type) md += `*Type: ${type}*\n\n`;
+    if (content) {
+      const unescapedContent = content.replace(/\\n/g, "\n");
+      md += `${unescapedContent}\n\n`;
+    }
+    md += "---\n\n";
+  });
+
+  return md;
+}
+
+/**
+ * Format as plain text (no markdown)
+ */
+function formatAsText(data: ResponseData, resourceType: string): string {
+  let text = "";
+
+  // Header
+  text += `${formatResourceTitle(resourceType)}: ${data.reference || "Unknown"}\n`;
+  text += "=".repeat(50) + "\n\n";
+
+  // Metadata
+  if (data.language) text += `Language: ${data.language}\n`;
+  if (data.organization) text += `Organization: ${data.organization}\n`;
+  if (data.metadata?.responseTime)
+    text += `Response Time: ${data.metadata.responseTime}ms\n`;
+  text += "\n";
+
+  // Content - strip markdown formatting
+  const markdown = formatAsMarkdown(data, resourceType);
+  // Remove YAML frontmatter
+  const withoutFrontmatter = markdown.replace(/^---[\s\S]*?---\n\n/, "");
+  // Strip markdown syntax
+  text += withoutFrontmatter
+    .replace(/^#+\s*/gm, "") // Headers
+    .replace(/\*\*([^*]+)\*\*/g, "$1") // Bold
+    .replace(/\*([^*]+)\*/g, "$1") // Italic
+    .replace(/`([^`]+)`/g, "$1") // Code
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Links
+    .replace(/^---$/gm, ""); // Horizontal rules
+
+  return text;
 }

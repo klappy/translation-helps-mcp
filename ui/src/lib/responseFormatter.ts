@@ -28,41 +28,31 @@ export function formatScriptureResponse(data: any, options: FormatterOptions): s
 	if (format === 'md') {
 		let markdown = '';
 
+		// YAML frontmatter for metadata
+		if (includeMetadata && data.metadata) {
+			markdown += '---\n';
+			markdown += `resource: Scripture\n`;
+			markdown += `reference: ${data.reference || 'unknown'}\n`;
+			markdown += `language: ${data.language || data.metadata.language || 'en'}\n`;
+			markdown += `organization: ${data.organization || data.metadata.organization || 'unfoldingWord'}\n`;
+			if (data.metadata.resources?.length) {
+				markdown += `resources: ${data.metadata.resources.join(', ')}\n`;
+			}
+			if (data.metadata.license) {
+				markdown += `license: ${data.metadata.license}\n`;
+			}
+			if (data.metadata.checkingLevel) {
+				markdown += `checking_level: ${data.metadata.checkingLevel}\n`;
+			}
+			markdown += '---\n\n';
+		}
+
 		// Add header
 		if (data.reference) {
 			markdown += `# ${data.reference}\n\n`;
-		} else if (includeMetadata && data.citation) {
+		} else if (data.citation) {
 			markdown += `# ${typeof data.citation === 'string' ? data.citation : data.citation.reference || 'Scripture'}\n\n`;
 		}
-
-		// Add metadata section
-		if (includeMetadata && data.metadata) {
-			markdown += `## Metadata\n\n`;
-			markdown += `- **Language**: ${data.language || data.metadata.language}\n`;
-			markdown += `- **Organization**: ${data.organization || data.metadata.organization}\n`;
-			if (data.metadata.resources?.length) {
-				markdown += `- **Resources**: ${data.metadata.resources.join(', ')}\n`;
-			}
-			if (data.metadata.license) {
-				markdown += `- **License**: ${data.metadata.license}\n`;
-			}
-			if (data.metadata.copyright) {
-				markdown += `- **Copyright**: ${data.metadata.copyright}\n`;
-			}
-			if (data.metadata.publisher) {
-				markdown += `- **Publisher**: ${data.metadata.publisher}\n`;
-			}
-			if (data.metadata.contributors?.length) {
-				markdown += `- **Contributors**: ${data.metadata.contributors.join(', ')}\n`;
-			}
-			if (data.metadata.checkingLevel) {
-				markdown += `- **Checking Level**: ${data.metadata.checkingLevel}\n`;
-			}
-			markdown += '\n';
-		}
-
-		// Add scripture content
-		markdown += `## Scripture Text\n\n`;
 
 		for (const verse of scripture) {
 			if (verse.reference) {
@@ -132,35 +122,30 @@ export function formatTranslationHelpsResponse(
 	if (format === 'md') {
 		let markdown = '';
 
-		// Add header
-		markdown += `# Translation ${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}\n\n`;
-
-		// Add metadata section
+		// YAML frontmatter for metadata
 		if (includeMetadata && data.metadata) {
-			markdown += `## Metadata\n\n`;
-			markdown += `- **Language**: ${data.language || data.metadata.language || 'unknown'}\n`;
-			markdown += `- **Organization**: ${data.organization || data.metadata.organization || 'unknown'}\n`;
+			markdown += '---\n';
+			markdown += `resource: Translation ${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}\n`;
+			markdown += `reference: ${data.reference || 'unknown'}\n`;
+			markdown += `language: ${data.language || data.metadata.language || 'en'}\n`;
+			markdown += `organization: ${data.organization || data.metadata.organization || 'unfoldingWord'}\n`;
 			if (data.metadata.source) {
-				markdown += `- **Source**: ${data.metadata.source}\n`;
+				markdown += `source: ${data.metadata.source}\n`;
 			}
 			if (data.metadata.resourceType) {
-				markdown += `- **Resource Type**: ${data.metadata.resourceType.toUpperCase()}\n`;
+				markdown += `type: ${data.metadata.resourceType.toUpperCase()}\n`;
 			}
 			if (data.metadata.license) {
-				markdown += `- **License**: ${data.metadata.license}\n`;
-			}
-			if (data.metadata.copyright) {
-				markdown += `- **Copyright**: ${data.metadata.copyright}\n`;
+				markdown += `license: ${data.metadata.license}\n`;
 			}
 			if (data.metadata.version) {
-				markdown += `- **Version**: ${data.metadata.version}\n`;
+				markdown += `version: ${data.metadata.version}\n`;
 			}
-			markdown += '\n';
+			markdown += '---\n\n';
 		}
 
-		if (includeMetadata && data.reference) {
-			markdown += `**Reference**: ${data.reference}\n\n`;
-		}
+		// Add header
+		markdown += `# Translation ${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)}: ${data.reference || ''}\n\n`;
 
 		// Add items
 		items.forEach((item: any, index: number) => {
@@ -185,7 +170,10 @@ export function formatTranslationHelpsResponse(
 			const content =
 				item.content || item.answer || item.Response || item.Note || item.definition || item.text;
 			if (content) {
-				markdown += `${content}\n\n`;
+				// Unescape newlines that come from TSV data
+				const unescapedContent =
+					typeof content === 'string' ? content.replace(/\\n/g, '\n') : content;
+				markdown += `${unescapedContent}\n\n`;
 			}
 
 			// Additional fields for translation notes/questions
