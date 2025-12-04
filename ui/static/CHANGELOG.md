@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.12.1](https://github.com/klappy/translation-helps-mcp/compare/v7.12.0...v7.12.1) (2025-12-04)
+
+### Features
+
+- **chat:** multi-agent orchestration with inline thinking UI ([56f0efb](https://github.com/klappy/translation-helps-mcp/commit/56f0efb4591173c4d06fe66cc5dbd51907b74145))
+
 ## [7.12.0](https://github.com/klappy/translation-helps-mcp/compare/v7.11.14...v7.12.0) (2025-12-04)
 
 ### Features

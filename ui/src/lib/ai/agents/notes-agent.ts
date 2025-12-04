@@ -54,18 +54,44 @@ Then call the fetch_translation_notes tool with appropriate parameters.`;
 export const NOTES_AGENT_TOOLS: string[] = ['fetch_translation_notes'];
 
 /**
+ * Parse MCP content format to get actual data
+ */
+function parseMCPContent(result: unknown): Record<string, unknown> | null {
+	if (!result || typeof result !== 'object') {
+		return null;
+	}
+
+	const data = result as Record<string, unknown>;
+
+	// Handle MCP content format (array with text content)
+	if (Array.isArray(data.content)) {
+		const textContent = data.content.find((c: { type: string }) => c.type === 'text');
+		if (textContent && typeof textContent === 'object' && 'text' in textContent) {
+			try {
+				return JSON.parse(textContent.text as string);
+			} catch {
+				// Not JSON, return the raw text as content
+				return { rawText: textContent.text };
+			}
+		}
+	}
+
+	// Already in direct format
+	return data;
+}
+
+/**
  * Extract notes-specific citations from tool result
  */
 function extractNotesCitations(result: unknown, reference: string): Citation[] {
 	const citations: Citation[] = [];
 
-	if (!result || typeof result !== 'object') {
+	const data = parseMCPContent(result);
+	if (!data) {
 		return citations;
 	}
 
-	const data = result as Record<string, unknown>;
-
-	// Handle verse notes
+	// Handle verse notes (array format)
 	if (data.verseNotes && Array.isArray(data.verseNotes)) {
 		for (const note of data.verseNotes.slice(0, 5)) {
 			// Limit to first 5
@@ -75,6 +101,24 @@ function extractNotesCitations(result: unknown, reference: string): Citation[] {
 					source: 'Translation Notes',
 					reference: (noteObj.Reference as string) || reference,
 					content: `"${noteObj.Quote || ''}" - ${noteObj.Note || ''}`
+				});
+			}
+		}
+	}
+
+	// Handle notes (alternative key)
+	if (data.notes && Array.isArray(data.notes)) {
+		for (const note of data.notes.slice(0, 5)) {
+			if (note && typeof note === 'object') {
+				const noteObj = note as Record<string, unknown>;
+				citations.push({
+					source: 'Translation Notes',
+					reference: (noteObj.reference as string) || reference,
+					content:
+						(noteObj.note as string) ||
+						(noteObj.content as string) ||
+						(noteObj.text as string) ||
+						''
 				});
 			}
 		}
@@ -181,10 +225,17 @@ export async function executeNotesAgent(
 			// Extract citations
 			const citations = extractNotesCitations(toolResult, reference);
 
-			// Count notes
-			const data = toolResult as Record<string, unknown>;
-			const verseNotesCount = Array.isArray(data.verseNotes) ? data.verseNotes.length : 0;
-			const contextNotesCount = Array.isArray(data.contextNotes) ? data.contextNotes.length : 0;
+			// Count notes - parse MCP content first
+			const parsedData = parseMCPContent(toolResult);
+			const verseNotesCount = parsedData
+				? Array.isArray(parsedData.verseNotes)
+					? parsedData.verseNotes.length
+					: Array.isArray(parsedData.notes)
+						? parsedData.notes.length
+						: 0
+				: 0;
+			const contextNotesCount =
+				parsedData && Array.isArray(parsedData.contextNotes) ? parsedData.contextNotes.length : 0;
 			const totalNotes = verseNotesCount + contextNotesCount;
 
 			const summary =
@@ -234,16 +285,24 @@ export async function executeNotesAgent(
  * Create a preview string from notes result
  */
 function createNotesPreview(result: unknown): string {
-	if (!result || typeof result !== 'object') {
+	const data = parseMCPContent(result);
+	if (!data) {
 		return 'No content';
 	}
 
-	const data = result as Record<string, unknown>;
-
-	const verseNotesCount = Array.isArray(data.verseNotes) ? data.verseNotes.length : 0;
+	const verseNotesCount = Array.isArray(data.verseNotes)
+		? data.verseNotes.length
+		: Array.isArray(data.notes)
+			? data.notes.length
+			: 0;
 	const contextNotesCount = Array.isArray(data.contextNotes) ? data.contextNotes.length : 0;
 
 	if (verseNotesCount === 0 && contextNotesCount === 0) {
+		// Check for raw text content
+		if (data.rawText) {
+			const preview = (data.rawText as string).substring(0, 50);
+			return `Content: ${preview}...`;
+		}
 		return 'No notes found';
 	}
 

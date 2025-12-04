@@ -510,25 +510,6 @@
 				</div>
 			</div>
 
-			<!-- Timeline -->
-			{#if data.timeline}
-				<div class="mt-6">
-					<h4 class="mb-3 text-sm font-medium text-gray-300">Timeline</h4>
-					<div class="relative mt-6 pl-8">
-						<div class="absolute top-0 left-3 h-full w-0.5 bg-gray-700"></div>
-						{#each data.timeline as event}
-							<div class="relative mb-4">
-								<div class="absolute top-1 -left-5 h-2 w-2 rounded-full bg-blue-500"></div>
-								<div class="text-sm">
-									<span class="text-gray-400">{event.time}ms</span>
-									<span class="ml-2 text-white">{event.event}</span>
-								</div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
-
 			<!-- Citations -->
 			{#if data.citations && data.citations.length > 0}
 				<div class="mt-6">
