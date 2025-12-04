@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.13.1](https://github.com/klappy/translation-helps-mcp/compare/v7.13.0...v7.13.1) (2025-12-04)
+
+### Features
+
+- add YAML frontmatter to markdown format responses ([96ecfc6](https://github.com/klappy/translation-helps-mcp/commit/96ecfc6c16b87fd88242e8f9d405e10b8df50d56))
+
 ## [7.13.0](https://github.com/klappy/translation-helps-mcp/compare/v7.12.3...v7.13.0) (2025-12-04)
 
 ### [7.12.3](https://github.com/klappy/translation-helps-mcp/compare/v7.12.2...v7.12.3) (2025-12-04)
