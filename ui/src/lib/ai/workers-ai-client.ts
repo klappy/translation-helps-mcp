@@ -12,12 +12,25 @@
 
 import { edgeLogger as logger } from '$lib/edgeLogger.js';
 import type { MCPTool } from '@translation-helps/mcp-client';
+import type {
+	AIBinding,
+	WorkersAIMessage,
+	WorkersAIToolCall,
+	WorkersAIToolDefinition
+} from './types.js';
+
+// Re-export types for consumers
+export type {
+	AIBinding,
+	WorkersAIMessage,
+	WorkersAIToolCall,
+	WorkersAIToolDefinition,
+	WorkersAIResponse,
+	WorkersAIRunOptions
+} from './types.js';
 
 // Model constant - Llama 4 Scout 17B with MoE architecture
 export const WORKERS_AI_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
-
-// Types are globally available from app.d.ts
-// WorkersAIMessage, WorkersAIToolCall, WorkersAIToolDefinition, WorkersAIResponse, WorkersAIRunOptions
 
 /**
  * Convert MCP tools to Workers AI tool definitions
@@ -279,7 +292,7 @@ export async function chatWithTools(
 	const messages: WorkersAIMessage[] = [
 		{ role: 'system', content: systemPrompt },
 		...chatHistory.slice(-6).map((msg) => ({
-			role: msg.role as 'user' | 'assistant',
+			role: msg.role as WorkersAIMessage['role'],
 			content: msg.content
 		})),
 		{ role: 'user', content: userMessage }

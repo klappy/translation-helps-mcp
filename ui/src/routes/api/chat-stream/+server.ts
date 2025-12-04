@@ -24,7 +24,10 @@ import {
 	WORKERS_AI_MODEL,
 	mcpToolsToWorkersAI,
 	chatWithTools,
-	callWorkersAIStream
+	callWorkersAIStream,
+	type AIBinding,
+	type WorkersAIMessage,
+	type WorkersAIToolCall
 } from '$lib/ai/workers-ai-client.js';
 import { SYSTEM_PROMPT } from '$lib/ai/system-prompt.js';
 
