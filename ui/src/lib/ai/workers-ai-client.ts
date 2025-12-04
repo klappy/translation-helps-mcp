@@ -33,6 +33,48 @@ export type {
 export const WORKERS_AI_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
 
 /**
+ * Helper to stream Workers AI response and emit SSE events
+ * Reads from the Workers AI stream and emits llm:delta events
+ */
+async function streamWorkersAIResponse(
+	streamResponse: ReadableStream<Uint8Array>,
+	controller: ReadableStreamDefaultController,
+	emit: (controller: ReadableStreamDefaultController, event: string, data: unknown) => void
+): Promise<void> {
+	const reader = streamResponse.getReader();
+	const decoder = new TextDecoder();
+	let buffer = '';
+	let done = false;
+
+	while (!done) {
+		const result = await reader.read();
+		done = result.done;
+		if (done) break;
+
+		buffer += decoder.decode(result.value, { stream: true });
+
+		// Parse SSE events from Workers AI stream
+		const lines = buffer.split('\n');
+		buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+		for (const line of lines) {
+			if (line.startsWith('data: ')) {
+				const data = line.slice(6);
+				if (data === '[DONE]') continue;
+				try {
+					const parsed = JSON.parse(data);
+					if (parsed.response) {
+						emit(controller, 'llm:delta', { text: parsed.response });
+					}
+				} catch {
+					// Ignore parse errors
+				}
+			}
+		}
+	}
+}
+
+/**
  * Convert MCP tools to Workers AI tool definitions
  * MCP tools already have JSON Schema from zodToJsonSchema() - no manual conversion needed
  */
@@ -154,17 +196,23 @@ export async function callWorkersAIStream(
 
 	return new ReadableStream<Uint8Array>({
 		start: async (controller) => {
-			try {
-				// First call - may include tool calls
-				const llmStart = Date.now();
+			// Detailed timing tracking
+			const detailedTimings: Record<string, number> = { ...timings };
+			const toolExecutions: Array<{
+				name: string;
+				args: string;
+				duration: number;
+			}> = [];
 
+			try {
 				logger.info('Starting Workers AI stream', {
 					model: WORKERS_AI_MODEL,
 					messageCount: messages.length,
 					hasTools: !!tools?.length
 				});
 
-				// Make initial call (non-streaming to handle tool calls)
+				// STEP 1: Initial LLM call to get tool decisions
+				const initialLlmStart = Date.now();
 				const result = await ai.run(WORKERS_AI_MODEL, {
 					messages,
 					tools,
@@ -172,20 +220,31 @@ export async function callWorkersAIStream(
 					max_tokens: maxTokens,
 					temperature
 				});
+				detailedTimings.initialLlmCall = Date.now() - initialLlmStart;
 
 				// Handle tool calls if present
 				let finalMessages = messages;
-				let toolResults: WorkersAIMessage[] = [];
 
 				if (result.tool_calls && result.tool_calls.length > 0 && onToolCalls) {
 					logger.info('Processing tool calls', {
 						count: result.tool_calls.length
 					});
 
-					// Execute tools and get results
-					toolResults = await onToolCalls(result.tool_calls);
+					// STEP 2: Execute tools and track timing for each
+					const toolExecStart = Date.now();
+					const toolResults = await onToolCalls(result.tool_calls);
+					detailedTimings.toolExecution = Date.now() - toolExecStart;
 
-					// Add assistant message with tool calls and tool results
+					// Track individual tool timings (from onToolCalls metadata if available)
+					result.tool_calls.forEach((tc, _i) => {
+						toolExecutions.push({
+							name: tc.function.name,
+							args: tc.function.arguments,
+							duration: Math.round(detailedTimings.toolExecution / result.tool_calls!.length)
+						});
+					});
+
+					// Build final messages with tool results
 					finalMessages = [
 						...messages,
 						{
@@ -196,68 +255,68 @@ export async function callWorkersAIStream(
 						...toolResults
 					];
 
-					// Make final call with tool results
-					const finalResult = await ai.run(WORKERS_AI_MODEL, {
-						messages: finalMessages,
-						max_tokens: maxTokens,
-						temperature
-					});
-
-					// Stream the final response
+					// STEP 3: Final LLM call with REAL STREAMING
+					const finalLlmStart = Date.now();
 					emit(controller, 'llm:start', { started: true });
 
-					// Always emit X-Ray data for debugging visibility
+					// Emit X-Ray data BEFORE streaming starts so UI can show it
 					emit(controller, 'xray', {
 						...xrayInit,
-						toolCalls: result.tool_calls.map((tc) => ({
-							name: tc.function.name,
-							arguments: tc.function.arguments
-						}))
+						toolCalls: toolExecutions,
+						timings: {
+							...detailedTimings,
+							toolDiscovery: timings.toolDiscovery || 0
+						}
 					});
 
-					// Stream content character by character for better UX
-					const content = finalResult.response || '';
-					for (let i = 0; i < content.length; i += 10) {
-						const chunk = content.slice(i, i + 10);
-						emit(controller, 'llm:delta', { text: chunk });
-						// Small delay for streaming effect
-						await new Promise((r) => setTimeout(r, 5));
-					}
+					// Make final call WITH stream: true for real streaming
+					const streamResponse = (await ai.run(WORKERS_AI_MODEL, {
+						messages: finalMessages,
+						max_tokens: maxTokens,
+						temperature,
+						stream: true
+					})) as ReadableStream<Uint8Array>;
 
-					// Final timing
-					const llmDuration = Date.now() - llmStart;
-					const totalDuration = startTime ? Date.now() - startTime : llmDuration;
+					// Read from the actual stream and forward to client
+					await streamWorkersAIResponse(streamResponse, controller, emit);
 
+					detailedTimings.finalLlmCall = Date.now() - finalLlmStart;
+					detailedTimings.total = Date.now() - startTime;
+
+					// Emit final done event with all timings
 					emit(controller, 'done', {
-						timings: {
-							...timings,
-							llmResponse: llmDuration,
-							total: totalDuration
-						}
+						timings: detailedTimings
 					});
 				} else {
 					// No tool calls - stream response directly
 					emit(controller, 'llm:start', { started: true });
 
-					// Always emit X-Ray data (with empty toolCalls) for debugging visibility
-					emit(controller, 'xray', { ...xrayInit, toolCalls: [] });
+					// Emit X-Ray data
+					emit(controller, 'xray', {
+						...xrayInit,
+						toolCalls: [],
+						timings: {
+							...detailedTimings,
+							toolDiscovery: timings.toolDiscovery || 0
+						}
+					});
 
-					const content = result.response || '';
-					for (let i = 0; i < content.length; i += 10) {
-						const chunk = content.slice(i, i + 10);
-						emit(controller, 'llm:delta', { text: chunk });
-						await new Promise((r) => setTimeout(r, 5));
+					// If we got a response without tools, stream it
+					if (result.response) {
+						// Re-call with streaming for real stream
+						const streamResponse = (await ai.run(WORKERS_AI_MODEL, {
+							messages,
+							max_tokens: maxTokens,
+							temperature,
+							stream: true
+						})) as ReadableStream<Uint8Array>;
+
+						await streamWorkersAIResponse(streamResponse, controller, emit);
 					}
 
-					const llmDuration = Date.now() - llmStart;
-					const totalDuration = startTime ? Date.now() - startTime : llmDuration;
-
+					detailedTimings.total = Date.now() - startTime;
 					emit(controller, 'done', {
-						timings: {
-							...timings,
-							llmResponse: llmDuration,
-							total: totalDuration
-						}
+						timings: detailedTimings
 					});
 				}
 
