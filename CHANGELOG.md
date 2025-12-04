@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.11.1](https://github.com/klappy/translation-helps-mcp/compare/v7.11.0...v7.11.1) (2025-12-04)
+
+### Bug Fixes
+
+- Widen role type cast to include all valid WorkersAIMessage roles
+- Add proper type exports for Workers AI types
+- Simplify AIBinding interface for chat usage
+
 ## [7.11.0](https://github.com/klappy/translation-helps-mcp/compare/v7.10.5...v7.11.0) (2025-12-04)
 
 ### Features
