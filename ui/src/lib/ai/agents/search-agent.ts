@@ -248,14 +248,29 @@ function getHitCount(result: unknown): number {
 		return data.hits.length;
 	}
 
-	// MCP content format
+	// MCP content format - extract from markdown text like "Found 8 results across..."
 	if (Array.isArray(data.content)) {
 		const textContent = data.content.find((c: { type: string }) => c.type === 'text');
 		if (textContent && typeof textContent === 'object' && 'text' in textContent) {
+			const text = textContent.text as string;
+
+			// Try to parse "Found X results" pattern from markdown response
+			const foundMatch = text.match(/Found (\d+) results/i);
+			if (foundMatch) {
+				return parseInt(foundMatch[1], 10);
+			}
+
+			// Fallback: try JSON parsing if it's JSON format
 			try {
-				const parsed = JSON.parse(textContent.text as string);
+				const parsed = JSON.parse(text);
 				return parsed.hitCount || parsed.hits?.length || 0;
 			} catch {
+				// Not JSON, check if text has content (non-empty means results exist)
+				if (text.includes('**tw**') || text.includes('**tn**') || text.includes('Score:')) {
+					// Has results indicators - count them
+					const scoreMatches = text.match(/Score:/g);
+					return scoreMatches ? scoreMatches.length : 1;
+				}
 				return 0;
 			}
 		}
