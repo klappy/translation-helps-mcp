@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.11.0](https://github.com/klappy/translation-helps-mcp/compare/v7.10.5...v7.11.0) (2025-12-04)
+
+### Features
+
+- **Chat**: Migrate from OpenAI GPT-4o-mini to Cloudflare Workers AI (Llama 4 Scout 17B)
+- **Native Tool Calling**: Model decides when to call MCP tools via structured output
+- **MCP Self-Discovery**: Tools fetched dynamically, not hardcoded
+- **Edge-Native**: Inference runs on Cloudflare edge, no external API calls
+
+### Architecture
+
+- Eliminated two-call architecture (was: LLM to decide tools + LLM to generate response)
+- Single call with native tool calling support
+- Parallel tool execution for multi-tool requests
+
+### Performance
+
+- Reduced chat endpoint from 1984 lines to 396 lines (-80%)
+- System prompt reduced from 1500+ lines to 50 lines
+- No external API latency (runs on same edge network)
+
 ### [7.10.5](https://github.com/klappy/translation-helps-mcp/compare/v7.10.4...v7.10.5) (2025-12-03)
 
 ### [7.10.4](https://github.com/klappy/translation-helps-mcp/compare/v7.10.3...v7.10.4) (2025-12-03)

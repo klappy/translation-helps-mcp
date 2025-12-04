@@ -48,11 +48,51 @@ interface AutoRAGInstance {
 	search?(options: AutoRAGSearchOptions): Promise<{ data: AutoRAGSearchResult[] }>;
 }
 
+// Workers AI Native Tool Calling Types
+interface WorkersAIMessage {
+	role: 'system' | 'user' | 'assistant' | 'tool';
+	content: string;
+	tool_calls?: WorkersAIToolCall[];
+	tool_call_id?: string;
+}
+
+interface WorkersAIToolCall {
+	id: string;
+	type: 'function';
+	function: {
+		name: string;
+		arguments: string; // JSON string
+	};
+}
+
+interface WorkersAIToolDefinition {
+	type: 'function';
+	function: {
+		name: string;
+		description: string;
+		parameters: Record<string, unknown>; // JSON Schema
+	};
+}
+
+interface WorkersAIResponse {
+	response?: string;
+	tool_calls?: WorkersAIToolCall[];
+}
+
+interface WorkersAIRunOptions {
+	messages: WorkersAIMessage[];
+	tools?: WorkersAIToolDefinition[];
+	tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+	stream?: boolean;
+	max_tokens?: number;
+	temperature?: number;
+}
+
 interface AIBinding {
 	// AutoRAG - returns an instance for a specific AI Search index
 	autorag(indexName: string): AutoRAGInstance;
-	// Workers AI model inference (if needed)
-	run?(model: string, inputs: unknown): Promise<unknown>;
+	// Workers AI model inference
+	run(model: string, inputs: WorkersAIRunOptions): Promise<WorkersAIResponse>;
 }
 
 declare global {
