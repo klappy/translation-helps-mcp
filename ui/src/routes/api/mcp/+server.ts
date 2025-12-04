@@ -88,6 +88,13 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 									reference: { type: 'string', description: 'Bible reference' },
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' },
+									format: {
+										type: 'string',
+										enum: ['json', 'md', 'markdown', 'text'],
+										default: 'md',
+										description:
+											'Output format: md (markdown with YAML frontmatter, LLM-friendly), json, or text'
+									},
 									search: { type: 'string', description: 'Optional: Filter notes by search query' }
 								},
 								required: ['reference']
@@ -304,6 +311,8 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 					const reference = String(args.reference || '');
 					const language = String(args.language || 'en');
 					const organization = String(args.organization || 'unfoldingWord');
+					// Support format parameter - default to 'md' for LLM-friendly output
+					const format = String(args.format || 'md');
 					
 					if (!reference) {
 						return json({
@@ -317,13 +326,14 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 					const params = new URLSearchParams({
 						reference,
 						language,
-						organization
+						organization,
+						format
 					});
 					
 					console.log('[MCP] Translation notes params:', params.toString());
 					
 					try {
-						// Call the underlying endpoint handler directly
+						// Call the underlying endpoint handler directly with format parameter
 						const endpoint = await import('../fetch-translation-notes/+server.js');
 						const mockUrl = new URL(`http://localhost/api/fetch-translation-notes?${params}`);
 						const mockRequest = new Request(mockUrl.toString());
@@ -342,27 +352,24 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						console.log('[MCP] Translation notes response status:', response.status);
 						
 						if (response.ok) {
-							const data = await response.json();
-							
-							// Format translation notes
-							let notesText = '';
-							// Check for both 'notes' and 'verseNotes' fields (API response structure varies)
-							const notes = data.notes || data.verseNotes || [];
-							
-							if (notes.length > 0) {
-								notesText = `Translation Notes for ${args.reference}:\n\n`;
-								notes.forEach((note, index) => {
-									const noteContent = note.Note || note.note || note.text || note.content || '';
-									notesText += `${index + 1}. ${noteContent}\n\n`;
+							// For markdown/text format, return the body directly as text
+							// This avoids double-parsing and gives LLMs clean markdown
+							if (format === 'md' || format === 'markdown' || format === 'text') {
+								const text = await response.text();
+								return json({
+									content: [{
+										type: 'text',
+										text
+									}]
 								});
-							} else {
-								notesText = 'No translation notes found for this reference.';
 							}
 							
+							// For JSON format, return structured data
+							const data = await response.json();
 							return json({
 								content: [{
 									type: 'text',
-									text: notesText
+									text: JSON.stringify(data, null, 2)
 								}]
 							});
 						} else {

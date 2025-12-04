@@ -2,6 +2,11 @@
  * Fetch Translation Questions Tool
  * Tool for fetching translation questions for a specific Bible reference
  * Uses shared core service for consistency with Netlify functions
+ *
+ * SUPPORTS FORMAT PARAMETER:
+ * - json: Raw JSON (default)
+ * - md/markdown: TRUE markdown with YAML frontmatter
+ * - text: Plain text
  */
 
 import { z } from "zod";
@@ -9,6 +14,10 @@ import { logger } from "../utils/logger.js";
 import { fetchTranslationQuestions } from "../functions/translation-questions-service.js";
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
+import {
+  formatMCPResponse,
+  type OutputFormat,
+} from "../utils/mcp-response-formatter.js";
 import {
   ReferenceParam,
   LanguageParam,
@@ -60,9 +69,10 @@ export async function handleFetchTranslationQuestions(
       },
     });
 
-    // Build enhanced response format for MCP
-    const response = {
-      translationQuestions: result.translationQuestions,
+    // Build response data for formatter
+    const responseData = {
+      reference: args.reference,
+      questions: result.translationQuestions,
       citation: result.citation,
       language: args.language,
       organization: args.organization,
@@ -71,10 +81,13 @@ export async function handleFetchTranslationQuestions(
 
     logger.info("Translation questions fetched successfully", {
       reference: args.reference,
+      format: args.format,
       ...metadata,
     });
 
-    return response;
+    // Format based on requested format
+    const format = (args.format || "json") as OutputFormat;
+    return formatMCPResponse(responseData, format, "translation-questions");
   } catch (error) {
     return handleMCPError({
       toolName: "fetch_translation_questions",

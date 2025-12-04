@@ -114,18 +114,26 @@ export class UnifiedMCPHandler {
 		// Handle both JSON and text/markdown responses
 		const contentType = response.headers.get('content-type') || '';
 		let data: any;
+		let isMarkdownResponse = false;
 
 		if (contentType.includes('application/json')) {
 			data = await response.json();
+		} else if (contentType.includes('text/markdown') || contentType.includes('text/plain')) {
+			// For markdown or text responses, return the text directly - don't parse or transform it!
+			// This is the LLM-friendly output format - no parsing needed
+			const text = await response.text();
+			isMarkdownResponse = true;
+			data = { _rawMarkdown: text };
 		} else {
-			// For markdown or text responses, get as text
+			// For other content types, get as text
 			const text = await response.text();
 			// Try to parse as JSON first (some endpoints return JSON with text content-type)
 			try {
 				data = JSON.parse(text);
 			} catch {
-				// If not JSON, wrap in a structure that formatters can handle
-				data = { text, raw: text };
+				// If not JSON, treat as raw text
+				data = { _rawMarkdown: text };
+				isMarkdownResponse = true;
 			}
 		}
 
@@ -148,6 +156,34 @@ export class UnifiedMCPHandler {
 		// Use finalArgs.format which includes defaults
 		const format = finalArgs.format || 'json';
 		console.log(`[UNIFIED HANDLER] Format determined for ${toolName}:`, format);
+
+		// If we received markdown/text directly from endpoint, return it as-is (LLM-friendly!)
+		if (isMarkdownResponse && data._rawMarkdown) {
+			console.log(`[UNIFIED HANDLER] Returning raw markdown response for ${toolName}`);
+			const result: MCPToolResponse = {
+				content: [
+					{
+						type: 'text',
+						text: data._rawMarkdown
+					}
+				]
+			};
+
+			// Attach metadata if available
+			if (cacheStatus || parsedXrayTrace || responseTime || traceId) {
+				(result as any).metadata = {
+					cacheStatus: cacheStatus?.toLowerCase(),
+					responseTime: responseTime
+						? parseInt(responseTime.replace(/[^0-9]/g, ''), 10)
+						: undefined,
+					traceId,
+					xrayTrace: parsedXrayTrace
+				};
+			}
+
+			return result;
+		}
+
 		if (format === 'json' || format === 'JSON') {
 			// Return raw JSON data structure with metadata
 			const result: MCPToolResponse = {
@@ -175,7 +211,7 @@ export class UnifiedMCPHandler {
 			return result;
 		}
 
-		// Format the response consistently for non-JSON formats
+		// Format the response consistently for non-JSON formats (fallback to formatter)
 		const formattedText = tool.formatter(data);
 
 		const result: MCPToolResponse = {

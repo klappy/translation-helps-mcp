@@ -1,6 +1,11 @@
 /**
  * Fetch Translation Word Links Tool
  * Tool for fetching translation word links for a specific Bible reference
+ *
+ * SUPPORTS FORMAT PARAMETER:
+ * - json: Raw JSON (default)
+ * - md/markdown: TRUE markdown with YAML frontmatter
+ * - text: Plain text
  */
 
 import { z } from "zod";
@@ -9,6 +14,10 @@ import { parseReference } from "../parsers/referenceParser.js";
 import { ResourceAggregator } from "../services/ResourceAggregator.js";
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
+import {
+  formatMCPResponse,
+  type OutputFormat,
+} from "../utils/mcp-response-formatter.js";
 import {
   ReferenceParam,
   LanguageParam,
@@ -118,24 +127,24 @@ export async function handleFetchTranslationWordLinks(
       },
     });
 
-    // Build response
-    const response = {
-      reference: {
-        book: reference.book,
-        chapter: reference.chapter,
-        verse: reference.verse,
-        verseEnd: reference.endVerse,
-      },
-      translationWordLinks: transformedLinks,
+    // Build response data for formatter
+    const responseData = {
+      reference: args.reference,
+      words: transformedLinks,
+      language: args.language,
+      organization: args.organization,
       metadata,
     };
 
     logger.info("Translation word links fetched successfully", {
       reference: args.reference,
+      format: args.format,
       ...metadata,
     });
 
-    return response;
+    // Format based on requested format
+    const format = (args.format || "json") as OutputFormat;
+    return formatMCPResponse(responseData, format, "translation-word-links");
   } catch (error) {
     return handleMCPError({
       toolName: "fetch_translation_word_links",

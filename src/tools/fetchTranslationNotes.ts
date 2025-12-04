@@ -2,6 +2,11 @@
  * Fetch Translation Notes Tool
  * Tool for fetching translation notes for a specific Bible reference
  * Uses shared core service for consistency with Netlify functions
+ *
+ * SUPPORTS FORMAT PARAMETER:
+ * - json: Raw JSON (default)
+ * - md/markdown: TRUE markdown with YAML frontmatter
+ * - text: Plain text (markdown stripped)
  */
 
 import { z } from "zod";
@@ -9,6 +14,10 @@ import { logger } from "../utils/logger.js";
 import { fetchTranslationNotes } from "../functions/translation-notes-service.js";
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
+import {
+  formatMCPResponse,
+  type OutputFormat,
+} from "../utils/mcp-response-formatter.js";
 import {
   ReferenceParam,
   LanguageParam,
@@ -34,6 +43,11 @@ export type FetchTranslationNotesArgs = z.infer<
 
 /**
  * Handle the fetch translation notes tool call
+ *
+ * Returns formatted response based on args.format:
+ * - json: Raw structured JSON
+ * - md/markdown: TRUE markdown with YAML frontmatter (LLM-friendly)
+ * - text: Plain text
  */
 export async function handleFetchTranslationNotes(
   args: FetchTranslationNotesArgs,
@@ -47,6 +61,7 @@ export async function handleFetchTranslationNotes(
       organization: args.organization,
       includeIntro: args.includeIntro,
       includeContext: args.includeContext,
+      format: args.format,
     });
 
     // Use the shared translation notes service (same as Netlify functions)
@@ -70,11 +85,11 @@ export async function handleFetchTranslationNotes(
       },
     });
 
-    // Build enhanced response format for MCP
-    const response = {
+    // Build response data
+    const responseData = {
+      reference: args.reference,
       verseNotes: result.verseNotes,
       contextNotes: result.contextNotes,
-      translationNotes: result.translationNotes, // Keep original for backward compatibility
       citation: result.citation,
       language: args.language,
       organization: args.organization,
@@ -83,10 +98,14 @@ export async function handleFetchTranslationNotes(
 
     logger.info("Translation notes fetched successfully", {
       reference: args.reference,
+      format: args.format,
       ...metadata,
     });
 
-    return response;
+    // Format response based on requested format
+    // Default to markdown for LLM-friendly output
+    const format = (args.format || "json") as OutputFormat;
+    return formatMCPResponse(responseData, format, "translation-notes");
   } catch (error) {
     return handleMCPError({
       toolName: "fetch_translation_notes",

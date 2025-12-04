@@ -1,12 +1,21 @@
 /**
  * Fetch Translation Academy Tool
  * Tool for fetching translation academy modules and training content
+ *
+ * SUPPORTS FORMAT PARAMETER:
+ * - json: Raw JSON (default)
+ * - md/markdown: TRUE markdown with YAML frontmatter
+ * - text: Plain text
  */
 
 import { z } from "zod";
 import { logger } from "../utils/logger.js";
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
+import {
+  formatMCPResponse,
+  type OutputFormat,
+} from "../utils/mcp-response-formatter.js";
 import {
   LanguageParam,
   OrganizationParam,
@@ -124,23 +133,25 @@ export async function handleFetchTranslationAcademy(
       },
     });
 
-    // Build MCP response
-    const mcpResponse = {
-      success: true,
-      content,
-      title,
-      path: result.modules?.[0]?.path || finalPath || args.moduleId,
+    // Build response data for formatter
+    const responseData = {
       moduleId: args.moduleId || result.modules?.[0]?.id,
+      title,
+      content,
+      path: result.modules?.[0]?.path || finalPath || args.moduleId,
       metadata,
     };
 
     logger.info("Translation academy content fetched successfully", {
       moduleId: args.moduleId,
-      path: mcpResponse.path,
+      path: responseData.path,
+      format: args.format,
       ...metadata,
     });
 
-    return mcpResponse;
+    // Format based on requested format
+    const format = (args.format || "json") as OutputFormat;
+    return formatMCPResponse(responseData, format, "translation-academy");
   } catch (error) {
     return handleMCPError({
       toolName: "fetch_translation_academy",

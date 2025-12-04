@@ -25,6 +25,7 @@ You fetch verse-by-verse translation guidance that helps understand meaning and 
 ### Parameters
 - reference: Bible reference (required) - "John 3:16", "Romans 8:1-4", "Titus 1"
 - language: Language code (default: "en") - ALWAYS include this parameter
+- format: Output format - ALWAYS use "md" (markdown) for LLM-friendly output
 - includeIntro: true/false - Include book/chapter introductions (default: true)
 - includeContext: true/false - Include notes from surrounding verses (default: true)
 
@@ -32,6 +33,7 @@ You fetch verse-by-verse translation guidance that helps understand meaning and 
 You MUST always include these parameters when calling the tool:
 - reference (required)
 - language: "en" (always include this)
+- format: "md" (ALWAYS use markdown format - it's optimized for LLMs)
 
 ### Note Types You'll Find
 - **Figures of Speech**: Metaphors, idioms, rhetorical questions
@@ -61,6 +63,9 @@ export const NOTES_AGENT_TOOLS: string[] = ['fetch_translation_notes'];
 
 /**
  * Parse MCP content format to get actual data
+ *
+ * With format=md, the tool returns markdown directly in the text field.
+ * We preserve this as rawMarkdown for direct use by the LLM.
  */
 function parseMCPContent(result: unknown): Record<string, unknown> | null {
 	if (!result || typeof result !== 'object') {
@@ -73,11 +78,19 @@ function parseMCPContent(result: unknown): Record<string, unknown> | null {
 	if (Array.isArray(data.content)) {
 		const textContent = data.content.find((c: { type: string }) => c.type === 'text');
 		if (textContent && typeof textContent === 'object' && 'text' in textContent) {
+			const text = textContent.text as string;
+
+			// Check if it's markdown (starts with # or has markdown formatting)
+			if (text.startsWith('#') || text.includes('## ') || text.includes('**')) {
+				return { rawMarkdown: text, isMarkdown: true };
+			}
+
+			// Try to parse as JSON
 			try {
-				return JSON.parse(textContent.text as string);
+				return JSON.parse(text);
 			} catch {
-				// Not JSON, return the raw text as content
-				return { rawText: textContent.text };
+				// Not JSON, return the raw text
+				return { rawText: text };
 			}
 		}
 	}
@@ -88,6 +101,9 @@ function parseMCPContent(result: unknown): Record<string, unknown> | null {
 
 /**
  * Extract notes-specific citations from tool result
+ *
+ * With format=md, we just confirm content exists.
+ * The markdown itself is passed directly to synthesis.
  */
 function extractNotesCitations(result: unknown, reference: string): Citation[] {
 	const citations: Citation[] = [];
@@ -97,18 +113,29 @@ function extractNotesCitations(result: unknown, reference: string): Citation[] {
 		return citations;
 	}
 
-	// The MCP tool returns notes in an "items" array
-	// Each item has: Reference, ID, Quote, Note, etc.
+	// Handle markdown response (format=md)
+	if (data.isMarkdown && data.rawMarkdown) {
+		const markdown = data.rawMarkdown as string;
+		// Extract first heading as preview
+		const headingMatch = markdown.match(/##?\s+([^\n]+)/);
+		const preview = headingMatch ? headingMatch[1].replace(/[#*]/g, '').trim() : 'Notes found';
+
+		citations.push({
+			source: 'Translation Notes',
+			reference: reference,
+			content: preview.substring(0, 150)
+		});
+		return citations;
+	}
+
+	// Handle JSON response (format=json fallback)
 	if (data.items && Array.isArray(data.items)) {
 		for (const note of data.items.slice(0, 5)) {
-			// Limit to first 5
 			if (note && typeof note === 'object') {
 				const noteObj = note as Record<string, unknown>;
 				const noteRef = (noteObj.Reference as string) || reference;
 				const noteText = (noteObj.Note as string) || '';
 				const quote = (noteObj.Quote as string) || '';
-
-				// Clean up the note text (remove markdown formatting for preview)
 				const cleanNote = noteText.replace(/\\n/g, ' ').replace(/[#*]/g, '').substring(0, 150);
 
 				citations.push({
@@ -118,47 +145,6 @@ function extractNotesCitations(result: unknown, reference: string): Citation[] {
 				});
 			}
 		}
-	}
-
-	// Fallback: Handle verse notes (legacy format)
-	if (data.verseNotes && Array.isArray(data.verseNotes)) {
-		for (const note of data.verseNotes.slice(0, 5)) {
-			if (note && typeof note === 'object') {
-				const noteObj = note as Record<string, unknown>;
-				citations.push({
-					source: 'Translation Notes',
-					reference: (noteObj.Reference as string) || reference,
-					content: `"${noteObj.Quote || ''}" - ${noteObj.Note || ''}`
-				});
-			}
-		}
-	}
-
-	// Fallback: Handle notes (alternative key)
-	if (data.notes && Array.isArray(data.notes)) {
-		for (const note of data.notes.slice(0, 5)) {
-			if (note && typeof note === 'object') {
-				const noteObj = note as Record<string, unknown>;
-				citations.push({
-					source: 'Translation Notes',
-					reference: (noteObj.reference as string) || reference,
-					content:
-						(noteObj.note as string) ||
-						(noteObj.content as string) ||
-						(noteObj.text as string) ||
-						''
-				});
-			}
-		}
-	}
-
-	// Handle context notes
-	if (data.contextNotes && Array.isArray(data.contextNotes) && data.contextNotes.length > 0) {
-		citations.push({
-			source: 'Translation Notes (Context)',
-			reference: reference,
-			content: `${data.contextNotes.length} contextual notes available`
-		});
 	}
 
 	return citations;
@@ -253,36 +239,38 @@ export async function executeNotesAgent(
 			// Extract citations
 			const citations = extractNotesCitations(toolResult, reference);
 
-			// Count notes - parse MCP content first
-			// The MCP tool returns notes in an "items" array
+			// Determine if we have content
 			const parsedData = parseMCPContent(toolResult);
-			const itemsCount =
-				parsedData && Array.isArray(parsedData.items) ? parsedData.items.length : 0;
-			const verseNotesCount = parsedData
-				? Array.isArray(parsedData.verseNotes)
-					? parsedData.verseNotes.length
-					: Array.isArray(parsedData.notes)
-						? parsedData.notes.length
-						: 0
-				: 0;
-			const contextNotesCount =
-				parsedData && Array.isArray(parsedData.contextNotes) ? parsedData.contextNotes.length : 0;
-			const totalNotes = itemsCount || verseNotesCount + contextNotesCount;
+			let hasContent = false;
+			let summary = '';
 
-			const summary =
-				totalNotes > 0
-					? `Found ${verseNotesCount} verse notes and ${contextNotesCount} context notes for ${reference}`
+			// Check markdown format (preferred)
+			if (parsedData?.isMarkdown && parsedData?.rawMarkdown) {
+				const markdown = parsedData.rawMarkdown as string;
+				hasContent = markdown.length > 100 && !markdown.toLowerCase().includes('not found');
+				const headingCount = (markdown.match(/^##\s/gm) || []).length;
+				summary = hasContent
+					? `Found ${headingCount} note sections for ${reference}`
 					: `No notes found for ${reference}`;
+			} else {
+				// JSON format fallback
+				const itemsCount =
+					parsedData && Array.isArray(parsedData.items) ? parsedData.items.length : 0;
+				hasContent = itemsCount > 0;
+				summary = hasContent
+					? `Found ${itemsCount} notes for ${reference}`
+					: `No notes found for ${reference}`;
+			}
 
-			emit('agent:summary', { agent: 'notes', summary, success: totalNotes > 0 });
+			emit('agent:summary', { agent: 'notes', summary, success: hasContent });
 
 			return {
 				agent: 'notes',
-				success: totalNotes > 0,
+				success: hasContent,
 				findings: toolResult,
 				summary,
 				citations,
-				confidence: totalNotes > 0 ? 0.85 : 0.3
+				confidence: hasContent ? 0.85 : 0.3
 			};
 		}
 
@@ -321,10 +309,22 @@ function createNotesPreview(result: unknown): string {
 		return 'No content';
 	}
 
-	// The MCP tool returns notes in an "items" array
+	// Handle markdown response (format=md)
+	if (data.isMarkdown && data.rawMarkdown) {
+		const markdown = data.rawMarkdown as string;
+		// Count headings as rough note count
+		const headingCount = (markdown.match(/^##\s/gm) || []).length;
+		// Extract first heading as preview
+		const headingMatch = markdown.match(/##?\s+([^\n]+)/);
+		const preview = headingMatch ? headingMatch[1].replace(/[#*]/g, '').trim() : '';
+		return headingCount > 0
+			? `${headingCount} sections found. First: ${preview.substring(0, 40)}...`
+			: `Notes content loaded (${markdown.length} chars)`;
+	}
+
+	// Handle JSON response (format=json)
 	const itemsCount = Array.isArray(data.items) ? data.items.length : 0;
 	if (itemsCount > 0) {
-		// Show a preview of the first note
 		const firstItem = data.items[0] as Record<string, unknown>;
 		const notePreview = ((firstItem?.Note as string) || '')
 			.replace(/\\n/g, ' ')
@@ -333,21 +333,11 @@ function createNotesPreview(result: unknown): string {
 		return `${itemsCount} notes found. First: ${notePreview}...`;
 	}
 
-	const verseNotesCount = Array.isArray(data.verseNotes)
-		? data.verseNotes.length
-		: Array.isArray(data.notes)
-			? data.notes.length
-			: 0;
-	const contextNotesCount = Array.isArray(data.contextNotes) ? data.contextNotes.length : 0;
-
-	if (verseNotesCount === 0 && contextNotesCount === 0) {
-		// Check for raw text content
-		if (data.rawText) {
-			const preview = (data.rawText as string).substring(0, 50);
-			return `Content: ${preview}...`;
-		}
-		return 'No notes found';
+	// Fallback for other formats
+	if (data.rawText) {
+		const preview = (data.rawText as string).substring(0, 50);
+		return `Content: ${preview}...`;
 	}
 
-	return `${verseNotesCount} verse notes, ${contextNotesCount} context notes`;
+	return 'No notes found';
 }

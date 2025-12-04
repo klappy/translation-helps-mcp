@@ -2,6 +2,12 @@
  * Fetch Scripture Tool
  * Tool for fetching scripture text for a specific Bible reference
  * Uses shared core service for consistency with Netlify functions
+ *
+ * SUPPORTS FORMAT PARAMETER:
+ * - json: Raw JSON (default)
+ * - md/markdown: TRUE markdown with YAML frontmatter
+ * - text: Plain text
+ * - usfm: USFM format
  */
 
 import { z } from "zod";
@@ -10,6 +16,10 @@ import { fetchScripture } from "../functions/scripture-service.js";
 import { buildMetadata } from "../utils/metadata-builder.js";
 import { handleMCPError } from "../utils/mcp-error-handler.js";
 import { withPerformanceTracking } from "../utils/mcp-performance-tracker.js";
+import {
+  formatMCPResponse,
+  type OutputFormat,
+} from "../utils/mcp-response-formatter.js";
 import {
   ReferenceParam,
   LanguageParam,
@@ -118,63 +128,34 @@ export async function handleFetchScripture(args: FetchScriptureArgs) {
 
         logger.info("Scripture fetched successfully", {
           reference: args.reference,
+          format: args.format,
           ...metadata,
         });
 
-        // If multiple scriptures were fetched (resource: "all" or multiple resources specified),
-        // ALWAYS return all of them, regardless of format
-        if (hasMultipleScriptures) {
-          // For JSON format, return structured JSON with all resources
-          if (args.format === "json") {
-            return {
-              content: [
+        // Build response data for formatter
+        const responseData = {
+          reference: args.reference,
+          language: args.language,
+          organization: args.organization,
+          resources: hasMultipleScriptures
+            ? result.scriptures.map((s: any) => ({
+                resource: s.translation,
+                text: s.text,
+                organization: args.organization,
+              }))
+            : [
                 {
-                  type: "text",
-                  text: JSON.stringify({
-                    success: true,
-                    reference: args.reference,
-                    scriptures: result.scriptures.map((s: any) => ({
-                      text: s.text,
-                      translation: s.translation,
-                      reference: args.reference,
-                    })),
-                    metadata: {
-                      count: result.scriptures.length,
-                      translations: result.scriptures.map(
-                        (s: any) => s.translation,
-                      ),
-                    },
-                  }),
+                  resource: translation,
+                  text: scriptureText,
+                  organization: args.organization,
                 },
               ],
-              isError: false,
-            };
-          }
-
-          // For non-JSON formats, return all scriptures joined with newlines
-          return {
-            content: [
-              {
-                type: "text",
-                text: result.scriptures
-                  .map((s: any) => `${s.translation}: ${s.text}`)
-                  .join("\n\n"),
-              },
-            ],
-            isError: false,
-          };
-        }
-
-        // For single scripture, return just the text
-        return {
-          content: [
-            {
-              type: "text",
-              text: scriptureText,
-            },
-          ],
-          isError: false,
+          metadata,
         };
+
+        // Format based on requested format
+        const format = (args.format || "json") as OutputFormat;
+        return formatMCPResponse(responseData, format, "scripture");
       } catch (error) {
         return handleMCPError({
           toolName: "fetch_scripture",
