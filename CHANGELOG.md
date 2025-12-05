@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.16.0](https://github.com/klappy/translation-helps-mcp/compare/v7.15.1...v7.16.0) (2025-12-05)
+
+### Features
+
+- **chat:** standardize citation format with clickable article names ([df75831](https://github.com/klappy/translation-helps-mcp/commit/df758312369fca32ded0a37f67c1e22797687d97))
+
 ### [7.15.1](https://github.com/klappy/translation-helps-mcp/compare/v7.15.0...v7.15.1) (2025-12-05)
 
 ### Refactoring
