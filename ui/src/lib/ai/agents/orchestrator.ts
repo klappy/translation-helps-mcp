@@ -97,6 +97,11 @@ Combine the agent reports below into a well-organized, properly cited response.
 3. Use markdown formatting: headers, blockquotes for scripture, bold for emphasis
 4. If an agent failed or found nothing, acknowledge it clearly
 5. End with 2-3 follow-up questions the user might want to explore
+6. EXPLORABILITY: Wrap key terms, concepts, or references that users might want to explore further in double brackets: [[term]]
+   - Examples: [[grace]], [[John 3:16]], [[figs-metaphor]], [[propitiation]]
+   - Use for: Biblical terms, verse references, translation concepts, people, places
+   - Do NOT use for: Generic words, section headers, simple emphasis
+   - Bold (**text**) is for emphasis only; [[text]] is for exploration
 
 ## CITATION FORMAT
 - Scripture: > "Quote..." — **ULT**, John 3:16

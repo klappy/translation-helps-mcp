@@ -121,7 +121,7 @@
 				/<blockquote>/g,
 				'<blockquote class="border-l-4 border-blue-500 pl-4 italic my-4 text-gray-200">'
 			)
-			// Strong/Bold
+			// Strong/Bold - simple emphasis styling (NOT clickable)
 			.replace(/<strong>/g, '<strong class="font-bold text-white">')
 			// Horizontal rules
 			.replace(/<hr>/g, '<hr class="my-6 border-gray-700">')
@@ -136,25 +136,37 @@
 			return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline cursor-pointer">${text}</a>`;
 		});
 
+		// Detect [[term]] syntax and make clickable (LLM-chosen explorable items)
+		html = html.replace(
+			/\[\[([^\]]+)\]\]/g,
+			'<span class="explore-link cursor-pointer text-emerald-400 hover:text-emerald-300 hover:underline" data-explore="$1" title="Click to explore">$1</span>'
+		);
+
 		return html;
 	}
 
-	// After component updates, attach click handlers to RC links
+	// After component updates, attach click handlers to RC links and explore links
 	afterUpdate(() => {
 		if (browser) {
 			// Remove old listeners
-			document.querySelectorAll('.rc-link').forEach((link) => {
-				link.removeEventListener('click', handleRCLinkClickWrapper);
+			document.querySelectorAll('.rc-link').forEach((el) => {
+				el.removeEventListener('click', handleRCLinkClickWrapper);
+			});
+			document.querySelectorAll('.explore-link').forEach((el) => {
+				el.removeEventListener('click', handleExploreLinkWrapper);
 			});
 
 			// Add new listeners
-			document.querySelectorAll('.rc-link').forEach((link) => {
-				link.addEventListener('click', handleRCLinkClickWrapper);
+			document.querySelectorAll('.rc-link').forEach((el) => {
+				el.addEventListener('click', handleRCLinkClickWrapper);
+			});
+			document.querySelectorAll('.explore-link').forEach((el) => {
+				el.addEventListener('click', handleExploreLinkWrapper);
 			});
 		}
 	});
 
-	// Wrapper function for RC link click handling
+	// Wrapper for RC link clicks
 	function handleRCLinkClickWrapper(event) {
 		const href = event.target.getAttribute('data-rc-link');
 		if (href) {
@@ -162,19 +174,32 @@
 		}
 	}
 
+	// Wrapper for explore link clicks ([[term]] syntax)
+	function handleExploreLinkWrapper(event) {
+		const term = event.target.getAttribute('data-explore');
+		if (term) {
+			event.preventDefault();
+			inputValue = `Tell me more about "${term}"`;
+			const input = document.querySelector('textarea');
+			if (input) input.focus();
+		}
+	}
+
 	// Cleanup on destroy
 	onDestroy(() => {
 		if (browser) {
-			document.querySelectorAll('.rc-link').forEach((link) => {
-				link.removeEventListener('click', handleRCLinkClickWrapper);
+			document.querySelectorAll('.rc-link').forEach((el) => {
+				el.removeEventListener('click', handleRCLinkClickWrapper);
+			});
+			document.querySelectorAll('.explore-link').forEach((el) => {
+				el.removeEventListener('click', handleExploreLinkWrapper);
 			});
 		}
 	});
 
-	// Handle RC link clicks
-	async function handleRCLinkClick(event, href) {
+	// Handle RC link clicks - populate input with follow-up prompt
+	function handleRCLinkClick(event, href) {
 		event.preventDefault();
-		console.log('RC link clicked:', href);
 
 		// Parse the RC link to understand what type of resource it is
 		const parts = href.replace('rc://', '').split('/');
@@ -186,7 +211,7 @@
 			// Translation Word link
 			const term = parts[parts.length - 1];
 			const word = term.replace(/-/g, ' ');
-			prompt = `Define the biblical term "${word}" and explain its significance`;
+			prompt = `Define the biblical term "${word}" and explain its significance with scripture examples`;
 		} else if (href.includes('/ta/man/')) {
 			// Translation Academy article
 			const articleId = parts[parts.length - 1];
@@ -196,16 +221,17 @@
 			// Bible reference link
 			const book = parts[parts.length - 2];
 			const chapter = parts[parts.length - 1];
-			prompt = `Show me ${book} ${chapter}`;
+			prompt = `Show me ${book} ${chapter} in all available translations`;
 		} else {
 			// Generic handling for other RC links
 			const resourceName = parts[parts.length - 1].replace(/-/g, ' ');
-			prompt = `Tell me about "${resourceName}"`;
+			prompt = `Tell me more about "${resourceName}"`;
 		}
 
-		// Send the generated prompt
+		// Populate input and focus (let user review before sending)
 		inputValue = prompt;
-		await sendMessage();
+		const input = document.querySelector('input[type="text"]');
+		if (input) input.focus();
 	}
 
 	// Welcome message
@@ -337,6 +363,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 
 			case 'prompt:start':
 				// MCP Prompt workflow started
+				orchestrationActive = true; // Ensure ThinkingBubble shows
 				orchestratorStatus = 'dispatching';
 				const promptName = eventData.promptName as string;
 				const reference = eventData.reference as string;
@@ -356,13 +383,24 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 			case 'prompt:complete':
 				// MCP Prompt workflow completed
 				const promptSuccess = eventData.success as boolean;
+				const promptDuration = eventData.duration as number;
+				const resultSummary = eventData.resultSummary as string;
+				const dataKeys = (eventData.dataKeys as string[]) || [];
 				agentStreams = agentStreams.map((a) =>
 					a.agent === 'prompt'
 						? {
 								...a,
 								status: promptSuccess ? ('complete' as const) : ('error' as const),
+								thoughts: promptSuccess
+									? `Workflow completed in ${Math.round(promptDuration / 1000)}s\n\nRetrieved: ${resultSummary || 'data'}`
+									: 'Workflow failed',
+								toolCalls: dataKeys.map((key) => ({
+									name: key,
+									status: 'complete',
+									preview: ''
+								})),
 								summary: promptSuccess
-									? 'Prompt workflow completed successfully'
+									? `Retrieved ${dataKeys.length} resources: ${dataKeys.join(', ')}`
 									: 'Prompt workflow failed'
 							}
 						: a
@@ -371,13 +409,14 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 
 			case 'prompt:error':
 				// MCP Prompt workflow failed
-				const promptError = (eventData.error as string) || 'Unknown error';
+				const promptErrorMsg = (eventData.error as string) || 'Unknown error';
 				agentStreams = agentStreams.map((a) =>
 					a.agent === 'prompt'
 						? {
 								...a,
 								status: 'error' as const,
-								error: promptError
+								thoughts: `Workflow failed: ${promptErrorMsg}\n\nFalling back to individual agents...`,
+								error: promptErrorMsg
 							}
 						: a
 				);
@@ -780,6 +819,7 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 				} else if (
 					event.startsWith('orchestrator:') ||
 					event.startsWith('agent:') ||
+					event.startsWith('prompt:') ||
 					event === 'synthesis:start' ||
 					event === 'synthesis:delta' ||
 					event === 'done'

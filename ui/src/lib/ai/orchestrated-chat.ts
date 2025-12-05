@@ -7,16 +7,16 @@
 
 import {
 	DEFAULT_ORCHESTRATION_CONFIG,
+	EXECUTE_PROMPT_TOOL,
 	ORCHESTRATOR_PROMPT,
 	PLANNING_TOOL,
-	EXECUTE_PROMPT_TOOL,
 	SYNTHESIS_PROMPT,
 	buildSynthesisContext,
 	executeAgent,
-	getAgentDisplayName,
-	parseOrchestratorPlan,
-	parseExecutePromptArgs,
 	extractCitationsFromPromptResult,
+	getAgentDisplayName,
+	parseExecutePromptArgs,
+	parseOrchestratorPlan,
 	type AgentName,
 	type AgentResponse,
 	type AgentTask,
@@ -307,9 +307,30 @@ export async function orchestratedChat(
 							promptEntry.success = promptResponse.ok;
 						}
 
+						// Build a summary of what the prompt returned
+						const promptResultKeys = Object.keys(promptResult);
+						const promptSummaryParts: string[] = [];
+						for (const key of promptResultKeys) {
+							const value = promptResult[key];
+							if (value && typeof value === 'object') {
+								if (Array.isArray(value)) {
+									promptSummaryParts.push(`${key}: ${value.length} items`);
+								} else if ('text' in value) {
+									promptSummaryParts.push(`${key}: ✓`);
+								} else if ('items' in value && Array.isArray(value.items)) {
+									promptSummaryParts.push(`${key}: ${value.items.length} items`);
+								} else {
+									promptSummaryParts.push(`${key}: ✓`);
+								}
+							}
+						}
+
 						emit('prompt:complete', {
 							promptName: planningResult.promptName,
-							success: promptResponse.ok
+							success: promptResponse.ok,
+							duration: Date.now() - promptStart,
+							resultSummary: promptSummaryParts.join(', '),
+							dataKeys: promptResultKeys
 						});
 
 						// Convert prompt result to agent-like format for synthesis
@@ -327,7 +348,7 @@ export async function orchestratedChat(
 							confidence: promptResponse.ok ? 0.9 : 0.1
 						});
 
-						// Create a pseudo-plan for X-Ray tracking
+						// Create a pseudo-plan for X-Ray tracking (don't emit to UI - prompt:complete already updated it)
 						plan = {
 							reasoning: `Using ${planningResult.promptName} workflow`,
 							agents: [
@@ -339,8 +360,7 @@ export async function orchestratedChat(
 							],
 							needsIteration: false
 						};
-
-						emit('orchestrator:plan', { plan });
+						// Note: NOT emitting orchestrator:plan here because prompt:complete already updated the UI
 					} catch (promptError) {
 						console.error('Prompt execution failed:', promptError);
 						timings.agentExecution = Date.now() - promptStart;
