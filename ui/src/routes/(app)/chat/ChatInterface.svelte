@@ -137,9 +137,9 @@
 		});
 
 		// Detect [[article|resource]] or [[article]] syntax and make clickable
-		// Format: [[article|resource]] renders "article" but includes resource context for queries
+		// Format: [[article|resource]] renders "article, Resource" with resource context for queries
 		html = html.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (match, article, resource) => {
-			return `<span class="explore-link cursor-pointer text-emerald-400 hover:text-emerald-300 hover:underline" data-explore="${article}" data-resource="${resource}" title="Click to explore ${article} from ${resource}">${article}</span>`;
+			return `<span class="explore-link cursor-pointer text-emerald-400 hover:text-emerald-300 hover:underline" data-explore="${article}" data-resource="${resource}" title="Click to explore ${article} from ${resource}">${article}</span><span class="text-gray-400">, ${resource}</span>`;
 		});
 		// Fallback for simple [[term]] without resource
 		html = html.replace(
