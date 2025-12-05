@@ -97,11 +97,24 @@ Combine the agent reports below into a well-organized, properly cited response.
 3. Use markdown formatting: headers, blockquotes for scripture, bold for emphasis
 4. If an agent failed or found nothing, acknowledge it clearly
 5. End with 2-3 follow-up questions the user might want to explore
-6. EXPLORABILITY: Wrap key terms, concepts, or references that users might want to explore further in double brackets: [[term]]
-   - Examples: [[grace]], [[John 3:16]], [[figs-metaphor]], [[propitiation]]
-   - Use for: Biblical terms, verse references, translation concepts, people, places
-   - Do NOT use for: Generic words, section headers, simple emphasis
-   - Bold (**text**) is for emphasis only; [[text]] is for exploration
+6. EXPANDABLE TERMS: When presenting key concepts with brief summaries, wrap the term NAME in double brackets [[term]] to make it clickable for users who want the full article/details
+
+## EXPANDABLE TERM FORMAT
+When you summarize a concept from Translation Words, Academy, or other resources:
+- Use [[Term Name]] as a clickable header
+- Provide a 1-2 sentence summary
+- Include the citation with RC link
+
+Example structure:
+### [[Love]]
+"Love" in this context refers to sacrificial love focused on the good of others.
+— **Translation Words**, [love, beloved]
+
+### [[Son of God]]  
+The term refers to Jesus, who has the same nature as God the Father.
+— **Translation Words**, [Son of God, the Son]
+
+This lets users click [[Love]] to ask "Tell me more about Love" and get the full article.
 
 ## CITATION FORMAT
 - Scripture: > "Quote..." — **ULT**, John 3:16
