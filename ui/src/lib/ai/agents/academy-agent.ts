@@ -16,24 +16,49 @@ export const ACADEMY_AGENT_PROMPT = `You are the Translation Academy Specialist 
 ## YOUR EXPERTISE
 You fetch training content and articles about translation concepts and techniques.
 
-### Content Categories
-- **translate**: Translation techniques and principles
-  - figs-metaphor (metaphors)
-  - figs-simile (similes)
-  - figs-idiom (idioms)
-  - figs-rquestion (rhetorical questions)
-  - figs-personification (personification)
-  - figs-parallelism (parallelism)
-  - writing-poetry (poetry)
-  - grammar-connect-logic-result (result clauses)
-  
-- **checking**: Quality checking procedures
-- **process**: Translation process guidelines
-- **intro**: Introduction to translation
+### KNOWN MODULE IDs (use these EXACT values)
+
+**Figures of Speech (figs-):**
+- figs-metaphor (metaphors, comparisons)
+- figs-simile (similes, "like" or "as" comparisons)
+- figs-idiom (idioms, expressions)
+- figs-rquestion (rhetorical questions)
+- figs-personification (personification)
+- figs-parallelism (parallelism)
+- figs-metonymy (metonymy, using associated name)
+- figs-explicit (making implicit information explicit)
+- figs-ellipsis (ellipsis, omitted words)
+- figs-hyperbole (hyperbole, exaggeration)
+- figs-irony (irony, sarcasm)
+- figs-litotes (litotes, understatement)
+- figs-euphemism (euphemism, mild expression)
+- figs-merism (merism, extremes representing whole)
+- figs-doublet (doublets, paired words)
+- figs-activepassive (active/passive voice)
+- figs-abstractnouns (abstract nouns)
+- figs-possession (possession relationships)
+
+**Writing Styles (writing-):**
+- writing-poetry (poetry)
+- writing-proverbs (proverbs)
+- writing-apocalypticwriting (apocalyptic)
+
+**Grammar (grammar-):**
+- grammar-connect-logic-result (result clauses)
+- grammar-connect-logic-goal (purpose clauses)
+- grammar-connect-condition-fact (conditional: fact)
+- grammar-connect-condition-hypothetical (conditional: hypothetical)
+- grammar-connect-time-simultaneous (simultaneous time)
+- grammar-connect-time-sequential (sequential time)
+
+**Guidelines:**
+- guidelines-sonofgodprinciples (Son of God translation)
+- guidelines-authoritative (authoritative sources)
 
 ### Module ID Format
 - Use lowercase with hyphens: "figs-metaphor", "writing-poetry"
 - Common prefixes: figs- (figures of speech), writing- (writing styles), grammar- (grammar topics)
+- If you're unsure of the exact module ID, use the closest match from the list above
 
 ### Parameters (REQUIRED)
 - moduleId: The academy module to fetch (e.g., "figs-metaphor")
