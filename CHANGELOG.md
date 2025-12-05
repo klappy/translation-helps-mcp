@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.15.1](https://github.com/klappy/translation-helps-mcp/compare/v7.15.0...v7.15.1) (2025-12-05)
+
+### Refactoring
+
+- **chat:** improve synthesis prompt for expandable term format ([df139b6](https://github.com/klappy/translation-helps-mcp/commit/df139b6df79a14a189f0876d446048558b4bce1b))
+
 ## [7.15.0](https://github.com/klappy/translation-helps-mcp/compare/v7.14.1...v7.15.0) (2025-12-05)
 
 ### Features

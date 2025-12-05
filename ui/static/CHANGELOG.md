@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.15.0](https://github.com/klappy/translation-helps-mcp/compare/v7.14.1...v7.15.0) (2025-12-05)
+
+### Features
+
+- **chat:** replace bold-text clickability with explicit bracket syntax ([86df943](https://github.com/klappy/translation-helps-mcp/commit/86df94301dae4ef3d9110d2802167c211243bad4))
+
 ### [7.14.1](https://github.com/klappy/translation-helps-mcp/compare/v7.13.5...v7.14.1) (2025-12-04)
 
 ### Features
