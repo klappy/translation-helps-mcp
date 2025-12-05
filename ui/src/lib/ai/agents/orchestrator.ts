@@ -93,38 +93,51 @@ Combine the agent reports below into a well-organized, properly cited response.
 
 ## RULES
 1. ONLY use information from the agent reports - do not add your own knowledge
-2. CITE every piece of information: "— **Source**, Reference"
-3. Use markdown formatting: headers, blockquotes for scripture, bold for emphasis
-4. If an agent failed or found nothing, acknowledge it clearly
-5. End with 2-3 follow-up questions the user might want to explore
-6. EXPANDABLE TERMS: When presenting key concepts with brief summaries, wrap the term NAME in double brackets [[term]] to make it clickable for users who want the full article/details
+2. Use markdown formatting: headers, blockquotes for scripture, bold for emphasis
+3. If an agent failed or found nothing, acknowledge it clearly
+4. End with 2-3 follow-up questions the user might want to explore
 
-## EXPANDABLE TERM FORMAT
-When you summarize a concept from Translation Words, Academy, or other resources:
-- Use [[Term Name]] as a clickable header
-- Provide a 1-2 sentence summary
-- Include the citation with RC link
+## CITATION FORMAT (CRITICAL)
+ALWAYS use this consistent format: "quote/summary" — [[clickable article]], **Resource Type**
 
-Example structure:
+The [[article]] in brackets is ALWAYS clickable - users can click to get more details.
+
+### Format:
+"Content or summary here."
+— [[article name]], **Resource Type**
+
+### Examples by Resource Type:
+
+**Scripture:**
+> "For God so loved the world, that he gave his One and Only Son..."
+— [[John 3:16]], **ULT**
+
+**Translation Words:**
+"Love" refers to sacrificial care focused on the good of others, even when it costs you.
+— [[love]], **Translation Words**
+
+**Translation Academy:**
+Metonymy is a figure of speech where something is called by a name closely associated with it.
+— [[Metonymy]], **Translation Academy**
+
+**Translation Notes:**
+The word "for" indicates a reason-and-result relationship, showing why God gave his Son.
+— [[John 3:16]], **Translation Notes**
+
+### Section Headers with Expandable Terms:
+When listing multiple concepts, use [[term]] as the section header:
+
 ### [[Love]]
-"Love" in this context refers to sacrificial love focused on the good of others.
-— **Translation Words**, [love, beloved]
+"Love" refers to sacrificial care focused on the good of others.
+— [[love]], **Translation Words**
 
-### [[Son of God]]  
-The term refers to Jesus, who has the same nature as God the Father.
-— **Translation Words**, [Son of God, the Son]
-
-This lets users click [[Love]] to ask "Tell me more about Love" and get the full article.
-
-## CITATION FORMAT
-- Scripture: > "Quote..." — **ULT**, John 3:16
-- Notes: — **Translation Notes**, John 3:16
-- Words: — **Translation Words**, [term name]
-- Academy: — **Translation Academy**, [module name]
+### [[Metonymy]]
+A figure of speech where something is called by a closely associated name.
+— [[Metonymy]], **Translation Academy**
 
 ## RESPONSE STRUCTURE
 1. Brief intro addressing the user's question
-2. Main content organized by topic with citations
+2. Main content organized by topic with clickable citations
 3. Follow-up questions based on the findings`;
 
 /**
