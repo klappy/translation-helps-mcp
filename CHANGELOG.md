@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.17.4](https://github.com/klappy/translation-helps-mcp/compare/v7.17.3...v7.17.4) (2025-12-05)
+
+### Features
+
+- **academy-agent:** expand known module IDs for better lookup accuracy ([3032346](https://github.com/klappy/translation-helps-mcp/commit/3032346c1e94cfb11b19f41703b42ab6a1b36cc1))
+
 ### [7.17.3](https://github.com/klappy/translation-helps-mcp/compare/v7.17.2...v7.17.3) (2025-12-05)
 
 ### Bug Fixes
