@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.17.3](https://github.com/klappy/translation-helps-mcp/compare/v7.17.2...v7.17.3) (2025-12-05)
+
+### Bug Fixes
+
+- **orchestrator:** correctly route specific article requests to agents ([1852b46](https://github.com/klappy/translation-helps-mcp/commit/1852b46dcedea31e7b2623afbf64bd4c5d9a290a))
+
 ### [7.17.2](https://github.com/klappy/translation-helps-mcp/compare/v7.17.1...v7.17.2) (2025-12-05)
 
 ### Bug Fixes
