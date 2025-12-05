@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.17.0](https://github.com/klappy/translation-helps-mcp/compare/v7.16.0...v7.17.0) (2025-12-05)
+
+### Features
+
+- **chat:** add resource context to clickable links for specific queries ([3aa2ca0](https://github.com/klappy/translation-helps-mcp/commit/3aa2ca07bf6bde93b3a4e436fb323e444e2139d1))
+
 ## [7.16.0](https://github.com/klappy/translation-helps-mcp/compare/v7.15.1...v7.16.0) (2025-12-05)
 
 ### Features
