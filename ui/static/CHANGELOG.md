@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.17.1](https://github.com/klappy/translation-helps-mcp/compare/v7.17.0...v7.17.1) (2025-12-05)
+
+### Bug Fixes
+
+- **chat:** display resource type alongside clickable article in citations ([fa8c340](https://github.com/klappy/translation-helps-mcp/commit/fa8c340a0dbb5dc6343d48a496b7c25a4d52db8b))
+
 ## [7.17.0](https://github.com/klappy/translation-helps-mcp/compare/v7.16.0...v7.17.0) (2025-12-05)
 
 ### Features
