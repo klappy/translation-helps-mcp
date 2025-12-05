@@ -131,20 +131,20 @@
 				'<a class="text-blue-400 hover:text-blue-300 underline" href="'
 			);
 
-		// Then make RC links clickable with special handling
+		// Then make RC links clickable with special handling - white text, underlined
 		html = html.replace(/<a href="(rc:\/\/[^"]+)">([^<]+)<\/a>/g, (match, href, text) => {
-			return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline cursor-pointer">${text}</a>`;
+			return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 underline hover:no-underline cursor-pointer">${text}</a>`;
 		});
 
 		// Detect [[article|resource]] or [[article]] syntax and make clickable
-		// Format: [[article|resource]] renders "article, Resource" with resource context for queries
+		// Format: [[article|resource]] renders "article, Resource" - all white text, links underlined
 		html = html.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (match, article, resource) => {
-			return `<span class="explore-link cursor-pointer text-emerald-400 hover:text-emerald-300 hover:underline" data-explore="${article}" data-resource="${resource}" title="Click to explore ${article} from ${resource}">${article}</span><span class="text-gray-400">, ${resource}</span>`;
+			return `<span class="explore-link cursor-pointer underline hover:no-underline" data-explore="${article}" data-resource="${resource}" title="Click to explore ${article} from ${resource}">${article}</span>, ${resource}`;
 		});
 		// Fallback for simple [[term]] without resource
 		html = html.replace(
 			/\[\[([^\]]+)\]\]/g,
-			'<span class="explore-link cursor-pointer text-emerald-400 hover:text-emerald-300 hover:underline" data-explore="$1" title="Click to explore">$1</span>'
+			'<span class="explore-link cursor-pointer underline hover:no-underline" data-explore="$1" title="Click to explore">$1</span>'
 		);
 
 		return html;
