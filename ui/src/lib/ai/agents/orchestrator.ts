@@ -98,42 +98,48 @@ Combine the agent reports below into a well-organized, properly cited response.
 4. End with 2-3 follow-up questions the user might want to explore
 
 ## CITATION FORMAT (CRITICAL)
-ALWAYS use this consistent format: "quote/summary" — [[clickable article]], **Resource Type**
+ALWAYS use this format: "quote/summary" — [[article|Resource Type]]
 
-The [[article]] in brackets is ALWAYS clickable - users can click to get more details.
+The [[article|resource]] syntax creates a clickable link with context. When users click, they get a resource-specific query.
 
 ### Format:
 "Content or summary here."
-— [[article name]], **Resource Type**
+— [[article name|Resource Type]]
 
 ### Examples by Resource Type:
 
 **Scripture:**
 > "For God so loved the world, that he gave his One and Only Son..."
-— [[John 3:16]], **ULT**
+— [[John 3:16|ULT]]
 
 **Translation Words:**
 "Love" refers to sacrificial care focused on the good of others, even when it costs you.
-— [[love]], **Translation Words**
+— [[love|Translation Words]]
 
 **Translation Academy:**
 Metonymy is a figure of speech where something is called by a name closely associated with it.
-— [[Metonymy]], **Translation Academy**
+— [[Metonymy|Translation Academy]]
 
 **Translation Notes:**
 The word "for" indicates a reason-and-result relationship, showing why God gave his Son.
-— [[John 3:16]], **Translation Notes**
+— [[John 3:16|Translation Notes]]
+
+**Translation Questions:**
+How did God show he loved the world?
+— [[John 3:16|Translation Questions]]
 
 ### Section Headers with Expandable Terms:
-When listing multiple concepts, use [[term]] as the section header:
+When listing multiple concepts, use [[term|resource]] as the section header:
 
-### [[Love]]
+### [[Love|Translation Words]]
 "Love" refers to sacrificial care focused on the good of others.
-— [[love]], **Translation Words**
+— [[love|Translation Words]]
 
-### [[Metonymy]]
+### [[Metonymy|Translation Academy]]
 A figure of speech where something is called by a closely associated name.
-— [[Metonymy]], **Translation Academy**
+— [[Metonymy|Translation Academy]]
+
+This way, clicking [[John 3:16|Translation Notes]] asks "Show me the Translation Notes for John 3:16" - NOT a generic query.
 
 ## RESPONSE STRUCTURE
 1. Brief intro addressing the user's question

@@ -136,7 +136,12 @@
 			return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline cursor-pointer">${text}</a>`;
 		});
 
-		// Detect [[term]] syntax and make clickable (LLM-chosen explorable items)
+		// Detect [[article|resource]] or [[article]] syntax and make clickable
+		// Format: [[article|resource]] renders "article" but includes resource context for queries
+		html = html.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (match, article, resource) => {
+			return `<span class="explore-link cursor-pointer text-emerald-400 hover:text-emerald-300 hover:underline" data-explore="${article}" data-resource="${resource}" title="Click to explore ${article} from ${resource}">${article}</span>`;
+		});
+		// Fallback for simple [[term]] without resource
 		html = html.replace(
 			/\[\[([^\]]+)\]\]/g,
 			'<span class="explore-link cursor-pointer text-emerald-400 hover:text-emerald-300 hover:underline" data-explore="$1" title="Click to explore">$1</span>'
@@ -174,12 +179,38 @@
 		}
 	}
 
-	// Wrapper for explore link clicks ([[term]] syntax)
+	// Wrapper for explore link clicks ([[article|resource]] syntax)
 	function handleExploreLinkWrapper(event) {
-		const term = event.target.getAttribute('data-explore');
-		if (term) {
+		const article = event.target.getAttribute('data-explore');
+		const resource = event.target.getAttribute('data-resource');
+		if (article) {
 			event.preventDefault();
-			inputValue = `Tell me more about "${term}"`;
+			// Generate resource-specific query
+			if (resource) {
+				switch (resource) {
+					case 'Translation Words':
+						inputValue = `Define "${article}" from Translation Words`;
+						break;
+					case 'Translation Academy':
+						inputValue = `Show me the Translation Academy article on "${article}"`;
+						break;
+					case 'Translation Notes':
+						inputValue = `Show me the Translation Notes for ${article}`;
+						break;
+					case 'Translation Questions':
+						inputValue = `Show me the Translation Questions for ${article}`;
+						break;
+					case 'ULT':
+					case 'UST':
+						inputValue = `Show me ${article} in ${resource}`;
+						break;
+					default:
+						inputValue = `Show me ${article} from ${resource}`;
+				}
+			} else {
+				// Fallback for [[term]] without resource
+				inputValue = `Tell me more about "${article}"`;
+			}
 			const input = document.querySelector('textarea');
 			if (input) input.focus();
 		}
