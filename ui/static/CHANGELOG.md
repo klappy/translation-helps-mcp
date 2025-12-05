@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.14.1](https://github.com/klappy/translation-helps-mcp/compare/v7.13.5...v7.14.1) (2025-12-04)
+
+### Features
+
+- **scripture:** include full title from DCS catalog in scripture responses ([df88cf9](https://github.com/klappy/translation-helps-mcp/commit/df88cf91f12f197addce5ecd0ce3ef2e4b182136))
+
+### Bug Fixes
+
+- **orchestration:** fix userMessage reference in planIterationTasks ([eb53841](https://github.com/klappy/translation-helps-mcp/commit/eb53841b0ab5c9e068da7f79a03eeab1a071769d))
+- **search-agent:** correctly parse hit count from markdown MCP response ([b8979b4](https://github.com/klappy/translation-helps-mcp/commit/b8979b4decf0073ad54127fa2f5455fa352e288f))
+- **xray:** correct tool timing and add TTFT metric ([d1038d3](https://github.com/klappy/translation-helps-mcp/commit/d1038d37dc4df9570d6a1808fb91b650cdfe4370))
+- **xray:** prevent duplicate timeline entries for orchestrator and agents ([59f4369](https://github.com/klappy/translation-helps-mcp/commit/59f4369077a5d9552df41680cdc2552f43cbec9e))
+
+### Chores
+
+- **release:** 7.14.0 ([085687c](https://github.com/klappy/translation-helps-mcp/commit/085687c16889726c6e6b361bdb4b9da98a6e4135))
+
 ## [7.14.0](https://github.com/klappy/translation-helps-mcp/compare/v7.13.5...v7.14.0) (2025-12-04)
 
 ### Features
