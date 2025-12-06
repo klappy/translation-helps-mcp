@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.8](https://github.com/klappy/translation-helps-mcp/compare/v7.19.7...v7.19.8) (2025-12-06)
+
+### Documentation
+
+- **docs:** Complete v7.X documentation audit and update
+  - Updated README.md to v7.19.1 with multi-agent orchestration and Workers AI features
+  - Rewrote AI_CHAT_ARCHITECTURE.md for Cloudflare Workers AI and multi-agent system
+  - Created new MULTI_AGENT_ORCHESTRATION.md documenting the agent dispatch system
+  - Created new EVENT_DRIVEN_INDEXING.md documenting the search indexing pipeline
+  - Created new AGENTS_REFERENCE.md with detailed agent specifications
+  - Updated ARCHITECTURE.md with current system architecture
+  - Updated HYBRID_SEARCH_FEATURE.md with v2 pipeline and performance improvements
+  - Updated IMPLEMENTATION_GUIDE.md with current tools and chat features
+  - Fixed docs/README.md broken links and updated references
+  - Deleted ~40 temporary implementation and debug files from root directory
+
+### [7.19.7](https://github.com/klappy/translation-helps-mcp/compare/v7.19.6...v7.19.7) (2025-12-06)
+
 ### [7.19.6](https://github.com/klappy/translation-helps-mcp/compare/v7.19.5...v7.19.6) (2025-12-06)
 
 ### [7.19.5](https://github.com/klappy/translation-helps-mcp/compare/v7.19.4...v7.19.5) (2025-12-06)

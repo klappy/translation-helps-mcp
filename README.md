@@ -1,39 +1,56 @@
-# Translation Helps MCP Server v7.5.0
-
-**🔍 NEW: Cloudflare AI Search Integration**
+# Translation Helps MCP Server v7.19.1
 
 A comprehensive MCP (Model Context Protocol) server that provides AI agents with access to Bible translation resources from Door43's Content Service (DCS). This server enables AI assistants to fetch, process, and intelligently work with translation helps including scripture texts, translation notes, translation words, and translation questions.
 
-## 🎉 What's New in v7.5.0
+## What's New in v7.19
 
-### AI Search Migration
+### Multi-Agent Orchestration (v7.12+)
 
-- **🔍 Cloudflare AI Search** - Semantic search across all biblical resources
-- **📊 Rich Metadata** - Book, chapter, verse, article ID extraction for filtering
-- **🎯 Smart Filtering** - Filter by language, organization, resource type, reference
-- **📝 Contextual Results** - Formatted references with preview snippets
+The chat system now uses a sophisticated multi-agent architecture:
 
-### Technical Excellence
+- **Orchestrator Agent** - Analyzes queries and dispatches specialist agents
+- **Scripture Agent** - Fetches Bible text (ULT, UST translations)
+- **Notes Agent** - Gets verse-by-verse translation guidance
+- **Words Agent** - Fetches biblical term definitions
+- **Academy Agent** - Gets translation concept articles
+- **Questions Agent** - Gets comprehension questions (v7.19)
+- **Search Agent** - Semantic search across all resources
 
-- **✅ 100% Real Data** - All mock data removed, every endpoint fetches from DCS
-- **✅ Unified Architecture** - Single `UnifiedResourceFetcher` class handles all data
-- **✅ Markdown Support Everywhere** - All endpoints support `format=md` for LLMs
-- **✅ Clean Content Pipeline** - USFM, TSV, and Markdown automatically cleaned for indexing
+```
+User Query → Orchestrator → [Parallel Agent Dispatch] → Synthesis → Response
+```
 
-### Breaking Changes
+### Cloudflare Workers AI (v7.11)
 
-**Removed Endpoints:**
+Migrated from OpenAI GPT-4o-mini to **Cloudflare Workers AI (Llama 4 Scout 17B)**:
 
-- `/api/fetch-ult-scripture` → Use `fetch-scripture?resource=ult`
-- `/api/fetch-ust-scripture` → Use `fetch-scripture?resource=ust`
-- `/api/fetch-resources` → Use specific endpoints
-- `/api/resource-recommendations` → Removed completely
-- `/api/language-coverage` → Removed completely
-- `/api/get-words-for-reference` → Use `fetch-translation-words`
+- Native tool calling with structured output
+- Edge-native inference (no external API calls)
+- 80% code reduction in chat endpoint
+- Parallel tool execution for multi-tool requests
 
-See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for detailed migration instructions.
+### QA Citation Validator (v7.18)
 
-## 🚀 Key Features
+Automatic verification of AI response accuracy:
+
+- Re-fetches resources to validate citations
+- Inline indicators: verified, uncertain, invalid
+- Validation summary in X-Ray panel
+- Prevents hallucinated quotes
+
+### Event-Driven Search Indexing (v7.6-v7.8)
+
+Two-queue pipeline for automatic content indexing:
+
+```
+ZIP Upload → R2 → Unzip Queue → Index Queue → AI Search
+```
+
+- Memory-efficient one-file-at-a-time extraction
+- Book-level chunking (470x fewer R2 writes)
+- 5-7x faster search (vector-only by default)
+
+## Key Features
 
 ### Core Translation Resources
 
@@ -44,118 +61,147 @@ See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for detailed migration instruc
 - **Translation Questions**: Comprehension questions from TSV data
 - **Translation Academy**: Training modules for translators
 
-### 🤖 MCP Prompts (NEW!)
+### MCP Prompts
 
-**Guided workflows that teach AI assistants to chain tools intelligently:**
+Guided workflows that chain multiple tools intelligently:
 
-- **`translation-helps-for-passage`** - Get everything: scripture + notes + questions + words (with titles) + academy articles
-- **`get-translation-words-for-passage`** - Show dictionary entry titles (not technical IDs)
-- **`get-translation-academy-for-passage`** - Find training articles referenced in notes
+- **`translation-helps-for-passage`** - Complete translation help (scripture + notes + questions + words + academy)
+- **`get-translation-words-for-passage`** - All dictionary entries for a passage
+- **`get-translation-academy-for-passage`** - Training articles referenced in notes
 
-**📖 [Complete Usage Guide →](./HOW_TO_USE_PROMPTS.md)** | **📚 [Technical Docs →](./MCP_PROMPTS_GUIDE.md)**
+See [HOW_TO_USE_PROMPTS.md](./HOW_TO_USE_PROMPTS.md) for usage guide.
 
-**Why prompts matter:**
+### AI-Powered Search
 
-- One command replaces 6-10 tool calls
-- Shows human-readable titles instead of IDs
-- Standardizes best practices for translation workflows
-- Makes AI assistants much smarter about Bible translation
-
-### 🔍 AI-Powered Search (NEW!)
-
-**Semantic search across all biblical resources:**
+Semantic search across all biblical resources:
 
 ```bash
 # Search for love in Translation Words
-curl "https://api.translation.helps/api/search?query=what+does+love+mean&resource=tw"
+curl "https://translation-helps-mcp.pages.dev/api/search?query=what+does+love+mean&resource=tw"
 
 # Search within John chapter 3
-curl "https://api.translation.helps/api/search?query=believe&reference=John+3"
-
-# Search specific article
-curl "https://api.translation.helps/api/search?query=salvation&articleId=save"
+curl "https://translation-helps-mcp.pages.dev/api/search?query=believe&reference=John+3"
 ```
 
-**Search Features:**
+**Features:**
 
-- **Semantic Understanding** - AI understands context and synonyms
-- **Multi-filter Support** - Language, organization, resource, reference, article
-- **Rich Results** - Formatted references like "John 3:16" or "Grace (Key Term)"
-- **Contextual Previews** - See matching content in context
+- Semantic understanding with Cloudflare AI Search
+- Multi-filter support (language, organization, resource, reference)
+- Rich results with formatted references
+- Contextual previews
 
-📖 **[Search Documentation →](./docs/HYBRID_SEARCH_FEATURE.md)**
+See [docs/HYBRID_SEARCH_FEATURE.md](./docs/HYBRID_SEARCH_FEATURE.md) for documentation.
 
-### Technical Excellence
+### AI Chat Interface
 
-- **Real Data Only**: No mock data, no fake responses, no fallbacks
-- **Unified Fetcher**: Single class (`UnifiedResourceFetcher`) for all resources
-- **Smart Caching**: KV for catalogs, R2 for ZIPs, Cache API for extracted files
-- **AI Search**: Cloudflare AI Search with automatic R2 indexing
-- **Format Support**: JSON, Markdown, Text, and TSV (where applicable)
-- **Cloudflare Pages**: Global edge deployment with sub-100ms response times
+Built-in chat interface at `/chat` with:
 
-## 🌟 Deployment
+- Multi-agent orchestration for complex queries
+- Real-time streaming of agent thoughts
+- X-Ray panel showing tool calls and timings
+- Citation validation with source verification
+- Clickable article links in responses
 
-### Live Production
+## Architecture
 
-- **API Base**: `https://api.translation.helps/api/`
-- **Documentation**: `https://api.translation.helps/`
-- **Health Check**: `https://api.translation.helps/api/health`
+### Multi-Agent Chat System
 
-### Quick Start
-
-```bash
-# Fetch scripture
-curl "https://api.translation.helps/api/fetch-scripture?reference=John%203:16"
-
-# Get translation notes in markdown (for LLMs)
-curl "https://api.translation.helps/api/translation-notes?reference=Genesis%201:1&format=md"
-
-# Fetch translation word links
-curl "https://api.translation.helps/api/fetch-translation-word-links?reference=Titus%201:1"
-
-# Browse translation academy modules
-curl "https://api.translation.helps/api/browse-translation-academy?language=en"
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    User Query                                │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Orchestrator (Llama 4 Scout 17B)               │
+│         Analyzes query, plans agent dispatch                 │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+    ┌────────┬────────┬────────┬────────┬────────┬────────┐
+    │Scripture│ Notes │ Words │Academy │Questions│ Search │
+    │ Agent  │ Agent │ Agent │ Agent  │ Agent  │ Agent  │
+    └────┬───┴───┬───┴───┬───┴───┬────┴───┬────┴───┬────┘
+         │       │       │       │        │        │
+         └───────┴───────┴───┬───┴────────┴────────┘
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Synthesis + QA Citation Validation                 │
+└─────────────────────────────────────────────────────────────┘
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Streamed Response                            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## 🛠️ Architecture
-
-### Unified Data Fetching
-
-All endpoints use the same architecture:
+### Data Fetching
 
 ```
 API Endpoint → createSimpleEndpoint → UnifiedResourceFetcher → ZipResourceFetcher2 → DCS
 ```
-
-**Key Components:**
-
-1. **UnifiedResourceFetcher** - Single interface for all resource types
-2. **ZipResourceFetcher2** - Handles ZIP archives with intelligent caching
-3. **createSimpleEndpoint** - Standardized endpoint creation pattern
-4. **Real Error Handling** - No mock fallbacks, actual error messages
 
 ### Caching Strategy
 
 ```
 DCS API → KV Cache (1hr TTL) → Catalog Metadata
         ↓
-     R2 Storage → ZIP Files
-        ↓
-    Cache API → Extracted Files
+     R2 Storage → ZIP Files → Event Notification
+        ↓                           ↓
+    Cache API               Indexer Worker
+        ↓                           ↓
+  Extracted Files            AI Search Index
 ```
 
-## 🚨 Production Setup
+## Deployment
 
-**⚠️ CRITICAL: R2 bucket must be populated with ZIP files for production to work!**
+### Live Production
 
-See [R2 Setup Guide](docs/R2_SETUP_GUIDE.md) for instructions on populating the R2 bucket.
+- **URL**: `https://translation-helps-mcp.pages.dev/`
+- **API Base**: `https://translation-helps-mcp.pages.dev/api/`
+- **Chat**: `https://translation-helps-mcp.pages.dev/chat`
+- **Health Check**: `https://translation-helps-mcp.pages.dev/api/health`
 
-## 🧪 Testing with Wrangler
+### Quick Start
 
-**⚠️ IMPORTANT: All tests MUST use Wrangler for KV/R2 functionality**
+```bash
+# Fetch scripture
+curl "https://translation-helps-mcp.pages.dev/api/fetch-scripture?reference=John%203:16"
 
-### Setup
+# Get translation notes in markdown
+curl "https://translation-helps-mcp.pages.dev/api/translation-notes?reference=Genesis%201:1&format=md"
+
+# Search for a term
+curl "https://translation-helps-mcp.pages.dev/api/search?query=grace&resource=tw"
+```
+
+## Development
+
+### Prerequisites
+
+- Node.js 18+
+- Wrangler CLI (`npm install -g wrangler`)
+
+### Local Development
+
+```bash
+# Install dependencies
+npm install
+cd ui && npm install
+
+# Start development server
+npm run dev
+
+# Or with Wrangler for KV/R2 bindings
+cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8787
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
+```
+
+### Testing with Wrangler
+
+All tests MUST use Wrangler for KV/R2 functionality:
 
 ```bash
 # Start Wrangler (REQUIRED for tests)
@@ -165,15 +211,7 @@ cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8787
 npm test
 ```
 
-### Test Configuration
-
-- **Port**: Always 8787 (enforced by test setup)
-- **Bindings**: Real KV and R2 bindings
-- **No Mocks**: Tests use real Cloudflare services
-
-See [tests/TESTING_REQUIREMENTS.md](tests/TESTING_REQUIREMENTS.md) for details.
-
-## 📚 API Documentation
+## API Documentation
 
 ### Scripture Endpoints
 
@@ -182,30 +220,26 @@ See [tests/TESTING_REQUIREMENTS.md](tests/TESTING_REQUIREMENTS.md) for details.
 GET /api/fetch-scripture?reference=John%203:16&resource=ult,ust
 
 # Response format options
-GET /api/fetch-scripture?reference=John%203:16&format=md    # Markdown
-GET /api/fetch-scripture?reference=John%203:16&format=text  # Plain text
+GET /api/fetch-scripture?reference=John%203:16&format=md
 ```
 
 ### Translation Helps
 
 ```bash
-# Translation notes (from TSV)
+# Translation notes
 GET /api/translation-notes?reference=John%203:16
 
-# Translation questions (from TSV)
+# Translation questions
 GET /api/translation-questions?reference=John%203:16
 
-# Translation words (from markdown)
+# Translation words
 GET /api/fetch-translation-words?reference=John%203:16
 
-# Translation word links (from TSV) - NEW!
+# Translation word links
 GET /api/fetch-translation-word-links?reference=John%203:16
 
-# Translation academy modules
+# Translation academy
 GET /api/fetch-translation-academy?moduleId=figs-metaphor
-
-# Browse academy modules
-GET /api/browse-translation-academy?language=en&category=translate
 ```
 
 ### Discovery Endpoints
@@ -221,58 +255,35 @@ GET /api/get-available-books?language=en
 GET /api/resource-catalog?language=en&subject=Bible
 ```
 
-See [API_ENDPOINTS.md](docs/API_ENDPOINTS.md) for complete documentation.
+See [docs/API_ENDPOINTS.md](docs/API_ENDPOINTS.md) for complete documentation.
 
-## 🔧 Development
+## Documentation
 
-### Prerequisites
+- [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md) - Setup and deployment
+- [Architecture](docs/ARCHITECTURE.md) - System design
+- [Multi-Agent Orchestration](docs/MULTI_AGENT_ORCHESTRATION.md) - Chat architecture
+- [Event-Driven Indexing](docs/EVENT_DRIVEN_INDEXING.md) - Search pipeline
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues
 
-- Node.js 18+
-- Wrangler CLI (`npm install -g wrangler`)
-
-### Local Development
-
-```bash
-# Install dependencies
-npm install
-cd ui && npm install
-
-# Start Wrangler dev server (REQUIRED)
-cd ui && npx wrangler pages dev .svelte-kit/cloudflare --port 8787
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
-```
-
-### Development Standards
-
-- **KISS**: Keep It Simple - no over-engineering
-- **DRY**: Don't Repeat Yourself - single source of truth
-- **Consistent**: Same patterns everywhere
-- **Antifragile**: Fail fast with real errors, no hiding issues
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. **Use Wrangler for all testing** (no exceptions!)
+3. Use Wrangler for all testing
 4. Ensure all tests pass
 5. Submit a pull request
 
-**Remember**:
+**Standards:**
 
-- No mock data
-- All endpoints must support markdown format
-- Use `UnifiedResourceFetcher` for new features
-- Test with real KV/R2 bindings
+- KISS: Keep It Simple
+- DRY: Don't Repeat Yourself
+- Consistent: Same patterns everywhere
+- Antifragile: Fail fast with real errors
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-Built with ❤️ for Bible translators worldwide
+Built with care for Bible translators worldwide

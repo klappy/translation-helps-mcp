@@ -1,30 +1,70 @@
 # Cloudflare AI Search Feature Documentation
 
+**Last Updated:** December 2025  
+**Version:** 7.19.1
+
 ## Overview
 
-Translation Helps MCP now uses **Cloudflare AI Search** for semantic search capabilities:
+Translation Helps MCP uses **Cloudflare AI Search** for semantic search capabilities:
 
 1. **AI Search** (`/api/search`) - Semantic search across all indexed resources
 2. **Focused Endpoint Filtering** (via `search` parameter) - Simple text filtering within specific resources
 
 ## Architecture
 
+### System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Content Ingestion                                 │
+│                                                                      │
+│  API Request → ZIP Fetch → R2 Storage → Event Notification          │
+│                                              ↓                       │
+│                                     zip-unzip-queue                  │
+│                                              ↓                       │
+│                                      Unzip Worker                    │
+│                                   (Extract files)                    │
+│                                              ↓                       │
+│                                  Extracted Files → R2                │
+│                                              ↓                       │
+│                                    zip-indexing-queue                │
+│                                              ↓                       │
+│                                      Index Worker                    │
+│                                  (Clean + Chunk)                     │
+│                                              ↓                       │
+│                              Search Index Bucket → AI Search         │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Event-Driven Indexing (v7.6-v7.8)
+
+Content is indexed automatically via a two-queue pipeline:
+
+1. **ZIP files** land in R2 → triggers `zip-unzip-queue`
+2. **Unzip Worker** extracts files one-at-a-time (memory efficient)
+3. **Extracted files** land in R2 → triggers `zip-indexing-queue`
+4. **Index Worker** cleans content and writes to search index bucket
+5. **AI Search** automatically reindexes
+
+See [EVENT_DRIVEN_INDEXING.md](./EVENT_DRIVEN_INDEXING.md) for full details.
+
 ### AI Search (Cloudflare)
 
-The main `/api/search` endpoint uses Cloudflare AI Search which:
+The `/api/search` endpoint uses Cloudflare AI Search which:
 
-- Automatically indexes content stored in R2 under `/clean/` prefix
+- Automatically indexes content in the search index R2 bucket
 - Provides semantic understanding of queries
 - Returns results ranked by relevance
 - Filters by language, organization, resource type, and reference
 
-### Clean Content Pipeline
+### Performance (v7.9)
 
-Content is automatically cleaned and indexed when first accessed:
+Search defaults to **vector-only mode** for 5-7x faster responses:
 
-```
-Raw Content → Content Cleaners → Clean Text + Metadata → R2 Storage → AI Search Index
-```
+| Mode                       | Response Time | Description              |
+| -------------------------- | ------------- | ------------------------ |
+| Vector-only (default)      | ~2-4s         | Fast semantic search     |
+| AI-enhanced (`useAI=true`) | ~15-20s       | Full RAG with AI summary |
 
 ## Storage Structure
 
@@ -72,6 +112,7 @@ Each file stored includes comprehensive metadata:
 | `articleId`    | string  | null            | Filter by article ID: "grace", "figs-metaphor"         |
 | `limit`        | number  | 50              | Maximum results to return                              |
 | `includeHelps` | boolean | true            | Include translation helps in results                   |
+| `useAI`        | boolean | false           | Enable AI-enhanced search with generated summary       |
 
 #### Response Structure
 
@@ -85,6 +126,8 @@ interface SearchResponse {
   reference?: string; // Reference filter applied
   resourceCount: number; // Number of results
   hits: SearchHit[]; // Search results
+  used_ai: boolean; // Whether AI-enhanced mode was used
+  ai_response?: string; // AI-generated summary (only if useAI=true)
   message?: string; // Informational message
   error?: string; // Error message if any
 }

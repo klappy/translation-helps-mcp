@@ -1,8 +1,11 @@
 # Translation Helps MCP Architecture
 
+**Last Updated:** December 2025  
+**Version:** 7.19.1
+
 ## Overview
 
-Translation Helps MCP is a modern API service providing access to biblical translation resources. Built on SvelteKit and Cloudflare Workers, it emphasizes consistency, simplicity, and performance.
+Translation Helps MCP is a modern API service providing access to biblical translation resources. Built on SvelteKit and Cloudflare Workers, it features multi-agent AI orchestration, event-driven search indexing, and edge-native inference.
 
 ## Core Principles
 
@@ -18,28 +21,65 @@ Translation Helps MCP is a modern API service providing access to biblical trans
 - Centralized validation and error handling
 - Reusable response formatters
 
-### Consistency Above All
+### Antifragile Design
 
-- Every endpoint follows the same pattern
-- Predictable request/response shapes
-- Uniform error handling
+- Fail fast with real errors
+- No mock fallbacks in production
+- Graceful degradation when external services fail
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Client Applications                          │
+│                    (Web UI, AI Assistants, SDKs)                     │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │
+┌─────────────────────────────────▼───────────────────────────────────┐
+│                        Cloudflare Pages                              │
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
+│  │   SvelteKit  │  │  API Routes  │  │    Workers AI (Llama 4)  │  │
+│  │      UI      │  │   /api/*     │  │    Multi-Agent Chat      │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────────┘  │
+│                                                                      │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │
+┌─────────────────────────────────▼───────────────────────────────────┐
+│                      Platform Services                               │
+│                                                                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────────┐   │
+│  │    KV    │  │    R2    │  │  Queues  │  │    AI Search      │   │
+│  │  Cache   │  │ Storage  │  │ Indexing │  │  (Semantic)       │   │
+│  └──────────┘  └──────────┘  └──────────┘  └───────────────────┘   │
+│                                                                      │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │
+┌─────────────────────────────────▼───────────────────────────────────┐
+│                    External Services                                 │
+│                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                 Door43 Content Service (DCS)                 │   │
+│  │              git.door43.org - Bible Resources                │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ## Architecture Layers
 
-### 1. API Endpoints (`ui/src/routes/api/v2/`)
+### 1. API Endpoints (`ui/src/routes/api/`)
 
-Each endpoint is a simple SvelteKit server route that:
+Each endpoint is a SvelteKit server route that:
 
 - Uses `createSimpleEndpoint` wrapper
 - Defines parameters with validation
 - Implements a fetch function
 - Returns standardized responses
 
-Example:
-
 ```typescript
 export const GET = createSimpleEndpoint({
-  name: "endpoint-name",
+  name: "fetch-scripture",
   params: [COMMON_PARAMS.reference],
   fetch: async (params) => {
     // Fetch and return data
@@ -47,40 +87,23 @@ export const GET = createSimpleEndpoint({
 });
 ```
 
-### 2. Shared Utilities (`ui/src/lib/`)
+### 2. Multi-Agent Chat System (`ui/src/lib/ai/`)
 
-#### simpleEndpoint.ts
+The AI chat uses a sophisticated multi-agent architecture:
 
-Core wrapper that provides:
+```
+User Query → Orchestrator → [Parallel Agents] → Synthesis → Response
+```
 
-- Parameter parsing and validation
-- Error handling
-- Response formatting
-- CORS support
+**Components:**
 
-#### commonValidators.ts
+- **Orchestrator Agent** - Plans and coordinates
+- **Specialist Agents** - Scripture, Notes, Words, Academy, Questions, Search
+- **QA Validator** - Verifies citations
 
-Reusable parameter validators:
+**Model:** Cloudflare Workers AI (Llama 4 Scout 17B)
 
-- `isValidReference` - Bible reference validation
-- `isValidLanguageCode` - Language code validation
-- `isValidOrganization` - Organization validation
-
-#### standardResponses.ts
-
-Factory functions for consistent response shapes:
-
-- `createScriptureResponse` - For scripture endpoints
-- `createTranslationHelpsResponse` - For translation helps
-- `createListResponse` - For list endpoints
-
-#### circuitBreaker.ts
-
-Resilience pattern for external API calls:
-
-- Prevents cascading failures
-- Automatic retry logic
-- Graceful degradation
+See [AI_CHAT_ARCHITECTURE.md](./AI_CHAT_ARCHITECTURE.md) for details.
 
 ### 3. Data Services (`src/services/`)
 
@@ -89,29 +112,54 @@ Resilience pattern for external API calls:
 Optimized resource fetching:
 
 - Downloads entire resources as ZIP files
-- Caches in Cloudflare KV
+- Caches in R2 storage
 - Extracts files on demand
-- Reduces API calls by 90%
+- Triggers indexing via R2 events
 
-### 4. Caching Strategy
+### 4. Search Indexing Pipeline (`src/workers/indexer/`)
 
-#### Two-Tier Caching
+Event-driven pipeline for AI Search:
 
-1. **Memory Cache** - Fast, limited size
-2. **KV Cache** - Persistent, distributed
+```
+ZIP → R2 → Unzip Queue → Index Queue → AI Search
+```
+
+**Features:**
+
+- Two-queue architecture
+- Memory-efficient extraction
+- Book-level chunking
+- Automatic reindexing
+
+See [EVENT_DRIVEN_INDEXING.md](./EVENT_DRIVEN_INDEXING.md) for details.
+
+### 5. Caching Strategy
+
+#### Multi-Tier Caching
+
+```
+Request → Memory Cache → KV Cache → R2 Storage → DCS API
+```
+
+| Layer     | Purpose                      | TTL        |
+| --------- | ---------------------------- | ---------- |
+| Memory    | Hot data                     | Session    |
+| KV        | Catalog metadata             | 1 hour     |
+| R2        | ZIP files, extracted content | Persistent |
+| Cache API | Edge-cached responses        | Varies     |
 
 #### Cache Rules
 
-- **NEVER cache responses** - Only cache raw data
-- Cache DCS API calls
+- **NEVER cache API responses** - Only cache raw data
+- Cache DCS API calls (catalog, metadata)
 - Cache ZIP file downloads
 - Cache extracted files from ZIPs
 
-### 5. Middleware
+See [CACHE_ARCHITECTURE.md](./CACHE_ARCHITECTURE.md) for details.
+
+### 6. Middleware
 
 #### responseValidator.ts
-
-Ensures response integrity:
 
 - Strips diagnostic data from bodies
 - Validates response structure
@@ -119,41 +167,62 @@ Ensures response integrity:
 
 #### cacheValidator.ts
 
-Prevents bad data caching:
-
 - Validates data before caching
 - Rejects empty or invalid data
 - Maintains cache integrity
 
 ## Request Flow
 
-1. **Client Request** → API Endpoint
-2. **Parameter Validation** → Common Validators
-3. **Data Fetching** → Circuit Breaker → External API
-4. **Caching** → Cache Validator → KV/Memory
-5. **Response Shaping** → Standard Response
-6. **Response Validation** → Response Validator
-7. **Client Response** ← Clean, Consistent Data
+### API Request
+
+```
+1. Client Request → API Endpoint
+2. Parameter Validation → Common Validators
+3. Data Fetching → ZipResourceFetcher2 → R2/DCS
+4. Caching → Cache Validator → KV/R2
+5. Response Shaping → Markdown/JSON
+6. Response Validation → Response Validator
+7. Client Response ← Clean, Consistent Data
+```
+
+### Chat Request
+
+```
+1. User Message → /api/chat-orchestrated
+2. Orchestrator Planning → Workers AI
+3. Agent Dispatch → Parallel Execution
+4. Tool Calls → MCP Endpoints
+5. Synthesis → Workers AI
+6. QA Validation → Citation Check
+7. Streamed Response ← SSE Events
+```
 
 ## Performance Optimizations
 
 ### Edge Runtime
 
 - Runs on Cloudflare Workers
-- Global distribution
+- Global distribution (200+ PoPs)
 - Near-zero cold starts
+- Workers AI on same edge network
 
 ### ZIP-Based Fetching
 
 - Entire resources downloaded once
 - Individual files extracted on demand
-- Dramatic reduction in API calls
+- 90% reduction in API calls
+
+### Parallel Processing
+
+- Agents execute concurrently
+- Tool calls batched where possible
+- Streaming reduces perceived latency
 
 ### Smart Caching
 
-- Frequently accessed data in memory
-- Long-term storage in KV
-- Automatic cache warming
+- Version-aware cache keys
+- Automatic invalidation on deploy
+- R2 lifecycle rules for cleanup
 
 ## Error Handling
 
@@ -169,39 +238,82 @@ Prevents bad data caching:
 
 ### Error Categories
 
-- 400 - Invalid parameters
-- 404 - Resource not found
-- 500 - Server errors
-- 503 - External service unavailable
+| Code | Meaning                      |
+| ---- | ---------------------------- |
+| 400  | Invalid parameters           |
+| 404  | Resource not found           |
+| 500  | Server errors                |
+| 503  | External service unavailable |
+
+### Graceful Degradation
+
+- Single agent failure doesn't crash chat
+- Partial data still produces useful response
+- Clear indication of what couldn't be fetched
 
 ## Deployment
 
 ### Environments
 
-- **Development** - Local with wrangler
-- **Preview** - Branch deployments
-- **Production** - Main branch auto-deploy
+| Environment | Purpose            | URL                             |
+| ----------- | ------------------ | ------------------------------- |
+| Development | Local testing      | localhost:5173                  |
+| Preview     | Branch deployments | \*.pages.dev                    |
+| Production  | Main branch        | translation-helps-mcp.pages.dev |
 
 ### Configuration
 
-- Environment variables in wrangler.toml
+- `wrangler.toml` - Worker bindings
 - KV namespaces for caching
+- R2 buckets for storage
+- Queues for indexing
 - Secrets for API keys
 
-## Future Enhancements
+### Bindings
 
-1. **GraphQL Layer** - Optional query interface
-2. **WebSocket Support** - Real-time updates
-3. **Batch Operations** - Multiple resources in one call
-4. **Enhanced Caching** - Predictive cache warming
+```toml
+[ai]
+binding = "AI"
 
-## Migration from v1
+[[kv_namespaces]]
+binding = "CACHE"
 
-The v2 architecture replaces the complex RouteGenerator system with simple, direct endpoints. Benefits:
+[[r2_buckets]]
+binding = "ZIP_FILES"
 
-- 75% less code
-- Easier debugging
-- Faster development
-- Better performance
+[[queues.producers]]
+binding = "INDEXER_QUEUE"
+```
 
-See `NEXT_PHASE_ROADMAP.md` for detailed migration plans.
+## Project Structure
+
+```
+translation-helps-mcp/
+├── ui/                        # SvelteKit frontend + API
+│   ├── src/
+│   │   ├── routes/            # Pages and API endpoints
+│   │   │   ├── api/           # API routes
+│   │   │   └── (app)/         # UI pages
+│   │   └── lib/
+│   │       ├── ai/            # Multi-agent system
+│   │       │   ├── agents/    # Specialist agents
+│   │       │   └── orchestrated-chat.ts
+│   │       └── mcp/           # MCP client
+├── src/
+│   ├── services/              # Data services
+│   ├── functions/             # Platform-agnostic logic
+│   ├── tools/                 # MCP tool definitions
+│   └── workers/
+│       └── indexer/           # Search indexing worker
+├── docs/                      # Documentation
+└── tests/                     # Test suites
+```
+
+## Related Documentation
+
+- [AI Chat Architecture](./AI_CHAT_ARCHITECTURE.md) - Multi-agent system
+- [Multi-Agent Orchestration](./MULTI_AGENT_ORCHESTRATION.md) - Agent details
+- [Event-Driven Indexing](./EVENT_DRIVEN_INDEXING.md) - Search pipeline
+- [Cache Architecture](./CACHE_ARCHITECTURE.md) - Caching strategy
+- [Hybrid Search Feature](./HYBRID_SEARCH_FEATURE.md) - AI Search
+- [Deployment Guide](./DEPLOYMENT_GUIDE.md) - Production setup

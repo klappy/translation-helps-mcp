@@ -1,5 +1,8 @@
 # Translation Helps MCP - Complete Implementation Guide
 
+**Last Updated:** December 2025  
+**Version:** 7.19.1
+
 This guide covers everything from setup to advanced integration of the Translation Helps MCP server. **This is the "how to implement" guide** - for understanding what the translation resources are and how they work conceptually, see the [UW Translation Resources Guide](UW_TRANSLATION_RESOURCES_GUIDE.md).
 
 ## 📖 **Documentation Structure**
@@ -79,15 +82,36 @@ Use the production endpoint directly:
 
 ## 📚 **Core Features & Usage**
 
-### Available Tools
+### Available MCP Tools
 
-1. **fetchScripture** - Get Bible text in any language
-2. **fetchTranslationNotes** - Get verse-specific translation notes
-3. **fetchTranslationQuestions** - Get comprehension questions
-4. **getTranslationWord** - Get word definitions and explanations
-5. **fetchResources** - Get all resources for a verse (comprehensive)
-6. **getLanguages** - List available languages and organizations
-7. **getContext** - Get contextual information for passages
+| Tool                           | Description                               |
+| ------------------------------ | ----------------------------------------- |
+| `fetch_scripture`              | Get Bible text (ULT, UST) in any language |
+| `fetch_translation_notes`      | Get verse-specific translation notes      |
+| `fetch_translation_questions`  | Get comprehension questions               |
+| `fetch_translation_word`       | Get word definitions and explanations     |
+| `fetch_translation_word_links` | Get words linked to a verse               |
+| `fetch_translation_academy`    | Get translation training articles         |
+| `search_biblical_resources`    | Semantic search across all resources      |
+
+### MCP Prompts (Pre-defined Workflows)
+
+| Prompt                                | Description                                                                 |
+| ------------------------------------- | --------------------------------------------------------------------------- |
+| `translation-helps-for-passage`       | Complete translation help (scripture + notes + questions + words + academy) |
+| `get-translation-words-for-passage`   | All dictionary entries for a passage                                        |
+| `get-translation-academy-for-passage` | Training articles referenced in notes                                       |
+
+### AI Chat Interface
+
+The system includes a built-in chat interface at `/chat` with:
+
+- **Multi-agent orchestration** - Specialized agents for each resource type
+- **Cloudflare Workers AI** - Edge-native inference (Llama 4 Scout 17B)
+- **Citation validation** - Automatic verification of quotes
+- **Streaming responses** - Real-time agent thoughts visible
+
+See [AI_CHAT_ARCHITECTURE.md](./AI_CHAT_ARCHITECTURE.md) for details.
 
 ### Example Usage
 
@@ -134,8 +158,10 @@ curl "http://localhost:5173/api/fetch-scripture?reference=Genesis%201:1&language
 
 - **SvelteKit** - Full-stack web framework
 - **TypeScript** - Type-safe development
-- **Platform-Agnostic Functions** - Works on Cloudflare Workers, Netlify, and locally
-- **HTTP MCP** - Stateless MCP over HTTP (revolutionary!)
+- **Cloudflare Pages** - Edge deployment with Workers AI
+- **Workers AI** - Edge-native LLM inference (Llama 4 Scout 17B)
+- **HTTP MCP** - Stateless MCP over HTTP
+- **AI Search** - Semantic search with Cloudflare AI
 
 ### Project Structure
 

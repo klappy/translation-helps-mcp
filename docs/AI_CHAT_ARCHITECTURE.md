@@ -1,295 +1,375 @@
 # AI Chat Architecture Documentation
 
-This document describes the architecture and key decisions for the Translation Helps MCP AI Chat implementation.
+This document describes the multi-agent orchestration architecture for the Translation Helps MCP AI Chat system.
+
+**Last Updated:** December 2025  
+**Version:** 7.19.1
 
 ## Overview
 
-The AI Chat system provides an intelligent Bible study assistant that uses OpenAI GPT-4o-mini to answer questions while strictly adhering to Translation Helps MCP data sources.
+The AI Chat system uses a sophisticated multi-agent architecture powered by **Cloudflare Workers AI (Llama 4 Scout 17B)**. An orchestrator agent analyzes user queries and dispatches specialized agents in parallel, then synthesizes their findings into a well-cited response.
 
 ## Architecture Components
 
-### 1. `/api/chat-stream` - AI-Powered Chat Endpoint
+### Chat Endpoints
 
-**Purpose**: Provides intelligent, contextual responses using LLM + MCP data
+| Endpoint                 | Purpose                                       | Model             |
+| ------------------------ | --------------------------------------------- | ----------------- |
+| `/api/chat-orchestrated` | Multi-agent orchestration for complex queries | Llama 4 Scout 17B |
+| `/api/chat-stream`       | Single-agent with streaming                   | Llama 4 Scout 17B |
 
-**Key Features**:
+### System Architecture
 
-- Uses OpenAI GPT-4o-mini for natural language understanding and generation
-- Dynamically discovers available endpoints via `/api/mcp-config` (self-discoverable)
-- LLM intelligently decides which MCP endpoints to call based on user query
-- LLM chooses optimal response format (md/text/json) for each endpoint
-- Enforces strict citation and quotation rules
-
-**Data Flow**:
-
-1. User sends natural language query
-2. System discovers available MCP endpoints dynamically
-3. LLM analyzes query and determines relevant endpoints to call
-4. System executes MCP calls with LLM-chosen parameters and formats
-5. LLM generates response using ONLY the MCP data
-6. Response includes proper citations and exact quotes
-
-### 2. `/api/experimental/query-router` - Pattern Matching Router
-
-**Purpose**: Simple, deterministic pattern-based routing for quick lookups
-
-**Key Features**:
-
-- No AI required - uses regex patterns
-- Fast, predictable responses
-- Good for simple, direct queries
-- Experimental feature for specific use cases
-
-## Critical Design Decisions
-
-### 1. Self-Discovery Over Hardcoding
-
-**Decision**: The AI chat MUST discover endpoints dynamically via `/api/mcp-config`
-
-**Rationale**:
-
-- Maintains the self-discoverable nature of MCP
-- Automatically adapts when new endpoints are added
-- No code changes needed for new functionality
-- True to the MCP philosophy
-
-**Implementation**:
-
-```javascript
-// GOOD: Dynamic discovery
-const endpoints = await discoverMCPEndpoints(baseUrl);
-
-// BAD: Hardcoded endpoints
-const MCP_ENDPOINTS = [...]; // NEVER DO THIS
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    User Query                                │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Orchestrator Agent                              │
+│         (Analyzes query, plans agent dispatch)               │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+    ┌────────┬────────┬────────┬────────┬────────┬────────┐
+    │Scripture│ Notes │ Words │Academy │Questions│ Search │
+    │ Agent  │ Agent │ Agent │ Agent  │ Agent  │ Agent  │
+    └────┬───┴───┬───┴───┬───┴───┬────┴───┬────┴───┬────┘
+         │       │       │       │        │        │
+         └───────┴───────┴───┬───┴────────┴────────┘
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Synthesis + QA Citation Validation                 │
+└─────────────────────────────────────────────────────────────┘
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Streamed Response                            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 2. LLM-Driven Endpoint Selection
+## Agent System
 
-**Decision**: Let the LLM decide which endpoints to call
+### Orchestrator Agent
 
-**Rationale**:
+The lead coordinator that:
 
-- Leverages AI's understanding of natural language
-- Can handle complex, multi-faceted queries
-- More flexible than pattern matching
-- Can combine multiple data sources intelligently
+1. Analyzes user queries to understand intent
+2. Decides between prompt workflows or individual agents
+3. Plans which agents to dispatch with specific tasks
+4. Coordinates parallel execution
+5. Triggers synthesis of findings
 
-### 3. Format Selection by LLM
+**Location:** `ui/src/lib/ai/agents/orchestrator.ts`
 
-**Decision**: Let the LLM choose the response format (md/text/json)
+**Decision Rules:**
 
-**Rationale**:
+- Use `execute_prompt` for comprehensive passage requests
+- Use `dispatch_agents` for specific lookups (terms, articles, verses)
+- Article names route to specific agents (not prompt workflows)
+- Bible references can use prompt workflows
 
-- Markdown is better for human-readable quotes
-- JSON is better for structured data processing
-- LLM knows which format suits its response needs
-- Reduces unnecessary parsing/reformatting
+### Specialist Agents
 
-**Guidelines Given to LLM**:
+Each agent is optimized for a single task:
 
-- "md" (Markdown) for human-readable content to quote
-- "text" for simple plain text needs
-- "json" only if structured data processing is needed
-- Default to "md" format when available
+| Agent           | Purpose                      | MCP Tool                      |
+| --------------- | ---------------------------- | ----------------------------- |
+| Scripture Agent | Fetch Bible text (ULT, UST)  | `fetch_scripture`             |
+| Notes Agent     | Translation notes for verses | `fetch_translation_notes`     |
+| Words Agent     | Biblical term definitions    | `fetch_translation_word`      |
+| Academy Agent   | Translation concept articles | `fetch_translation_academy`   |
+| Questions Agent | Comprehension questions      | `fetch_translation_questions` |
+| Search Agent    | Semantic search across all   | `search_biblical_resources`   |
 
-### 4. Strict Content Rules
+**Location:** `ui/src/lib/ai/agents/`
 
-**Decision**: Enforce strict rules via system prompt and documentation
+### QA Citation Validator
 
-**Key Rules**:
+Automatic verification of response accuracy (v7.18+):
 
-1. Scripture must be quoted word-for-word - NO paraphrasing
-2. Every quote must include proper citation [Resource - Reference]
-3. Only use MCP data - NO external knowledge or web searches
-4. May reword translation notes but must cite sources
+1. Collects citations from agent responses
+2. Re-fetches resources to verify content exists
+3. Annotates citations with verification status
+4. Shows validation summary in X-Ray panel
 
-**Enforcement**:
+**Status Indicators:**
 
-- System prompt explicitly states these rules
-- Documentation in `AI_CHAT_RULES.md`
-- Response validation could be added
+- ✅ Verified - Source confirmed
+- ⏳ Uncertain - Could not fully verify
+- ❌ Invalid - Source not found
 
-## Error Handling
+**Location:** `ui/src/lib/ai/agents/qa-validator.ts`
 
-### API Key Configuration
+## Execution Flow
 
-- Check for `OPENAI_API_KEY` at startup
-- Return clear error message if not configured
-- Support both `VITE_OPENAI_API_KEY` and `process.env.OPENAI_API_KEY`
+### Phase 1: Planning
 
-### Endpoint Discovery Failures
+```typescript
+// Orchestrator receives user query
+const plan = await planAgentDispatch(ai, userMessage, chatHistory, emit);
 
-- Fallback gracefully if `/api/mcp-config` fails
-- Log errors for debugging
-- Return user-friendly error messages
+// Returns either:
+// { type: 'agents', plan: { reasoning, agents, needsIteration } }
+// { type: 'prompt', promptName, reference, language }
+```
 
-### LLM Call Failures
+### Phase 2: Parallel Execution
 
-- Handle OpenAI API errors gracefully
-- Log detailed error information
-- Provide fallback responses when possible
+```typescript
+// Agents execute in parallel
+const agentResults = await executeAgentsInParallel(
+  ai,
+  plan.agents,
+  mcpTools,
+  executeToolFn,
+  emit,
+  parallelExecution,
+);
+```
+
+### Phase 3: Gap Detection
+
+Before synthesis, the system checks for missed resources:
+
+```typescript
+// Detect if any obvious resources were missed
+const missedAgents = detectMissedAgents(userMessage, dispatchedAgents);
+if (missedAgents.length > 0) {
+  // Dispatch additional agents
+}
+```
+
+### Phase 4: Synthesis
+
+```typescript
+// Synthesize findings with proper citations
+const response = await synthesizeResponse(ai, userMessage, agentResults, emit);
+```
+
+### Phase 5: QA Validation
+
+```typescript
+// Validate citations
+const validated = await validateCitations(
+  ai,
+  response,
+  citations,
+  executeToolFn,
+  emit,
+);
+```
+
+## Streaming Events
+
+The orchestrated chat emits SSE events for real-time UI updates:
+
+| Event                   | Payload                               | Purpose                       |
+| ----------------------- | ------------------------------------- | ----------------------------- |
+| `orchestrator:thinking` | `{ delta: string }`                   | Orchestrator's reasoning      |
+| `orchestrator:plan`     | `{ plan: OrchestratorPlan }`          | Planned agent dispatch        |
+| `agent:start`           | `{ agent: string, task: string }`     | Agent begins execution        |
+| `agent:thinking`        | `{ agent: string, delta: string }`    | Agent's progress              |
+| `agent:tool_call`       | `{ agent: string, tool: string }`     | Tool being called             |
+| `agent:complete`        | `{ agent: string, success, summary }` | Agent finished                |
+| `synthesis:delta`       | `{ delta: string }`                   | Synthesis streaming           |
+| `qa:validation`         | `{ validations: [] }`                 | Citation verification results |
+| `xray`                  | `{ tools, timings, agents }`          | Debugging data                |
+
+## MCP Prompt Integration
+
+The orchestrator can execute pre-defined prompt workflows:
+
+### Available Prompts
+
+1. **translation-helps-for-passage**
+   - Chains: scripture + notes + questions + words + academy
+   - Use for: "Help me translate X", "Give me everything for X"
+
+2. **get-translation-words-for-passage**
+   - Fetches all word definitions for a passage
+   - Use for: "What terms are in X?"
+
+3. **get-translation-academy-for-passage**
+   - Finds academy articles referenced in notes
+   - Use for: "What concepts should I know for X?"
 
 ## Configuration
 
-### Environment Variables
+### Model Configuration
 
-```bash
-# Required for AI chat functionality
-OPENAI_API_KEY=sk-...
-
-# Optional - defaults shown
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_TEMPERATURE=0.3
-OPENAI_MAX_TOKENS=1000
+```typescript
+const WORKERS_AI_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 ```
 
-### Model Selection
+### Orchestration Options
 
-- Default: `gpt-4o-mini` for cost efficiency
-- Temperature: 0.3 for factual, consistent responses
-- Max tokens: 1000 for reasonable response length
-
-## Testing Strategy
-
-### Unit Tests
-
-- Test endpoint discovery logic
-- Test LLM prompt generation
-- Test response formatting
-- Test citation extraction
-
-### Integration Tests
-
-- Test full chat flow with mock OpenAI responses
-- Test error handling scenarios
-- Test format selection logic
-- Verify citation compliance
-
-### Manual Testing Checklist
-
-- [ ] Verify scripture queries return exact quotes
-- [ ] Verify all quotes include citations
-- [ ] Test with unavailable data (should say "not available")
-- [ ] Test complex multi-resource queries
-- [ ] Verify no external knowledge is used
-- [ ] Test with different response formats
-
-## Monitoring and Debugging
-
-### Logging
-
-- Log all LLM decisions (which endpoints, which formats)
-- Log MCP call performance
-- Log any parsing errors
-- Log OpenAI API usage
-
-### X-Ray Tracing
-
-- Include in response when `enableXRay: true`
-- Show all MCP calls made
-- Show timing information
-- Show LLM decision process
-
-## Future Enhancements
-
-### Potential Improvements
-
-1. Response caching for common queries
-2. **Streaming responses for better UX** - Cloudflare Workers support streaming via TransformStream
-3. Multi-language support
-4. Context window management for long conversations
-5. Fine-tuning on Bible study conversations
-6. Automatic citation validation
-7. Response quality metrics
-
-#### Streaming Implementation (Future Enhancement)
-
-Cloudflare Workers support streaming responses using the Streams API. This would allow real-time display of AI responses as they're generated:
-
-```javascript
-// Example streaming implementation
-export default {
-  async fetch(request, env, ctx) {
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const textEncoder = new TextEncoder();
-
-    // Process streaming response in background
-    ctx.waitUntil(
-      (async () => {
-        const stream = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [...],
-          stream: true,
-        });
-
-        for await (const part of stream) {
-          const content = part.choices[0]?.delta?.content || "";
-          await writer.write(textEncoder.encode(content));
-        }
-        writer.close();
-      })()
-    );
-
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-      }
-    });
-  }
-};
+```typescript
+interface OrchestrationConfig {
+  maxIterations: number; // Default: 2
+  confidenceThreshold: number; // Default: 0.5
+  enableStreaming: boolean; // Default: true
+  parallelExecution: boolean; // Default: true
+}
 ```
 
-Benefits:
+### Environment Requirements
 
-- Immediate visual feedback
-- Reduced perceived latency
-- Better user engagement
-- Natural conversation flow
-
-### Anti-Patterns to Avoid
-
-- ❌ Hardcoding endpoint lists
-- ❌ Allowing paraphrased scripture
-- ❌ Missing citations
-- ❌ Using external knowledge
-- ❌ Forcing JSON format for all calls
-- ❌ Ignoring self-discovery capabilities
-
-## Migration Notes
-
-### From Pattern-Matching Chat
-
-The previous `/api/chat` endpoint has been moved to `/api/experimental/query-router`. Update any direct API calls:
-
-```javascript
-// Old
-fetch('/api/chat', ...)
-
-// New AI-powered
-fetch('/api/chat-stream', ...)
-
-// Pattern-matching (if needed)
-fetch('/api/experimental/query-router', ...)
+```toml
+# wrangler.toml
+[ai]
+binding = "AI"
 ```
 
-## Security Considerations
+Workers AI is accessed via `platform.env.AI` in SvelteKit handlers.
 
-1. **API Key Protection**: Never expose OpenAI API key to client
-2. **Input Validation**: Sanitize user queries before processing
-3. **Rate Limiting**: Implement to prevent abuse
-4. **Response Validation**: Ensure no injection attacks via MCP data
-5. **Citation Verification**: Could add automated checks
+## UI Components
 
-## Performance Considerations
+### ThinkingBubble
 
-1. **Endpoint Discovery**: Cache `/api/mcp-config` results
-2. **Parallel MCP Calls**: Execute independent calls simultaneously
-3. **Response Streaming**: Consider implementing for better perceived performance
-4. **Token Optimization**: Monitor and optimize prompt sizes
+Shows real-time agent activity:
 
----
+- Orchestrator's planning process
+- Per-agent progress and tool calls
+- Expandable agent thought streams
 
-Last Updated: [Current Date]
-Version: 1.0
+**Location:** `ui/src/routes/(app)/chat/ThinkingBubble.svelte`
+
+### X-Ray Panel
+
+Debugging panel showing:
+
+- Tool calls with timing
+- Agent execution details
+- Citation validations
+- Total response time
+
+### Chat Interface
+
+Main chat component with:
+
+- Message history
+- Streaming response display
+- Clickable citations
+- Follow-up question suggestions
+
+**Location:** `ui/src/routes/(app)/chat/ChatInterface.svelte`
+
+## Error Handling
+
+### Agent Failures
+
+When an agent fails:
+
+1. Error is logged with context
+2. Orchestrator continues with remaining agents
+3. Synthesis acknowledges missing data
+4. User sees partial but honest response
+
+### Tool Call Failures
+
+When MCP tools fail:
+
+1. Agent catches error
+2. Returns failure status with error message
+3. Synthesis works with available data
+4. X-Ray shows tool error details
+
+### Graceful Degradation
+
+- Single agent failure doesn't crash the system
+- Partial data still produces useful response
+- Clear indication of what couldn't be fetched
+
+## Performance Characteristics
+
+### Typical Response Times
+
+| Phase                      | Duration      |
+| -------------------------- | ------------- |
+| Planning                   | 50-100ms      |
+| Agent Execution (parallel) | 200-500ms     |
+| Synthesis                  | 100-200ms     |
+| QA Validation              | 50-150ms      |
+| **Total**                  | **400-950ms** |
+
+### Optimization Strategies
+
+1. **Parallel Agent Execution** - Agents run concurrently
+2. **Early Streaming** - Response streams as synthesis generates
+3. **Cached MCP Tools** - KV/R2 caching reduces tool latency
+4. **Edge Inference** - Workers AI runs on same edge network
+
+## Migration from OpenAI
+
+The system migrated from OpenAI GPT-4o-mini to Cloudflare Workers AI in v7.11:
+
+### Key Changes
+
+| Aspect       | Before (v7.10)  | After (v7.11+)    |
+| ------------ | --------------- | ----------------- |
+| Model        | GPT-4o-mini     | Llama 4 Scout 17B |
+| Hosting      | External API    | Edge-native       |
+| Tool Calling | OpenAI format   | Workers AI format |
+| Latency      | ~500ms external | ~50ms edge        |
+| Code Size    | 1984 lines      | 396 lines         |
+
+### Benefits
+
+- No external API calls (runs on same edge)
+- Native tool calling with structured output
+- 80% code reduction
+- Lower latency
+- No API key management
+
+## Critical Design Decisions
+
+### 1. MCP Self-Discovery
+
+Endpoints are discovered dynamically via `/api/mcp`:
+
+```typescript
+const mcpTools = await listTools(`${baseUrl}/api/mcp`);
+```
+
+### 2. Agent Isolation
+
+Each agent has:
+
+- Single responsibility
+- Own system prompt
+- Specific tool knowledge
+- Independent failure handling
+
+### 3. Citation-First Synthesis
+
+Every piece of information MUST:
+
+- Come from an agent's findings
+- Include proper citation
+- Be verifiable via QA validator
+
+### 4. No External Knowledge
+
+The orchestrator's system prompt explicitly states:
+
+> "You have NO biblical knowledge. You ONLY know what your team reports back."
+
+## Files Reference
+
+```
+ui/src/lib/ai/
+├── agents/
+│   ├── orchestrator.ts      # Lead coordinator
+│   ├── scripture-agent.ts   # Bible text fetching
+│   ├── notes-agent.ts       # Translation notes
+│   ├── words-agent.ts       # Term definitions
+│   ├── academy-agent.ts     # Training articles
+│   ├── questions-agent.ts   # Comprehension questions
+│   ├── search-agent.ts      # Semantic search
+│   ├── qa-validator.ts      # Citation verification
+│   ├── types.ts             # Shared type definitions
+│   └── index.ts             # Agent exports
+├── orchestrated-chat.ts     # Main orchestration logic
+├── workers-ai-client.ts     # Workers AI interface
+├── system-prompt.ts         # Legacy single-agent prompt
+└── types.ts                 # AI type definitions
+```
