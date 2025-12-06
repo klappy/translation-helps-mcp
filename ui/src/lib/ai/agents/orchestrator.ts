@@ -19,7 +19,8 @@ You have specialized assistants who each excel at ONE thing:
 2. **Translation Notes Agent**: Gets verse-by-verse translation guidance
 3. **Translation Words Agent**: Fetches articles about biblical terms and names
 4. **Translation Academy Agent**: Gets articles about translation concepts
-5. **Search Agent**: Searches across all resources for broad queries
+5. **Translation Questions Agent**: Gets comprehension questions to verify understanding
+6. **Search Agent**: Searches across all resources for broad queries
 
 ## MCP PROMPTS (Pre-defined Workflows)
 You also have access to complete prompt workflows that chain multiple tools:
@@ -49,6 +50,7 @@ You also have access to complete prompt workflows that chain multiple tools:
 - **Specific article requests**: "Show me the Translation Academy article on X" → Academy Agent
 - **Specific term definitions**: "Define 'love'" → Words Agent  
 - **Specific verse lookups**: "Show me John 3:16" → Scripture Agent
+- **Questions about a passage**: "What questions for X?", "Comprehension questions for X" → Questions Agent
 - **Follow-up questions**: After a prompt returns limited results
 - **Named resources**: When user mentions a specific article/module name
 
@@ -67,6 +69,8 @@ You also have access to complete prompt workflows that chain multiple tools:
 - Scripture questions → Scripture Agent + Notes Agent
 - Term definitions → Words Agent (+ Scripture Agent for examples)
 - "What does X mean" → Notes Agent + Words Agent + Scripture Agent
+- **"What questions for X"** → Questions Agent (primary) + Notes Agent (context)
+- **"Comprehension questions"** → Questions Agent
 - Broad/exploratory → Search Agent first, then specific agents
 - **Translation Academy articles by name** → Academy Agent with the module ID
 - **Translation concepts** → Academy Agent
@@ -187,7 +191,7 @@ export const PLANNING_TOOL: WorkersAIToolDefinition = {
 						properties: {
 							agent: {
 								type: 'string',
-								enum: ['scripture', 'notes', 'words', 'academy', 'search'],
+								enum: ['scripture', 'notes', 'words', 'academy', 'questions', 'search'],
 								description: 'Which specialist agent to dispatch'
 							},
 							task: {

@@ -491,6 +491,29 @@ export async function orchestratedChat(
 					}
 				}
 
+				// PHASE 3.5: Gap Detection - Check for missed resources before synthesis
+				const gapCheckStart = Date.now();
+				const missedAgents = checkForMissedResources(userMessage, plan?.agents || [], agentResults);
+
+				if (missedAgents.length > 0) {
+					emit('orchestrator:thinking', {
+						delta: `\nGap detected! Dispatching ${missedAgents.length} additional agent(s): ${missedAgents.map((a) => a.agent).join(', ')}...\n`
+					});
+
+					const additionalResults = await executeAgentsInParallel(
+						ai,
+						missedAgents,
+						mcpTools,
+						executeToolFn,
+						emit,
+						finalConfig.parallelExecution
+					);
+
+					// Merge additional results
+					agentResults.push(...additionalResults);
+				}
+				timings.gapCheck = Date.now() - gapCheckStart;
+
 				// PHASE 4: Synthesis
 				const synthesisStart = Date.now();
 				emit('synthesis:start', {});
@@ -573,6 +596,7 @@ export async function orchestratedChat(
 						ttft: ttft, // Time to First Token - when user first sees content
 						planning: timings.planning,
 						agentExecution: timings.agentExecution,
+						gapCheck: timings.gapCheck,
 						synthesis: timings.synthesis,
 						validation: timings.validation,
 						total: totalTime
@@ -1021,6 +1045,100 @@ Please synthesize these findings into a comprehensive response. Remember to mark
 	}
 
 	return { response: fullResponse, citations: collectedCitations };
+}
+
+/**
+ * Keyword-to-agent mapping for gap detection
+ */
+interface KeywordMapping {
+	keywords: string[];
+	agent: AgentName;
+	taskTemplate: (ref: string) => string;
+}
+
+/**
+ * Check for missed resources using keyword analysis
+ * This is the "obvious check" before synthesis to catch routing mistakes
+ */
+function checkForMissedResources(
+	userMessage: string,
+	dispatchedAgents: AgentTask[],
+	agentResults: AgentResponse[]
+): AgentTask[] {
+	const missedAgents: AgentTask[] = [];
+	const dispatchedAgentNames = new Set(dispatchedAgents.map((a) => a.agent));
+	const lowerMessage = userMessage.toLowerCase();
+
+	// Extract Bible reference if present (simple pattern)
+	const referenceMatch = userMessage.match(/(\d?\s*[A-Za-z]+)\s+(\d+)(?::(\d+))?(?:-(\d+))?/);
+	const reference = referenceMatch ? referenceMatch[0] : null;
+
+	// Keyword-to-agent mapping for obvious misses
+	const keywordMappings: KeywordMapping[] = [
+		{
+			keywords: [
+				'question',
+				'questions',
+				'comprehension',
+				'verify understanding',
+				'check understanding'
+			],
+			agent: 'questions',
+			taskTemplate: (ref) => `Fetch comprehension questions for ${ref || 'the passage'}`
+		},
+		{
+			keywords: ['scripture', 'verse', 'text', 'passage text', 'bible text'],
+			agent: 'scripture',
+			taskTemplate: (ref) => `Fetch scripture text for ${ref || 'the passage'}`
+		},
+		{
+			keywords: ['notes', 'translation notes', 'guidance', 'how to translate'],
+			agent: 'notes',
+			taskTemplate: (ref) => `Fetch translation notes for ${ref || 'the passage'}`
+		},
+		{
+			keywords: ['word', 'words', 'term', 'definition', 'meaning of'],
+			agent: 'words',
+			taskTemplate: (ref) => `Fetch translation word articles for ${ref || 'the passage'}`
+		},
+		{
+			keywords: ['academy', 'concept', 'training', 'figure of speech', 'metaphor', 'idiom'],
+			agent: 'academy',
+			taskTemplate: (ref) => `Fetch Translation Academy articles for ${ref || 'the passage'}`
+		}
+	];
+
+	for (const mapping of keywordMappings) {
+		// Skip if this agent was already dispatched
+		if (dispatchedAgentNames.has(mapping.agent)) continue;
+
+		// Check if any keyword matches
+		const hasKeyword = mapping.keywords.some((kw) => lowerMessage.includes(kw));
+
+		if (hasKeyword && reference) {
+			missedAgents.push({
+				agent: mapping.agent,
+				task: mapping.taskTemplate(reference),
+				priority: 'normal'
+			});
+		}
+	}
+
+	// If we found gaps and have resources to try, but search is our only option as fallback
+	if (
+		missedAgents.length === 0 &&
+		agentResults.every((r) => !r.success) &&
+		!dispatchedAgentNames.has('search')
+	) {
+		// Last resort: try search
+		missedAgents.push({
+			agent: 'search',
+			task: `Search for resources related to: "${userMessage.substring(0, 100)}"`,
+			priority: 'low'
+		});
+	}
+
+	return missedAgents;
 }
 
 /**

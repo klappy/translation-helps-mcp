@@ -94,7 +94,14 @@ export interface ValidationResult {
 /**
  * Available agent names
  */
-export type AgentName = 'scripture' | 'notes' | 'words' | 'academy' | 'search' | 'prompt';
+export type AgentName =
+	| 'scripture'
+	| 'notes'
+	| 'words'
+	| 'academy'
+	| 'search'
+	| 'questions'
+	| 'prompt';
 
 /**
  * Tool executor function type
@@ -227,6 +234,7 @@ export const AGENT_DISPLAY_INFO: Record<AgentName, { displayName: string; icon: 
 	words: { displayName: 'Translation Words Agent', icon: '📚' },
 	academy: { displayName: 'Translation Academy Agent', icon: '🎓' },
 	search: { displayName: 'Search Agent', icon: '🔍' },
+	questions: { displayName: 'Translation Questions Agent', icon: '❓' },
 	prompt: { displayName: 'MCP Prompt Workflow', icon: '⚡' }
 };
 
