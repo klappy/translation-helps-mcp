@@ -256,14 +256,16 @@ export const ToolFormatters = {
 
   search: (data: any): string => {
     if (!data.hits || !Array.isArray(data.hits) || data.hits.length === 0) {
-      return "No results found.";
+      return "# Search Results\n\nNo results found.";
     }
 
     // Count unique resources for summary
     const uniqueResources = new Set(data.hits.map((h: any) => h.resource)).size;
 
+    // Start with markdown header so ApiTester detects it as markdown
     return (
-      `Found ${data.total_hits || data.hits.length} results across ${uniqueResources} resource${uniqueResources !== 1 ? "s" : ""} (took ${data.took_ms || 0}ms):\n\n` +
+      `# Search Results\n\n` +
+      `**${data.total_hits || data.hits.length} results** across ${uniqueResources} resource${uniqueResources !== 1 ? "s" : ""} (${data.took_ms || 0}ms)\n\n` +
       data.hits
         .map((hit: any, index: number) => {
           // Use resource_name or resource for display, chunk_level for type
@@ -283,8 +285,8 @@ export const ToolFormatters = {
             preview = preview.substring(0, 200) + "...";
           }
 
-          // Format: numbered result with resource type badge, location, score
-          return `**${index + 1}. ${resourceDisplay}** [${typeDisplay}]\n${locationDisplay} | Score: ${hit.score?.toFixed(2) || "N/A"}\n> ${preview}`;
+          // Format: each result as markdown section
+          return `### ${index + 1}. ${resourceDisplay} [${typeDisplay}]\n\n**${locationDisplay}** | Score: ${hit.score?.toFixed(2) || "N/A"}\n\n> ${preview}`;
         })
         .join("\n\n---\n\n")
     );

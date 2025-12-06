@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.2](https://github.com/klappy/translation-helps-mcp/compare/v7.18.1...v7.19.2) (2025-12-06)
+
+### Chores
+
+- **release:** 7.19.0 ([bf823ac](https://github.com/klappy/translation-helps-mcp/commit/bf823aca9aef52dec6b7d703df90961649efe8c9))
+- **release:** 7.19.1 ([18cfca2](https://github.com/klappy/translation-helps-mcp/commit/18cfca2401447f500c7dcc7af3bfb7c7be31f1b5))
+
 ### [7.19.1](https://github.com/klappy/translation-helps-mcp/compare/v7.19.0...v7.19.1) (2025-12-06)
 
 ### Improvements
