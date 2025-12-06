@@ -262,24 +262,61 @@ export const ToolFormatters = {
     // Count unique resources for summary
     const uniqueResources = new Set(data.hits.map((h: any) => h.resource)).size;
 
-    // Helper to build scripture reference from book/chapter/verse fields
+    // Helper to extract verse reference from content using regex
+    const extractVerseRef = (content: string): string | null => {
+      if (!content) return null;
+      // Match patterns like "3:16", "13:11-12", "1:1"
+      // Look for chapter:verse patterns
+      const verseMatch = content.match(
+        /\b(\d{1,3}):(\d{1,3})(?:-(\d{1,3}))?\b/,
+      );
+      if (verseMatch) {
+        const [full, chapter, verse, verseEnd] = verseMatch;
+        return verseEnd
+          ? `${chapter}:${verse}-${verseEnd}`
+          : `${chapter}:${verse}`;
+      }
+      return null;
+    };
+
+    // Helper to extract book code from path (e.g., "en/unfoldingWord/tn/v87/JHN.md" -> "JHN")
+    const extractBookFromPath = (path: string): string | null => {
+      if (!path) return null;
+      const bookMatch = path.match(/\/([A-Z0-9]{3})\.md$/i);
+      return bookMatch ? bookMatch[1].toUpperCase() : null;
+    };
+
+    // Helper to build scripture reference from hit data
     const buildRef = (hit: any): string => {
       // First try pre-computed reference if it looks like a Bible reference (not a path)
       if (hit.reference && !hit.reference.includes("/")) {
         return hit.reference;
       }
-      // Build from components
-      if (!hit.book && !hit.book_name) return "";
-      const bookName = hit.book_name || hit.book;
-      if (hit.chapter && (hit.verse || hit.verse_start)) {
-        const verse = hit.verse || hit.verse_start;
-        const verseEnd =
-          hit.verse_end && hit.verse_end !== verse ? `-${hit.verse_end}` : "";
-        return `${bookName} ${hit.chapter}:${verse}${verseEnd}`;
-      } else if (hit.chapter) {
-        return `${bookName} ${hit.chapter}`;
+
+      // Try to build from structured fields
+      if (hit.book || hit.book_name) {
+        const bookName = hit.book_name || hit.book;
+        if (hit.chapter && (hit.verse || hit.verse_start)) {
+          const verse = hit.verse || hit.verse_start;
+          const verseEnd =
+            hit.verse_end && hit.verse_end !== verse ? `-${hit.verse_end}` : "";
+          return `${bookName} ${hit.chapter}:${verse}${verseEnd}`;
+        } else if (hit.chapter) {
+          return `${bookName} ${hit.chapter}`;
+        }
+        return bookName;
       }
-      return bookName;
+
+      // Try to extract from content/preview using regex
+      const content = hit.content || hit.preview || "";
+      const verseRef = extractVerseRef(content);
+      const bookName = extractBookFromPath(hit.path);
+
+      if (bookName && verseRef) {
+        return `${bookName} ${verseRef}`;
+      }
+
+      return "";
     };
 
     // Helper to generate lookup info based on resource type
