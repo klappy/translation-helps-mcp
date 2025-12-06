@@ -259,13 +259,34 @@ export const ToolFormatters = {
       return "No results found.";
     }
 
+    // Count unique resources for summary
+    const uniqueResources = new Set(data.hits.map((h: any) => h.resource)).size;
+
     return (
-      `Found ${data.hits.length} results across ${data.resourceCount || 0} resources (took ${data.took_ms || 0}ms):\n\n` +
+      `Found ${data.total_hits || data.hits.length} results across ${uniqueResources} resource${uniqueResources !== 1 ? "s" : ""} (took ${data.took_ms || 0}ms):\n\n` +
       data.hits
-        .map((hit: any) => {
-          return `**${hit.resource}** (${hit.type}) - ${hit.path} (Score: ${hit.score.toFixed(2)})\n> ${hit.preview.replace(/\n/g, " ")}`;
+        .map((hit: any, index: number) => {
+          // Use resource_name or resource for display, chunk_level for type
+          const resourceDisplay =
+            hit.resource_name || hit.resource || "unknown";
+          const typeDisplay = hit.chunk_level || "result";
+
+          // Use human-readable reference, fallback to path
+          const locationDisplay =
+            hit.reference || hit.path || "Unknown location";
+
+          // Properly unescape preview - handle both escaped \\n and actual \n
+          let preview = hit.preview || "";
+          preview = preview.replace(/\\n/g, " ").replace(/\n/g, " ").trim();
+          // Truncate if too long
+          if (preview.length > 200) {
+            preview = preview.substring(0, 200) + "...";
+          }
+
+          // Format: numbered result with resource type badge, location, score
+          return `**${index + 1}. ${resourceDisplay}** [${typeDisplay}]\n${locationDisplay} | Score: ${hit.score?.toFixed(2) || "N/A"}\n> ${preview}`;
         })
-        .join("\n\n")
+        .join("\n\n---\n\n")
     );
   },
 };
