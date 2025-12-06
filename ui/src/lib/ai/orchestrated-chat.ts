@@ -17,12 +17,14 @@ import {
 	getAgentDisplayName,
 	parseExecutePromptArgs,
 	parseOrchestratorPlan,
+	validateResponse,
 	type AgentName,
 	type AgentResponse,
 	type AgentTask,
 	type OrchestrationConfig,
 	type OrchestratorPlan,
-	type StreamEmitter
+	type StreamEmitter,
+	type ValidationResult
 } from './agents/index.js';
 import type { AIBinding, WorkersAIMessage, WorkersAIToolDefinition } from './types.js';
 
@@ -492,11 +494,14 @@ export async function orchestratedChat(
 				const synthesisStart = Date.now();
 				emit('synthesis:start', {});
 
-				await synthesizeResponse(ai, userMessage, agentResults, controller, emit);
+				const synthesizedResponse = await synthesizeResponse(
+					ai,
+					userMessage,
+					agentResults,
+					controller,
+					emit
+				);
 				timings.synthesis = Date.now() - synthesisStart;
-
-				// Calculate total time
-				const totalTime = Date.now() - startTime;
 
 				// Mark synthesis as complete
 				const synthesisEntry = xrayTimeline.find(
@@ -507,6 +512,35 @@ export async function orchestratedChat(
 					synthesisEntry.duration = synthesisEntry.endTime - synthesisEntry.startTime;
 					synthesisEntry.success = true;
 				}
+
+				// PHASE 5: QA Validation
+				let validationResult: ValidationResult | null = null;
+				const validationStart = Date.now();
+
+				if (synthesizedResponse && synthesizedResponse.length > 0) {
+					try {
+						validationResult = await validateResponse(synthesizedResponse, executeToolFn, emit);
+						timings.validation = Date.now() - validationStart;
+
+						// Add validation to timeline
+						addTimelineEntry({
+							type: 'phase',
+							name: 'QA Validation',
+							description: `Validated ${validationResult.summary.total} citations`,
+							startTime: validationStart,
+							endTime: Date.now(),
+							duration: timings.validation,
+							success: true,
+							preview: `${validationResult.summary.verified} verified, ${validationResult.summary.uncertain} uncertain, ${validationResult.summary.invalid} invalid`
+						});
+					} catch (validationError) {
+						console.error('Validation failed:', validationError);
+						timings.validation = Date.now() - validationStart;
+					}
+				}
+
+				// Calculate total time
+				const totalTime = Date.now() - startTime;
 
 				// Count LLM calls vs tool calls
 				const llmCalls = xrayTimeline.filter((t) => t.type === 'llm');
@@ -532,6 +566,7 @@ export async function orchestratedChat(
 						planning: timings.planning,
 						agentExecution: timings.agentExecution,
 						synthesis: timings.synthesis,
+						validation: timings.validation,
 						total: totalTime
 					},
 
@@ -570,7 +605,16 @@ export async function orchestratedChat(
 							confidence: r.confidence,
 							summary: r.summary
 						}))
-					}
+					},
+
+					// Validation results
+					validation: validationResult
+						? {
+								summary: validationResult.summary,
+								validations: validationResult.validations,
+								totalTime: validationResult.totalTime
+							}
+						: null
 				};
 
 				emit('xray', xrayData);
@@ -834,7 +878,7 @@ async function synthesizeResponse(
 	agentResults: AgentResponse[],
 	controller: ReadableStreamDefaultController<Uint8Array>,
 	emit: StreamEmitter
-): Promise<void> {
+): Promise<string> {
 	// Build synthesis context
 	const synthesisContext = buildSynthesisContext(agentResults);
 
@@ -860,6 +904,9 @@ ${synthesisContext}
 Please synthesize these findings into a comprehensive, well-cited response.`
 		}
 	];
+
+	// Collect full response for validation
+	let fullResponse = '';
 
 	try {
 		// Make streaming call
@@ -899,11 +946,13 @@ Please synthesize these findings into a comprehensive, well-cited response.`
 						const text = parsed.response || '';
 						if (text) {
 							emit('synthesis:delta', { delta: text });
+							fullResponse += text;
 						}
 					} catch {
 						// Not JSON, might be raw text
 						if (data && data !== '[DONE]') {
 							emit('synthesis:delta', { delta: data });
+							fullResponse += data;
 						}
 					}
 				}
@@ -918,9 +967,11 @@ Please synthesize these findings into a comprehensive, well-cited response.`
 					const parsed = JSON.parse(trimmed);
 					if (parsed.response) {
 						emit('synthesis:delta', { delta: parsed.response });
+						fullResponse += parsed.response;
 					}
 				} catch {
 					emit('synthesis:delta', { delta: trimmed });
+					fullResponse += trimmed;
 				}
 			}
 		}
@@ -936,6 +987,7 @@ Please synthesize these findings into a comprehensive, well-cited response.`
 
 			if (result.response) {
 				emit('synthesis:delta', { delta: result.response });
+				fullResponse = result.response;
 			}
 		} catch (fallbackError) {
 			emit('error', {
@@ -943,6 +995,8 @@ Please synthesize these findings into a comprehensive, well-cited response.`
 			});
 		}
 	}
+
+	return fullResponse;
 }
 
 /**

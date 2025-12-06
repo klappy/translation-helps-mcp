@@ -136,6 +136,10 @@
 			return `<a href="${href}" data-rc-link="${href}" class="rc-link inline-flex items-center gap-1 underline hover:no-underline cursor-pointer">${text}</a>`;
 		});
 
+		// Convert superscript syntax ^N^ to actual superscript HTML
+		// This is used for citation numbering like "quote"^1^ and ^1^[[article|resource]]
+		html = html.replace(/\^(\d+)\^/g, '<sup class="text-xs text-blue-400 ml-0.5">$1</sup>');
+
 		// Detect [[article|resource]] or [[article]] syntax and make clickable
 		// Format: [[article|resource]] renders "article, Resource" - all white text, links underlined
 		html = html.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (match, article, resource) => {

@@ -41,6 +41,54 @@ export interface Citation {
 }
 
 /**
+ * Validation status for a citation
+ */
+export type CitationValidationStatus = 'verified' | 'uncertain' | 'invalid';
+
+/**
+ * Result of validating a single citation
+ */
+export interface CitationValidation {
+	/** Superscript number from the response (1, 2, 3...) */
+	number: number;
+	/** The full citation string, e.g., "[[John 3:16|ULT]]" */
+	citation: string;
+	/** The article/reference part, e.g., "John 3:16" */
+	article: string;
+	/** The resource type, e.g., "ULT", "Translation Words" */
+	resource: string;
+	/** The quoted text associated with this citation number */
+	quotedText?: string;
+	/** Validation status */
+	status: CitationValidationStatus;
+	/** Emoji indicator: ✅, ⚠️, or ❌ */
+	emoji: string;
+	/** Reason for uncertain/invalid status */
+	reason?: string;
+	/** Time taken to validate in ms */
+	duration: number;
+}
+
+/**
+ * Result of validating all citations in a response
+ */
+export interface ValidationResult {
+	/** Individual citation validations */
+	validations: CitationValidation[];
+	/** Summary counts */
+	summary: {
+		verified: number;
+		uncertain: number;
+		invalid: number;
+		total: number;
+	};
+	/** Response with emoji annotations injected */
+	annotatedResponse: string;
+	/** Total validation time in ms */
+	totalTime: number;
+}
+
+/**
  * Available agent names
  */
 export type AgentName = 'scripture' | 'notes' | 'words' | 'academy' | 'search' | 'prompt';
@@ -126,6 +174,10 @@ export type OrchestrationEvent =
 	// Synthesis events
 	| { type: 'synthesis:start' }
 	| { type: 'synthesis:delta'; delta: string }
+	// Validation events
+	| { type: 'validation:start'; citationCount: number }
+	| { type: 'validation:progress'; validated: number; total: number; current: CitationValidation }
+	| { type: 'validation:complete'; result: ValidationResult }
 	// Completion events
 	| { type: 'done'; success: boolean }
 	| { type: 'error'; message: string };

@@ -117,52 +117,69 @@ Combine the agent reports below into a well-organized, properly cited response.
 4. End with 2-3 follow-up questions the user might want to explore
 
 ## CITATION FORMAT (CRITICAL)
-ALWAYS use this format: "quote/summary" — [[article|Resource Type]]
 
-The [[article|resource]] syntax creates a clickable link with context. When users click, they get a resource-specific query.
+Use superscript numbers to link quotes to their sources. This enables verification that cited content matches the source.
 
 ### Format:
-"Content or summary here."
-— [[article name|Resource Type]]
+1. Mark quoted or paraphrased content with a superscript number using caret syntax: ^1^, ^2^, etc.
+2. Place the matching number before the [[article|Resource Type]] citation
+
+### Basic Pattern:
+"Quoted or paraphrased content"^1^
+— ^1^[[article|Resource Type]]
 
 ### Examples by Resource Type:
 
 **Scripture:**
-> "For God so loved the world, that he gave his One and Only Son..."
-— [[John 3:16|ULT]]
+> "For God so loved the world, that he gave his One and Only Son"^1^
+— ^1^[[John 3:16|ULT]]
 
 **Translation Words:**
-"Love" refers to sacrificial care focused on the good of others, even when it costs you.
-— [[love|Translation Words]]
+"Love" refers to sacrificial care^2^ focused on the good of others.
+— ^2^[[love|Translation Words]]
 
 **Translation Academy:**
-Metonymy is a figure of speech where something is called by a name closely associated with it.
-— [[Metonymy|Translation Academy]]
+Metonymy is a figure of speech^3^ where something is called by a name closely associated with it.
+— ^3^[[figs-metonymy|Translation Academy]]
 
 **Translation Notes:**
-The word "for" indicates a reason-and-result relationship, showing why God gave his Son.
-— [[John 3:16|Translation Notes]]
+The word "for" indicates a reason-and-result relationship^4^, showing why God gave his Son.
+— ^4^[[John 3:16|Translation Notes]]
 
 **Translation Questions:**
-How did God show he loved the world?
-— [[John 3:16|Translation Questions]]
+How did God show he loved the world?^5^
+— ^5^[[John 3:16|Translation Questions]]
+
+### Multiple Citations in One Section:
+When multiple quotes come from different sources, use sequential numbers:
+
+"God loved"^1^ the world and "gave his Son"^2^ so that whoever believes will have "eternal life"^3^.
+— ^1^[[John 3:16|ULT]]
+— ^2^[[John 3:16|ULT]]
+— ^3^[[John 3:16|ULT]]
 
 ### Section Headers with Expandable Terms:
-When listing multiple concepts, use [[term|resource]] as the section header:
+Use [[term|resource]] as clickable section headers (no superscript needed for headers):
 
 ### [[Love|Translation Words]]
-"Love" refers to sacrificial care focused on the good of others.
-— [[love|Translation Words]]
+"Love" refers to sacrificial care^1^ focused on the good of others.
+— ^1^[[love|Translation Words]]
 
-### [[Metonymy|Translation Academy]]
-A figure of speech where something is called by a closely associated name.
-— [[Metonymy|Translation Academy]]
+### [[figs-metonymy|Translation Academy]]
+A figure of speech^2^ where something is called by a closely associated name.
+— ^2^[[figs-metonymy|Translation Academy]]
 
-This way, clicking [[John 3:16|Translation Notes]] asks "Show me the Translation Notes for John 3:16" - NOT a generic query.
+## IMPORTANT RULES FOR CITATIONS
+- Every quote or paraphrase MUST have a superscript number
+- The superscript number MUST appear both after the quote AND before the citation
+- Use sequential numbers starting from 1
+- The same source can be cited multiple times with different numbers for different quotes
+- Use lowercase for Translation Words terms (love, grace, faith)
+- Use module IDs for Translation Academy (figs-metaphor, figs-metonymy, guidelines-sonofgodprinciples)
 
 ## RESPONSE STRUCTURE
 1. Brief intro addressing the user's question
-2. Main content organized by topic with clickable citations
+2. Main content organized by topic with numbered citations
 3. Follow-up questions based on the findings`;
 
 /**

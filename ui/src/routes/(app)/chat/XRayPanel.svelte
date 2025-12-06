@@ -7,6 +7,7 @@
 	const dispatch = createEventDispatcher();
 	let expandedTools: Record<string, boolean> = {};
 	let expandedAgents: Record<string, boolean> = {};
+	let expandedValidations: boolean = false;
 
 	function toggleTool(toolId: string) {
 		expandedTools[toolId] = !expandedTools[toolId];
@@ -14,6 +15,10 @@
 
 	function toggleAgent(agentId: string) {
 		expandedAgents[agentId] = !expandedAgents[agentId];
+	}
+
+	function toggleValidations() {
+		expandedValidations = !expandedValidations;
 	}
 
 	function getToolIcon(toolName: string) {
@@ -45,6 +50,7 @@
 	$: agents = data?.agents?.details || data?.agents || [];
 	$: timeline = data?.timeline || [];
 	$: summary = data?.summary || {};
+	$: validation = data?.validation || null;
 
 	// Group timeline by type for display
 	$: llmCalls = timeline.filter((t: any) => t.type === 'llm');
@@ -145,6 +151,76 @@
 					</div>
 				{/if}
 			</div>
+
+			<!-- Validation Summary Section -->
+			{#if validation && validation.summary}
+				<div class="mb-6 rounded-lg border border-emerald-700/50 bg-emerald-900/20 p-4">
+					<button
+						class="flex w-full cursor-pointer items-center justify-between"
+						on:click={toggleValidations}
+					>
+						<h4 class="text-sm font-medium text-emerald-300">
+							<span class="mr-2">🔍</span>Citation Validation
+						</h4>
+						<div class="flex items-center gap-3">
+							<div class="flex items-center gap-2 text-sm">
+								{#if validation.summary.verified > 0}
+									<span class="text-green-400">✅ {validation.summary.verified}</span>
+								{/if}
+								{#if validation.summary.uncertain > 0}
+									<span class="text-yellow-400">⚠️ {validation.summary.uncertain}</span>
+								{/if}
+								{#if validation.summary.invalid > 0}
+									<span class="text-red-400">❌ {validation.summary.invalid}</span>
+								{/if}
+							</div>
+							{#if validation.totalTime}
+								<span class="text-xs text-gray-400">{formatDuration(validation.totalTime)}</span>
+							{/if}
+							{#if expandedValidations}
+								<ChevronDown class="h-4 w-4 text-gray-400" />
+							{:else}
+								<ChevronRight class="h-4 w-4 text-gray-400" />
+							{/if}
+						</div>
+					</button>
+
+					{#if expandedValidations && validation.validations?.length > 0}
+						<div class="mt-3 space-y-2 border-t border-emerald-700/30 pt-3">
+							{#each validation.validations as v}
+								<div
+									class="rounded-lg border p-2 text-sm
+									{v.status === 'verified'
+										? 'border-green-700/50 bg-green-900/20'
+										: v.status === 'uncertain'
+											? 'border-yellow-700/50 bg-yellow-900/20'
+											: 'border-red-700/50 bg-red-900/20'}"
+								>
+									<div class="flex items-start justify-between gap-2">
+										<div class="flex-1">
+											<div class="flex items-center gap-2">
+												<span class="text-lg">{v.emoji}</span>
+												<span class="font-mono text-xs text-gray-300">^{v.number}^</span>
+												<span class="text-white">{v.article}</span>
+												<span class="text-xs text-gray-500">({v.resource})</span>
+											</div>
+											{#if v.quotedText}
+												<div class="mt-1 truncate text-xs text-gray-400 italic">
+													"{v.quotedText.substring(0, 60)}{v.quotedText.length > 60 ? '...' : ''}"
+												</div>
+											{/if}
+											{#if v.reason}
+												<div class="mt-1 text-xs text-gray-500">{v.reason}</div>
+											{/if}
+										</div>
+										<div class="text-xs text-gray-500">{formatDuration(v.duration)}</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			<!-- Execution Timeline Section (for orchestrated requests) -->
 			{#if isOrchestrated && timeline.length > 0}

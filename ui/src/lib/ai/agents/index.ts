@@ -30,6 +30,16 @@ export { WORDS_AGENT_PROMPT, WORDS_AGENT_TOOLS, executeWordsAgent } from './word
 export { ACADEMY_AGENT_PROMPT, ACADEMY_AGENT_TOOLS, executeAcademyAgent } from './academy-agent.js';
 export { SEARCH_AGENT_PROMPT, SEARCH_AGENT_TOOLS, executeSearchAgent } from './search-agent.js';
 
+// QA Validator exports
+export {
+	validateResponse,
+	extractNumberedCitations,
+	extractQuotesWithNumbers,
+	mapCitationToTool,
+	validateCitationContent,
+	injectValidationEmoji
+} from './qa-validator.js';
+
 // Agent registry for dynamic dispatch
 import { executeScriptureAgent } from './scripture-agent.js';
 import { executeNotesAgent } from './notes-agent.js';

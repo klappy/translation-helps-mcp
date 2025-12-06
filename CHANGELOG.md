@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.18.0](https://github.com/klappy/translation-helps-mcp/compare/v7.17.4...v7.18.0) (2025-12-06)
+
+### Features
+
+- **qa-validation:** Add QA Citation Validator to verify response accuracy
+  - Validates all citations by re-fetching resources from MCP tools
+  - Checks if quoted text matches the actual source content
+  - Adds inline emoji indicators after citations (verified, uncertain, invalid)
+  - New Validation Summary section in X-Ray panel shows verification stats
+- **citations:** Add superscript numbering to link quotes to their sources
+  - LLM now generates numbered superscripts (^1^, ^2^) for citations
+  - Enables QA validator to verify specific quotes against sources
+  - Superscripts render as styled HTML in the chat interface
+
 ### [7.17.4](https://github.com/klappy/translation-helps-mcp/compare/v7.17.3...v7.17.4) (2025-12-05)
 
 ### Features
