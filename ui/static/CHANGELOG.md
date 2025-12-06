@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.1](https://github.com/klappy/translation-helps-mcp/compare/v7.19.0...v7.19.1) (2025-12-06)
+
+### Improvements
+
+- **synthesis:** Use letters for follow-up questions, numbers for citations
+  - Citations use `[1]`, `[2]`, `[3]` - respond with number for source details
+  - Follow-up questions use `a)`, `b)`, `c)` - respond with letter to explore
+  - Clear differentiation enables easier user interaction with responses
+
 ## [7.19.0](https://github.com/klappy/translation-helps-mcp/compare/v7.18.1...v7.19.0) (2025-12-06)
 
 ### Features

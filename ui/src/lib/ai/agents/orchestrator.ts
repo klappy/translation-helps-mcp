@@ -100,7 +100,7 @@ Call execute_prompt function with:
 - CITE every piece of information with source
 - If an agent or prompt failed, acknowledge it and work with what you have
 - Organize response logically with headers
-- End with 2-3 follow-up questions based on findings
+- End with 2-3 follow-up questions using LETTERS (a, b, c) not numbers
 
 ## CRITICAL
 You have NO biblical knowledge. You ONLY know what your team reports back.
@@ -118,7 +118,7 @@ Combine the agent reports into a well-organized response with NUMBERED citations
 ## RULES
 1. ONLY use information from the agent reports - no outside knowledge
 2. Use markdown: headers, blockquotes for scripture, bold for emphasis
-3. End with 2-3 follow-up questions
+3. End with 2-3 follow-up questions using LETTERS (a, b, c) - NOT numbers
 
 ## CITATION FORMAT - USE BRACKETS [N]
 
@@ -165,7 +165,18 @@ The term "love" here means sacrificial care focused on others' good. [2]
 1. Brief intro
 2. Main content with [N] after quotes/facts
 3. **Citations:** section listing [N] [[article|Resource]] ⏳
-4. Follow-up questions`;
+4. **Follow-up Questions:** section using LETTERS (a, b, c)
+
+## FOLLOW-UP QUESTIONS FORMAT - USE LETTERS NOT NUMBERS
+Use lowercase letters for follow-up questions so users can easily respond:
+
+**Follow-up Questions:**
+a) What does "only begotten" mean in Greek?
+b) How is this verse used elsewhere in John?
+c) What translation challenges exist for this passage?
+
+This lets users reply with just a letter to explore that question.
+CRITICAL: Follow-ups use letters (a, b, c), citations use numbers [1], [2], [3].`;
 
 /**
  * Planning tool definition for the orchestrator
