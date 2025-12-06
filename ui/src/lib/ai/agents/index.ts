@@ -29,6 +29,11 @@ export { NOTES_AGENT_PROMPT, NOTES_AGENT_TOOLS, executeNotesAgent } from './note
 export { WORDS_AGENT_PROMPT, WORDS_AGENT_TOOLS, executeWordsAgent } from './words-agent.js';
 export { ACADEMY_AGENT_PROMPT, ACADEMY_AGENT_TOOLS, executeAcademyAgent } from './academy-agent.js';
 export { SEARCH_AGENT_PROMPT, SEARCH_AGENT_TOOLS, executeSearchAgent } from './search-agent.js';
+export {
+	QUESTIONS_AGENT_PROMPT,
+	QUESTIONS_AGENT_TOOLS,
+	executeQuestionsAgent
+} from './questions-agent.js';
 
 // QA Validator exports
 export { validateResponse } from './qa-validator.js';
@@ -39,6 +44,7 @@ import { executeNotesAgent } from './notes-agent.js';
 import { executeWordsAgent } from './words-agent.js';
 import { executeAcademyAgent } from './academy-agent.js';
 import { executeSearchAgent } from './search-agent.js';
+import { executeQuestionsAgent } from './questions-agent.js';
 import type { AgentName, AgentTask, AgentResponse, ToolExecutor, StreamEmitter } from './types.js';
 import type { AIBinding, WorkersAIToolDefinition } from '../types.js';
 
@@ -59,7 +65,8 @@ export const AGENT_EXECUTORS: Record<
 	notes: executeNotesAgent,
 	words: executeWordsAgent,
 	academy: executeAcademyAgent,
-	search: executeSearchAgent
+	search: executeSearchAgent,
+	questions: executeQuestionsAgent
 };
 
 /**

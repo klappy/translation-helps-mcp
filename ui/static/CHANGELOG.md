@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.19.0](https://github.com/klappy/translation-helps-mcp/compare/v7.18.1...v7.19.0) (2025-12-06)
+
+### Features
+
+- **questions-agent:** Add dedicated Translation Questions Agent
+  - New agent handles queries like "What questions should I consider for Genesis 1"
+  - Calls `fetch_translation_questions` MCP tool for comprehension questions
+  - Completes the "one agent per MCP endpoint" architecture
+- **orchestrator:** Add routing rules for questions-related queries
+  - Orchestrator now recognizes "questions", "comprehension" keywords
+  - Routes directly to Questions Agent instead of misrouting to Academy
+- **gap-detection:** Add smart synthesis gap detection
+  - Checks for missed resources before synthesis using keyword analysis
+  - Automatically dispatches missed agents if obvious keywords were ignored
+  - Acts as safety net for orchestrator routing mistakes
+
+### [7.18.1](https://github.com/klappy/translation-helps-mcp/compare/v7.18.0...v7.18.1) (2025-12-06)
+
 ## [7.18.0](https://github.com/klappy/translation-helps-mcp/compare/v7.17.4...v7.18.0) (2025-12-06)
 
 ### Features
