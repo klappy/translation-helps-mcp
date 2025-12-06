@@ -262,6 +262,125 @@ export const ToolFormatters = {
     // Count unique resources for summary
     const uniqueResources = new Set(data.hits.map((h: any) => h.resource)).size;
 
+    // Helper to build scripture reference from book/chapter/verse fields
+    const buildRef = (hit: any): string => {
+      // First try pre-computed reference if it looks like a Bible reference (not a path)
+      if (hit.reference && !hit.reference.includes("/")) {
+        return hit.reference;
+      }
+      // Build from components
+      if (!hit.book && !hit.book_name) return "";
+      const bookName = hit.book_name || hit.book;
+      if (hit.chapter && (hit.verse || hit.verse_start)) {
+        const verse = hit.verse || hit.verse_start;
+        const verseEnd =
+          hit.verse_end && hit.verse_end !== verse ? `-${hit.verse_end}` : "";
+        return `${bookName} ${hit.chapter}:${verse}${verseEnd}`;
+      } else if (hit.chapter) {
+        return `${bookName} ${hit.chapter}`;
+      }
+      return bookName;
+    };
+
+    // Helper to generate lookup info based on resource type
+    const getLookupInfo = (hit: any): string => {
+      const lang = hit.language || "en";
+      const org = hit.organization || "unfoldingWord";
+      const resource = hit.resource?.toLowerCase() || "";
+      // Build reference from hit data
+      const ref = buildRef(hit);
+
+      const lines: string[] = [];
+
+      // Scripture resources (ult, ust, ueb)
+      if (["ult", "ust", "ueb", "scripture"].includes(resource)) {
+        lines.push(`**Lookup:** \`fetch_scripture\``);
+        if (ref) lines.push(`- reference: \`${ref}\``);
+        lines.push(`- language: \`${lang}\``);
+        lines.push(`- organization: \`${org}\``);
+        return lines.join("\n");
+      }
+
+      // Translation Notes
+      if (resource === "tn") {
+        lines.push(`**Lookup:** \`fetch_translation_notes\``);
+        if (ref) lines.push(`- reference: \`${ref}\``);
+        if (hit.note_id) lines.push(`- note_id: \`${hit.note_id}\``);
+        if (hit.phrase) lines.push(`- phrase: \`${hit.phrase}\``);
+        lines.push(`- language: \`${lang}\``);
+        lines.push(`- organization: \`${org}\``);
+        return lines.join("\n");
+      }
+
+      // Translation Words
+      if (resource === "tw") {
+        const term =
+          hit.article_id || hit.title?.toLowerCase().replace(/\s+/g, "");
+        const category = hit.category || "kt";
+        lines.push(`**Lookup:** \`fetch_translation_word\``);
+        if (term) {
+          lines.push(`- term: \`${term}\``);
+          lines.push(`- category: \`${category}\``);
+          lines.push(
+            `- rcLink: \`rc://${lang}/tw/dict/bible/${category}/${term}\``,
+          );
+        }
+        if (hit.title) lines.push(`- title: \`${hit.title}\``);
+        lines.push(`- language: \`${lang}\``);
+        lines.push(`- organization: \`${org}\``);
+        return lines.join("\n");
+      }
+
+      // Translation Academy
+      if (resource === "ta") {
+        const moduleId = hit.article_id;
+        lines.push(`**Lookup:** \`fetch_translation_academy\``);
+        if (moduleId) {
+          lines.push(`- moduleId: \`${moduleId}\``);
+          lines.push(`- rcLink: \`rc://${lang}/ta/man/translate/${moduleId}\``);
+        }
+        if (hit.title) lines.push(`- title: \`${hit.title}\``);
+        if (hit.section_title)
+          lines.push(`- section: \`${hit.section_title}\``);
+        lines.push(`- language: \`${lang}\``);
+        lines.push(`- organization: \`${org}\``);
+        return lines.join("\n");
+      }
+
+      // Translation Questions
+      if (resource === "tq") {
+        lines.push(`**Lookup:** \`fetch_translation_questions\``);
+        if (ref) lines.push(`- reference: \`${ref}\``);
+        if (hit.question_text)
+          lines.push(
+            `- question: \`${hit.question_text.substring(0, 50)}...\``,
+          );
+        lines.push(`- language: \`${lang}\``);
+        lines.push(`- organization: \`${org}\``);
+        return lines.join("\n");
+      }
+
+      // Translation Word Links (TWL) - verse-level word associations
+      if (resource === "twl") {
+        lines.push(`**Lookup:** \`fetch_translation_word_links\``);
+        if (ref) lines.push(`- reference: \`${ref}\``);
+        if (hit.article_id) lines.push(`- linked_word: \`${hit.article_id}\``);
+        lines.push(`- language: \`${lang}\``);
+        lines.push(`- organization: \`${org}\``);
+        return lines.join("\n");
+      }
+
+      // Fallback - show all available metadata
+      lines.push(`**Metadata:**`);
+      if (ref) lines.push(`- reference: \`${ref}\``);
+      lines.push(`- path: \`${hit.path || "unknown"}\``);
+      lines.push(`- language: \`${lang}\``);
+      lines.push(`- organization: \`${org}\``);
+      if (hit.article_id) lines.push(`- article_id: \`${hit.article_id}\``);
+      if (hit.note_id) lines.push(`- note_id: \`${hit.note_id}\``);
+      return lines.join("\n");
+    };
+
     // Start with markdown header so ApiTester detects it as markdown
     return (
       `# Search Results\n\n` +
@@ -285,8 +404,11 @@ export const ToolFormatters = {
             preview = preview.substring(0, 200) + "...";
           }
 
-          // Format: each result as markdown section
-          return `### ${index + 1}. ${resourceDisplay} [${typeDisplay}]\n\n**${locationDisplay}** | Score: ${hit.score?.toFixed(2) || "N/A"}\n\n> ${preview}`;
+          // Get lookup information for this hit
+          const lookupInfo = getLookupInfo(hit);
+
+          // Format: each result as markdown section with lookup info
+          return `### ${index + 1}. ${resourceDisplay} [${typeDisplay}]\n\n**${locationDisplay}** | Score: ${hit.score?.toFixed(2) || "N/A"}\n\n> ${preview}\n\n${lookupInfo}`;
         })
         .join("\n\n---\n\n")
     );
