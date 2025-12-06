@@ -433,19 +433,15 @@ export const ToolFormatters = {
           const locationDisplay =
             hit.reference || hit.path || "Unknown location";
 
-          // Properly unescape preview - handle both escaped \\n and actual \n
-          let preview = hit.preview || "";
-          preview = preview.replace(/\\n/g, " ").replace(/\n/g, " ").trim();
-          // Truncate if too long
-          if (preview.length > 200) {
-            preview = preview.substring(0, 200) + "...";
-          }
+          // Get full content - unescape newlines for proper display
+          let content = hit.content || hit.preview || "";
+          content = content.replace(/\\n/g, "\n").trim();
 
           // Get lookup information for this hit
           const lookupInfo = getLookupInfo(hit);
 
-          // Format: each result as markdown section with lookup info
-          return `### ${index + 1}. ${resourceDisplay} [${typeDisplay}]\n\n**${locationDisplay}** | Score: ${hit.score?.toFixed(2) || "N/A"}\n\n> ${preview}\n\n${lookupInfo}`;
+          // Format: each result as markdown section with full content
+          return `### ${index + 1}. ${resourceDisplay} [${typeDisplay}]\n\n**${locationDisplay}** | Score: ${hit.score?.toFixed(2) || "N/A"}\n\n${lookupInfo}\n\n**Content:**\n\`\`\`\n${content}\n\`\`\``;
         })
         .join("\n\n---\n\n")
     );
