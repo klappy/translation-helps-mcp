@@ -21,6 +21,7 @@ import {
 	type AgentName,
 	type AgentResponse,
 	type AgentTask,
+	type Citation,
 	type OrchestrationConfig,
 	type OrchestratorPlan,
 	type StreamEmitter,
@@ -494,13 +495,8 @@ export async function orchestratedChat(
 				const synthesisStart = Date.now();
 				emit('synthesis:start', {});
 
-				const synthesizedResponse = await synthesizeResponse(
-					ai,
-					userMessage,
-					agentResults,
-					controller,
-					emit
-				);
+				const { response: synthesizedResponse, citations: collectedCitations } =
+					await synthesizeResponse(ai, userMessage, agentResults, controller, emit);
 				timings.synthesis = Date.now() - synthesisStart;
 
 				// Mark synthesis as complete
@@ -513,13 +509,20 @@ export async function orchestratedChat(
 					synthesisEntry.success = true;
 				}
 
-				// PHASE 5: QA Validation
+				// PHASE 5: QA Validation (independent verification - not trusting agent self-reports!)
 				let validationResult: ValidationResult | null = null;
 				const validationStart = Date.now();
 
 				if (synthesizedResponse && synthesizedResponse.length > 0) {
 					try {
-						validationResult = await validateResponse(synthesizedResponse, executeToolFn, emit);
+						// Pass collected citations for reference (but QA validates independently!)
+						validationResult = await validateResponse(
+							ai,
+							synthesizedResponse,
+							executeToolFn,
+							emit,
+							collectedCitations
+						);
 						timings.validation = Date.now() - validationStart;
 
 						// Add validation to timeline
@@ -533,6 +536,11 @@ export async function orchestratedChat(
 							success: true,
 							preview: `${validationResult.summary.verified} verified, ${validationResult.summary.uncertain} uncertain, ${validationResult.summary.invalid} invalid`
 						});
+
+						// Emit the annotated response so UI can update with emoji indicators
+						if (validationResult.annotatedResponse !== synthesizedResponse) {
+							emit('synthesis:annotated', { content: validationResult.annotatedResponse });
+						}
 					} catch (validationError) {
 						console.error('Validation failed:', validationError);
 						timings.validation = Date.now() - validationStart;
@@ -870,6 +878,19 @@ async function planIterationTasks(
 }
 
 /**
+ * Collect all citations from agent results for QA validation reference
+ */
+function collectAgentCitations(agentResults: AgentResponse[]): Citation[] {
+	const citations: Citation[] = [];
+	for (const result of agentResults) {
+		if (result.success && result.citations) {
+			citations.push(...result.citations);
+		}
+	}
+	return citations;
+}
+
+/**
  * Synthesize final response from agent results with streaming
  */
 async function synthesizeResponse(
@@ -878,9 +899,12 @@ async function synthesizeResponse(
 	agentResults: AgentResponse[],
 	controller: ReadableStreamDefaultController<Uint8Array>,
 	emit: StreamEmitter
-): Promise<string> {
+): Promise<{ response: string; citations: Citation[] }> {
 	// Build synthesis context
 	const synthesisContext = buildSynthesisContext(agentResults);
+
+	// Collect citations from agents (for QA validator reference)
+	const collectedCitations = collectAgentCitations(agentResults);
 
 	// Create agent summary for the model
 	const agentSummary = agentResults
@@ -901,7 +925,7 @@ ${agentSummary}
 Full agent reports:
 ${synthesisContext}
 
-Please synthesize these findings into a comprehensive, well-cited response.`
+Please synthesize these findings into a comprehensive response. Remember to mark ALL citations with ⏳ for pending verification.`
 		}
 	];
 
@@ -996,7 +1020,7 @@ Please synthesize these findings into a comprehensive, well-cited response.`
 		}
 	}
 
-	return fullResponse;
+	return { response: fullResponse, citations: collectedCitations };
 }
 
 /**

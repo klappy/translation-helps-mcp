@@ -200,13 +200,20 @@
 										<div class="flex-1">
 											<div class="flex items-center gap-2">
 												<span class="text-lg">{v.emoji}</span>
-												<span class="font-mono text-xs text-gray-300">^{v.number}^</span>
-												<span class="text-white">{v.article}</span>
-												<span class="text-xs text-gray-500">({v.resource})</span>
+												<span class="text-white">{v.citation?.article || v.article || '?'}</span>
+												<span class="text-xs text-gray-500"
+													>({v.citation?.resource || v.resource || '?'})</span
+												>
 											</div>
-											{#if v.quotedText}
+											{#if v.citation?.quotedText || v.quotedText}
 												<div class="mt-1 truncate text-xs text-gray-400 italic">
-													"{v.quotedText.substring(0, 60)}{v.quotedText.length > 60 ? '...' : ''}"
+													"{(v.citation?.quotedText || v.quotedText || '').substring(0, 60)}{(
+														v.citation?.quotedText ||
+														v.quotedText ||
+														''
+													).length > 60
+														? '...'
+														: ''}"
 												</div>
 											{/if}
 											{#if v.reason}

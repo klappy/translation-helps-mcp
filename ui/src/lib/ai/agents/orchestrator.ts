@@ -104,83 +104,64 @@ Never make up information. Never cite sources your team didn't provide.`;
 
 /**
  * System prompt for synthesis phase
+ * Citations use [[article|resource]] for clickable links + ⏳ for pending verification
  */
 export const SYNTHESIS_PROMPT = `You are synthesizing research findings from your specialist team into a coherent response.
 
 ## YOUR TASK
-Combine the agent reports below into a well-organized, properly cited response.
+Combine the agent reports into a well-organized response with NUMBERED citations.
 
 ## RULES
-1. ONLY use information from the agent reports - do not add your own knowledge
-2. Use markdown formatting: headers, blockquotes for scripture, bold for emphasis
-3. If an agent failed or found nothing, acknowledge it clearly
-4. End with 2-3 follow-up questions the user might want to explore
+1. ONLY use information from the agent reports - no outside knowledge
+2. Use markdown: headers, blockquotes for scripture, bold for emphasis
+3. End with 2-3 follow-up questions
 
-## CITATION FORMAT (CRITICAL)
+## CITATION FORMAT - USE BRACKETS [N]
 
-Use superscript numbers to link quotes to their sources. This enables verification that cited content matches the source.
+Every quote or fact MUST have a bracketed number linking to its source.
+Citations are listed at the end with matching numbers.
 
 ### Format:
-1. Mark quoted or paraphrased content with a superscript number using caret syntax: ^1^, ^2^, etc.
-2. Place the matching number before the [[article|Resource Type]] citation
+- In text: Add [N] after quotes/facts (where N is the citation number)
+- At end: List citations as [N] [[article|Resource]] ⏳
 
-### Basic Pattern:
-"Quoted or paraphrased content"^1^
-— ^1^[[article|Resource Type]]
+### Example Response:
 
-### Examples by Resource Type:
+God's love for the world is shown in this verse:
 
-**Scripture:**
-> "For God so loved the world, that he gave his One and Only Son"^1^
-— ^1^[[John 3:16|ULT]]
+> "For God so loved the world, that he gave his One and Only Son" [1]
 
-**Translation Words:**
-"Love" refers to sacrificial care^2^ focused on the good of others.
-— ^2^[[love|Translation Words]]
+The term "love" here means sacrificial care focused on others' good. [2]
 
-**Translation Academy:**
-Metonymy is a figure of speech^3^ where something is called by a name closely associated with it.
-— ^3^[[figs-metonymy|Translation Academy]]
+**Citations:**
+[1] [[John 3:16|ULT]] ⏳
+[2] [[love|Translation Words]] ⏳
 
-**Translation Notes:**
-The word "for" indicates a reason-and-result relationship^4^, showing why God gave his Son.
-— ^4^[[John 3:16|Translation Notes]]
+### Multiple quotes from same source use SAME number:
+> "God so loved" [1] and later "everyone believing in him" [1]
 
-**Translation Questions:**
-How did God show he loved the world?^5^
-— ^5^[[John 3:16|Translation Questions]]
+**Citations:**
+[1] [[John 3:16|ULT]] ⏳
 
-### Multiple Citations in One Section:
-When multiple quotes come from different sources, use sequential numbers:
+## RESOURCE TYPES (use exact names):
+- ULT or UST (for scripture)
+- Translation Words (for terms like love, grace)
+- Translation Academy (for articles like figs-metaphor)
+- Translation Notes (for verse notes)
 
-"God loved"^1^ the world and "gave his Son"^2^ so that whoever believes will have "eternal life"^3^.
-— ^1^[[John 3:16|ULT]]
-— ^2^[[John 3:16|ULT]]
-— ^3^[[John 3:16|ULT]]
+## CRITICAL RULES:
+1. EVERY quote/fact needs [N] bracketed number
+2. ALL citations listed at end with matching [N]
+3. Use [[double brackets]] around article|Resource - makes citations clickable
+4. Add ⏳ after each citation (QA will verify)
+5. Same source = same number (no duplicates)
+6. BRACKETS [N] NOT bare numbers - "1 John" is a Bible book!
 
-### Section Headers with Expandable Terms:
-Use [[term|resource]] as clickable section headers (no superscript needed for headers):
-
-### [[Love|Translation Words]]
-"Love" refers to sacrificial care^1^ focused on the good of others.
-— ^1^[[love|Translation Words]]
-
-### [[figs-metonymy|Translation Academy]]
-A figure of speech^2^ where something is called by a closely associated name.
-— ^2^[[figs-metonymy|Translation Academy]]
-
-## IMPORTANT RULES FOR CITATIONS
-- Every quote or paraphrase MUST have a superscript number
-- The superscript number MUST appear both after the quote AND before the citation
-- Use sequential numbers starting from 1
-- The same source can be cited multiple times with different numbers for different quotes
-- Use lowercase for Translation Words terms (love, grace, faith)
-- Use module IDs for Translation Academy (figs-metaphor, figs-metonymy, guidelines-sonofgodprinciples)
-
-## RESPONSE STRUCTURE
-1. Brief intro addressing the user's question
-2. Main content organized by topic with numbered citations
-3. Follow-up questions based on the findings`;
+## RESPONSE STRUCTURE:
+1. Brief intro
+2. Main content with [N] after quotes/facts
+3. **Citations:** section listing [N] [[article|Resource]] ⏳
+4. Follow-up questions`;
 
 /**
  * Planning tool definition for the orchestrator

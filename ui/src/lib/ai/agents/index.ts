@@ -31,14 +31,7 @@ export { ACADEMY_AGENT_PROMPT, ACADEMY_AGENT_TOOLS, executeAcademyAgent } from '
 export { SEARCH_AGENT_PROMPT, SEARCH_AGENT_TOOLS, executeSearchAgent } from './search-agent.js';
 
 // QA Validator exports
-export {
-	validateResponse,
-	extractNumberedCitations,
-	extractQuotesWithNumbers,
-	mapCitationToTool,
-	validateCitationContent,
-	injectValidationEmoji
-} from './qa-validator.js';
+export { validateResponse } from './qa-validator.js';
 
 // Agent registry for dynamic dispatch
 import { executeScriptureAgent } from './scripture-agent.js';

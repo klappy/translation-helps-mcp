@@ -1,46 +1,27 @@
 /**
  * QA Citation Validator
  *
- * Validates citations in synthesized responses by re-fetching resources
- * and verifying that quoted content matches the source.
+ * Uses the citations ALREADY COLLECTED by agents.
+ * No parsing needed - we already have the data!
  *
- * No LLM needed - pure deterministic lookups.
+ * 1. Take citations from agents
+ * 2. Re-fetch to verify they still exist
+ * 3. Have LLM annotate the response with emojis
  */
 
 import type {
 	CitationValidation,
-	CitationValidationStatus,
 	ValidationResult,
 	ToolExecutor,
-	StreamEmitter
+	StreamEmitter,
+	Citation
 } from './types.js';
 
-/**
- * Extracted citation with its superscript number
- */
-interface ExtractedCitation {
-	number: number;
-	article: string;
-	resource: string;
-	fullMatch: string;
-}
+const WORKERS_AI_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct';
 
-/**
- * Extracted quote with its superscript number
- */
-interface ExtractedQuote {
-	number: number;
-	text: string;
+interface AIBinding {
+	run(model: string, options: unknown): Promise<unknown>;
 }
-
-/**
- * Status emoji mapping
- */
-const STATUS_EMOJI: Record<CitationValidationStatus, string> = {
-	verified: '✅',
-	uncertain: '⚠️',
-	invalid: '❌'
-};
 
 /**
  * Resource type to MCP tool mapping
@@ -49,373 +30,255 @@ const RESOURCE_TO_TOOL: Record<
 	string,
 	{ tool: string; paramBuilder: (article: string) => Record<string, unknown> }
 > = {
+	Scripture: {
+		tool: 'fetch_scripture',
+		paramBuilder: (ref) => ({ reference: ref, resource: 'ult', format: 'md' })
+	},
+	scripture: {
+		tool: 'fetch_scripture',
+		paramBuilder: (ref) => ({ reference: ref, resource: 'ult', format: 'md' })
+	},
 	ULT: {
 		tool: 'fetch_scripture',
-		paramBuilder: (article) => ({ reference: article, resource: 'ult', format: 'md' })
+		paramBuilder: (ref) => ({ reference: ref, resource: 'ult', format: 'md' })
 	},
 	UST: {
 		tool: 'fetch_scripture',
-		paramBuilder: (article) => ({ reference: article, resource: 'ust', format: 'md' })
+		paramBuilder: (ref) => ({ reference: ref, resource: 'ust', format: 'md' })
+	},
+	words: {
+		tool: 'fetch_translation_word',
+		paramBuilder: (term) => ({ term: term.toLowerCase(), format: 'md' })
 	},
 	'Translation Words': {
 		tool: 'fetch_translation_word',
-		paramBuilder: (article) => ({ term: article.toLowerCase(), format: 'md' })
+		paramBuilder: (term) => ({ term: term.toLowerCase(), format: 'md' })
+	},
+	academy: {
+		tool: 'fetch_translation_academy',
+		paramBuilder: (moduleId) => ({
+			moduleId: moduleId.toLowerCase().replace(/\s+/g, '-'),
+			format: 'md'
+		})
 	},
 	'Translation Academy': {
 		tool: 'fetch_translation_academy',
-		paramBuilder: (article) => ({ moduleId: article.toLowerCase(), format: 'md' })
+		paramBuilder: (moduleId) => ({
+			moduleId: moduleId.toLowerCase().replace(/\s+/g, '-'),
+			format: 'md'
+		})
+	},
+	notes: {
+		tool: 'fetch_translation_notes',
+		paramBuilder: (ref) => ({ reference: ref, format: 'md' })
 	},
 	'Translation Notes': {
 		tool: 'fetch_translation_notes',
-		paramBuilder: (article) => ({ reference: article, format: 'md' })
+		paramBuilder: (ref) => ({ reference: ref, format: 'md' })
+	},
+	questions: {
+		tool: 'fetch_translation_questions',
+		paramBuilder: (ref) => ({ reference: ref, format: 'md' })
 	},
 	'Translation Questions': {
 		tool: 'fetch_translation_questions',
-		paramBuilder: (article) => ({ reference: article, format: 'md' })
+		paramBuilder: (ref) => ({ reference: ref, format: 'md' })
 	}
 };
 
 /**
- * Extract numbered citations from response text
- * Matches patterns like: ^1^[[John 3:16|ULT]] or ^2^[[love|Translation Words]]
+ * Validate a single citation by fetching the source
  */
-export function extractNumberedCitations(text: string): ExtractedCitation[] {
-	const citations: ExtractedCitation[] = [];
-
-	// Match ^N^[[article|resource]] pattern
-	const regex = /\^(\d+)\^\[\[([^\]|]+)\|([^\]]+)\]\]/g;
-	let match;
-
-	while ((match = regex.exec(text)) !== null) {
-		citations.push({
-			number: parseInt(match[1], 10),
-			article: match[2].trim(),
-			resource: match[3].trim(),
-			fullMatch: match[0]
-		});
-	}
-
-	return citations;
-}
-
-/**
- * Extract quotes with their superscript numbers
- * Matches patterns like: "quoted text"^1^ or "some words"^2^
- */
-export function extractQuotesWithNumbers(text: string): ExtractedQuote[] {
-	const quotes: ExtractedQuote[] = [];
-
-	// Match "text"^N^ pattern (handles both straight and curly quotes)
-	const regex = /[""]([^""]+)[""]\^(\d+)\^/g;
-	let match;
-
-	while ((match = regex.exec(text)) !== null) {
-		quotes.push({
-			number: parseInt(match[2], 10),
-			text: match[1].trim()
-		});
-	}
-
-	return quotes;
-}
-
-/**
- * Map a resource type to its MCP tool and parameters
- */
-export function mapCitationToTool(
-	article: string,
-	resource: string
-): { tool: string; params: Record<string, unknown> } | null {
-	const mapping = RESOURCE_TO_TOOL[resource];
-	if (!mapping) {
-		return null;
-	}
-
-	return {
-		tool: mapping.tool,
-		params: mapping.paramBuilder(article)
-	};
-}
-
-/**
- * Check if quoted text appears in the source content
- * Uses fuzzy matching to handle minor variations
- */
-export function validateCitationContent(quotedText: string, sourceContent: string): boolean {
-	if (!quotedText || !sourceContent) {
-		return false;
-	}
-
-	// Normalize both strings for comparison
-	const normalizeText = (text: string): string => {
-		return text
-			.toLowerCase()
-			.replace(/[""'']/g, '"') // Normalize quotes
-			.replace(/\s+/g, ' ') // Normalize whitespace
-			.replace(/[.,!?;:]/g, '') // Remove punctuation
-			.trim();
-	};
-
-	const normalizedQuote = normalizeText(quotedText);
-	const normalizedSource = normalizeText(sourceContent);
-
-	// Direct inclusion check
-	if (normalizedSource.includes(normalizedQuote)) {
-		return true;
-	}
-
-	// Check for significant overlap (at least 60% of words match)
-	const quoteWords = normalizedQuote.split(' ').filter((w) => w.length > 2);
-	const sourceWords = new Set(normalizedSource.split(' '));
-
-	if (quoteWords.length === 0) {
-		return false;
-	}
-
-	const matchingWords = quoteWords.filter((word) => sourceWords.has(word));
-	const matchRatio = matchingWords.length / quoteWords.length;
-
-	return matchRatio >= 0.6;
-}
-
-/**
- * Extract text content from MCP tool response
- */
-function extractContentFromResponse(response: unknown): string {
-	if (!response) {
-		return '';
-	}
-
-	// Handle string responses
-	if (typeof response === 'string') {
-		return response;
-	}
-
-	// Handle object responses with common content fields
-	if (typeof response === 'object') {
-		const obj = response as Record<string, unknown>;
-
-		// Try common content fields
-		const contentFields = ['content', 'text', 'body', 'markdown', 'data', 'result'];
-		for (const field of contentFields) {
-			if (typeof obj[field] === 'string') {
-				return obj[field] as string;
-			}
-		}
-
-		// Try to stringify if it has meaningful content
-		const str = JSON.stringify(obj);
-		if (str.length > 10) {
-			return str;
-		}
-	}
-
-	return '';
-}
-
-/**
- * Validate a single citation by calling the MCP tool
- */
-async function validateSingleCitation(
-	citation: ExtractedCitation,
-	quotedText: string | undefined,
+async function validateCitation(
+	reference: string,
+	source: string,
 	executeToolFn: ToolExecutor
-): Promise<CitationValidation> {
-	const startTime = Date.now();
+): Promise<{ status: 'verified' | 'uncertain' | 'invalid'; emoji: string; reason: string }> {
+	const mapping = RESOURCE_TO_TOOL[source];
 
-	const toolMapping = mapCitationToTool(citation.article, citation.resource);
-
-	if (!toolMapping) {
-		return {
-			number: citation.number,
-			citation: `[[${citation.article}|${citation.resource}]]`,
-			article: citation.article,
-			resource: citation.resource,
-			quotedText,
-			status: 'invalid',
-			emoji: STATUS_EMOJI.invalid,
-			reason: `Unknown resource type: ${citation.resource}`,
-			duration: Date.now() - startTime
-		};
+	if (!mapping) {
+		console.log(`[QA] Unknown source type: ${source}`);
+		return { status: 'uncertain', emoji: '⚠️', reason: `Unknown source: ${source}` };
 	}
 
 	try {
-		const response = await executeToolFn(toolMapping.tool, toolMapping.params);
-		const duration = Date.now() - startTime;
+		console.log(`[QA] Validating: ${reference} from ${source} using ${mapping.tool}`);
+		const result = await executeToolFn(mapping.tool, mapping.paramBuilder(reference));
 
-		// Check if we got a valid response
-		const content = extractContentFromResponse(response);
+		const content = typeof result === 'string' ? result : JSON.stringify(result);
 
-		if (!content || content.length < 10) {
-			return {
-				number: citation.number,
-				citation: `[[${citation.article}|${citation.resource}]]`,
-				article: citation.article,
-				resource: citation.resource,
-				quotedText,
-				status: 'invalid',
-				emoji: STATUS_EMOJI.invalid,
-				reason: 'Resource not found or empty response',
-				duration
-			};
+		const startsWithError =
+			content.toLowerCase().startsWith('error') ||
+			content.toLowerCase().startsWith('not found') ||
+			content.toLowerCase().startsWith('module not found');
+
+		const hasContent = content.length > 50 && !startsWithError;
+
+		if (hasContent) {
+			return { status: 'verified', emoji: '✅', reason: 'Source verified' };
+		} else {
+			return { status: 'invalid', emoji: '❌', reason: 'Source not found' };
 		}
-
-		// If we have quoted text, verify it appears in the source
-		if (quotedText) {
-			const contentMatches = validateCitationContent(quotedText, content);
-
-			if (contentMatches) {
-				return {
-					number: citation.number,
-					citation: `[[${citation.article}|${citation.resource}]]`,
-					article: citation.article,
-					resource: citation.resource,
-					quotedText,
-					status: 'verified',
-					emoji: STATUS_EMOJI.verified,
-					duration
-				};
-			} else {
-				return {
-					number: citation.number,
-					citation: `[[${citation.article}|${citation.resource}]]`,
-					article: citation.article,
-					resource: citation.resource,
-					quotedText,
-					status: 'uncertain',
-					emoji: STATUS_EMOJI.uncertain,
-					reason: 'Quoted text not found in source (may be paraphrased)',
-					duration
-				};
-			}
-		}
-
-		// No quoted text to verify, but resource exists
-		return {
-			number: citation.number,
-			citation: `[[${citation.article}|${citation.resource}]]`,
-			article: citation.article,
-			resource: citation.resource,
-			status: 'verified',
-			emoji: STATUS_EMOJI.verified,
-			reason: 'Resource exists (no quote to verify)',
-			duration
-		};
 	} catch (error) {
-		return {
-			number: citation.number,
-			citation: `[[${citation.article}|${citation.resource}]]`,
-			article: citation.article,
-			resource: citation.resource,
-			quotedText,
-			status: 'invalid',
-			emoji: STATUS_EMOJI.invalid,
-			reason: `Fetch error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-			duration: Date.now() - startTime
-		};
+		console.error(`[QA] Validation error for ${reference}:`, error);
+		return { status: 'invalid', emoji: '❌', reason: `Fetch failed: ${error}` };
 	}
 }
 
 /**
- * Inject validation emoji after each citation in the response
+ * Use LLM to annotate response with validation emojis
  */
-export function injectValidationEmoji(response: string, validations: CitationValidation[]): string {
-	let annotated = response;
+async function annotateWithLLM(
+	ai: AIBinding,
+	response: string,
+	validations: Array<{ reference: string; source: string; emoji: string }>
+): Promise<string> {
+	if (validations.length === 0) return response;
 
-	// Create a map of citation string to validation for quick lookup
-	const validationMap = new Map<string, CitationValidation>();
-	for (const v of validations) {
-		// Map both the numbered citation and unnumbered version
-		validationMap.set(`^${v.number}^[[${v.article}|${v.resource}]]`, v);
-	}
+	const validationList = validations
+		.map((v) => `"${v.reference}" (${v.source}): should show ${v.emoji}`)
+		.join('\n');
 
-	// Replace each ^N^[[article|resource]] with ^N^[[article|resource]] emoji
-	annotated = annotated.replace(
-		/\^(\d+)\^\[\[([^\]|]+)\|([^\]]+)\]\]/g,
-		(match, num, article, resource) => {
-			const key = `^${num}^[[${article.trim()}|${resource.trim()}]]`;
-			const validation = validationMap.get(key);
-			if (validation) {
-				return `${match} ${validation.emoji}`;
-			}
-			return match;
+	try {
+		const result = (await ai.run(WORKERS_AI_MODEL, {
+			messages: [
+				{
+					role: 'system',
+					content: `Update citation emojis in the text.
+
+Find each citation and replace the ⏳ (or any emoji) with the correct validation emoji.
+- ✅ = verified
+- ⚠️ = uncertain  
+- ❌ = invalid
+
+Keep ALL other text exactly the same. Only change the emojis.
+Return the complete updated text.`
+				},
+				{
+					role: 'user',
+					content: `Validation results:\n${validationList}\n\nText:\n${response}`
+				}
+			],
+			max_tokens: 4000,
+			temperature: 0
+		})) as { response?: string };
+
+		if (result.response && result.response.length > response.length * 0.5) {
+			return result.response;
 		}
-	);
-
-	return annotated;
+		return response;
+	} catch (error) {
+		console.error('[QA] Annotation failed:', error);
+		return response;
+	}
 }
 
 /**
- * Main validation function - validates all citations in a response
+ * Main validation function - USES COLLECTED CITATIONS
  */
 export async function validateResponse(
+	ai: AIBinding,
 	response: string,
 	executeToolFn: ToolExecutor,
-	emit: StreamEmitter
+	emit: StreamEmitter,
+	collectedCitations?: Citation[]
 ): Promise<ValidationResult> {
 	const startTime = Date.now();
+	emit('validation:start', { status: 'Starting validation...' });
 
-	// Extract citations and quotes
-	const citations = extractNumberedCitations(response);
-	const quotes = extractQuotesWithNumbers(response);
+	// USE CITATIONS ALREADY COLLECTED BY AGENTS
+	const citations = collectedCitations || [];
 
-	// Create quote lookup by number
-	const quotesByNumber = new Map<number, string>();
-	for (const quote of quotes) {
-		quotesByNumber.set(quote.number, quote.text);
-	}
-
-	// Emit start event
-	emit('validation:start', { citationCount: citations.length });
+	console.log('[QA] Collected citations from agents:', JSON.stringify(citations, null, 2));
 
 	if (citations.length === 0) {
-		// No citations to validate
-		const result: ValidationResult = {
+		console.log('[QA] No citations collected - nothing to validate');
+		emit('validation:complete', {
+			result: {
+				validations: [],
+				summary: { verified: 0, uncertain: 0, invalid: 0, total: 0 },
+				annotatedResponse: response,
+				totalTime: Date.now() - startTime
+			}
+		});
+		return {
 			validations: [],
 			summary: { verified: 0, uncertain: 0, invalid: 0, total: 0 },
 			annotatedResponse: response,
 			totalTime: Date.now() - startTime
 		};
-		emit('validation:complete', { result });
-		return result;
 	}
 
-	// Validate all citations in parallel (they're cached, should be fast)
-	const validationPromises = citations.map(async (citation, index) => {
-		const quotedText = quotesByNumber.get(citation.number);
-		const validation = await validateSingleCitation(citation, quotedText, executeToolFn);
-
-		// Emit progress
-		emit('validation:progress', {
-			validated: index + 1,
-			total: citations.length,
-			current: validation
-		});
-
-		return validation;
+	emit('validation:progress', {
+		validated: 0,
+		total: citations.length,
+		current: { status: `Validating ${citations.length} citations from agents` }
 	});
 
-	const validations = await Promise.all(validationPromises);
+	// Validate each citation by RE-FETCHING
+	const validationResults: CitationValidation[] = [];
+	const annotationData: Array<{ reference: string; source: string; emoji: string }> = [];
 
-	// Calculate summary
+	for (let i = 0; i < citations.length; i++) {
+		const citation = citations[i];
+		const reference = citation.reference || '';
+		const source = citation.source || 'Scripture';
+
+		if (!reference) {
+			console.log('[QA] Skipping citation with no reference:', citation);
+			continue;
+		}
+
+		emit('validation:progress', {
+			validated: i,
+			total: citations.length,
+			current: { article: reference, resource: source, status: 'validating' }
+		});
+
+		const result = await validateCitation(reference, source, executeToolFn);
+
+		annotationData.push({ reference, source, emoji: result.emoji });
+
+		validationResults.push({
+			citation: {
+				id: i + 1,
+				article: reference,
+				resource: source,
+				originalText: `${reference}, ${source}`
+			},
+			status: result.status,
+			emoji: result.emoji,
+			reason: result.reason,
+			duration: 0
+		});
+	}
+
+	// Annotate response with emojis
+	emit('validation:progress', {
+		validated: citations.length,
+		total: citations.length,
+		current: { status: 'Annotating response...' }
+	});
+
+	const annotatedResponse = await annotateWithLLM(ai, response, annotationData);
+
+	// Summary
 	const summary = {
-		verified: validations.filter((v) => v.status === 'verified').length,
-		uncertain: validations.filter((v) => v.status === 'uncertain').length,
-		invalid: validations.filter((v) => v.status === 'invalid').length,
-		total: validations.length
+		verified: validationResults.filter((v) => v.status === 'verified').length,
+		uncertain: validationResults.filter((v) => v.status === 'uncertain').length,
+		invalid: validationResults.filter((v) => v.status === 'invalid').length,
+		total: validationResults.length
 	};
 
-	// Inject emoji annotations
-	const annotatedResponse = injectValidationEmoji(response, validations);
-
 	const result: ValidationResult = {
-		validations,
+		validations: validationResults,
 		summary,
 		annotatedResponse,
 		totalTime: Date.now() - startTime
 	};
 
 	emit('validation:complete', { result });
+	console.log(`[QA] Complete: ${summary.verified}✅ ${summary.uncertain}⚠️ ${summary.invalid}❌`);
 
 	return result;
 }

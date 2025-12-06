@@ -855,8 +855,8 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 					event.startsWith('orchestrator:') ||
 					event.startsWith('agent:') ||
 					event.startsWith('prompt:') ||
-					event === 'synthesis:start' ||
-					event === 'synthesis:delta' ||
+					event.startsWith('synthesis:') ||
+					event.startsWith('validation:') ||
 					event === 'done'
 				) {
 					// Handle orchestration events
@@ -867,6 +867,17 @@ Just ask naturally - I'll fetch the exact resources you need! 📚`,
 						// For synthesis:delta, also update the message content
 						if (event === 'synthesis:delta' && json.delta) {
 							accumulated += json.delta;
+							messages[streamingMessageIndex] = {
+								...messages[streamingMessageIndex],
+								isLoading: false,
+								content: accumulated
+							};
+							messages = [...messages];
+						}
+
+						// For synthesis:annotated, replace the full message with validated version
+						if (event === 'synthesis:annotated' && json.content) {
+							accumulated = json.content;
 							messages[streamingMessageIndex] = {
 								...messages[streamingMessageIndex],
 								isLoading: false,

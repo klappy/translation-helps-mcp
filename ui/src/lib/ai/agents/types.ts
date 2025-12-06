@@ -46,19 +46,22 @@ export interface Citation {
 export type CitationValidationStatus = 'verified' | 'uncertain' | 'invalid';
 
 /**
+ * Extracted citation - normalized format
+ */
+export interface ExtractedCitation {
+	id: number;
+	article: string; // The reference (e.g., "John 3:16", "love", "figs-metaphor")
+	resource: string; // The resource type (e.g., "ULT", "Translation Words")
+	quotedText?: string; // Optional quoted text associated with this citation
+	originalText: string; // Original text from response for emoji injection
+}
+
+/**
  * Result of validating a single citation
  */
 export interface CitationValidation {
-	/** Superscript number from the response (1, 2, 3...) */
-	number: number;
-	/** The full citation string, e.g., "[[John 3:16|ULT]]" */
-	citation: string;
-	/** The article/reference part, e.g., "John 3:16" */
-	article: string;
-	/** The resource type, e.g., "ULT", "Translation Words" */
-	resource: string;
-	/** The quoted text associated with this citation number */
-	quotedText?: string;
+	/** The extracted citation being validated */
+	citation: ExtractedCitation;
 	/** Validation status */
 	status: CitationValidationStatus;
 	/** Emoji indicator: ✅, ⚠️, or ❌ */
@@ -175,8 +178,19 @@ export type OrchestrationEvent =
 	| { type: 'synthesis:start' }
 	| { type: 'synthesis:delta'; delta: string }
 	// Validation events
-	| { type: 'validation:start'; citationCount: number }
-	| { type: 'validation:progress'; validated: number; total: number; current: CitationValidation }
+	| {
+			type: 'validation:start';
+			citationCount?: number;
+			status?: string;
+			llmFound?: number;
+			regexFound?: number;
+	  }
+	| {
+			type: 'validation:progress';
+			validated: number;
+			total: number;
+			current: { article: string; resource: string; status: string };
+	  }
 	| { type: 'validation:complete'; result: ValidationResult }
 	// Completion events
 	| { type: 'done'; success: boolean }
