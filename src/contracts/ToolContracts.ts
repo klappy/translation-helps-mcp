@@ -262,21 +262,32 @@ export const ToolFormatters = {
     // Count unique resources for summary
     const uniqueResources = new Set(data.hits.map((h: any) => h.resource)).size;
 
-    // Helper to extract verse reference from content using regex
+    // Helper to extract verse range from content using regex
     const extractVerseRef = (content: string): string | null => {
       if (!content) return null;
-      // Match patterns like "3:16", "13:11-12", "1:1"
-      // Look for chapter:verse patterns
-      const verseMatch = content.match(
-        /\b(\d{1,3}):(\d{1,3})(?:-(\d{1,3}))?\b/,
-      );
-      if (verseMatch) {
-        const [full, chapter, verse, verseEnd] = verseMatch;
-        return verseEnd
-          ? `${chapter}:${verse}-${verseEnd}`
-          : `${chapter}:${verse}`;
+      // Find ALL chapter:verse patterns in content
+      const verseMatches = content.match(/\b(\d{1,3}):(\d{1,3})\b/g);
+      if (!verseMatches || verseMatches.length === 0) return null;
+
+      // Parse all matches to find the range
+      const parsed = verseMatches.map((m) => {
+        const [chapter, verse] = m.split(":").map(Number);
+        return { chapter, verse, raw: m };
+      });
+
+      // Get first and last (they should be same chapter for a passage)
+      const first = parsed[0];
+      const last = parsed[parsed.length - 1];
+
+      if (first.chapter === last.chapter) {
+        // Same chapter - return range like "4:13-20"
+        return first.verse === last.verse
+          ? `${first.chapter}:${first.verse}`
+          : `${first.chapter}:${first.verse}-${last.verse}`;
+      } else {
+        // Different chapters - return full range like "3:16-4:21"
+        return `${first.raw}-${last.raw}`;
       }
-      return null;
     };
 
     // Helper to extract book code from path (e.g., "en/unfoldingWord/tn/v87/JHN.md" -> "JHN")
@@ -320,12 +331,12 @@ export const ToolFormatters = {
     };
 
     // Helper to generate lookup info based on resource type
-    const getLookupInfo = (hit: any): string => {
+    const getLookupInfo = (hit: any, extractedRef?: string): string => {
       const lang = hit.language || "en";
       const org = hit.organization || "unfoldingWord";
       const resource = hit.resource?.toLowerCase() || "";
-      // Build reference from hit data
-      const ref = buildRef(hit);
+      // Use extracted reference from cleaned content, or try to build from hit data
+      const ref = extractedRef || buildRef(hit);
 
       const lines: string[] = [];
 
@@ -433,12 +444,38 @@ export const ToolFormatters = {
           const locationDisplay =
             hit.reference || hit.path || "Unknown location";
 
-          // Get full content - unescape newlines for proper display
+          // Get full content - clean up and extract just the text
           let content = hit.content || hit.preview || "";
-          content = content.replace(/\\n/g, "\n").trim();
 
-          // Get lookup information for this hit
-          const lookupInfo = getLookupInfo(hit);
+          // Extract text from JSON chunks - pattern: "text":" actual content "
+          const textMatches = content.match(/"text"\s*:\s*"([^"]+)"/g);
+          if (textMatches && textMatches.length > 0) {
+            // Extract just the text values and join them
+            content = textMatches
+              .map((m: string) => {
+                const match = m.match(/"text"\s*:\s*"([^"]+)"/);
+                return match ? match[1] : "";
+              })
+              .filter((t: string) => t.length > 0)
+              .join(" ");
+          }
+
+          // Unescape common escape sequences
+          content = content.replace(/\\n/g, "\n");
+          content = content.replace(/\\"/g, '"');
+          content = content.replace(/\\\\/g, "\\");
+
+          // Clean up extra whitespace but preserve paragraph breaks
+          content = content.replace(/[ \t]+/g, " ").trim();
+
+          // Now extract reference from CLEANED content (has visible verse numbers)
+          const bookCode = extractBookFromPath(hit.path);
+          const verseRef = extractVerseRef(content);
+          const extractedRef =
+            bookCode && verseRef ? `${bookCode} ${verseRef}` : "";
+
+          // Get lookup information, passing the extracted reference
+          const lookupInfo = getLookupInfo(hit, extractedRef);
 
           // Format: each result as markdown section with full content
           return `### ${index + 1}. ${resourceDisplay} [${typeDisplay}]\n\n**${locationDisplay}** | Score: ${hit.score?.toFixed(2) || "N/A"}\n\n${lookupInfo}\n\n**Content:**\n\`\`\`\n${content}\n\`\`\``;
