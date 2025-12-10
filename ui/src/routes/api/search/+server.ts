@@ -537,11 +537,13 @@ async function executeSearch(
 			const aiSearchStart = Date.now();
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
 
-			// When filtering by scripture/bible alias, request MORE results from AutoRAG
+			// When filtering by scripture/bible alias, request max results from AutoRAG
 			// since we need to filter client-side and scripture may rank lower in vector search
+			// Note: AutoRAG has a hard limit of 50 results max
+			const AUTORAG_MAX_RESULTS = 50;
 			const fetchLimit = isScriptureAlias 
-				? Math.min(Math.max(limit * 10, 100), 500)  // Fetch 10x requested or at least 100, max 500
-				: Math.min(limit, 100);
+				? AUTORAG_MAX_RESULTS  // Always fetch max when client-side filtering
+				: Math.min(limit, AUTORAG_MAX_RESULTS);
 
 			const searchOptions = {
 				query,

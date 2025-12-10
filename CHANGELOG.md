@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.14](https://github.com/klappy/translation-helps-mcp/compare/v7.19.13...v7.19.14) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Respect AutoRAG's 50 result limit
+  - AutoRAG has a hard limit of 50 max_num_results
+  - Was trying to fetch 500 which caused "Too big" error
+  - Scripture filter now works but is limited by AutoRAG's 50 result cap
+
 ### [7.19.13](https://github.com/klappy/translation-helps-mcp/compare/v7.19.12...v7.19.13) (2025-12-10)
 
 ### Bug Fixes
