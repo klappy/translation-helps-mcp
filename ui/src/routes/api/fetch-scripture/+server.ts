@@ -3,9 +3,15 @@
  *
  * The golden standard endpoint - fetches scripture text for any Bible reference.
  * Supports multiple translations and formats.
- * Now supports optional search parameter for in-reference searching.
+ * 
+ * Parameters:
+ * - search: AutoRAG semantic search (conceptually about X)
+ * - filter: Stemmed regex filter (contains word X)
+ * - stream: Enable NDJSON streaming for filter results
  */
 
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types.js';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS, isValidReference } from '$lib/commonValidators.js';
@@ -17,6 +23,13 @@ import {
 	type SearchDocument
 } from '$lib/../../../src/services/SearchServiceFactory.js';
 import { parseReference } from '$lib/referenceParser.js';
+import {
+	generateStemmedPattern,
+	parseScriptureIntoVerses,
+	createNDJSONStream,
+	getStreamingHeaders,
+	type FilterMatch
+} from '$lib/stemmedFilter.js';
 
 /**
  * Parse resource parameter
@@ -469,8 +482,219 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 	return response;
 }
 
+/**
+ * Handle streaming filter requests
+ * When filter param is provided with stream=true, bypass normal endpoint
+ * and stream results as NDJSON
+ */
+async function handleStreamingFilter(request: Request): Promise<Response | null> {
+	const url = new URL(request.url);
+	const filter = url.searchParams.get('filter');
+	const stream = url.searchParams.get('stream') === 'true';
+	
+	// Only handle if filter is provided
+	if (!filter) return null;
+	
+	const language = url.searchParams.get('language') || 'en';
+	const organization = url.searchParams.get('organization') || 'unfoldingWord';
+	const resourceParam = url.searchParams.get('resource') || 'all';
+	const reference = url.searchParams.get('reference');
+	
+	console.log(`[fetch-scripture] Filter request: "${filter}", stream=${stream}, ref=${reference || 'all'}`);
+	
+	// Generate stemmed pattern
+	const pattern = generateStemmedPattern(filter);
+	console.log(`[fetch-scripture] Stemmed pattern: ${pattern}`);
+	
+	// Get requested resources
+	const requestedResources = parseResources(resourceParam);
+	
+	// Create tracer and fetcher
+	const tracer = new EdgeXRayTracer(`scripture-filter-${Date.now()}`, 'fetch-scripture-filter');
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
+	
+	if (stream) {
+		// Streaming mode - return results as they're found
+		const { stream: responseStream, writer } = createNDJSONStream();
+		
+		// Process in background
+		(async () => {
+			try {
+				let totalMatches = 0;
+				
+				// If reference provided, fetch just that. Otherwise fetch all books.
+				if (reference) {
+					const results = await fetcher.fetchScripture(reference, language, organization, requestedResources);
+					
+					for (const result of results) {
+						const verses = parseScriptureIntoVerses(
+							result.text,
+							result.reference || reference,
+							result.translation,
+							language
+						);
+						
+						for (const verse of verses) {
+							pattern.lastIndex = 0;
+							const matches: string[] = [];
+							let match;
+							while ((match = pattern.exec(verse.text)) !== null) {
+								matches.push(match[0]);
+							}
+							
+							if (matches.length > 0) {
+								totalMatches++;
+								writer.write({
+									reference: verse.reference,
+									text: verse.text,
+									resource: result.translation,
+									language,
+									matchedTerms: [...new Set(matches)],
+									matchCount: matches.length
+								});
+							}
+						}
+					}
+				} else {
+					// Fetch all books - this is comprehensive but slower
+					// Get list of all books
+					const allBooks = [
+						'GEN', 'EXO', 'LEV', 'NUM', 'DEU', 'JOS', 'JDG', 'RUT', '1SA', '2SA',
+						'1KI', '2KI', '1CH', '2CH', 'EZR', 'NEH', 'EST', 'JOB', 'PSA', 'PRO',
+						'ECC', 'SNG', 'ISA', 'JER', 'LAM', 'EZK', 'DAN', 'HOS', 'JOL', 'AMO',
+						'OBA', 'JON', 'MIC', 'NAM', 'HAB', 'ZEP', 'HAG', 'ZEC', 'MAL',
+						'MAT', 'MRK', 'LUK', 'JHN', 'ACT', 'ROM', '1CO', '2CO', 'GAL', 'EPH',
+						'PHP', 'COL', '1TH', '2TH', '1TI', '2TI', 'TIT', 'PHM', 'HEB', 'JAS',
+						'1PE', '2PE', '1JN', '2JN', '3JN', 'JUD', 'REV'
+					];
+					
+					for (const book of allBooks) {
+						try {
+							const results = await fetcher.fetchScripture(book, language, organization, requestedResources);
+							
+							for (const result of results) {
+								const verses = parseScriptureIntoVerses(
+									result.text,
+									book,
+									result.translation,
+									language
+								);
+								
+								for (const verse of verses) {
+									pattern.lastIndex = 0;
+									const matches: string[] = [];
+									let match;
+									while ((match = pattern.exec(verse.text)) !== null) {
+										matches.push(match[0]);
+									}
+									
+									if (matches.length > 0) {
+										totalMatches++;
+										writer.write({
+											reference: verse.reference,
+											text: verse.text,
+											resource: result.translation,
+											language,
+											matchedTerms: [...new Set(matches)],
+											matchCount: matches.length
+										});
+									}
+								}
+							}
+						} catch (err) {
+							// Skip books that fail (might not exist in this translation)
+							console.log(`[fetch-scripture] Skipping ${book}: ${err}`);
+						}
+					}
+				}
+				
+				// Write final summary
+				writer.write({
+					_summary: true,
+					totalMatches,
+					filter,
+					pattern: pattern.toString()
+				});
+				
+			} catch (err) {
+				writer.write({ error: err instanceof Error ? err.message : String(err) });
+			} finally {
+				writer.close();
+			}
+		})();
+		
+		return new Response(responseStream, {
+			headers: getStreamingHeaders()
+		});
+	} else {
+		// Non-streaming mode - collect all results then return
+		const allMatches: FilterMatch[] = [];
+		
+		if (reference) {
+			const results = await fetcher.fetchScripture(reference, language, organization, requestedResources);
+			
+			for (const result of results) {
+				const verses = parseScriptureIntoVerses(
+					result.text,
+					result.reference || reference,
+					result.translation,
+					language
+				);
+				
+				for (const verse of verses) {
+					pattern.lastIndex = 0;
+					const matches: string[] = [];
+					let match;
+					while ((match = pattern.exec(verse.text)) !== null) {
+						matches.push(match[0]);
+					}
+					
+					if (matches.length > 0) {
+						allMatches.push({
+							reference: verse.reference,
+							text: verse.text,
+							resource: result.translation,
+							language,
+							matchedTerms: [...new Set(matches)],
+							matchCount: matches.length
+						});
+					}
+				}
+			}
+		} else {
+			// Without reference, require stream=true for comprehensive search
+			return json({
+				error: 'Reference required for non-streaming filter. Use stream=true for comprehensive search.',
+				hint: 'Add stream=true to search all scripture, or provide a reference (e.g., reference=John)'
+			}, { status: 400 });
+		}
+		
+		return json({
+			filter,
+			pattern: pattern.toString(),
+			language,
+			organization,
+			totalMatches: allMatches.length,
+			matches: allMatches,
+			_trace: tracer.getTrace()
+		});
+	}
+}
+
+/**
+ * Main GET handler - checks for filter requests first, then falls through to normal endpoint
+ */
+const filterHandler: RequestHandler = async ({ request }) => {
+	const filterResponse = await handleStreamingFilter(request);
+	if (filterResponse) return filterResponse;
+	
+	// Fall through to normal endpoint (handled by createSimpleEndpoint below)
+	return null as any; // TypeScript workaround - we'll chain handlers
+};
+
 // Create the endpoint with format support
-export const GET = createSimpleEndpoint({
+const normalEndpoint = createSimpleEndpoint({
 	name: 'fetch-scripture-v2',
 
 	params: [
