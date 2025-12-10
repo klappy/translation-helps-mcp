@@ -642,17 +642,100 @@ async function executeSearch(
 			hitsBeforeFilter: hits.length
 		});
 
-		// Client-side filtering (minimal - most filtering done by AI Search)
+		// Client-side filtering - safety net for when AutoRAG doesn't honor filters
 		const filterStart = Date.now();
+		const hitsBeforeFilter = hits.length;
 
-		// Scripture resource filter (AI Search may not handle "scripture" alias)
-		if (resource === 'scripture') {
-			hits = hits.filter((hit) => ['ult', 'ust', 'ueb', 'scripture'].includes(hit.resource));
+		// Track which filters needed client-side enforcement
+		const clientSideFiltersApplied: string[] = [];
+
+		// Scripture resource aliases
+		const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'scripture'];
+
+		// Resource filter - check if AutoRAG honored it
+		if (resource) {
+			const beforeResourceFilter = hits.length;
+			if (resource === 'scripture' || resource === 'bible') {
+				hits = hits.filter((hit) => SCRIPTURE_RESOURCES.includes(hit.resource));
+			} else {
+				hits = hits.filter((hit) => hit.resource === resource);
+			}
+			if (hits.length < beforeResourceFilter) {
+				clientSideFiltersApplied.push(`resource:${resource}`);
+			}
+		}
+
+		// Language filter - check if AutoRAG honored it
+		if (language) {
+			const beforeLangFilter = hits.length;
+			hits = hits.filter((hit) => hit.language === language);
+			if (hits.length < beforeLangFilter) {
+				clientSideFiltersApplied.push(`language:${language}`);
+			}
+		}
+
+		// Organization filter - check if AutoRAG honored it
+		if (organization) {
+			const beforeOrgFilter = hits.length;
+			hits = hits.filter((hit) => hit.organization === organization);
+			if (hits.length < beforeOrgFilter) {
+				clientSideFiltersApplied.push(`organization:${organization}`);
+			}
+		}
+
+		// Book filter - check if AutoRAG honored it
+		const bookFilter = bookParam || parsedRef?.book;
+		if (bookFilter) {
+			const beforeBookFilter = hits.length;
+			hits = hits.filter((hit) => hit.book?.toUpperCase() === bookFilter.toUpperCase());
+			if (hits.length < beforeBookFilter) {
+				clientSideFiltersApplied.push(`book:${bookFilter}`);
+			}
+		}
+
+		// Chapter filter - check if AutoRAG honored it
+		const chapterFilter = chapterParam ?? parsedRef?.chapter;
+		if (chapterFilter !== undefined) {
+			const beforeChapterFilter = hits.length;
+			hits = hits.filter((hit) => hit.chapter === chapterFilter);
+			if (hits.length < beforeChapterFilter) {
+				clientSideFiltersApplied.push(`chapter:${chapterFilter}`);
+			}
+		}
+
+		// Chunk level filter - check if AutoRAG honored it
+		if (chunk_level) {
+			const beforeChunkFilter = hits.length;
+			hits = hits.filter((hit) => hit.chunk_level === chunk_level);
+			if (hits.length < beforeChunkFilter) {
+				clientSideFiltersApplied.push(`chunk_level:${chunk_level}`);
+			}
+		}
+
+		// Article ID filter - check if AutoRAG honored it
+		if (articleId) {
+			const beforeArticleFilter = hits.length;
+			hits = hits.filter((hit) => hit.article_id?.toLowerCase() === articleId.toLowerCase());
+			if (hits.length < beforeArticleFilter) {
+				clientSideFiltersApplied.push(`article_id:${articleId}`);
+			}
 		}
 
 		// Include helps filter (exclude helps if false)
 		if (!includeHelps) {
-			hits = hits.filter((hit) => ['ult', 'ust', 'ueb', 'scripture'].includes(hit.resource));
+			hits = hits.filter((hit) => SCRIPTURE_RESOURCES.includes(hit.resource));
+		}
+
+		// Log diagnostic info about filter effectiveness
+		const filteredOut = hitsBeforeFilter - hits.length;
+		if (clientSideFiltersApplied.length > 0) {
+			logger.warn('[Search] Client-side filters had to remove results - AutoRAG may not be honoring these filters', {
+				clientSideFiltersApplied,
+				beforeFilter: hitsBeforeFilter,
+				afterFilter: hits.length,
+				filteredOut,
+				note: 'These filters were passed to AutoRAG but results still needed client-side filtering'
+			});
 		}
 
 		// Sort by score descending (AI Search should return sorted, but ensure)
