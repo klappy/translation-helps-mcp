@@ -64,10 +64,18 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       type: "string",
       required: false,
       description:
-        "Keyword filter with stemming - finds all verses containing the word and variations (e.g., 'love' matches love, loves, loved, loving, loveth). Requires reference parameter.",
+        "Keyword filter with stemming - finds all verses containing the word and variations (e.g., 'love' matches love, loves, loved, loving, loveth). Use with reference (book/chapter) or resource (full translation search).",
       example: "love",
       min: 2,
       max: 50,
+    },
+    testament: {
+      type: "string",
+      required: false,
+      description:
+        "Limit full-resource filter search to Old or New Testament. Only applies when using filter without reference.",
+      example: "nt",
+      options: ["ot", "nt"],
     },
     format: {
       type: "string",
