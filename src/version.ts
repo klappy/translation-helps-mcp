@@ -3,7 +3,7 @@
  * SINGLE SOURCE OF TRUTH for server version. Do not edit manually.
  */
 
-export const VERSION = "7.19.21";
+export const VERSION = "7.19.22";
 
 export function getVersion(): string {
   return VERSION;

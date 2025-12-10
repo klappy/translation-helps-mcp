@@ -44,7 +44,8 @@ const OT_BOOKS = ALL_BOOKS.slice(0, 39);
  * Looks for markdown header like "# Genesis" or "# 1 John"
  */
 function extractBookFromText(text: string): string {
-	const headerMatch = text.match(/^#\s+(.+?)(?:\s+\d+)?$/m);
+	// Match "# BookName" at start of line (before any chapter headers)
+	const headerMatch = text.match(/^#\s+([A-Za-z0-9\s]+?)\s*$/m);
 	if (headerMatch) return headerMatch[1].trim();
 	return 'Unknown';
 }
