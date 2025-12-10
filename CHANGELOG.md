@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.17](https://github.com/klappy/translation-helps-mcp/compare/v7.19.16...v7.19.17) (2025-12-10)
+
+### Features
+
+- **fetch-scripture:** Add `filter` parameter for stemmed regex search
+  - `search` = AutoRAG semantic (conceptually about X)
+  - `filter` = Stemmed regex (contains word X and variations)
+  - Example: `filter=love` matches love, loves, loved, loving, loveth
+  - Requires `reference` parameter (e.g., `reference=John`)
+  - Returns all matching verses with matched terms highlighted
+
 ### [7.19.16](https://github.com/klappy/translation-helps-mcp/compare/v7.19.15...v7.19.16) (2025-12-10)
 
 ### Bug Fixes
