@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.10](https://github.com/klappy/translation-helps-mcp/compare/v7.19.9...v7.19.10) (2025-12-10)
+
+### Bug Fixes
+
+- **wrangler:** Add AI binding to preview environment for deploy previews
+  - Deploy previews were returning "AI binding not available"
+  - Added AI, KV, and R2 bindings to `[env.preview]` in wrangler.toml
+
 ### [7.19.9](https://github.com/klappy/translation-helps-mcp/compare/v7.19.8...v7.19.9) (2025-12-10)
 
 ### Bug Fixes
