@@ -58,17 +58,12 @@ function parseResources(resourceParam: string | undefined): string[] {
 function parseIntoVerses(
 	text: string,
 	book: string,
-	translation: string
+	translation: string,
+	knownChapter?: number
 ): Array<{ text: string; reference: string; chapter: number; verse: number; translation: string }> {
 	const verses: Array<{ text: string; reference: string; chapter: number; verse: number; translation: string }> = [];
 	const lines = text.split('\n');
-	let currentChapter = 0;
-
-	// Try to extract chapter from book reference (e.g., "1John 4" -> chapter 4)
-	const bookChapterMatch = book.match(/(\d+)$/);
-	if (bookChapterMatch) {
-		currentChapter = parseInt(bookChapterMatch[1], 10);
-	}
+	let currentChapter = knownChapter || 0;
 
 	for (const line of lines) {
 		const trimmedLine = line.trim();
@@ -177,10 +172,12 @@ async function handleFilterRequest(request: Request): Promise<Response | null> {
 	}> = [];
 	
 	const parsedRef = parseReference(reference);
-	const book = parsedRef?.book || reference.split(' ')[0];
+	// Extract just the book name, not the chapter
+	const book = parsedRef?.book || reference.replace(/\s+\d+.*$/, '').trim();
+	const chapter = parsedRef?.chapter;
 	
 	for (const result of results) {
-		const verses = parseIntoVerses(result.text, book, result.translation);
+		const verses = parseIntoVerses(result.text, book, result.translation, chapter);
 		
 		for (const verse of verses) {
 			pattern.lastIndex = 0;
@@ -295,11 +292,12 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 	// Apply search if provided
 	if (search && search.trim().length > 0) {
 		const parsedRef = parseReference(reference);
-		const book = parsedRef?.book || reference;
+		const book = parsedRef?.book || reference.replace(/\s+\d+.*$/, '').trim();
+		const chapter = parsedRef?.chapter;
 		
 		const parsedVerses: Array<{ text: string; reference: string; translation: string }> = [];
 		for (const result of results) {
-			const verses = parseIntoVerses(result.text, book, result.translation);
+			const verses = parseIntoVerses(result.text, book, result.translation, chapter);
 			for (const v of verses) {
 				parsedVerses.push({ text: v.text, reference: v.reference, translation: v.translation });
 			}

@@ -16,7 +16,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { json } from '@sveltejs/kit';
 
 // This will be replaced at build time by sync-version.js
-const BUILD_VERSION = '7.19.19';
+const BUILD_VERSION = '7.19.20';
 const BUILD_TIMESTAMP = new Date().toISOString();
 
 export const GET: RequestHandler = async ({ url, platform }) => {
