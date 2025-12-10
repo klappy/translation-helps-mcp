@@ -240,9 +240,13 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		const searchUrl = new URL('/api/search', request.url);
 		searchUrl.searchParams.set('query', search);
 		searchUrl.searchParams.set('language', language || 'en');
-		searchUrl.searchParams.set('owner', organization || 'unfoldingWord');
-		// Only search Bible resources for scripture endpoint
+		searchUrl.searchParams.set('organization', organization || 'unfoldingWord');
+		// Request scripture specifically - triggers expanded result fetching in search endpoint
+		searchUrl.searchParams.set('resource', 'scripture');
+		// Also set includeHelps=false as backup filter
 		searchUrl.searchParams.set('includeHelps', 'false');
+		// Request more results since we're filtering client-side too
+		searchUrl.searchParams.set('limit', '50');
 
 		try {
 			// Call the search endpoint internally (shares cached indexes!)
@@ -261,16 +265,21 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 				`[fetch-scripture-v2] Search via /api/search complete in ${totalTime}ms: ${searchData.hits?.length || 0} hits`
 			);
 
-			// Transform search results to scripture format
-			const scriptureResults = (searchData.hits || [])
-				.filter((hit: any) => hit.type === 'bible')
-				.map((hit: any) => ({
-					text: hit.preview?.replace(/\*\*/g, '') || hit.content || '',
-					reference: hit.path || '',
-					translation: hit.resource || '',
-					searchScore: hit.score,
-					matchedTerms: hit.match?.terms
-				}));
+		// Transform search results to scripture format
+		// Filter to scripture resources (ult, ust, ueb, t4t, or 'scripture' type)
+		const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'scripture', 'glt', 'gst'];
+		const scriptureResults = (searchData.hits || [])
+			.filter((hit: any) => {
+				const resource = (hit.resource || '').toLowerCase();
+				return SCRIPTURE_RESOURCES.includes(resource);
+			})
+			.map((hit: any) => ({
+				text: hit.preview?.replace(/\*\*/g, '') || hit.content || '',
+				reference: hit.reference || hit.path || '',
+				translation: hit.resource || '',
+				searchScore: hit.score,
+				matchedTerms: hit.match?.terms
+			}));
 
 			return {
 				scripture: scriptureResults,

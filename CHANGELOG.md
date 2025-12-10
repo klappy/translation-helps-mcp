@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.12](https://github.com/klappy/translation-helps-mcp/compare/v7.19.11...v7.19.12) (2025-12-10)
+
+### Bug Fixes
+
+- **fetch-scripture:** Fix search delegation filtering out all results
+  - Changed filter from `hit.type === 'bible'` (non-existent field) to checking `hit.resource`
+  - Now correctly filters for scripture resources: ult, ust, ueb, t4t, glt, gst
+  - Added `resource=scripture` param when delegating to /api/search to trigger expanded fetching
+  - Fixed `owner` param to `organization` to match search endpoint expectations
+  - Request 50 results from search to increase scripture hit chances
+
 ### [7.19.11](https://github.com/klappy/translation-helps-mcp/compare/v7.19.10...v7.19.11) (2025-12-10)
 
 ### Bug Fixes
