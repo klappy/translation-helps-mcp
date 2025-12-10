@@ -211,10 +211,10 @@ function formatHit(match: any, index: number, query: string): SearchHit {
 	// AutoRAG may use 'filename' instead of 'id' for the R2 path
 	const filePath = match.id || match.filename || metadata.original_path || '';
 
-	// Extract core metadata with fallbacks
-	const language = metadata.language || 'en';
+	// Extract core metadata with fallbacks - infer from path when metadata missing
+	const language = metadata.language || inferLanguageFromPath(filePath);
 	const languageName = metadata.language_name || language;
-	const organization = metadata.organization || 'unfoldingWord';
+	const organization = metadata.organization || inferOrganizationFromPath(filePath);
 	const resource = metadata.resource || inferResourceFromPath(filePath);
 	const resourceName = metadata.resource_name || resource;
 	const version = metadata.version || 'unknown';
@@ -367,9 +367,41 @@ function createPreview(content: string, query: string, maxLength: number): strin
  * Infer resource type from file path
  * New path structure: {language}/{organization}/{resource}/{version}/...
  */
+/**
+ * Infer language from file path
+ * Path structure: {language}/{organization}/{resource}/{version}/...
+ */
+function inferLanguageFromPath(path: string): string {
+	const parts = path.split('/');
+	if (parts.length >= 1 && parts[0]) {
+		// Language code is first part of path (e.g., "en", "hi", "es")
+		const lang = parts[0].toLowerCase();
+		// Basic validation - language codes are 2-3 chars
+		if (lang.length >= 2 && lang.length <= 3 && /^[a-z]+$/.test(lang)) {
+			return lang;
+		}
+	}
+	return 'en';
+}
+
+/**
+ * Infer organization from file path
+ * Path structure: {language}/{organization}/{resource}/{version}/...
+ */
+function inferOrganizationFromPath(path: string): string {
+	const parts = path.split('/');
+	if (parts.length >= 2 && parts[1]) {
+		return parts[1];
+	}
+	return 'unfoldingWord';
+}
+
+/**
+ * Infer resource type from file path
+ * Path structure: {language}/{organization}/{resource}/{version}/...
+ */
 function inferResourceFromPath(path: string): string {
 	// Extract actual resource code from path - don't convert to categories
-	// Path structure: {language}/{organization}/{resource}/{version}/...
 	const parts = path.split('/');
 	if (parts.length >= 3) {
 		const resource = parts[2].toLowerCase();

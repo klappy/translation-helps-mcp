@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.16](https://github.com/klappy/translation-helps-mcp/compare/v7.19.15...v7.19.16) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Infer language and organization from file path
+  - AutoRAG wasn't returning metadata, so language defaulted to 'en'
+  - Now extracts language/organization from path (e.g., `hi/translationCore-Create-BCS/...`)
+  - Fixes Hindi results appearing when searching for English
+  - Language and organization filters now work correctly
+
 ### [7.19.15](https://github.com/klappy/translation-helps-mcp/compare/v7.19.14...v7.19.15) (2025-12-10)
 
 ### Features
