@@ -55,10 +55,19 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       type: "string",
       required: false,
       description:
-        "Optional: Filter scripture by search query (e.g., 'love', 'believe'). Returns only verses matching the query.",
+        "Semantic search via AutoRAG - finds passages conceptually about the query (e.g., 'love' finds passages about love)",
       example: "love",
       min: 2,
       max: 100,
+    },
+    filter: {
+      type: "string",
+      required: false,
+      description:
+        "Keyword filter with stemming - finds all verses containing the word and variations (e.g., 'love' matches love, loves, loved, loving, loveth). Requires reference parameter.",
+      example: "love",
+      min: 2,
+      max: 50,
     },
     format: {
       type: "string",
