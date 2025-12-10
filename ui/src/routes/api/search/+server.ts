@@ -724,8 +724,9 @@ async function executeSearch(
 		}
 
 		// Include helps filter (exclude helps if false)
+		// Be lenient: if resource is missing, keep the hit (don't filter out)
 		if (!includeHelps) {
-			hits = hits.filter((hit) => SCRIPTURE_RESOURCES.includes(hit.resource));
+			hits = hits.filter((hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource));
 		}
 
 		// Log diagnostic info about filter effectiveness
