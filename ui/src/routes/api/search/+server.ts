@@ -652,70 +652,72 @@ async function executeSearch(
 		// Scripture resource aliases
 		const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'scripture'];
 
-		// Resource filter - check if AutoRAG honored it
+		// Resource filter - only filter if hit has resource AND it doesn't match
 		if (resource) {
 			const beforeResourceFilter = hits.length;
 			if (resource === 'scripture' || resource === 'bible') {
-				hits = hits.filter((hit) => SCRIPTURE_RESOURCES.includes(hit.resource));
+				hits = hits.filter((hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource));
 			} else {
-				hits = hits.filter((hit) => hit.resource === resource);
+				hits = hits.filter((hit) => !hit.resource || hit.resource === resource);
 			}
 			if (hits.length < beforeResourceFilter) {
 				clientSideFiltersApplied.push(`resource:${resource}`);
 			}
 		}
 
-		// Language filter - check if AutoRAG honored it
+		// Language filter - only filter if hit has language AND it doesn't match
+		// (don't filter out hits missing the language field - AutoRAG may not return it)
 		if (language) {
 			const beforeLangFilter = hits.length;
-			hits = hits.filter((hit) => hit.language === language);
+			hits = hits.filter((hit) => !hit.language || hit.language === language);
 			if (hits.length < beforeLangFilter) {
 				clientSideFiltersApplied.push(`language:${language}`);
 			}
 		}
 
-		// Organization filter - check if AutoRAG honored it
+		// Organization filter - only filter if hit has org AND it doesn't match
+		// (don't filter out hits missing the organization field)
 		if (organization) {
 			const beforeOrgFilter = hits.length;
-			hits = hits.filter((hit) => hit.organization === organization);
+			hits = hits.filter((hit) => !hit.organization || hit.organization === organization);
 			if (hits.length < beforeOrgFilter) {
 				clientSideFiltersApplied.push(`organization:${organization}`);
 			}
 		}
 
-		// Book filter - check if AutoRAG honored it
+		// Book filter - only filter if hit has book AND it doesn't match
 		const bookFilter = bookParam || parsedRef?.book;
 		if (bookFilter) {
 			const beforeBookFilter = hits.length;
-			hits = hits.filter((hit) => hit.book?.toUpperCase() === bookFilter.toUpperCase());
+			hits = hits.filter((hit) => !hit.book || hit.book.toUpperCase() === bookFilter.toUpperCase());
 			if (hits.length < beforeBookFilter) {
 				clientSideFiltersApplied.push(`book:${bookFilter}`);
 			}
 		}
 
-		// Chapter filter - check if AutoRAG honored it
+		// Chapter filter - only filter if hit has chapter AND it doesn't match
 		const chapterFilter = chapterParam ?? parsedRef?.chapter;
 		if (chapterFilter !== undefined) {
 			const beforeChapterFilter = hits.length;
-			hits = hits.filter((hit) => hit.chapter === chapterFilter);
+			hits = hits.filter((hit) => hit.chapter === undefined || hit.chapter === chapterFilter);
 			if (hits.length < beforeChapterFilter) {
 				clientSideFiltersApplied.push(`chapter:${chapterFilter}`);
 			}
 		}
 
-		// Chunk level filter - check if AutoRAG honored it
+		// Chunk level filter - only filter if hit has chunk_level AND it doesn't match
 		if (chunk_level) {
 			const beforeChunkFilter = hits.length;
-			hits = hits.filter((hit) => hit.chunk_level === chunk_level);
+			hits = hits.filter((hit) => !hit.chunk_level || hit.chunk_level === chunk_level);
 			if (hits.length < beforeChunkFilter) {
 				clientSideFiltersApplied.push(`chunk_level:${chunk_level}`);
 			}
 		}
 
-		// Article ID filter - check if AutoRAG honored it
+		// Article ID filter - only filter if hit has article_id AND it doesn't match
 		if (articleId) {
 			const beforeArticleFilter = hits.length;
-			hits = hits.filter((hit) => hit.article_id?.toLowerCase() === articleId.toLowerCase());
+			hits = hits.filter((hit) => !hit.article_id || hit.article_id.toLowerCase() === articleId.toLowerCase());
 			if (hits.length < beforeArticleFilter) {
 				clientSideFiltersApplied.push(`article_id:${articleId}`);
 			}
