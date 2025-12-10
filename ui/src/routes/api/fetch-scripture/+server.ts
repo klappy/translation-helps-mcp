@@ -51,6 +51,9 @@ function parseResources(resourceParam: string | undefined): string[] {
 
 /**
  * Parse text into individual verses
+ * Handles multiple formats:
+ * - "3:16 For God so loved..." (chapter:verse prefix)
+ * - "16 For God so loved..." (verse only, after # Chapter X header)
  */
 function parseIntoVerses(
 	text: string,
@@ -61,18 +64,34 @@ function parseIntoVerses(
 	const lines = text.split('\n');
 	let currentChapter = 0;
 
+	// Try to extract chapter from book reference (e.g., "1John 4" -> chapter 4)
+	const bookChapterMatch = book.match(/(\d+)$/);
+	if (bookChapterMatch) {
+		currentChapter = parseInt(bookChapterMatch[1], 10);
+	}
+
 	for (const line of lines) {
-		// Chapter header: "## Chapter 3" or "# Book Chapter 3"
-		const chapterMatch = line.match(/^#+ .*?Chapter\s+(\d+)/i) || line.match(/^##\s+Chapter\s+(\d+)/i);
+		const trimmedLine = line.trim();
+		if (!trimmedLine) continue;
+
+		// Chapter header: "# Book Chapter 3" or "# 1John 4"
+		const chapterHeaderMatch = trimmedLine.match(/^#+\s+.*?(\d+)\s*$/);
+		if (chapterHeaderMatch) {
+			currentChapter = parseInt(chapterHeaderMatch[1], 10);
+			continue;
+		}
+
+		// Chapter header: "## Chapter 3"
+		const chapterMatch = trimmedLine.match(/^#+\s+Chapter\s+(\d+)/i);
 		if (chapterMatch) {
 			currentChapter = parseInt(chapterMatch[1], 10);
 			continue;
 		}
 
-		// Verse line: "3:16 For God so loved..."
-		const verseMatch = line.match(/^(\d+):(\d+)\s+(.+)$/);
-		if (verseMatch) {
-			const [, chapter, verse, verseText] = verseMatch;
+		// Verse line with chapter:verse prefix: "3:16 For God so loved..."
+		const fullVerseMatch = trimmedLine.match(/^(\d+):(\d+)\s+(.+)$/);
+		if (fullVerseMatch) {
+			const [, chapter, verse, verseText] = fullVerseMatch;
 			currentChapter = parseInt(chapter, 10);
 			verses.push({
 				text: verseText.trim(),
@@ -81,6 +100,23 @@ function parseIntoVerses(
 				verse: parseInt(verse, 10),
 				translation
 			});
+			continue;
+		}
+
+		// Verse line with just verse number: "16 For God so loved..."
+		const verseOnlyMatch = trimmedLine.match(/^(\d+)\s+(.+)$/);
+		if (verseOnlyMatch && currentChapter > 0) {
+			const [, verse, verseText] = verseOnlyMatch;
+			// Skip if this looks like a chapter header (very short)
+			if (verseText.length > 10) {
+				verses.push({
+					text: verseText.trim(),
+					reference: `${book} ${currentChapter}:${verse}`,
+					chapter: currentChapter,
+					verse: parseInt(verse, 10),
+					translation
+				});
+			}
 		}
 	}
 
