@@ -228,17 +228,20 @@ function cleanUSFM(usfm: string): string {
 }
 
 /**
- * Parse USFM verses and format as markdown
+ * Chapter data structure for chapter-level indexing
  */
-function processUSFMToMarkdown(
-  usfm: string,
-  bookName: string,
-): { markdown: string; verseCount: number; chapterCount: number } {
-  const lines: string[] = [`# ${bookName}`, ""];
+interface ChapterData {
+  chapter: number;
+  verses: Array<{ verse: number; text: string }>;
+}
 
+/**
+ * Parse USFM into chapter-level chunks for better search granularity
+ * Returns an array of chapters, each with its verses
+ */
+function parseUSFMIntoChapters(usfm: string): ChapterData[] {
+  const chapters: Map<number, ChapterData> = new Map();
   let currentChapter = 0;
-  const chapters = new Set<number>();
-  let verseCount = 0;
 
   const parts = usfm.split(/\\v\s+(\d+)\s*/);
 
@@ -246,12 +249,14 @@ function processUSFMToMarkdown(
     const verseNum = parseInt(parts[i], 10);
     let verseText = parts[i + 1] || "";
 
+    // Check for chapter marker in verse text
     const chapterMatch = verseText.match(/\\c\s+(\d+)/);
     if (chapterMatch) {
       currentChapter = parseInt(chapterMatch[1], 10);
       verseText = verseText.replace(/\\c\s+\d+/, "");
     }
 
+    // Check for chapter marker before first verse
     if (i === 1) {
       const preMatch = parts[0].match(/\\c\s+(\d+)/);
       if (preMatch) currentChapter = parseInt(preMatch[1], 10);
@@ -260,72 +265,100 @@ function processUSFMToMarkdown(
     const cleanText = cleanUSFM(verseText);
     if (cleanText && currentChapter > 0) {
       if (!chapters.has(currentChapter)) {
-        if (chapters.size > 0) lines.push("");
-        lines.push(`## Chapter ${currentChapter}`);
-        lines.push("");
-        chapters.add(currentChapter);
+        chapters.set(currentChapter, { chapter: currentChapter, verses: [] });
       }
-      lines.push(`${currentChapter}:${verseNum} ${cleanText}`);
-      verseCount++;
+      chapters.get(currentChapter)!.verses.push({ verse: verseNum, text: cleanText });
     }
   }
 
-  return {
-    markdown: lines.join("\n"),
-    verseCount,
-    chapterCount: chapters.size,
-  };
+  return Array.from(chapters.values()).sort((a, b) => a.chapter - b.chapter);
 }
 
 /**
- * Process a single USFM file into a search index chunk
+ * Format a chapter's verses as markdown
+ */
+function formatChapterAsMarkdown(
+  bookName: string,
+  book: string,
+  chapter: number,
+  verses: Array<{ verse: number; text: string }>,
+): string {
+  const lines: string[] = [
+    `# ${bookName} Chapter ${chapter}`,
+    "",
+  ];
+
+  for (const { verse, text } of verses) {
+    lines.push(`${chapter}:${verse} ${text}`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Process a single USFM file into chapter-level search index chunks
+ * Returns multiple chunks - one per chapter for better search granularity
  */
 function processScriptureFile(
   content: string,
   parsed: ParsedExtractedKey,
-): IndexChunk | null {
+): IndexChunk[] {
   const bookMatch = parsed.fileName.match(/(\d{2})-?([A-Z1-3]{3})\.usfm/i);
   if (!bookMatch) {
     console.log(
       `[Index Worker] Could not extract book code from: ${parsed.fileName}`,
     );
-    return null;
+    return [];
   }
 
   const book = bookMatch[2].toUpperCase();
   const bookName = BOOK_NAMES[book] || book;
 
-  const { markdown, verseCount, chapterCount } = processUSFMToMarkdown(
-    content,
-    bookName,
-  );
+  // Parse USFM into chapter-level data
+  const chapters = parseUSFMIntoChapters(content);
 
-  if (verseCount === 0) {
-    console.log(`[Index Worker] No verses found in ${parsed.fileName}`);
-    return null;
+  if (chapters.length === 0) {
+    console.log(`[Index Worker] No chapters found in ${parsed.fileName}`);
+    return [];
   }
 
-  const metadata: ScriptureMetadata = {
-    language: parsed.language,
-    language_name: parsed.language === "en" ? "English" : parsed.language,
-    organization: parsed.organization,
-    resource: parsed.resourceName,
-    resource_name:
-      RESOURCE_NAMES[parsed.resourceName.toLowerCase()] || parsed.resourceName,
-    version: parsed.version,
-    chunk_level: "book",
-    indexed_at: new Date().toISOString(),
-    book,
-    book_name: bookName,
-    verse_count: verseCount,
-    chapter_count: chapterCount,
-  };
+  // Create one chunk per chapter
+  const chunks: IndexChunk[] = [];
+  
+  for (const chapterData of chapters) {
+    const markdown = formatChapterAsMarkdown(
+      bookName,
+      book,
+      chapterData.chapter,
+      chapterData.verses,
+    );
 
-  return {
-    path: `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${book}.md`,
-    content: markdown,
-    metadata,
-  };
+    const metadata: ScriptureMetadata = {
+      language: parsed.language,
+      language_name: parsed.language === "en" ? "English" : parsed.language,
+      organization: parsed.organization,
+      resource: parsed.resourceName,
+      resource_name:
+        RESOURCE_NAMES[parsed.resourceName.toLowerCase()] || parsed.resourceName,
+      version: parsed.version,
+      chunk_level: "chapter",
+      indexed_at: new Date().toISOString(),
+      book,
+      book_name: bookName,
+      chapter: chapterData.chapter,
+      verse_count: chapterData.verses.length,
+      chapter_count: 1,
+    };
+
+    chunks.push({
+      path: `${parsed.language}/${parsed.organization}/${parsed.resourceName}/${parsed.version}/${book}/${chapterData.chapter}.md`,
+      content: markdown,
+      metadata,
+    });
+  }
+
+  console.log(`[Index Worker] Created ${chunks.length} chapter chunks for ${book}`);
+  return chunks;
 }
 
 /**
@@ -531,7 +564,28 @@ function processMarkdownFile(
 }
 
 /**
+ * Write a single chunk to the search index bucket
+ */
+async function writeChunkToIndex(env: Env, chunk: IndexChunk): Promise<void> {
+  const markdown = generateMarkdownWithFrontmatter(
+    chunk.content,
+    chunk.metadata,
+  );
+  await env.SEARCH_INDEX_BUCKET.put(chunk.path, markdown, {
+    customMetadata: {
+      language: chunk.metadata.language,
+      organization: chunk.metadata.organization,
+      resource: chunk.metadata.resource,
+      chunk_level: chunk.metadata.chunk_level,
+      version: chunk.metadata.version,
+    },
+  });
+}
+
+/**
  * Process a single extracted file and write to search index
+ * Scripture files generate multiple chunks (one per chapter)
+ * Other files generate a single chunk
  */
 async function processExtractedFile(
   env: Env,
@@ -562,18 +616,25 @@ async function processExtractedFile(
     const content = await fileObject.text();
     console.log(`[Index Worker] Read ${content.length} bytes`);
 
-    let chunk: IndexChunk | null = null;
+    // Scripture files return multiple chunks (chapter-level)
+    // Other files return a single chunk
+    let chunks: IndexChunk[] = [];
 
     switch (parsed.extension) {
       case "usfm":
-        chunk = processScriptureFile(content, parsed);
+        // Scripture: returns array of chapter chunks
+        chunks = processScriptureFile(content, parsed);
         break;
-      case "tsv":
-        chunk = processTSVFile(content, parsed);
+      case "tsv": {
+        const chunk = processTSVFile(content, parsed);
+        if (chunk) chunks = [chunk];
         break;
-      case "md":
-        chunk = processMarkdownFile(content, parsed);
+      }
+      case "md": {
+        const chunk = processMarkdownFile(content, parsed);
+        if (chunk) chunks = [chunk];
         break;
+      }
       default:
         console.log(`[Index Worker] Skipping: ${parsed.extension}`);
         return {
@@ -584,7 +645,7 @@ async function processExtractedFile(
         };
     }
 
-    if (!chunk) {
+    if (chunks.length === 0) {
       return {
         key,
         resourceType: parsed.resourceType,
@@ -593,21 +654,13 @@ async function processExtractedFile(
       };
     }
 
-    const markdown = generateMarkdownWithFrontmatter(
-      chunk.content,
-      chunk.metadata,
-    );
-    await env.SEARCH_INDEX_BUCKET.put(chunk.path, markdown, {
-      customMetadata: {
-        language: chunk.metadata.language,
-        organization: chunk.metadata.organization,
-        resource: chunk.metadata.resource,
-        chunk_level: chunk.metadata.chunk_level,
-        version: chunk.metadata.version,
-      },
-    });
+    // Write all chunks to the search index bucket
+    for (const chunk of chunks) {
+      await writeChunkToIndex(env, chunk);
+      console.log(`[Index Worker] Wrote chunk: ${chunk.path}`);
+    }
 
-    console.log(`[Index Worker] Wrote chunk: ${chunk.path}`);
+    console.log(`[Index Worker] Wrote ${chunks.length} chunks for ${key}`);
 
     return {
       key,

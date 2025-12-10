@@ -266,17 +266,23 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 			);
 
 		// Transform search results to scripture format
-		// Filter to scripture resources (ult, ust, ueb, t4t, or 'scripture' type)
+		// Filter to scripture resources AND the requested language
 		const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'scripture', 'glt', 'gst'];
+		const requestedLang = (language || 'en').toLowerCase();
 		const scriptureResults = (searchData.hits || [])
 			.filter((hit: any) => {
 				const resource = (hit.resource || '').toLowerCase();
-				return SCRIPTURE_RESOURCES.includes(resource);
+				const hitLang = (hit.language || '').toLowerCase();
+				// Must be scripture resource AND match requested language
+				const isScripture = SCRIPTURE_RESOURCES.includes(resource);
+				const matchesLanguage = !hitLang || hitLang === requestedLang;
+				return isScripture && matchesLanguage;
 			})
 			.map((hit: any) => ({
 				text: hit.preview?.replace(/\*\*/g, '') || hit.content || '',
 				reference: hit.reference || hit.path || '',
 				translation: hit.resource || '',
+				language: hit.language || language || 'en',
 				searchScore: hit.score,
 				matchedTerms: hit.match?.terms
 			}));

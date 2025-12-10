@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.15](https://github.com/klappy/translation-helps-mcp/compare/v7.19.14...v7.19.15) (2025-12-10)
+
+### Features
+
+- **indexer:** Chapter-level indexing for scripture
+  - Scripture now indexed at chapter level instead of book level
+  - Better search granularity - "love" will find more relevant chapters
+  - Each chapter is a separate searchable chunk with metadata
+  - Path structure: `{lang}/{org}/{resource}/{version}/{book}/{chapter}.md`
+  - Requires re-indexing: flush both R2 buckets to trigger workflow
+
+### Bug Fixes
+
+- **fetch-scripture:** Filter search results by requested language
+  - Was returning results from all languages when searching
+  - Now explicitly filters to match requested language parameter
+
 ### [7.19.14](https://github.com/klappy/translation-helps-mcp/compare/v7.19.13...v7.19.14) (2025-12-10)
 
 ### Bug Fixes

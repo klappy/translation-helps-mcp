@@ -84,9 +84,11 @@ export interface CommonMetadata {
 export interface ScriptureMetadata extends CommonMetadata {
   book: string;
   book_name: string;
-  /** Total verses in the book */
+  /** Chapter number (for chapter-level indexing) */
+  chapter?: number;
+  /** Total verses in the chunk (chapter or book) */
   verse_count: number;
-  /** Total chapters in the book */
+  /** Total chapters (1 for chapter-level, N for book-level) */
   chapter_count: number;
   /** Section titles extracted from USFM \s markers */
   sections?: string[];
