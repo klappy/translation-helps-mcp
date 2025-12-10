@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.9](https://github.com/klappy/translation-helps-mcp/compare/v7.19.8...v7.19.9) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Fix client-side filtering causing empty results
+  - Made all client-side filters lenient for missing metadata fields
+  - Filters now only remove results that have a field AND it doesn't match
+  - Fixed `includeHelps` filter which was filtering out all hits with undefined resource
+  - Added diagnostic logging to track which filters AutoRAG isn't honoring server-side
+  - Filters affected: resource, language, organization, book, chapter, chunk_level, article_id
+
 ### [7.19.8](https://github.com/klappy/translation-helps-mcp/compare/v7.19.7...v7.19.8) (2025-12-06)
 
 ### Documentation
