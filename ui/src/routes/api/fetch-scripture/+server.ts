@@ -39,12 +39,40 @@ const ALL_BOOKS = [
 const NT_BOOKS = ALL_BOOKS.slice(39);
 const OT_BOOKS = ALL_BOOKS.slice(0, 39);
 
+// Book code to display name mapping
+const BOOK_NAMES: Record<string, string> = {
+	gen: 'Genesis', exo: 'Exodus', lev: 'Leviticus', num: 'Numbers', deu: 'Deuteronomy',
+	jos: 'Joshua', jdg: 'Judges', rut: 'Ruth', '1sa': '1Samuel', '2sa': '2Samuel',
+	'1ki': '1Kings', '2ki': '2Kings', '1ch': '1Chronicles', '2ch': '2Chronicles',
+	ezr: 'Ezra', neh: 'Nehemiah', est: 'Esther', job: 'Job', psa: 'Psalms', pro: 'Proverbs',
+	ecc: 'Ecclesiastes', sng: 'SongOfSongs', isa: 'Isaiah', jer: 'Jeremiah', lam: 'Lamentations',
+	ezk: 'Ezekiel', dan: 'Daniel', hos: 'Hosea', jol: 'Joel', amo: 'Amos',
+	oba: 'Obadiah', jon: 'Jonah', mic: 'Micah', nam: 'Nahum', hab: 'Habakkuk',
+	zep: 'Zephaniah', hag: 'Haggai', zec: 'Zechariah', mal: 'Malachi',
+	mat: 'Matthew', mrk: 'Mark', luk: 'Luke', jhn: 'John', act: 'Acts',
+	rom: 'Romans', '1co': '1Corinthians', '2co': '2Corinthians', gal: 'Galatians', eph: 'Ephesians',
+	php: 'Philippians', col: 'Colossians', '1th': '1Thessalonians', '2th': '2Thessalonians',
+	'1ti': '1Timothy', '2ti': '2Timothy', tit: 'Titus', phm: 'Philemon', heb: 'Hebrews',
+	jas: 'James', '1pe': '1Peter', '2pe': '2Peter', '1jn': '1John', '2jn': '2John',
+	'3jn': '3John', jud: 'Jude', rev: 'Revelation'
+};
+
 /**
- * Extract book name from scripture text (for full-resource search)
+ * Get display name for a book (handles both codes and names)
+ */
+function getBookDisplayName(book: string): string {
+	// If it's a code, convert to display name
+	const lower = book.toLowerCase();
+	if (BOOK_NAMES[lower]) return BOOK_NAMES[lower];
+	// Already a name, return as-is
+	return book;
+}
+
+/**
+ * Extract book name from scripture text (fallback for full-resource search)
  * Looks for markdown header like "# Genesis" or "# 1 John"
  */
 function extractBookFromText(text: string): string {
-	// Match "# BookName" at start of line (before any chapter headers)
 	const headerMatch = text.match(/^#\s+([A-Za-z0-9\s]+?)\s*$/m);
 	if (headerMatch) return headerMatch[1].trim();
 	return 'Unknown';
@@ -196,12 +224,13 @@ async function handleFilterRequest(request: Request): Promise<Response | null> {
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 	
-	let results: any[] = [];
+	let results: Array<{ text: string; translation: string; book?: string }> = [];
 	let booksSearched: string[] = [];
 	
 	if (reference) {
 		// Single reference - simple fetch
-		results = await fetcher.fetchScripture(reference, language, organization, requestedResources);
+		const fetched = await fetcher.fetchScripture(reference, language, organization, requestedResources);
+		results = fetched.map(r => ({ ...r }));
 	} else {
 		// Full resource search - parallel fetch all books
 		const books = testament === 'nt' ? NT_BOOKS : testament === 'ot' ? OT_BOOKS : ALL_BOOKS;
@@ -211,7 +240,8 @@ async function handleFilterRequest(request: Request): Promise<Response | null> {
 		const fetchPromises = books.map(async (bookCode) => {
 			try {
 				const bookResults = await fetcher.fetchScripture(bookCode, language, organization, requestedResources);
-				return { bookCode, results: bookResults || [] };
+				// Tag each result with the book code
+				return { bookCode, results: (bookResults || []).map(r => ({ ...r, book: bookCode })) };
 			} catch {
 				return { bookCode, results: [] };
 			}
@@ -247,14 +277,15 @@ async function handleFilterRequest(request: Request): Promise<Response | null> {
 		matchCount: number;
 	}> = [];
 	
-	// For single reference, use parsed book/chapter; for full resource, extract from each result
+	// For single reference, use parsed book/chapter; for full resource, use tagged book
 	const parsedRef = reference ? parseReference(reference) : null;
 	const singleBook = parsedRef?.book || (reference ? reference.replace(/\s+\d+.*$/, '').trim() : null);
 	const singleChapter = parsedRef?.chapter;
 	
 	for (const result of results) {
-		// For full-resource, extract book from result; for single ref, use parsed book
-		const book = singleBook || extractBookFromText(result.text);
+		// Use result.book (from full-resource) or singleBook (from reference) or extract from text
+		const bookRaw = result.book || singleBook || extractBookFromText(result.text);
+		const book = getBookDisplayName(bookRaw);
 		const verses = parseIntoVerses(result.text, book, result.translation, singleChapter);
 		
 		for (const verse of verses) {
