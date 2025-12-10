@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.11](https://github.com/klappy/translation-helps-mcp/compare/v7.19.10...v7.19.11) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Fetch more results from AutoRAG for scripture filtering
+  - When filtering by `scripture` or `bible`, fetch 10x more results (min 100, max 500)
+  - Scripture ranks lower in vector search for single-word queries like "love"
+  - By fetching more results, we increase chances of getting scripture hits to filter
+  - Client-side filtering then returns only scripture resources up to requested limit
+
 ### [7.19.10](https://github.com/klappy/translation-helps-mcp/compare/v7.19.9...v7.19.10) (2025-12-10)
 
 ### Bug Fixes

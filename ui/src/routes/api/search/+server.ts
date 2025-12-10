@@ -500,7 +500,10 @@ async function executeSearch(
 		aiSearchFilter.organization = organization;
 
 		// Optional filters
-		if (resource && resource !== 'scripture') {
+		// Note: 'scripture' and 'bible' are aliases that map to multiple resources (ult, ust, ueb, t4t)
+		// so we can't filter server-side for these - we need to fetch more and filter client-side
+		const needsClientSideResourceFilter = resource === 'scripture' || resource === 'bible';
+		if (resource && !needsClientSideResourceFilter) {
 			aiSearchFilter.resource = resource;
 		}
 		if (chunk_level) {
@@ -516,7 +519,7 @@ async function executeSearch(
 			aiSearchFilter.article_id = articleId.toLowerCase();
 		}
 
-		logger.info('[Search] AI Search filters', { aiSearchFilter, useAI });
+		logger.info('[Search] AI Search filters', { aiSearchFilter, useAI, needsClientSideResourceFilter });
 
 		// Execute search query with filters
 		// Default: Use .search() for fast vector-only retrieval (~2-4s)
@@ -529,11 +532,19 @@ async function executeSearch(
 			const aiSearchStart = Date.now();
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
 
+			// When filtering by scripture/bible, request MORE results from AutoRAG
+			// since we need to filter client-side and scripture may rank lower
+			const fetchLimit = needsClientSideResourceFilter 
+				? Math.min(Math.max(limit * 10, 100), 500)  // Fetch 10x requested or at least 100, max 500
+				: Math.min(limit, 100);
+
 			const searchOptions = {
 				query,
 				filter: aiSearchFilter,
-				max_num_results: Math.min(limit, 100) // Limit at source
+				max_num_results: fetchLimit
 			};
+
+			logger.info('[Search] Fetching results', { requestedLimit: limit, fetchLimit, needsClientSideResourceFilter });
 
 			if (useAI) {
 				// Use aiSearch for LLM-enhanced response (slower but includes AI summary)
