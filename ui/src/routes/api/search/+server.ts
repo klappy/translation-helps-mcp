@@ -368,14 +368,18 @@ function createPreview(content: string, query: string, maxLength: number): strin
  * New path structure: {language}/{organization}/{resource}/{version}/...
  */
 function inferResourceFromPath(path: string): string {
+	// Extract actual resource code from path - don't convert to categories
+	// Path structure: {language}/{organization}/{resource}/{version}/...
 	const parts = path.split('/');
 	if (parts.length >= 3) {
 		const resource = parts[2].toLowerCase();
-		if (['ult', 'ust', 'ueb'].includes(resource)) return 'scripture';
-		if (resource === 'tn') return 'tn';
-		if (resource === 'tw') return 'tw';
-		if (resource === 'ta') return 'ta';
-		if (resource === 'tq') return 'tq';
+		// Return the actual resource code, not a category
+		// Scripture: ult, ust, ueb, t4t, glt, gst
+		// Helps: tn, tw, ta, tq
+		const knownResources = ['ult', 'ust', 'ueb', 't4t', 'glt', 'gst', 'tn', 'tw', 'ta', 'tq', 'twl', 'obs'];
+		if (knownResources.includes(resource)) {
+			return resource;
+		}
 	}
 	return 'unknown';
 }
@@ -500,10 +504,11 @@ async function executeSearch(
 		aiSearchFilter.organization = organization;
 
 		// Optional filters
-		// Note: 'scripture' and 'bible' are aliases that map to multiple resources (ult, ust, ueb, t4t)
-		// so we can't filter server-side for these - we need to fetch more and filter client-side
-		const needsClientSideResourceFilter = resource === 'scripture' || resource === 'bible';
-		if (resource && !needsClientSideResourceFilter) {
+		// Note: 'scripture' and 'bible' are convenience aliases that map to multiple resource codes
+		// (ult, ust, ueb, t4t, glt, gst) so we can't filter server-side - fetch more and filter client-side
+		const isScriptureAlias = resource === 'scripture' || resource === 'bible';
+		if (resource && !isScriptureAlias) {
+			// Direct resource code - can filter server-side
 			aiSearchFilter.resource = resource;
 		}
 		if (chunk_level) {
@@ -519,7 +524,7 @@ async function executeSearch(
 			aiSearchFilter.article_id = articleId.toLowerCase();
 		}
 
-		logger.info('[Search] AI Search filters', { aiSearchFilter, useAI, needsClientSideResourceFilter });
+		logger.info('[Search] AI Search filters', { aiSearchFilter, useAI, isScriptureAlias });
 
 		// Execute search query with filters
 		// Default: Use .search() for fast vector-only retrieval (~2-4s)
@@ -532,9 +537,9 @@ async function executeSearch(
 			const aiSearchStart = Date.now();
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
 
-			// When filtering by scripture/bible, request MORE results from AutoRAG
-			// since we need to filter client-side and scripture may rank lower
-			const fetchLimit = needsClientSideResourceFilter 
+			// When filtering by scripture/bible alias, request MORE results from AutoRAG
+			// since we need to filter client-side and scripture may rank lower in vector search
+			const fetchLimit = isScriptureAlias 
 				? Math.min(Math.max(limit * 10, 100), 500)  // Fetch 10x requested or at least 100, max 500
 				: Math.min(limit, 100);
 
@@ -544,7 +549,7 @@ async function executeSearch(
 				max_num_results: fetchLimit
 			};
 
-			logger.info('[Search] Fetching results', { requestedLimit: limit, fetchLimit, needsClientSideResourceFilter });
+			logger.info('[Search] Fetching results', { requestedLimit: limit, fetchLimit, isScriptureAlias });
 
 			if (useAI) {
 				// Use aiSearch for LLM-enhanced response (slower but includes AI summary)
@@ -660,15 +665,17 @@ async function executeSearch(
 		// Track which filters needed client-side enforcement
 		const clientSideFiltersApplied: string[] = [];
 
-		// Scripture resource aliases
-		const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'scripture'];
+		// Scripture resource codes (actual codes, not a category)
+		const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'glt', 'gst'];
 
 		// Resource filter - only filter if hit has resource AND it doesn't match
 		if (resource) {
 			const beforeResourceFilter = hits.length;
+			// 'scripture' and 'bible' are convenience aliases for all scripture resources
 			if (resource === 'scripture' || resource === 'bible') {
 				hits = hits.filter((hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource));
 			} else {
+				// Direct resource code filter (ult, ust, tn, tw, etc.)
 				hits = hits.filter((hit) => !hit.resource || hit.resource === resource);
 			}
 			if (hits.length < beforeResourceFilter) {
@@ -734,10 +741,10 @@ async function executeSearch(
 			}
 		}
 
-		// Include helps filter (exclude helps if false)
+		// Include helps filter (exclude helps if false, keep only scripture)
 		// Be lenient: if resource is missing, keep the hit (don't filter out)
 		if (!includeHelps) {
-			hits = hits.filter((hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource));
+			hits = hits.filter((hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource.toLowerCase()));
 		}
 
 		// Log diagnostic info about filter effectiveness

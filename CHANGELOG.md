@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.13](https://github.com/klappy/translation-helps-mcp/compare/v7.19.12...v7.19.13) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Use actual resource codes instead of 'scripture' category
+  - `inferResourceFromPath` now returns actual codes (ult, ust, ueb, t4t) not 'scripture'
+  - Search results now show `resource: "ult"` instead of `resource: "scripture"`
+  - Consistent with how helps resources work (tn, tw, tq, ta)
+  - 'scripture' and 'bible' remain as convenience aliases for filtering
+  - Filter by specific resource: `resource=ult` or `resource=ust`
+  - Filter all scripture: `resource=scripture` (expands to ult, ust, ueb, t4t, glt, gst)
+
 ### [7.19.12](https://github.com/klappy/translation-helps-mcp/compare/v7.19.11...v7.19.12) (2025-12-10)
 
 ### Bug Fixes
