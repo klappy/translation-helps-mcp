@@ -104,7 +104,8 @@ function parseIntoVerses(
 		}
 
 		// Verse line with just verse number: "16 For God so loved..."
-		const verseOnlyMatch = trimmedLine.match(/^(\d+)\s+(.+)$/);
+		// Also handles: "[ULT v87...] 1 Beloved..." (translation prefix)
+		const verseOnlyMatch = trimmedLine.match(/^(?:\[[^\]]+\]\s*)?(\d+)\s+(.+)$/);
 		if (verseOnlyMatch && currentChapter > 0) {
 			const [, verse, verseText] = verseOnlyMatch;
 			// Skip if this looks like a chapter header (very short)
