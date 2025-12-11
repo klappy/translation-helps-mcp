@@ -294,15 +294,11 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 				// Find a .usfm file to extract the base path from
 				// e.g., "by-url/git.door43.org/unfoldingWord/en_ult/archive/v87.zip/files/41-MAT.usfm"
 				const usfmFile = listResult.objects.find(obj => obj.key.endsWith('.usfm'));
-				if (!usfmFile) {
-					console.log('[fetch-scripture] No USFM files found in R2 list');
-					fetchMethod = 'per-book-fallback';
-				}
-				
 				const samplePath = usfmFile?.key || '';
 				const archiveMatch = samplePath.match(/^(by-url\/[^/]+\/[^/]+\/[^/]+\/archive\/[^/]+\.zip\/files\/)/);
 				
 				if (archiveMatch && usfmFile) {
+					// R2 direct path found!
 					const basePath = archiveMatch[1];
 					console.log(`[fetch-scripture] R2 base path: ${basePath}`);
 					
