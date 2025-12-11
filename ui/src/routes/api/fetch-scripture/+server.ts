@@ -284,19 +284,25 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 		const r2Prefix = `by-url/git.door43.org/${organization}/${language}_${resource}/`;
 		
 		try {
-			// List to find the versioned path
+			// List to find the versioned path - need enough items to find a .usfm file
 			const listStart = Date.now();
-			const listResult = await r2Bucket.list({ prefix: r2Prefix, limit: 10 });
+			const listResult = await r2Bucket.list({ prefix: r2Prefix, limit: 100 });
 			const listDuration = Date.now() - listStart;
 			tracer.addApiCall({ url: `r2://list/${r2Prefix}`, duration: listDuration, status: 200, size: listResult.objects?.length || 0, cached: true });
 			
 			if (listResult.objects && listResult.objects.length > 0) {
-				// Extract the full path pattern from first result
+				// Find a .usfm file to extract the base path from
 				// e.g., "by-url/git.door43.org/unfoldingWord/en_ult/archive/v87.zip/files/41-MAT.usfm"
-				const samplePath = listResult.objects[0].key;
+				const usfmFile = listResult.objects.find(obj => obj.key.endsWith('.usfm'));
+				if (!usfmFile) {
+					console.log('[fetch-scripture] No USFM files found in R2 list');
+					fetchMethod = 'per-book-fallback';
+				}
+				
+				const samplePath = usfmFile?.key || '';
 				const archiveMatch = samplePath.match(/^(by-url\/[^/]+\/[^/]+\/[^/]+\/archive\/[^/]+\.zip\/files\/)/);
 				
-				if (archiveMatch) {
+				if (archiveMatch && usfmFile) {
 					const basePath = archiveMatch[1];
 					console.log(`[fetch-scripture] R2 base path: ${basePath}`);
 					
