@@ -25,6 +25,7 @@ import {
 } from '$lib/../../../src/services/SearchServiceFactory.js';
 import { parseReference } from '$lib/referenceParser.js';
 import { generateStemmedPattern } from '$lib/stemmedFilter.js';
+import { initializeR2Env, getR2Env } from '$lib/../../../src/functions/r2-env.js';
 
 // All 66 book codes for full-resource search
 const ALL_BOOKS = [
@@ -76,6 +77,42 @@ function extractBookFromText(text: string): string {
 	const headerMatch = text.match(/^#\s+([A-Za-z0-9\s]+?)\s*$/m);
 	if (headerMatch) return headerMatch[1].trim();
 	return 'Unknown';
+}
+
+/**
+ * Extract clean text from USFM format
+ * Preserves chapter/verse structure for parsing
+ */
+function extractFullBookFromUSFM(usfm: string): string {
+	try {
+		const bookText = usfm
+			// Preserve chapter markers
+			.replace(/\\c\s+(\d+)/g, '[[CHAPTER:$1]]')
+			// Preserve verse markers
+			.replace(/\\v\s+(\d+)\s*/g, '[[VERSE:$1]]')
+			// Remove alignment markers
+			.replace(/\\zaln-s\s*\|[^\\]+\\\*/g, '')
+			.replace(/\\zaln-e\\\*/g, '')
+			// Remove word markers
+			.replace(/\\w\s+([^|]+)\|[^\\]+\\w\*/g, '$1')
+			// Remove other USFM markers
+			.replace(/\\-s\s*\|[^\\]+\\\*/g, '')
+			.replace(/\\-e\\\*/g, '')
+			.replace(/\\[a-z]+\d*\s*/g, '')
+			// Remove asterisks and braces
+			.replace(/\*+/g, '')
+			.replace(/\{([^}]+)\}/g, '$1')
+			// Clean whitespace
+			.replace(/\s+/g, ' ')
+			.replace(/\s+([.,;:!?])/g, '$1')
+			// Format chapters and verses
+			.replace(/\[\[CHAPTER:(\d+)\]\]/g, '\n\n## Chapter $1\n\n')
+			.replace(/\[\[VERSE:(\d+)\]\]/g, '\n$1 ')
+			.trim();
+		return bookText;
+	} catch {
+		return '';
+	}
 }
 
 /**
@@ -175,8 +212,9 @@ function parseIntoVerses(
 
 /**
  * Handle filter requests - stemmed regex matching
+ * Uses direct R2 access for full-resource search (much faster than per-book zip fetches)
  */
-async function handleFilterRequest(request: Request): Promise<Response | null> {
+async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Response | null> {
 	const url = new URL(request.url);
 	const filter = url.searchParams.get('filter');
 	
@@ -226,28 +264,119 @@ async function handleFilterRequest(request: Request): Promise<Response | null> {
 	
 	let results: Array<{ text: string; translation: string; book?: string }> = [];
 	let booksSearched: string[] = [];
+	let fetchMethod = 'per-book';
 	
 	if (reference) {
 		// Single reference - simple fetch
 		const fetched = await fetcher.fetchScripture(reference, language, organization, requestedResources);
 		results = fetched.map(r => ({ ...r }));
-	} else {
-		// Full resource search - parallel fetch all books
+	} else if (r2Bucket) {
+		// Full resource search with R2 direct access - much faster!
+		fetchMethod = 'r2-direct';
 		const books = testament === 'nt' ? NT_BOOKS : testament === 'ot' ? OT_BOOKS : ALL_BOOKS;
-		console.log(`[fetch-scripture] Parallel fetching ${books.length} books from ${requestedResources[0]}`);
+		const resource = requestedResources[0];
 		
-		// Fire all fetches in parallel (I/O bound - overlaps nicely)
+		console.log(`[fetch-scripture] R2 direct fetch for ${books.length} books in ${resource}`);
+		
+		// Build R2 prefix for this resource
+		// Files are stored at: by-url/git.door43.org/{org}/{lang}_{resource}/archive/{version}.zip/files/{bookfile}.usfm
+		// We need to discover the version by listing first
+		const r2Prefix = `by-url/git.door43.org/${organization}/${language}_${resource}/`;
+		
+		try {
+			// List to find the versioned path
+			const listStart = Date.now();
+			const listResult = await r2Bucket.list({ prefix: r2Prefix, limit: 10 });
+			const listDuration = Date.now() - listStart;
+			tracer.addApiCall({ url: `r2://list/${r2Prefix}`, duration: listDuration, status: 200, size: listResult.objects?.length || 0, cached: true });
+			
+			if (listResult.objects && listResult.objects.length > 0) {
+				// Extract the full path pattern from first result
+				// e.g., "by-url/git.door43.org/unfoldingWord/en_ult/archive/v87.zip/files/41-MAT.usfm"
+				const samplePath = listResult.objects[0].key;
+				const archiveMatch = samplePath.match(/^(by-url\/[^/]+\/[^/]+\/[^/]+\/archive\/[^/]+\.zip\/files\/)/);
+				
+				if (archiveMatch) {
+					const basePath = archiveMatch[1];
+					console.log(`[fetch-scripture] R2 base path: ${basePath}`);
+					
+					// Parallel fetch all book files from R2
+					const bookFileMap: Record<string, string> = {
+						gen: '01-GEN', exo: '02-EXO', lev: '03-LEV', num: '04-NUM', deu: '05-DEU',
+						jos: '06-JOS', jdg: '07-JDG', rut: '08-RUT', '1sa': '09-1SA', '2sa': '10-2SA',
+						'1ki': '11-1KI', '2ki': '12-2KI', '1ch': '13-1CH', '2ch': '14-2CH',
+						ezr: '15-EZR', neh: '16-NEH', est: '17-EST', job: '18-JOB', psa: '19-PSA', pro: '20-PRO',
+						ecc: '21-ECC', sng: '22-SNG', isa: '23-ISA', jer: '24-JER', lam: '25-LAM',
+						ezk: '26-EZK', dan: '27-DAN', hos: '28-HOS', jol: '29-JOL', amo: '30-AMO',
+						oba: '31-OBA', jon: '32-JON', mic: '33-MIC', nam: '34-NAM', hab: '35-HAB',
+						zep: '36-ZEP', hag: '37-HAG', zec: '38-ZEC', mal: '39-MAL',
+						mat: '41-MAT', mrk: '42-MRK', luk: '43-LUK', jhn: '44-JHN', act: '45-ACT',
+						rom: '46-ROM', '1co': '47-1CO', '2co': '48-2CO', gal: '49-GAL', eph: '50-EPH',
+						php: '51-PHP', col: '52-COL', '1th': '53-1TH', '2th': '54-2TH',
+						'1ti': '55-1TI', '2ti': '56-2TI', tit: '57-TIT', phm: '58-PHM', heb: '59-HEB',
+						jas: '60-JAS', '1pe': '61-1PE', '2pe': '62-2PE', '1jn': '63-1JN', '2jn': '64-2JN',
+						'3jn': '65-3JN', jud: '66-JUD', rev: '67-REV'
+					};
+					
+					const fetchPromises = books.map(async (bookCode) => {
+						const fileCode = bookFileMap[bookCode];
+						if (!fileCode) return { bookCode, text: null };
+						
+						const key = `${basePath}${fileCode}.usfm`;
+						const fetchStart = Date.now();
+						try {
+							const obj = await r2Bucket.get(key);
+							const fetchDuration = Date.now() - fetchStart;
+							if (obj) {
+								const text = await obj.text();
+								tracer.addApiCall({ url: `r2://get/${fileCode}.usfm`, duration: fetchDuration, status: 200, size: text.length, cached: true });
+								return { bookCode, text };
+							}
+						} catch {
+							// File not in R2
+						}
+						tracer.addApiCall({ url: `r2://get/${fileCode}.usfm`, duration: Date.now() - fetchStart, status: 404, size: 0, cached: false });
+						return { bookCode, text: null };
+					});
+					
+					const r2Results = await Promise.all(fetchPromises);
+					
+					// Process R2 results - extract full book content from USFM
+					for (const { bookCode, text } of r2Results) {
+						if (text) {
+							// Extract clean text from USFM
+							const cleanText = extractFullBookFromUSFM(text);
+							results.push({ text: cleanText, translation: resource.toUpperCase(), book: bookCode });
+							booksSearched.push(bookCode);
+						}
+					}
+				}
+			}
+		} catch (error) {
+			console.error('[fetch-scripture] R2 direct fetch failed:', error);
+		}
+		
+		// Fallback to per-book fetch if R2 didn't work
+		if (results.length === 0) {
+			console.log('[fetch-scripture] R2 direct failed, falling back to per-book fetch');
+			fetchMethod = 'per-book-fallback';
+		}
+	}
+	
+	// Fallback: per-book fetch (slower but always works)
+	if (!reference && results.length === 0) {
+		const books = testament === 'nt' ? NT_BOOKS : testament === 'ot' ? OT_BOOKS : ALL_BOOKS;
+		console.log(`[fetch-scripture] Per-book fetch for ${books.length} books from ${requestedResources[0]}`);
+		
 		const fetchPromises = books.map(async (bookCode) => {
 			try {
 				const bookResults = await fetcher.fetchScripture(bookCode, language, organization, requestedResources);
-				// Tag each result with the book code
 				return { bookCode, results: (bookResults || []).map(r => ({ ...r, book: bookCode })) };
 			} catch {
 				return { bookCode, results: [] };
 			}
 		});
 		
-		// Gather all results
 		const allBookResults = await Promise.all(fetchPromises);
 		for (const { bookCode, results: bookResults } of allBookResults) {
 			if (bookResults.length > 0) {
@@ -323,6 +452,7 @@ async function handleFilterRequest(request: Request): Promise<Response | null> {
 		response.reference = reference;
 	} else {
 		response.searchScope = {
+			fetchMethod,
 			testament: testament || 'all',
 			booksSearched: booksSearched.length,
 			books: booksSearched
@@ -466,8 +596,15 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
  * GET handler - check for filter first, then normal endpoint
  */
 export const GET: RequestHandler = async (event) => {
+	// Initialize R2 environment before any operations
+	const r2Bucket = (event.platform as any)?.env?.ZIP_FILES;
+	const caches: CacheStorage | undefined = (event.platform as any)?.caches;
+	if (r2Bucket || caches) {
+		initializeR2Env(r2Bucket, caches);
+	}
+	
 	// Check for filter param first
-	const filterResponse = await handleFilterRequest(event.request);
+	const filterResponse = await handleFilterRequest(event.request, r2Bucket);
 	if (filterResponse) return filterResponse;
 	
 	// Otherwise use normal endpoint
