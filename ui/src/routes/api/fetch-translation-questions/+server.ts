@@ -551,6 +551,13 @@ async function fetchTranslationQuestions(
 
 	let results: any[] = [];
 
+	// Check if we have enough parameters to proceed
+	if (!reference && !search) {
+		throw new Error(
+			'Reference is required. Example: reference=John 3:16. Or use filter/search for broader queries.'
+		);
+	}
+
 	// If no reference but has search, search across all books
 	if (!reference && search) {
 		console.log('[fetch-translation-questions] No reference, searching all books for:', search);
@@ -742,6 +749,11 @@ const simpleEndpointHandler = createSimpleEndpoint({
 		'No translation questions found': {
 			status: 404,
 			message: 'No translation questions available for this reference.'
+		},
+		'Reference is required': {
+			status: 400,
+			message:
+				'Reference parameter is required. Example: reference=John 3:16. Or use filter/search parameter for broader queries.'
 		}
 	})
 });

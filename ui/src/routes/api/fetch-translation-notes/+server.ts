@@ -519,6 +519,13 @@ async function fetchTranslationNotes(params: Record<string, any>, request: Reque
 
 	let results: any[] = [];
 
+	// Check if we have enough parameters to proceed
+	if (!reference && !search) {
+		throw new Error(
+			'Reference is required. Example: reference=John 3:16. Or use filter/search for broader queries.'
+		);
+	}
+
 	// If no reference but has search, search across all books
 	if (!reference && search) {
 		console.log(
@@ -772,6 +779,11 @@ const simpleEndpointHandler = createSimpleEndpoint({
 		'No translation notes found': {
 			status: 404,
 			message: 'No translation notes available for this reference.'
+		},
+		'Reference is required': {
+			status: 400,
+			message:
+				'Reference parameter is required. Example: reference=John 3:16. Or use filter/search parameter for broader queries.'
 		}
 	})
 });

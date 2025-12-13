@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.9](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.8...v7.20.9) (2025-12-13)
+
+### Bug Fixes
+
+- **questions:** Add proper validation when reference not provided (prevents "Invalid reference: undefined")
+- **questions:** Clear error message: "Reference is required. Example: reference=John 3:16"
+- **notes:** Add same validation to translation notes endpoint
+- **notes:** Clear error message with helpful hints for filter/search alternatives
+
 ### [7.20.8](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.7...v7.20.8) (2025-12-13)
 
 ### Bug Fixes
