@@ -7,6 +7,9 @@
  * Supports RC links from TWL, direct terms, and paths.
  * Provides Table of Contents when no specific term is requested.
  * Optional search parameter for filtering content relevance.
+ *
+ * NOTE: For searching ACROSS all words, use /api/fetch-translation-word-links?filter=term
+ * which searches the word links (TWL) to find all verses/words matching a term.
  */
 
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
@@ -52,7 +55,9 @@ function generateTableOfContents(language: string, organization: string) {
 		usage: {
 			byRCLink: `?rcLink=rc://${language}/tw/dict/bible/kt/love`,
 			byTerm: '?term=love',
-			byPath: '?path=bible/kt/love.md'
+			byPath: '?path=bible/kt/love.md',
+			searchAcrossWords:
+				'To search across all words, use /api/fetch-translation-word-links?filter=love'
 		},
 		language,
 		organization

@@ -6,8 +6,10 @@
  * Returns a specific translation academy module by ID or path.
  * Academy articles are linked from Translation Notes via RC links.
  * Optional search parameter for filtering content relevance.
+ * Filter parameter for stemmed regex matching across all modules with statistics.
  */
 
+import { json } from '@sveltejs/kit';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
@@ -15,6 +17,205 @@ import { createCORSHandler, createSimpleEndpoint } from '$lib/simpleEndpoint.js'
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 import { parseTranslationAcademyRCLink, isTranslationAcademyRCLink } from '$lib/rcLinkParser.js';
 import { createSearchService } from '$lib/../../../src/services/SearchServiceFactory.js';
+
+// Import shared filter utilities
+import {
+	generateStemmedPattern,
+	computeFilterStatistics,
+	formatFilterResponseAsMarkdown
+} from '$lib/filterUtils.js';
+
+/**
+ * Handle filter requests - stemmed regex matching across all TA modules
+ */
+async function handleFilterRequest(
+	filter: string,
+	params: Record<string, any>,
+	request: Request
+): Promise<any> {
+	const { language, organization, category: categoryFilter } = params;
+	const url = new URL(request.url);
+
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`ta-filter-${Date.now()}`, 'translation-academy-filter');
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
+
+	// Generate stemmed pattern
+	const pattern = generateStemmedPattern(filter);
+	console.log(`[fetch-translation-academy] Filter: "${filter}" Pattern: ${pattern}`);
+
+	// First, get the table of contents to know all modules
+	const toc = await fetcher.fetchTranslationAcademy(language, organization);
+
+	if (!toc.modules || toc.modules.length === 0) {
+		throw new Error('No Translation Academy modules found');
+	}
+
+	// Collect matches
+	const matches: Array<{
+		moduleId: string;
+		title: string;
+		category: string;
+		excerpt: string;
+		matchedTerms: string[];
+		matchCount: number;
+		path: string;
+		rcLink: string;
+	}> = [];
+
+	// Filter by category if specified
+	let modulesToSearch = toc.modules;
+	if (categoryFilter) {
+		modulesToSearch = toc.modules.filter((m: any) =>
+			m.path.toLowerCase().includes(`/${categoryFilter}/`)
+		);
+	}
+
+	let modulesSearched = 0;
+	let modulesFailed = 0;
+
+	// Process modules in batches
+	const batchSize = 10;
+	for (let i = 0; i < modulesToSearch.length; i += batchSize) {
+		const batch = modulesToSearch.slice(i, i + batchSize);
+
+		const batchPromises = batch.map(async (moduleEntry: any) => {
+			try {
+				// Fetch full module content
+				const result = await fetcher.fetchTranslationAcademy(
+					language,
+					organization,
+					moduleEntry.id,
+					moduleEntry.path
+				);
+
+				if (result.modules && result.modules.length > 0) {
+					const module = result.modules[0];
+					const content = module.markdown || '';
+
+					// Extract title
+					const titleMatch = content.match(/^#\s+(.+)$/m);
+					const title = titleMatch ? titleMatch[1].trim() : moduleEntry.id;
+
+					// Extract category from path
+					const catMatch = moduleEntry.path.match(/\/(translate|checking|process|intro)\//);
+					const category = catMatch ? catMatch[1] : 'translate';
+
+					// Check if content matches pattern
+					const searchText = `${moduleEntry.id} ${title} ${content}`;
+					pattern.lastIndex = 0;
+					const found: string[] = [];
+					let match;
+					while ((match = pattern.exec(searchText)) !== null) {
+						found.push(match[0]);
+					}
+
+					if (found.length > 0) {
+						// Extract excerpt around first match
+						let excerpt = '';
+						const firstMatchIndex = searchText.indexOf(found[0]);
+						if (firstMatchIndex >= 0) {
+							const start = Math.max(0, firstMatchIndex - 100);
+							const end = Math.min(searchText.length, firstMatchIndex + 200);
+							excerpt = searchText.slice(start, end).replace(/\s+/g, ' ').trim();
+							if (start > 0) excerpt = '...' + excerpt;
+							if (end < searchText.length) excerpt = excerpt + '...';
+						}
+
+						return {
+							success: true,
+							match: {
+								moduleId: moduleEntry.id,
+								title,
+								category,
+								excerpt,
+								matchedTerms: [...new Set(found)],
+								matchCount: found.length,
+								path: moduleEntry.path,
+								rcLink: `rc://*/ta/man/${category}/${moduleEntry.id}`
+							}
+						};
+					}
+				}
+				return { success: true, match: null };
+			} catch (error) {
+				console.warn(`[fetch-translation-academy] Filter failed for ${moduleEntry.id}:`, error);
+				return { success: false, match: null };
+			}
+		});
+
+		const batchResults = await Promise.all(batchPromises);
+		for (const result of batchResults) {
+			if (result.success) {
+				modulesSearched++;
+				if (result.match) {
+					matches.push(result.match);
+				}
+			} else {
+				modulesFailed++;
+			}
+		}
+	}
+
+	console.log(
+		`[fetch-translation-academy] Filter complete: ${matches.length} matches from ${modulesSearched} modules`
+	);
+
+	// Compute statistics by category
+	const statistics = computeFilterStatistics(matches, {
+		includeTestament: false,
+		includeBook: false,
+		includeCategory: true
+	});
+
+	// Build response
+	const response = {
+		filter,
+		pattern: pattern.toString(),
+		language,
+		organization,
+		totalMatches: matches.length,
+		statistics,
+		searchScope: {
+			category: categoryFilter || 'all',
+			modulesSearched,
+			modulesFailed
+		},
+		matches
+	};
+
+	// Check format parameter
+	const format = url.searchParams.get('format') || 'json';
+
+	if (format === 'md' || format === 'markdown') {
+		const markdown = formatFilterResponseAsMarkdown(
+			response,
+			statistics,
+			'translation-academy',
+			(match: (typeof matches)[0]) => {
+				let md = `### ${match.title} (\`${match.moduleId}\`)\n\n`;
+				md += `**Category:** ${match.category}\n\n`;
+				md += `${match.excerpt}\n\n`;
+				if (match.matchedTerms.length > 0) {
+					md += `*Matched: ${match.matchedTerms.join(', ')}*\n`;
+				}
+				md += `*Link: ${match.rcLink}*\n\n`;
+				md += '---\n\n';
+				return md;
+			}
+		);
+		return new Response(markdown, {
+			status: 200,
+			headers: {
+				'Content-Type': 'text/markdown; charset=utf-8',
+				'X-Format': 'md'
+			}
+		});
+	}
+
+	return json(response);
+}
 
 /**
  * Fetch a specific translation academy module
@@ -31,8 +232,15 @@ async function fetchTranslationAcademy(
 		rcLink,
 		language = 'en',
 		organization = 'unfoldingWord',
-		search
+		search,
+		filter,
+		category
 	} = params;
+
+	// Handle filter requests first (stemmed regex matching across all modules)
+	if (filter) {
+		return handleFilterRequest(filter, params, request);
+	}
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`ta-${Date.now()}`, 'fetch-translation-academy');
@@ -80,6 +288,12 @@ async function fetchTranslationAcademy(
 				resourceType: 'ta',
 				description: 'Translation Academy Table of Contents'
 			},
+			usage: {
+				byModuleId: '?moduleId=figs-metaphor',
+				byPath: '?path=translate/figs-metaphor',
+				byRCLink: '?rcLink=rc://*/ta/man/translate/figs-metaphor',
+				byFilter: '?filter=metaphor (searches all modules for matching terms)'
+			},
 			_trace: fetcher.getTrace()
 		};
 	}
@@ -91,8 +305,7 @@ async function fetchTranslationAcademy(
 
 		// Parse module ID from path if needed
 		const id = module.id || moduleId;
-		const category =
-			module.path.match(/\/(translate|checking|process|intro)\//)?.[1] || 'translate';
+		const cat = module.path.match(/\/(translate|checking|process|intro)\//)?.[1] || 'translate';
 
 		// Extract title from concatenated content
 		// Title is now at the beginning as # Title
@@ -109,10 +322,10 @@ async function fetchTranslationAcademy(
 		const article = {
 			moduleId: id,
 			title,
-			category,
+			category: cat,
 			path: module.path,
 			content: module.markdown || '',
-			rcLink: `rc://*/ta/man/${category}/${id}`,
+			rcLink: `rc://*/ta/man/${cat}/${id}`,
 			language,
 			organization,
 			metadata: {
@@ -172,7 +385,7 @@ async function fetchTranslationAcademy(
 export const GET = createSimpleEndpoint({
 	name: 'fetch-translation-academy-v2',
 
-	// Use common parameter validators + moduleId, path, rcLink, search
+	// Use common parameter validators + moduleId, path, rcLink, search, filter
 	params: [
 		{
 			name: 'moduleId',
@@ -197,7 +410,20 @@ export const GET = createSimpleEndpoint({
 		},
 		COMMON_PARAMS.language,
 		COMMON_PARAMS.organization,
-		COMMON_PARAMS.search
+		COMMON_PARAMS.search,
+		{
+			name: 'filter',
+			required: false,
+			description:
+				'Stemmed regex filter to search all modules (e.g., "metaphor" matches "metaphor", "metaphors", "metaphorical")'
+		},
+		{
+			name: 'category',
+			required: false,
+			validate: (value) =>
+				!value || ['translate', 'checking', 'process', 'intro'].includes(value.toLowerCase()),
+			description: 'Limit filter to category: translate, checking, process, or intro'
+		}
 	],
 
 	fetch: fetchTranslationAcademy,
@@ -215,6 +441,10 @@ export const GET = createSimpleEndpoint({
 		'Invalid RC link format': {
 			status: 400,
 			message: 'Invalid RC link format. Expected: rc://*/ta/man/[category]/[moduleId]'
+		},
+		'No Translation Academy modules found': {
+			status: 404,
+			message: 'No Translation Academy modules available to search.'
 		}
 	}),
 

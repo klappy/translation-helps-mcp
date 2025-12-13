@@ -6,8 +6,10 @@
  * - Standard error handlers
  * - Consistent response shapes
  * - Optional search parameter for in-reference searching
+ * - Filter parameter for stemmed regex matching with statistics
  */
 
+import { json } from '@sveltejs/kit';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS, isValidReference } from '$lib/commonValidators.js';
@@ -19,6 +21,250 @@ import {
 	type SearchDocument
 } from '$lib/../../../src/services/SearchServiceFactory.js';
 
+// Import shared filter utilities
+import {
+	generateStemmedPattern,
+	computeFilterStatistics,
+	formatFilterResponseAsMarkdown
+} from '$lib/filterUtils.js';
+
+// Book names for full-resource filter
+const BOOKS_TO_SEARCH = [
+	'Genesis',
+	'Exodus',
+	'Leviticus',
+	'Numbers',
+	'Deuteronomy',
+	'Joshua',
+	'Judges',
+	'Ruth',
+	'1 Samuel',
+	'2 Samuel',
+	'1 Kings',
+	'2 Kings',
+	'1 Chronicles',
+	'2 Chronicles',
+	'Ezra',
+	'Nehemiah',
+	'Esther',
+	'Job',
+	'Psalms',
+	'Proverbs',
+	'Ecclesiastes',
+	'Song of Solomon',
+	'Isaiah',
+	'Jeremiah',
+	'Lamentations',
+	'Ezekiel',
+	'Daniel',
+	'Hosea',
+	'Joel',
+	'Amos',
+	'Obadiah',
+	'Jonah',
+	'Micah',
+	'Nahum',
+	'Habakkuk',
+	'Zephaniah',
+	'Haggai',
+	'Zechariah',
+	'Malachi',
+	'Matthew',
+	'Mark',
+	'Luke',
+	'John',
+	'Acts',
+	'Romans',
+	'1 Corinthians',
+	'2 Corinthians',
+	'Galatians',
+	'Ephesians',
+	'Philippians',
+	'Colossians',
+	'1 Thessalonians',
+	'2 Thessalonians',
+	'1 Timothy',
+	'2 Timothy',
+	'Titus',
+	'Philemon',
+	'Hebrews',
+	'James',
+	'1 Peter',
+	'2 Peter',
+	'1 John',
+	'2 John',
+	'3 John',
+	'Jude',
+	'Revelation'
+];
+
+// OT/NT split for testament filtering
+const OT_BOOKS = BOOKS_TO_SEARCH.slice(0, 39);
+const NT_BOOKS = BOOKS_TO_SEARCH.slice(39);
+
+/**
+ * Handle filter requests - stemmed regex matching across questions
+ */
+async function handleFilterRequest(
+	filter: string,
+	params: Record<string, any>,
+	request: Request
+): Promise<any> {
+	const { reference, language, organization, testament } = params;
+	const url = new URL(request.url);
+
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`tq-filter-${Date.now()}`, 'translation-questions-filter');
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
+
+	// Generate stemmed pattern
+	const pattern = generateStemmedPattern(filter);
+	console.log(`[fetch-translation-questions] Filter: "${filter}" Pattern: ${pattern}`);
+
+	// Collect matches
+	const matches: Array<{
+		reference: string;
+		question: string;
+		response: string;
+		matchedTerms: string[];
+		matchCount: number;
+	}> = [];
+
+	// Determine books to search
+	let booksToSearch: string[];
+	if (reference) {
+		booksToSearch = [reference];
+	} else {
+		if (testament === 'ot') {
+			booksToSearch = OT_BOOKS;
+		} else if (testament === 'nt') {
+			booksToSearch = NT_BOOKS;
+		} else {
+			booksToSearch = BOOKS_TO_SEARCH;
+		}
+	}
+
+	let booksSearched = 0;
+	let booksFailed = 0;
+
+	// Process books in batches
+	const batchSize = 10;
+	for (let i = 0; i < booksToSearch.length; i += batchSize) {
+		const batch = booksToSearch.slice(i, i + batchSize);
+
+		const batchPromises = batch.map(async (book) => {
+			try {
+				const bookQuestions = await fetcher.fetchTranslationQuestions(
+					book,
+					language,
+					organization
+				);
+				if (bookQuestions && bookQuestions.length > 0) {
+					const bookMatches: typeof matches = [];
+					for (const q of bookQuestions) {
+						const question = q.question || q.Question || '';
+						const response = q.response || q.Response || q.answer || '';
+						const searchText = `${question} ${response}`;
+
+						pattern.lastIndex = 0;
+						const found: string[] = [];
+						let match;
+						while ((match = pattern.exec(searchText)) !== null) {
+							found.push(match[0]);
+						}
+
+						if (found.length > 0) {
+							bookMatches.push({
+								reference: q.Reference || q.reference || book,
+								question,
+								response,
+								matchedTerms: [...new Set(found)],
+								matchCount: found.length
+							});
+						}
+					}
+					return { success: true, matches: bookMatches };
+				}
+				return { success: true, matches: [] };
+			} catch (error) {
+				console.warn(`[fetch-translation-questions] Filter failed for ${book}:`, error);
+				return { success: false, matches: [] };
+			}
+		});
+
+		const batchResults = await Promise.all(batchPromises);
+		for (const result of batchResults) {
+			if (result.success) {
+				booksSearched++;
+				matches.push(...result.matches);
+			} else {
+				booksFailed++;
+			}
+		}
+	}
+
+	console.log(
+		`[fetch-translation-questions] Filter complete: ${matches.length} matches from ${booksSearched} books`
+	);
+
+	// Compute statistics using shared utility
+	const statistics = computeFilterStatistics(matches);
+
+	// Build response
+	const response = {
+		filter,
+		pattern: pattern.toString(),
+		language,
+		organization,
+		totalMatches: matches.length,
+		statistics,
+		searchScope: {
+			testament: testament || 'all',
+			booksSearched,
+			booksFailed
+		},
+		matches,
+		_trace: tracer.getTrace()
+	};
+
+	if (reference) {
+		(response as any).reference = reference;
+	}
+
+	// Check format parameter
+	const format = url.searchParams.get('format') || 'json';
+
+	if (format === 'md' || format === 'markdown') {
+		const markdown = formatFilterResponseAsMarkdown(
+			response,
+			statistics,
+			'translation-questions',
+			(match: (typeof matches)[0]) => {
+				let md = `**${match.reference}**\n`;
+				md += `**Q:** ${match.question}\n`;
+				if (match.response) {
+					md += `**A:** ${match.response}\n`;
+				}
+				if (match.matchedTerms.length > 0) {
+					md += `*Matched: ${match.matchedTerms.join(', ')}*\n`;
+				}
+				md += '\n';
+				return md;
+			}
+		);
+		return new Response(markdown, {
+			status: 200,
+			headers: {
+				'Content-Type': 'text/markdown; charset=utf-8',
+				'X-Format': 'md'
+			}
+		});
+	}
+
+	return json(response);
+}
+
 /**
  * Fetch translation questions for a reference
  */
@@ -26,7 +272,12 @@ async function fetchTranslationQuestions(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { reference, language, organization, search } = params;
+	const { reference, language, organization, search, filter, testament } = params;
+
+	// Handle filter requests first (stemmed regex matching)
+	if (filter) {
+		return handleFilterRequest(filter, params, request);
+	}
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`tq-${Date.now()}`, 'translation-questions');
@@ -44,83 +295,14 @@ async function fetchTranslationQuestions(
 			search
 		);
 
-		const booksToSearch = [
-			'Genesis',
-			'Exodus',
-			'Leviticus',
-			'Numbers',
-			'Deuteronomy',
-			'Joshua',
-			'Judges',
-			'Ruth',
-			'1 Samuel',
-			'2 Samuel',
-			'1 Kings',
-			'2 Kings',
-			'1 Chronicles',
-			'2 Chronicles',
-			'Ezra',
-			'Nehemiah',
-			'Esther',
-			'Job',
-			'Psalms',
-			'Proverbs',
-			'Ecclesiastes',
-			'Song of Solomon',
-			'Isaiah',
-			'Jeremiah',
-			'Lamentations',
-			'Ezekiel',
-			'Daniel',
-			'Hosea',
-			'Joel',
-			'Amos',
-			'Obadiah',
-			'Jonah',
-			'Micah',
-			'Nahum',
-			'Habakkuk',
-			'Zephaniah',
-			'Haggai',
-			'Zechariah',
-			'Malachi',
-			'Matthew',
-			'Mark',
-			'Luke',
-			'John',
-			'Acts',
-			'Romans',
-			'1 Corinthians',
-			'2 Corinthians',
-			'Galatians',
-			'Ephesians',
-			'Philippians',
-			'Colossians',
-			'1 Thessalonians',
-			'2 Thessalonians',
-			'1 Timothy',
-			'2 Timothy',
-			'Titus',
-			'Philemon',
-			'Hebrews',
-			'James',
-			'1 Peter',
-			'2 Peter',
-			'1 John',
-			'2 John',
-			'3 John',
-			'Jude',
-			'Revelation'
-		];
-
 		const allQuestions: any[] = [];
 		let booksSearched = 0;
 		let booksFailed = 0;
 
 		// Process books in batches
 		const batchSize = 10;
-		for (let i = 0; i < booksToSearch.length; i += batchSize) {
-			const batch = booksToSearch.slice(i, i + batchSize);
+		for (let i = 0; i < BOOKS_TO_SEARCH.length; i += batchSize) {
+			const batch = BOOKS_TO_SEARCH.slice(i, i + batchSize);
 
 			const batchPromises = batch.map(async (book) => {
 				try {
@@ -235,16 +417,28 @@ async function fetchTranslationQuestions(
 export const GET = createSimpleEndpoint({
 	name: 'translation-questions-v2',
 
-	// Use common parameter validators + search
+	// Use common parameter validators + search + filter
 	params: [
 		{
 			name: 'reference',
-			required: false, // Optional when search is provided
+			required: false, // Optional when search/filter is provided
 			validate: (value) => !value || isValidReference(value)
 		},
 		COMMON_PARAMS.language,
 		COMMON_PARAMS.organization,
-		COMMON_PARAMS.search
+		COMMON_PARAMS.search,
+		{
+			name: 'filter',
+			required: false,
+			description:
+				'Stemmed regex filter (e.g., "faith" matches "faith", "faithful", "faithfulness")'
+		},
+		{
+			name: 'testament',
+			required: false,
+			validate: (value) => !value || ['ot', 'nt'].includes(value.toLowerCase()),
+			description: 'Limit filter to Old Testament (ot) or New Testament (nt)'
+		}
 	],
 
 	fetch: fetchTranslationQuestions,
