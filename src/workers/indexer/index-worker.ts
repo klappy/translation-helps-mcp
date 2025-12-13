@@ -267,7 +267,9 @@ function parseUSFMIntoChapters(usfm: string): ChapterData[] {
       if (!chapters.has(currentChapter)) {
         chapters.set(currentChapter, { chapter: currentChapter, verses: [] });
       }
-      chapters.get(currentChapter)!.verses.push({ verse: verseNum, text: cleanText });
+      chapters
+        .get(currentChapter)!
+        .verses.push({ verse: verseNum, text: cleanText });
     }
   }
 
@@ -283,10 +285,7 @@ function formatChapterAsMarkdown(
   chapter: number,
   verses: Array<{ verse: number; text: string }>,
 ): string {
-  const lines: string[] = [
-    `# ${bookName} Chapter ${chapter}`,
-    "",
-  ];
+  const lines: string[] = [`# ${bookName} Chapter ${chapter}`, ""];
 
   for (const { verse, text } of verses) {
     lines.push(`${chapter}:${verse} ${text}`);
@@ -324,7 +323,7 @@ function processScriptureFile(
 
   // Create one chunk per chapter
   const chunks: IndexChunk[] = [];
-  
+
   for (const chapterData of chapters) {
     const markdown = formatChapterAsMarkdown(
       bookName,
@@ -339,7 +338,8 @@ function processScriptureFile(
       organization: parsed.organization,
       resource: parsed.resourceName,
       resource_name:
-        RESOURCE_NAMES[parsed.resourceName.toLowerCase()] || parsed.resourceName,
+        RESOURCE_NAMES[parsed.resourceName.toLowerCase()] ||
+        parsed.resourceName,
       version: parsed.version,
       chunk_level: "chapter",
       indexed_at: new Date().toISOString(),
@@ -357,7 +357,9 @@ function processScriptureFile(
     });
   }
 
-  console.log(`[Index Worker] Created ${chunks.length} chapter chunks for ${book}`);
+  console.log(
+    `[Index Worker] Created ${chunks.length} chapter chunks for ${book}`,
+  );
   return chunks;
 }
 

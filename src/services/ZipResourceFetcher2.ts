@@ -1230,7 +1230,47 @@ export class ZipResourceFetcher2 {
       const { key: zipKeyForFiles } = r2KeyFromUrl(zipUrlForKey);
 
       if (resourceType === "tw") {
-        if (!identifier) return { articles: [] };
+        // If no identifier, return list of all words (like TA TOC)
+        if (!identifier) {
+          const allPaths = await this.listZipFiles(zipData);
+          const categories = ["kt", "names", "other"] as const;
+          const categoriesSet = new Set<string>();
+          const words: Array<{ term: string; category: string; path: string }> =
+            [];
+
+          // Pattern: bible/{category}/{term}.md or content/bible/{category}/{term}.md
+          for (const p of allPaths) {
+            const lowerP = p.toLowerCase();
+            // Match patterns like /bible/kt/love.md or /content/bible/names/abraham.md
+            const match = lowerP.match(
+              /(?:content\/)?bible\/(kt|names|other)\/([^/]+)\.md$/i,
+            );
+            if (match) {
+              const [, cat, term] = match;
+              categoriesSet.add(cat);
+              words.push({
+                term,
+                category: cat,
+                path: p,
+              });
+            }
+          }
+
+          // Dedupe by term+category
+          const seen = new Set<string>();
+          const uniqueWords = words.filter((w) => {
+            const key = `${w.category}/${w.term}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+
+          return {
+            categories: Array.from(categoriesSet),
+            words: uniqueWords,
+            totalWords: uniqueWords.length,
+          };
+        }
         const id = String(identifier);
         const looksLikePath =
           id.includes("/") && id.toLowerCase().endsWith(".md");

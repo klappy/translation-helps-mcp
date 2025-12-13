@@ -3,7 +3,7 @@
  *
  * The golden standard endpoint - fetches scripture text for any Bible reference.
  * Supports multiple translations and formats.
- * 
+ *
  * Parameters:
  * - search: AutoRAG semantic search (conceptually about X)
  * - filter: Stemmed regex filter (contains word X)
@@ -25,38 +25,154 @@ import {
 } from '$lib/../../../src/services/SearchServiceFactory.js';
 import { parseReference } from '$lib/referenceParser.js';
 import { generateStemmedPattern } from '$lib/stemmedFilter.js';
-import { initializeR2Env, getR2Env } from '$lib/../../../src/functions/r2-env.js';
+import { initializeR2Env } from '$lib/../../../src/functions/r2-env.js';
 
 // All 66 book codes for full-resource search
 const ALL_BOOKS = [
-	'gen', 'exo', 'lev', 'num', 'deu', 'jos', 'jdg', 'rut', '1sa', '2sa',
-	'1ki', '2ki', '1ch', '2ch', 'ezr', 'neh', 'est', 'job', 'psa', 'pro',
-	'ecc', 'sng', 'isa', 'jer', 'lam', 'ezk', 'dan', 'hos', 'jol', 'amo',
-	'oba', 'jon', 'mic', 'nam', 'hab', 'zep', 'hag', 'zec', 'mal',
-	'mat', 'mrk', 'luk', 'jhn', 'act', 'rom', '1co', '2co', 'gal', 'eph',
-	'php', 'col', '1th', '2th', '1ti', '2ti', 'tit', 'phm', 'heb', 'jas',
-	'1pe', '2pe', '1jn', '2jn', '3jn', 'jud', 'rev'
+	'gen',
+	'exo',
+	'lev',
+	'num',
+	'deu',
+	'jos',
+	'jdg',
+	'rut',
+	'1sa',
+	'2sa',
+	'1ki',
+	'2ki',
+	'1ch',
+	'2ch',
+	'ezr',
+	'neh',
+	'est',
+	'job',
+	'psa',
+	'pro',
+	'ecc',
+	'sng',
+	'isa',
+	'jer',
+	'lam',
+	'ezk',
+	'dan',
+	'hos',
+	'jol',
+	'amo',
+	'oba',
+	'jon',
+	'mic',
+	'nam',
+	'hab',
+	'zep',
+	'hag',
+	'zec',
+	'mal',
+	'mat',
+	'mrk',
+	'luk',
+	'jhn',
+	'act',
+	'rom',
+	'1co',
+	'2co',
+	'gal',
+	'eph',
+	'php',
+	'col',
+	'1th',
+	'2th',
+	'1ti',
+	'2ti',
+	'tit',
+	'phm',
+	'heb',
+	'jas',
+	'1pe',
+	'2pe',
+	'1jn',
+	'2jn',
+	'3jn',
+	'jud',
+	'rev'
 ];
 const NT_BOOKS = ALL_BOOKS.slice(39);
 const OT_BOOKS = ALL_BOOKS.slice(0, 39);
 
 // Book code to display name mapping
 const BOOK_NAMES: Record<string, string> = {
-	gen: 'Genesis', exo: 'Exodus', lev: 'Leviticus', num: 'Numbers', deu: 'Deuteronomy',
-	jos: 'Joshua', jdg: 'Judges', rut: 'Ruth', '1sa': '1Samuel', '2sa': '2Samuel',
-	'1ki': '1Kings', '2ki': '2Kings', '1ch': '1Chronicles', '2ch': '2Chronicles',
-	ezr: 'Ezra', neh: 'Nehemiah', est: 'Esther', job: 'Job', psa: 'Psalms', pro: 'Proverbs',
-	ecc: 'Ecclesiastes', sng: 'SongOfSongs', isa: 'Isaiah', jer: 'Jeremiah', lam: 'Lamentations',
-	ezk: 'Ezekiel', dan: 'Daniel', hos: 'Hosea', jol: 'Joel', amo: 'Amos',
-	oba: 'Obadiah', jon: 'Jonah', mic: 'Micah', nam: 'Nahum', hab: 'Habakkuk',
-	zep: 'Zephaniah', hag: 'Haggai', zec: 'Zechariah', mal: 'Malachi',
-	mat: 'Matthew', mrk: 'Mark', luk: 'Luke', jhn: 'John', act: 'Acts',
-	rom: 'Romans', '1co': '1Corinthians', '2co': '2Corinthians', gal: 'Galatians', eph: 'Ephesians',
-	php: 'Philippians', col: 'Colossians', '1th': '1Thessalonians', '2th': '2Thessalonians',
-	'1ti': '1Timothy', '2ti': '2Timothy', tit: 'Titus', phm: 'Philemon', heb: 'Hebrews',
-	jas: 'James', '1pe': '1Peter', '2pe': '2Peter', '1jn': '1John', '2jn': '2John',
-	'3jn': '3John', jud: 'Jude', rev: 'Revelation'
+	gen: 'Genesis',
+	exo: 'Exodus',
+	lev: 'Leviticus',
+	num: 'Numbers',
+	deu: 'Deuteronomy',
+	jos: 'Joshua',
+	jdg: 'Judges',
+	rut: 'Ruth',
+	'1sa': '1Samuel',
+	'2sa': '2Samuel',
+	'1ki': '1Kings',
+	'2ki': '2Kings',
+	'1ch': '1Chronicles',
+	'2ch': '2Chronicles',
+	ezr: 'Ezra',
+	neh: 'Nehemiah',
+	est: 'Esther',
+	job: 'Job',
+	psa: 'Psalms',
+	pro: 'Proverbs',
+	ecc: 'Ecclesiastes',
+	sng: 'SongOfSongs',
+	isa: 'Isaiah',
+	jer: 'Jeremiah',
+	lam: 'Lamentations',
+	ezk: 'Ezekiel',
+	dan: 'Daniel',
+	hos: 'Hosea',
+	jol: 'Joel',
+	amo: 'Amos',
+	oba: 'Obadiah',
+	jon: 'Jonah',
+	mic: 'Micah',
+	nam: 'Nahum',
+	hab: 'Habakkuk',
+	zep: 'Zephaniah',
+	hag: 'Haggai',
+	zec: 'Zechariah',
+	mal: 'Malachi',
+	mat: 'Matthew',
+	mrk: 'Mark',
+	luk: 'Luke',
+	jhn: 'John',
+	act: 'Acts',
+	rom: 'Romans',
+	'1co': '1Corinthians',
+	'2co': '2Corinthians',
+	gal: 'Galatians',
+	eph: 'Ephesians',
+	php: 'Philippians',
+	col: 'Colossians',
+	'1th': '1Thessalonians',
+	'2th': '2Thessalonians',
+	'1ti': '1Timothy',
+	'2ti': '2Timothy',
+	tit: 'Titus',
+	phm: 'Philemon',
+	heb: 'Hebrews',
+	jas: 'James',
+	'1pe': '1Peter',
+	'2pe': '2Peter',
+	'1jn': '1John',
+	'2jn': '2John',
+	'3jn': '3John',
+	jud: 'Jude',
+	rev: 'Revelation'
 };
+
+// Reverse mapping: display name -> book code
+const BOOK_CODES: Record<string, string> = Object.fromEntries(
+	Object.entries(BOOK_NAMES).map(([code, name]) => [name.toLowerCase(), code])
+);
 
 /**
  * Get display name for a book (handles both codes and names)
@@ -67,6 +183,167 @@ function getBookDisplayName(book: string): string {
 	if (BOOK_NAMES[lower]) return BOOK_NAMES[lower];
 	// Already a name, return as-is
 	return book;
+}
+
+/**
+ * Get book code from display name or code
+ */
+function getBookCode(book: string): string {
+	const lower = book.toLowerCase();
+	// If it's already a code, return it
+	if (BOOK_NAMES[lower]) return lower;
+	// Try to find by display name
+	if (BOOK_CODES[lower]) return BOOK_CODES[lower];
+	// Handle variations like "1 John" vs "1John"
+	const normalized = lower.replace(/\s+/g, '');
+	if (BOOK_CODES[normalized]) return BOOK_CODES[normalized];
+	return lower;
+}
+
+/**
+ * Extract book name from a reference string like "Genesis 1:1" or "1John 3:16"
+ */
+function extractBookFromReference(reference: string): string {
+	// Remove chapter:verse part - match patterns like "Genesis 1:1" or "1 John 3:16-17"
+	const match = reference.match(/^(.+?)\s+\d+/);
+	if (match) return match[1].trim();
+	// Fallback: return the whole thing
+	return reference;
+}
+
+/**
+ * Get testament for a book code ('ot' or 'nt')
+ */
+function getTestament(bookCode: string): 'ot' | 'nt' {
+	return NT_BOOKS.includes(bookCode.toLowerCase()) ? 'nt' : 'ot';
+}
+
+/**
+ * Filter result statistics interface
+ */
+interface FilterStatistics {
+	total: number;
+	byTestament: {
+		ot: number;
+		nt: number;
+	};
+	byBook: Record<string, number>;
+}
+
+/**
+ * Compute statistics from filter matches
+ */
+function computeFilterStatistics(matches: Array<{ reference: string }>): FilterStatistics {
+	const stats: FilterStatistics = {
+		total: matches.length,
+		byTestament: { ot: 0, nt: 0 },
+		byBook: {}
+	};
+
+	for (const match of matches) {
+		const bookName = extractBookFromReference(match.reference);
+		const bookCode = getBookCode(bookName);
+		const displayName = getBookDisplayName(bookCode);
+		const testament = getTestament(bookCode);
+
+		// Count by testament
+		stats.byTestament[testament]++;
+
+		// Count by book (use display name for readability)
+		stats.byBook[displayName] = (stats.byBook[displayName] || 0) + 1;
+	}
+
+	return stats;
+}
+
+/**
+ * Format filter response as markdown with YAML frontmatter
+ */
+function formatFilterResponseAsMarkdown(
+	response: Record<string, any>,
+	statistics: FilterStatistics
+): string {
+	let md = '';
+
+	// YAML frontmatter with statistics
+	md += '---\n';
+	md += `resource: Scripture Filter\n`;
+	md += `filter: "${response.filter}"\n`;
+	md += `language: ${response.language}\n`;
+	md += `organization: ${response.organization}\n`;
+	md += `translation: ${response.resource}\n`;
+	if (response.reference) {
+		md += `reference: ${response.reference}\n`;
+	}
+	md += `\n# Result Statistics\n`;
+	md += `total_results: ${statistics.total}\n`;
+	md += `\n# By Testament\n`;
+	md += `old_testament: ${statistics.byTestament.ot}\n`;
+	md += `new_testament: ${statistics.byTestament.nt}\n`;
+	md += `\n# By Book\n`;
+	// Sort books by count (descending) for easier reading
+	const sortedBooks = Object.entries(statistics.byBook).sort((a, b) => b[1] - a[1]);
+	for (const [book, count] of sortedBooks) {
+		md += `${book}: ${count}\n`;
+	}
+	md += '---\n\n';
+
+	// Title
+	md += `# Scripture Filter Results: "${response.filter}"\n\n`;
+
+	// Summary section
+	md += `## Summary\n\n`;
+	md += `- **Total Results**: ${statistics.total}\n`;
+	md += `- **Old Testament**: ${statistics.byTestament.ot}\n`;
+	md += `- **New Testament**: ${statistics.byTestament.nt}\n`;
+	md += `- **Pattern**: \`${response.pattern}\`\n`;
+	if (response.reference) {
+		md += `- **Reference**: ${response.reference}\n`;
+	}
+	md += '\n';
+
+	// Results by book (top 10)
+	if (sortedBooks.length > 0) {
+		md += `## Results by Book\n\n`;
+		md += `| Book | Count |\n`;
+		md += `|------|-------|\n`;
+		for (const [book, count] of sortedBooks.slice(0, 15)) {
+			md += `| ${book} | ${count} |\n`;
+		}
+		if (sortedBooks.length > 15) {
+			md += `\n*...and ${sortedBooks.length - 15} more books*\n`;
+		}
+		md += '\n';
+	}
+
+	// Matches section
+	md += `## Matches\n\n`;
+
+	// Group matches by book for better readability
+	const matchesByBook: Record<string, typeof response.matches> = {};
+	for (const match of response.matches) {
+		const bookName = extractBookFromReference(match.reference);
+		const displayName = getBookDisplayName(getBookCode(bookName));
+		if (!matchesByBook[displayName]) {
+			matchesByBook[displayName] = [];
+		}
+		matchesByBook[displayName].push(match);
+	}
+
+	// Output matches grouped by book
+	for (const [book, bookMatches] of Object.entries(matchesByBook)) {
+		md += `### ${book} (${bookMatches.length})\n\n`;
+		for (const match of bookMatches as any[]) {
+			md += `**${match.reference}** [${match.resource}]\n`;
+			md += `> ${match.text}\n`;
+			if (match.matchedTerms?.length > 0) {
+				md += `> *Matched: ${match.matchedTerms.join(', ')}*\n`;
+			}
+			md += '\n';
+		}
+	}
+
+	return md;
 }
 
 /**
@@ -152,7 +429,13 @@ function parseIntoVerses(
 	translation: string,
 	knownChapter?: number
 ): Array<{ text: string; reference: string; chapter: number; verse: number; translation: string }> {
-	const verses: Array<{ text: string; reference: string; chapter: number; verse: number; translation: string }> = [];
+	const verses: Array<{
+		text: string;
+		reference: string;
+		chapter: number;
+		verse: number;
+		translation: string;
+	}> = [];
 	const lines = text.split('\n');
 	let currentChapter = knownChapter || 0;
 
@@ -217,113 +500,187 @@ function parseIntoVerses(
 async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Response | null> {
 	const url = new URL(request.url);
 	const filter = url.searchParams.get('filter');
-	
+
 	if (!filter) return null;
-	
+
 	const reference = url.searchParams.get('reference');
 	const language = url.searchParams.get('language') || 'en';
 	const organization = url.searchParams.get('organization') || 'unfoldingWord';
 	const resourceParam = url.searchParams.get('resource');
 	const testament = url.searchParams.get('testament')?.toLowerCase();
-	
+
 	// Validate: need reference OR specific resource (not 'all')
 	if (!reference && (!resourceParam || resourceParam === 'all')) {
-		return json({
-			error: 'Filter requires either a reference OR a specific resource',
-			hints: [
-				'With reference: filter=love&reference=John',
-				'With resource: filter=love&resource=ult',
-				'Limit scope: filter=love&resource=ult&testament=nt'
-			],
-			availableResources: ['ult', 'ust', 't4t', 'ueb'],
-			availableTestaments: ['ot', 'nt']
-		}, { status: 400 });
+		return json(
+			{
+				error: 'Filter requires either a reference OR a specific resource',
+				hints: [
+					'With reference: filter=love&reference=John',
+					'With resource: filter=love&resource=ult',
+					'Limit scope: filter=love&resource=ult&testament=nt'
+				],
+				availableResources: ['ult', 'ust', 't4t', 'ueb'],
+				availableTestaments: ['ot', 'nt']
+			},
+			{ status: 400 }
+		);
 	}
-	
+
 	// For full-resource search, only allow single resource
 	const requestedResources = parseResources(resourceParam || 'ult');
 	if (!reference && requestedResources.length > 1) {
-		return json({
-			error: 'Full-resource search requires a single resource',
-			hints: [
-				'Use one resource: filter=love&resource=ult',
-				'Or add reference: filter=love&reference=John&resource=ult,ust'
-			]
-		}, { status: 400 });
+		return json(
+			{
+				error: 'Full-resource search requires a single resource',
+				hints: [
+					'Use one resource: filter=love&resource=ult',
+					'Or add reference: filter=love&reference=John&resource=ult,ust'
+				]
+			},
+			{ status: 400 }
+		);
 	}
-	
-	console.log(`[fetch-scripture] Filter: "${filter}" in ${reference || `full ${requestedResources[0]}`}`);
-	
+
+	console.log(
+		`[fetch-scripture] Filter: "${filter}" in ${reference || `full ${requestedResources[0]}`}`
+	);
+
 	// Generate stemmed pattern
 	const pattern = generateStemmedPattern(filter);
 	console.log(`[fetch-scripture] Pattern: ${pattern}`);
-	
+
 	const tracer = new EdgeXRayTracer(`scripture-filter-${Date.now()}`, 'fetch-scripture-filter');
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
-	
+
 	let results: Array<{ text: string; translation: string; book?: string }> = [];
-	let booksSearched: string[] = [];
+	const booksSearched: string[] = [];
 	let fetchMethod = 'per-book';
-	
+
 	if (reference) {
 		// Single reference - simple fetch
-		const fetched = await fetcher.fetchScripture(reference, language, organization, requestedResources);
-		results = fetched.map(r => ({ ...r }));
+		const fetched = await fetcher.fetchScripture(
+			reference,
+			language,
+			organization,
+			requestedResources
+		);
+		results = fetched.map((r) => ({ ...r }));
 	} else if (r2Bucket) {
 		// Full resource search with R2 direct access - much faster!
 		fetchMethod = 'r2-direct';
 		const books = testament === 'nt' ? NT_BOOKS : testament === 'ot' ? OT_BOOKS : ALL_BOOKS;
 		const resource = requestedResources[0];
-		
+
 		console.log(`[fetch-scripture] R2 direct fetch for ${books.length} books in ${resource}`);
-		
+
 		// Build R2 prefix for this resource
 		// Files are stored at: by-url/git.door43.org/{org}/{lang}_{resource}/archive/{version}.zip/files/{bookfile}.usfm
 		// We need to discover the version by listing first
 		const r2Prefix = `by-url/git.door43.org/${organization}/${language}_${resource}/`;
-		
+
 		try {
 			// List to find the versioned path - need enough items to find a .usfm file
 			const listStart = Date.now();
 			const listResult = await r2Bucket.list({ prefix: r2Prefix, limit: 100 });
 			const listDuration = Date.now() - listStart;
-			tracer.addApiCall({ url: `r2://list/${r2Prefix}`, duration: listDuration, status: 200, size: listResult.objects?.length || 0, cached: true });
-			
+			tracer.addApiCall({
+				url: `r2://list/${r2Prefix}`,
+				duration: listDuration,
+				status: 200,
+				size: listResult.objects?.length || 0,
+				cached: true
+			});
+
 			if (listResult.objects && listResult.objects.length > 0) {
 				// Find a .usfm file to extract the base path from
 				// e.g., "by-url/git.door43.org/unfoldingWord/en_ult/archive/v87.zip/files/41-MAT.usfm"
-				const usfmFile = listResult.objects.find(obj => obj.key.endsWith('.usfm'));
+				const usfmFile = listResult.objects.find((obj) => obj.key.endsWith('.usfm'));
 				const samplePath = usfmFile?.key || '';
-				const archiveMatch = samplePath.match(/^(by-url\/[^/]+\/[^/]+\/[^/]+\/archive\/[^/]+\.zip\/files\/)/);
-				
+				const archiveMatch = samplePath.match(
+					/^(by-url\/[^/]+\/[^/]+\/[^/]+\/archive\/[^/]+\.zip\/files\/)/
+				);
+
 				if (archiveMatch && usfmFile) {
 					// R2 direct path found!
 					const basePath = archiveMatch[1];
 					console.log(`[fetch-scripture] R2 base path: ${basePath}`);
-					
+
 					// Parallel fetch all book files from R2
 					const bookFileMap: Record<string, string> = {
-						gen: '01-GEN', exo: '02-EXO', lev: '03-LEV', num: '04-NUM', deu: '05-DEU',
-						jos: '06-JOS', jdg: '07-JDG', rut: '08-RUT', '1sa': '09-1SA', '2sa': '10-2SA',
-						'1ki': '11-1KI', '2ki': '12-2KI', '1ch': '13-1CH', '2ch': '14-2CH',
-						ezr: '15-EZR', neh: '16-NEH', est: '17-EST', job: '18-JOB', psa: '19-PSA', pro: '20-PRO',
-						ecc: '21-ECC', sng: '22-SNG', isa: '23-ISA', jer: '24-JER', lam: '25-LAM',
-						ezk: '26-EZK', dan: '27-DAN', hos: '28-HOS', jol: '29-JOL', amo: '30-AMO',
-						oba: '31-OBA', jon: '32-JON', mic: '33-MIC', nam: '34-NAM', hab: '35-HAB',
-						zep: '36-ZEP', hag: '37-HAG', zec: '38-ZEC', mal: '39-MAL',
-						mat: '41-MAT', mrk: '42-MRK', luk: '43-LUK', jhn: '44-JHN', act: '45-ACT',
-						rom: '46-ROM', '1co': '47-1CO', '2co': '48-2CO', gal: '49-GAL', eph: '50-EPH',
-						php: '51-PHP', col: '52-COL', '1th': '53-1TH', '2th': '54-2TH',
-						'1ti': '55-1TI', '2ti': '56-2TI', tit: '57-TIT', phm: '58-PHM', heb: '59-HEB',
-						jas: '60-JAS', '1pe': '61-1PE', '2pe': '62-2PE', '1jn': '63-1JN', '2jn': '64-2JN',
-						'3jn': '65-3JN', jud: '66-JUD', rev: '67-REV'
+						gen: '01-GEN',
+						exo: '02-EXO',
+						lev: '03-LEV',
+						num: '04-NUM',
+						deu: '05-DEU',
+						jos: '06-JOS',
+						jdg: '07-JDG',
+						rut: '08-RUT',
+						'1sa': '09-1SA',
+						'2sa': '10-2SA',
+						'1ki': '11-1KI',
+						'2ki': '12-2KI',
+						'1ch': '13-1CH',
+						'2ch': '14-2CH',
+						ezr: '15-EZR',
+						neh: '16-NEH',
+						est: '17-EST',
+						job: '18-JOB',
+						psa: '19-PSA',
+						pro: '20-PRO',
+						ecc: '21-ECC',
+						sng: '22-SNG',
+						isa: '23-ISA',
+						jer: '24-JER',
+						lam: '25-LAM',
+						ezk: '26-EZK',
+						dan: '27-DAN',
+						hos: '28-HOS',
+						jol: '29-JOL',
+						amo: '30-AMO',
+						oba: '31-OBA',
+						jon: '32-JON',
+						mic: '33-MIC',
+						nam: '34-NAM',
+						hab: '35-HAB',
+						zep: '36-ZEP',
+						hag: '37-HAG',
+						zec: '38-ZEC',
+						mal: '39-MAL',
+						mat: '41-MAT',
+						mrk: '42-MRK',
+						luk: '43-LUK',
+						jhn: '44-JHN',
+						act: '45-ACT',
+						rom: '46-ROM',
+						'1co': '47-1CO',
+						'2co': '48-2CO',
+						gal: '49-GAL',
+						eph: '50-EPH',
+						php: '51-PHP',
+						col: '52-COL',
+						'1th': '53-1TH',
+						'2th': '54-2TH',
+						'1ti': '55-1TI',
+						'2ti': '56-2TI',
+						tit: '57-TIT',
+						phm: '58-PHM',
+						heb: '59-HEB',
+						jas: '60-JAS',
+						'1pe': '61-1PE',
+						'2pe': '62-2PE',
+						'1jn': '63-1JN',
+						'2jn': '64-2JN',
+						'3jn': '65-3JN',
+						jud: '66-JUD',
+						rev: '67-REV'
 					};
-					
+
+					// Parallel fetch + parse (interleaved I/O and CPU)
 					const fetchPromises = books.map(async (bookCode) => {
 						const fileCode = bookFileMap[bookCode];
-						if (!fileCode) return { bookCode, text: null };
-						
+						if (!fileCode) return { bookCode, cleanText: null };
+
 						const key = `${basePath}${fileCode}.usfm`;
 						const fetchStart = Date.now();
 						try {
@@ -331,24 +688,40 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 							const fetchDuration = Date.now() - fetchStart;
 							if (obj) {
 								const text = await obj.text();
-								tracer.addApiCall({ url: `r2://get/${fileCode}.usfm`, duration: fetchDuration, status: 200, size: text.length, cached: true });
-								return { bookCode, text };
+								tracer.addApiCall({
+									url: `r2://get/${fileCode}.usfm`,
+									duration: fetchDuration,
+									status: 200,
+									size: text.length,
+									cached: true
+								});
+								// Extract clean text INSIDE the promise - interleaves with other fetches
+								const cleanText = extractFullBookFromUSFM(text);
+								return { bookCode, cleanText };
 							}
 						} catch {
 							// File not in R2
 						}
-						tracer.addApiCall({ url: `r2://get/${fileCode}.usfm`, duration: Date.now() - fetchStart, status: 404, size: 0, cached: false });
-						return { bookCode, text: null };
+						tracer.addApiCall({
+							url: `r2://get/${fileCode}.usfm`,
+							duration: Date.now() - fetchStart,
+							status: 404,
+							size: 0,
+							cached: false
+						});
+						return { bookCode, cleanText: null };
 					});
-					
+
 					const r2Results = await Promise.all(fetchPromises);
-					
-					// Process R2 results - extract full book content from USFM
-					for (const { bookCode, text } of r2Results) {
-						if (text) {
-							// Extract clean text from USFM
-							const cleanText = extractFullBookFromUSFM(text);
-							results.push({ text: cleanText, translation: resource.toUpperCase(), book: bookCode });
+
+					// Aggregate already-processed results
+					for (const { bookCode, cleanText } of r2Results) {
+						if (cleanText) {
+							results.push({
+								text: cleanText,
+								translation: resource.toUpperCase(),
+								book: bookCode
+							});
 							booksSearched.push(bookCode);
 						}
 					}
@@ -357,28 +730,35 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 		} catch (error) {
 			console.error('[fetch-scripture] R2 direct fetch failed:', error);
 		}
-		
+
 		// Fallback to per-book fetch if R2 didn't work
 		if (results.length === 0) {
 			console.log('[fetch-scripture] R2 direct failed, falling back to per-book fetch');
 			fetchMethod = 'per-book-fallback';
 		}
 	}
-	
+
 	// Fallback: per-book fetch (slower but always works)
 	if (!reference && results.length === 0) {
 		const books = testament === 'nt' ? NT_BOOKS : testament === 'ot' ? OT_BOOKS : ALL_BOOKS;
-		console.log(`[fetch-scripture] Per-book fetch for ${books.length} books from ${requestedResources[0]}`);
-		
+		console.log(
+			`[fetch-scripture] Per-book fetch for ${books.length} books from ${requestedResources[0]}`
+		);
+
 		const fetchPromises = books.map(async (bookCode) => {
 			try {
-				const bookResults = await fetcher.fetchScripture(bookCode, language, organization, requestedResources);
-				return { bookCode, results: (bookResults || []).map(r => ({ ...r, book: bookCode })) };
+				const bookResults = await fetcher.fetchScripture(
+					bookCode,
+					language,
+					organization,
+					requestedResources
+				);
+				return { bookCode, results: (bookResults || []).map((r) => ({ ...r, book: bookCode })) };
 			} catch {
 				return { bookCode, results: [] };
 			}
 		});
-		
+
 		const allBookResults = await Promise.all(fetchPromises);
 		for (const { bookCode, results: bookResults } of allBookResults) {
 			if (bookResults.length > 0) {
@@ -387,18 +767,21 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 			}
 		}
 	}
-	
+
 	if (!results || results.length === 0) {
-		return json({
-			error: reference
-				? `Scripture not found for reference: ${reference}`
-				: `No scripture found for resource: ${resourceParam}`,
-			filter,
-			pattern: pattern.toString(),
-			hints: ['Check resource exists: ult, ust, t4t, ueb']
-		}, { status: 404 });
+		return json(
+			{
+				error: reference
+					? `Scripture not found for reference: ${reference}`
+					: `No scripture found for resource: ${resourceParam}`,
+				filter,
+				pattern: pattern.toString(),
+				hints: ['Check resource exists: ult, ust, t4t, ueb']
+			},
+			{ status: 404 }
+		);
 	}
-	
+
 	// Parse into verses and filter
 	const matches: Array<{
 		reference: string;
@@ -407,18 +790,19 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 		matchedTerms: string[];
 		matchCount: number;
 	}> = [];
-	
+
 	// For single reference, use parsed book/chapter; for full resource, use tagged book
 	const parsedRef = reference ? parseReference(reference) : null;
-	const singleBook = parsedRef?.book || (reference ? reference.replace(/\s+\d+.*$/, '').trim() : null);
+	const singleBook =
+		parsedRef?.book || (reference ? reference.replace(/\s+\d+.*$/, '').trim() : null);
 	const singleChapter = parsedRef?.chapter;
-	
+
 	for (const result of results) {
 		// Use result.book (from full-resource) or singleBook (from reference) or extract from text
 		const bookRaw = result.book || singleBook || extractBookFromText(result.text);
 		const book = getBookDisplayName(bookRaw);
 		const verses = parseIntoVerses(result.text, book, result.translation, singleChapter);
-		
+
 		for (const verse of verses) {
 			pattern.lastIndex = 0;
 			const found: string[] = [];
@@ -426,7 +810,7 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 			while ((match = pattern.exec(verse.text)) !== null) {
 				found.push(match[0]);
 			}
-			
+
 			if (found.length > 0) {
 				matches.push({
 					reference: verse.reference,
@@ -438,7 +822,10 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 			}
 		}
 	}
-	
+
+	// Compute statistics
+	const statistics = computeFilterStatistics(matches);
+
 	const response: Record<string, any> = {
 		filter,
 		pattern: pattern.toString(),
@@ -446,10 +833,11 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 		organization,
 		resource: requestedResources.join(','),
 		totalMatches: matches.length,
+		statistics,
 		matches,
 		_trace: tracer.getTrace()
 	};
-	
+
 	if (reference) {
 		response.reference = reference;
 	} else {
@@ -460,7 +848,21 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 			books: booksSearched
 		};
 	}
-	
+
+	// Check format parameter
+	const format = url.searchParams.get('format') || 'json';
+
+	if (format === 'md' || format === 'markdown') {
+		const markdown = formatFilterResponseAsMarkdown(response, statistics);
+		return new Response(markdown, {
+			status: 200,
+			headers: {
+				'Content-Type': 'text/markdown; charset=utf-8',
+				'X-Format': 'md'
+			}
+		});
+	}
+
 	return json(response);
 }
 
@@ -498,7 +900,7 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 
 			const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'scripture', 'glt', 'gst'];
 			const requestedLang = (language || 'en').toLowerCase();
-			
+
 			const scriptureResults = (searchData.hits || [])
 				.filter((hit: any) => {
 					const resource = (hit.resource || '').toLowerCase();
@@ -547,7 +949,7 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		const parsedRef = parseReference(reference);
 		const book = parsedRef?.book || reference.replace(/\s+\d+.*$/, '').trim();
 		const chapter = parsedRef?.chapter;
-		
+
 		const parsedVerses: Array<{ text: string; reference: string; translation: string }> = [];
 		for (const result of results) {
 			const verses = parseIntoVerses(result.text, book, result.translation, chapter);
@@ -584,12 +986,16 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 	const baseResponse = createScriptureResponse(uniqueResults, {
 		reference,
 		requestedResources,
-		foundResources: [...new Set(uniqueResults.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase()))]
+		foundResources: [
+			...new Set(uniqueResults.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase()))
+		]
 	});
 
 	return {
 		...baseResponse,
-		metadata: search ? addSearchMetadata(baseResponse.metadata, search, results.length) : baseResponse.metadata,
+		metadata: search
+			? addSearchMetadata(baseResponse.metadata, search, results.length)
+			: baseResponse.metadata,
 		_trace: fetcher.getTrace()
 	};
 }
@@ -604,11 +1010,11 @@ export const GET: RequestHandler = async (event) => {
 	if (r2Bucket || caches) {
 		initializeR2Env(r2Bucket, caches);
 	}
-	
+
 	// Check for filter param first
 	const filterResponse = await handleFilterRequest(event.request, r2Bucket);
 	if (filterResponse) return filterResponse;
-	
+
 	// Otherwise use normal endpoint
 	return normalEndpoint(event);
 };
@@ -625,7 +1031,9 @@ const normalEndpoint = createSimpleEndpoint({
 			default: 'all',
 			validate: (value) => {
 				if (!value || value === 'all') return true;
-				return value.split(',').every((r) => ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'].includes(r.trim()));
+				return value
+					.split(',')
+					.every((r) => ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'].includes(r.trim()));
 			}
 		},
 		COMMON_PARAMS.search
@@ -633,7 +1041,15 @@ const normalEndpoint = createSimpleEndpoint({
 	supportsFormats: true,
 	fetch: fetchScripture,
 	onError: createStandardErrorHandler({
-		'Scripture not found for reference': { status: 404, message: 'No scripture available for the specified reference.' }
+		'Scripture not found for reference': {
+			status: 404,
+			message: 'No scripture available for the specified reference.'
+		},
+		'Reference is required': {
+			status: 400,
+			message:
+				'Reference parameter is required. Example: reference=John 3:16. Or use search parameter for semantic search.'
+		}
 	})
 });
 

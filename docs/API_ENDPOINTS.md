@@ -34,6 +34,115 @@ Most endpoints accept these standard parameters:
 | `organization` | string | Often    | Organization name (e.g., "unfoldingWord")                                             |
 | `format`       | string | No       | Response format: "json" (default), "md", "markdown", "text", "tsv" (where applicable) |
 
+## Filter Parameter (v7.20.0+, R2 Direct Access v7.20.5+)
+
+Most translation resource endpoints now support a **`filter`** parameter for stemmed regex matching across entire resources.
+
+### Performance: R2 Direct Access (v7.20.5+)
+
+Filter operations now use **R2 direct access** for blazing fast performance:
+
+| Scope         | Time      | Method                     |
+| ------------- | --------- | -------------------------- |
+| Full resource | 1-5s      | Parallel fetch all files   |
+| Testament     | 0.5-3s    | Parallel fetch 39/27 files |
+| Single book   | 100-300ms | Direct file access         |
+
+The response includes `searchScope.fetchMethod` to indicate which path was used:
+
+- `r2-direct` - Fast parallel R2 access (5-10x faster)
+- `per-book-fallback` - Slower fallback when R2 unavailable
+
+### How Filter Works
+
+The filter parameter uses stemmed regex matching to find content containing word variations:
+
+- `filter=love` matches: "love", "loves", "loved", "loving", "loveth", "lovest", "beloved"
+- `filter=faith` matches: "faith", "faithful", "faithfulness", "faithless"
+- `filter=metaphor` matches: "metaphor", "metaphors", "metaphorical"
+
+### Filter-Enabled Endpoints
+
+| Endpoint                        | Filter Stats                    | Additional Params                             |
+| ------------------------------- | ------------------------------- | --------------------------------------------- |
+| `/fetch-translation-notes`      | byTestament, byBook             | `testament` (ot/nt)                           |
+| `/fetch-translation-questions`  | byTestament, byBook             | `testament` (ot/nt)                           |
+| `/fetch-translation-word-links` | byTestament, byBook, byCategory | `testament`, `category` (kt/names/other)      |
+| `/fetch-translation-word`       | byCategory                      | `category` (kt/names/other)                   |
+| `/fetch-translation-academy`    | byCategory                      | `category` (translate/checking/process/intro) |
+
+### Filter Response (JSON)
+
+```json
+{
+  "filter": "love",
+  "pattern": "/\\b(love|loves|loved|loving|loveth|lovest)\\b/gi",
+  "totalMatches": 847,
+  "statistics": {
+    "total": 847,
+    "byTestament": { "ot": 312, "nt": 535 },
+    "byBook": { "John": 45, "1John": 38, "Romans": 32, "..." }
+  },
+  "matches": [...]
+}
+```
+
+### Filter Response (Markdown with YAML Frontmatter)
+
+When using `format=md`, the response includes YAML frontmatter with statistics:
+
+```markdown
+---
+resource: Translation Notes Filter
+filter: "love"
+language: en
+organization: unfoldingWord
+
+# Result Statistics
+total_results: 847
+
+# By Testament
+old_testament: 312
+new_testament: 535
+
+# By Book
+John: 45
+1John: 38
+Romans: 32
+---
+
+# Translation Notes Filter Results: "love"
+
+## Summary
+
+- **Total Results**: 847
+- **Old Testament**: 312
+- **New Testament**: 535
+
+## Matches
+
+...
+```
+
+### Filter Examples
+
+```bash
+# Find all translation notes about metaphors in the NT
+/api/fetch-translation-notes?filter=metaphor&testament=nt&format=md
+
+# Search all translation questions about faith
+/api/fetch-translation-questions?filter=faith&format=md
+
+# Find key term word links for "grace"
+/api/fetch-translation-word-links?filter=grace&category=kt&format=md
+
+# Search all translation word definitions for "covenant"
+/api/fetch-translation-word?filter=covenant&format=md
+
+# Search translation academy for "figure of speech" content
+/api/fetch-translation-academy?filter=figure&category=translate&format=md
+```
+
 ## Response Format
 
 **ALL endpoints now support markdown format** for LLM consumption via the `format` parameter:

@@ -2,6 +2,123 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.12](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.11...v7.20.12) (2025-12-13)
+
+### Performance
+
+- **words:** Increase batch size from 50 to 100 for better throughput
+- **academy:** Increase batch size from 50 to 100 for better throughput
+
+### [7.20.11](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.10...v7.20.11) (2025-12-13)
+
+### Performance
+
+- **words:** Batched concurrency (50 files at a time) instead of all-at-once for R2 fetches
+- **academy:** Batched concurrency (50 files at a time) instead of all-at-once for R2 fetches
+- **performance:** Prevents overwhelming R2 connections, should reduce response times by 2-3s
+
+### [7.20.10](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.9...v7.20.10) (2025-12-13)
+
+### Bug Fixes
+
+- **r2:** Fix R2 path discovery for questions/word-links - find actual .tsv file, not just any object
+- **r2:** Use full path regex matching like scripture endpoint (more robust)
+- **r2:** Questions filter now correctly discovers archive path from TSV files
+- **r2:** Word-links filter now correctly discovers archive path from TSV files
+
+### [7.20.9](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.8...v7.20.9) (2025-12-13)
+
+### Bug Fixes
+
+- **questions:** Add proper validation when reference not provided (prevents "Invalid reference: undefined")
+- **questions:** Clear error message: "Reference is required. Example: reference=John 3:16"
+- **notes:** Add same validation to translation notes endpoint
+- **notes:** Clear error message with helpful hints for filter/search alternatives
+
+### [7.20.8](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.7...v7.20.8) (2025-12-13)
+
+### Bug Fixes
+
+- **mcp:** Remove incorrect `required: ['reference']` from fetch_scripture MCP schema
+- **mcp:** Scripture endpoint no longer rejects calls without reference (search/filter supported)
+- **mcp:** Add missing filter and testament params to fetch_scripture MCP schema
+- **error:** Add proper 400 error handler for "Reference is required" message
+
+### [7.20.7](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.6...v7.20.7) (2025-12-13)
+
+### Performance
+
+- **parallelism:** Interleave I/O and CPU operations in all filter endpoints
+- **parallelism:** Parse and filter INSIDE fetch promises, not after Promise.all
+- **parallelism:** True JS parallelism - CPU work happens while other fetches in flight
+- **architecture:** All endpoints now: fetch → parse → filter in same async block
+
+### [7.20.6](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.5...v7.20.6) (2025-12-13)
+
+### Features
+
+- **filter:** R2 DIRECT ACCESS for Translation Words filter - parallel fetch all markdown files
+- **filter:** R2 DIRECT ACCESS for Translation Academy filter - parallel fetch all modules
+- **filter:** R2 DIRECT ACCESS for Translation Questions filter - parallel fetch all TSV files
+- **filter:** R2 DIRECT ACCESS for Translation Word Links filter - parallel fetch all TSV files
+- **performance:** ALL filter endpoints now bypass ZIP/catalog overhead entirely
+- **architecture:** Consistent R2 direct access pattern across all translation helps filters
+
+### [7.20.5](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.4...v7.20.5) (2025-12-13)
+
+### Features
+
+- **filter:** R2 DIRECT ACCESS for translation notes filter - blazing fast parallel fetch!
+- **filter:** Notes filter now fetches all 66 TSV files in parallel from R2 storage
+- **filter:** Same architecture as scripture filter - no per-book catalog/ZIP overhead
+
+### Bug Fixes
+
+- **filter:** Revert scope validation - R2 direct access makes full-resource search fast
+- **filter:** Remove testament requirement from notes/questions/word-links filters
+
+### [7.20.3](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.2...v7.20.3) (2025-12-13)
+
+### Bug Fixes
+
+- **tool-registry:** Remove term from fetch_translation_word requiredParams (filter mode doesn't need term)
+- **tool-registry:** Remove reference from fetch_translation_word_links requiredParams (filter mode doesn't need reference)
+- **ui:** Remove misleading required field asterisks from API Explorer form inputs
+
+### [7.20.2](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.1...v7.20.2) (2025-12-13)
+
+### Bug Fixes
+
+- **filter:** Prepend book name to references for proper statistics grouping
+- **filter:** Add missing testament destructuring in questions and word-links handlers
+- **filter:** Case-insensitive testament filter (ot/OT, nt/NT both work)
+
+### [7.20.1](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.0...v7.20.1) (2025-12-13)
+
+### Bug Fixes
+
+- **mcp:** Remove required params from filter-enabled endpoints
+- **mcp:** Add filter, testament, category params to MCP tool schemas
+- **filter:** Fix empty {} response by returning data objects instead of Response
+
+## [7.20.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.29...v7.20.0) (2025-12-13)
+
+### Features
+
+- **filter:** Add stemmed regex filter to all translation resource endpoints
+- **filter:** Translation Notes filter with testament/book statistics and YAML frontmatter
+- **filter:** Translation Questions filter with testament/book statistics and YAML frontmatter
+- **filter:** Translation Word Links filter with testament/book/category statistics
+- **filter:** Translation Words filter with category statistics (searches all word definitions)
+- **filter:** Translation Academy filter with category statistics (searches all modules)
+- **shared:** Create shared filterUtils.ts module for DRY filter functionality
+- **zip:** Add word listing capability to ZipResourceFetcher2 for TW filter
+
+### Documentation
+
+- **config:** Update endpoint configurations with filter parameter definitions
+- **ui:** API Explorer automatically shows new filter parameters via mcp-config
+
 ### [7.19.29](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.28...v7.19.29) (2025-12-13)
 
 ### Bug Fixes

@@ -41,7 +41,7 @@ export const ToolFormatters = {
     // Handle filter response format (has 'matches' array)
     if (data.matches && Array.isArray(data.matches)) {
       if (data.matches.length === 0) {
-        return `No matches found for filter: ${data.filter || 'unknown'}`;
+        return `No matches found for filter: ${data.filter || "unknown"}`;
       }
       // Format filter matches
       const header = `# Filter Results: "${data.filter}"\n\nFound ${data.totalMatches} matches\n\n`;
@@ -49,9 +49,15 @@ export const ToolFormatters = {
         .slice(0, 50) // Limit to first 50 for readability
         .map((m: any) => `**${m.reference}** (${m.resource}): ${m.text}`)
         .join("\n\n");
-      return header + matches + (data.totalMatches > 50 ? `\n\n... and ${data.totalMatches - 50} more matches` : '');
+      return (
+        header +
+        matches +
+        (data.totalMatches > 50
+          ? `\n\n... and ${data.totalMatches - 50} more matches`
+          : "")
+      );
     }
-    
+
     // Check both 'scripture' (singular - standard response format) and 'scriptures' (plural - legacy)
     const scriptureArray = data.scripture || data.scriptures;
 
@@ -519,12 +525,12 @@ export const ToolRegistry = {
   fetch_translation_word: {
     endpoint: "/api/fetch-translation-word",
     formatter: ToolFormatters.words,
-    requiredParams: ["term"],
+    requiredParams: [], // term optional when using filter
   },
   fetch_translation_word_links: {
     endpoint: "/api/fetch-translation-word-links",
     formatter: ToolFormatters.words, // Uses same formatter as words
-    requiredParams: ["reference"],
+    requiredParams: [], // reference optional when using filter
   },
   fetch_translation_academy: {
     endpoint: "/api/fetch-translation-academy",
