@@ -1,4 +1,4 @@
-# Filter Endpoint Performance Report (v7.20.6)
+# Filter Endpoint Performance Report (v7.20.7)
 
 ## Overview
 
@@ -96,13 +96,35 @@ The filter generates a pattern from the search term:
 
 ## R2 Direct Access Architecture
 
-### How It Works
+### How It Works (v7.20.7+ - True Parallelism)
 
 1. **R2 Bucket Access**: Endpoints access `event.platform.env.ZIP_FILES` directly
 2. **List Operation**: Single list call to find all relevant files
-3. **Parallel Fetch**: `Promise.all()` fetches all files simultaneously
-4. **Parse & Filter**: Content parsed and regex applied in-memory
-5. **Statistics**: Aggregated statistics computed from matches
+3. **Parallel Fetch + Parse + Filter**: Each promise does ALL work:
+   ```javascript
+   const fetchPromises = files.map(async (file) => {
+     const obj = await r2Bucket.get(file);     // I/O - async
+     const text = await obj.text();             // I/O - async
+     const rows = parseTSV(text);               // CPU - runs while other fetches in flight
+     const matches = filterRows(rows, pattern); // CPU - interleaved with I/O
+     return matches;
+   });
+   const results = await Promise.all(fetchPromises);
+   ```
+4. **Aggregation**: Simple concatenation of already-processed results
+5. **Statistics**: Computed from aggregated matches
+
+### Why This Matters
+
+JavaScript is single-threaded, but I/O operations are non-blocking. The optimal pattern:
+
+- **Before (v7.20.5-7.20.6)**: Fetch all → wait → parse all → filter all
+  - All I/O completes first, then CPU blocks the event loop
+  
+- **After (v7.20.7)**: Fetch+parse+filter per file in same promise
+  - When file 1's fetch completes, parse it while files 2-66 are still downloading
+  - Event loop switches between I/O callbacks and CPU work
+  - True interleaving of I/O and CPU operations
 
 ### File Structures in R2
 
@@ -171,6 +193,7 @@ curl -s "https://api.translation.helps/api/fetch-translation-notes?filter=love" 
 
 ## Version History
 
+- **v7.20.7**: True parallelism - interleaved I/O and CPU in same promise block
 - **v7.20.6**: R2 direct access for Words, Academy, Questions, Word Links filters
 - **v7.20.5**: R2 direct access for Notes filter (initial implementation)
 - **v7.20.0**: Initial release of filter feature (per-book sequential fetch)

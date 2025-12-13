@@ -676,9 +676,10 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 						rev: '67-REV'
 					};
 
+					// Parallel fetch + parse (interleaved I/O and CPU)
 					const fetchPromises = books.map(async (bookCode) => {
 						const fileCode = bookFileMap[bookCode];
-						if (!fileCode) return { bookCode, text: null };
+						if (!fileCode) return { bookCode, cleanText: null };
 
 						const key = `${basePath}${fileCode}.usfm`;
 						const fetchStart = Date.now();
@@ -694,7 +695,9 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 									size: text.length,
 									cached: true
 								});
-								return { bookCode, text };
+								// Extract clean text INSIDE the promise - interleaves with other fetches
+								const cleanText = extractFullBookFromUSFM(text);
+								return { bookCode, cleanText };
 							}
 						} catch {
 							// File not in R2
@@ -706,16 +709,14 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 							size: 0,
 							cached: false
 						});
-						return { bookCode, text: null };
+						return { bookCode, cleanText: null };
 					});
 
 					const r2Results = await Promise.all(fetchPromises);
 
-					// Process R2 results - extract full book content from USFM
-					for (const { bookCode, text } of r2Results) {
-						if (text) {
-							// Extract clean text from USFM
-							const cleanText = extractFullBookFromUSFM(text);
+					// Aggregate already-processed results
+					for (const { bookCode, cleanText } of r2Results) {
+						if (cleanText) {
 							results.push({
 								text: cleanText,
 								translation: resource.toUpperCase(),

@@ -282,7 +282,8 @@ async function handleFilterRequestWithR2(
 				const basePath = archiveMatch[1];
 				console.log(`[fetch-translation-notes] R2 base path: ${basePath}`);
 
-				// Parallel fetch all TSV files from R2
+				// Parallel fetch + parse + filter (interleaved I/O and CPU)
+				// Each promise fetches, parses, and filters - allowing true parallelism
 				const fetchPromises = bookCodes.map(async (bookCode) => {
 					const key = `${basePath}tn_${bookCode}.tsv`;
 					const fetchStart = Date.now();
@@ -298,7 +299,36 @@ async function handleFilterRequestWithR2(
 								size: text.length,
 								cached: true
 							});
-							return { bookCode, text, success: true };
+
+							// Parse and filter INSIDE the promise - interleaves with other fetches
+							const bookName = BOOK_NAMES[bookCode] || bookCode;
+							const rows = parseTSV(text);
+							const bookMatches: typeof matches = [];
+
+							for (const row of rows) {
+								const searchText = `${row.Quote} ${row.Note}`;
+								pattern.lastIndex = 0;
+								const found: string[] = [];
+								let match;
+								while ((match = pattern.exec(searchText)) !== null) {
+									found.push(match[0]);
+								}
+
+								if (found.length > 0) {
+									const fullReference = row.Reference
+										? `${bookName} ${row.Reference}`
+										: bookName;
+									bookMatches.push({
+										reference: fullReference,
+										quote: row.Quote,
+										note: row.Note,
+										matchedTerms: [...new Set(found)],
+										matchCount: found.length
+									});
+								}
+							}
+
+							return { bookCode, matches: bookMatches, success: true };
 						}
 					} catch {
 						// File not in R2
@@ -310,38 +340,16 @@ async function handleFilterRequestWithR2(
 						size: 0,
 						cached: false
 					});
-					return { bookCode, text: null, success: false };
+					return { bookCode, matches: [] as typeof matches, success: false };
 				});
 
 				const r2Results = await Promise.all(fetchPromises);
 
-				// Process R2 results - parse TSV and filter
-				for (const { bookCode, text, success } of r2Results) {
-					if (success && text) {
+				// Aggregate already-processed results
+				for (const { matches: bookMatches, success } of r2Results) {
+					if (success) {
 						booksSearched++;
-						const bookName = BOOK_NAMES[bookCode] || bookCode;
-						const rows = parseTSV(text);
-
-						for (const row of rows) {
-							const searchText = `${row.Quote} ${row.Note}`;
-							pattern.lastIndex = 0;
-							const found: string[] = [];
-							let match;
-							while ((match = pattern.exec(searchText)) !== null) {
-								found.push(match[0]);
-							}
-
-							if (found.length > 0) {
-								const fullReference = row.Reference ? `${bookName} ${row.Reference}` : bookName;
-								matches.push({
-									reference: fullReference,
-									quote: row.Quote,
-									note: row.Note,
-									matchedTerms: [...new Set(found)],
-									matchCount: found.length
-								});
-							}
-						}
+						matches.push(...bookMatches);
 					} else {
 						booksFailed++;
 					}

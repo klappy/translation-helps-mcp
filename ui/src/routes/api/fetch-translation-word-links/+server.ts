@@ -287,7 +287,7 @@ async function handleFilterRequestWithR2(
 
 			console.log(`[fetch-translation-word-links] R2 base path: ${basePath}`);
 
-			// Parallel fetch all TSV files
+			// Parallel fetch + parse + filter (interleaved I/O and CPU)
 			const fetchPromises = bookCodes.map(async (bookCode) => {
 				const key = `${basePath}twl_${bookCode}.tsv`;
 				const fetchStart = Date.now();
@@ -303,62 +303,67 @@ async function handleFilterRequestWithR2(
 							size: text.length,
 							cached: true
 						});
-						return { bookCode, text, success: true };
+
+						// Parse and filter INSIDE the promise - interleaves with other fetches
+						const bookName = BOOK_CODE_TO_NAME[bookCode] || bookCode;
+						const rows = parseTSV(text);
+						const bookMatches: typeof matches = [];
+
+						for (const row of rows) {
+							const rcLink = row.TWLink || '';
+							const quote = row.Quote || '';
+
+							// Extract term from RC link
+							let term = '';
+							let category = '';
+							const termMatch = rcLink.match(/rc:\/\/\*\/tw\/dict\/bible\/([^/]+)\/([^/]+)/);
+							if (termMatch) {
+								category = termMatch[1];
+								term = termMatch[2];
+							}
+
+							// Filter by category if specified
+							if (categoryFilter && category !== categoryFilter) {
+								continue;
+							}
+
+							// Check if term matches pattern
+							const searchText = `${term} ${quote}`;
+							pattern.lastIndex = 0;
+							const found: string[] = [];
+							let match;
+							while ((match = pattern.exec(searchText)) !== null) {
+								found.push(match[0]);
+							}
+
+							if (found.length > 0) {
+								const fullRef = row.Reference ? `${bookName} ${row.Reference}` : bookName;
+								bookMatches.push({
+									reference: fullRef,
+									quote,
+									term,
+									category,
+									rcLink,
+									matchedTerms: [...new Set(found)]
+								});
+							}
+						}
+
+						return { bookCode, matches: bookMatches, success: true };
 					}
 				} catch {
 					// File doesn't exist for this book
 				}
-				return { bookCode, text: null, success: false };
+				return { bookCode, matches: [] as typeof matches, success: false };
 			});
 
 			const r2Results = await Promise.all(fetchPromises);
 
-			// Process results
-			for (const { bookCode, text, success } of r2Results) {
-				if (success && text) {
+			// Aggregate already-processed results
+			for (const { matches: bookMatches, success } of r2Results) {
+				if (success) {
 					booksSearched++;
-					const bookName = BOOK_CODE_TO_NAME[bookCode] || bookCode;
-					const rows = parseTSV(text);
-
-					for (const row of rows) {
-						const rcLink = row.TWLink || '';
-						const quote = row.Quote || '';
-
-						// Extract term from RC link
-						let term = '';
-						let category = '';
-						const termMatch = rcLink.match(/rc:\/\/\*\/tw\/dict\/bible\/([^/]+)\/([^/]+)/);
-						if (termMatch) {
-							category = termMatch[1];
-							term = termMatch[2];
-						}
-
-						// Filter by category if specified
-						if (categoryFilter && category !== categoryFilter) {
-							continue;
-						}
-
-						// Check if term matches pattern
-						const searchText = `${term} ${quote}`;
-						pattern.lastIndex = 0;
-						const found: string[] = [];
-						let match;
-						while ((match = pattern.exec(searchText)) !== null) {
-							found.push(match[0]);
-						}
-
-						if (found.length > 0) {
-							const fullRef = row.Reference ? `${bookName} ${row.Reference}` : bookName;
-							matches.push({
-								reference: fullRef,
-								quote,
-								term,
-								category,
-								rcLink,
-								matchedTerms: [...new Set(found)]
-							});
-						}
-					}
+					matches.push(...bookMatches);
 				} else {
 					booksFailed++;
 				}

@@ -1,7 +1,7 @@
 {
 	"name": "translation-helps-ui",
 	"type": "module",
-	"version": "7.20.6",
+	"version": "7.20.7",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "node ../scripts/sync-version.js && vite build",

@@ -107,7 +107,9 @@ async function handleFilterRequestWithR2(
 
 			console.log(`[fetch-translation-academy] R2 found ${mdFiles.length} files to search`);
 
-			// Parallel fetch all markdown files
+			// Parallel fetch + parse (interleaved I/O and CPU)
+			// Note: Academy modules can have multiple files, so we fetch and parse in parallel,
+			// then aggregate by module before filtering
 			const fetchPromises = mdFiles.map(async (key: string) => {
 				const fetchStart = Date.now();
 				try {
@@ -123,34 +125,42 @@ async function handleFilterRequestWithR2(
 							size: text.length,
 							cached: true
 						});
-						return { key, text, parsed, success: true };
+						// Return parsed data for aggregation
+						if (parsed) {
+							return {
+								moduleKey: `${parsed.category}/${parsed.moduleId}`,
+								text,
+								category: parsed.category,
+								moduleId: parsed.moduleId,
+								success: true
+							};
+						}
 					}
 				} catch {
 					// File fetch failed
 				}
-				return { key, text: null, parsed: null, success: false };
+				return { moduleKey: null, text: null, category: null, moduleId: null, success: false };
 			});
 
 			const r2Results = await Promise.all(fetchPromises);
 
 			// Aggregate content by module (concatenate multiple .md files)
-			for (const { key, text, parsed, success } of r2Results) {
-				if (success && text && parsed) {
-					const moduleKey = `${parsed.category}/${parsed.moduleId}`;
+			for (const { moduleKey, text, category, moduleId, success } of r2Results) {
+				if (success && text && moduleKey && category && moduleId) {
 					const existing = moduleContents.get(moduleKey);
 					if (existing) {
 						existing.content += '\n\n' + text;
 					} else {
 						moduleContents.set(moduleKey, {
 							content: text,
-							category: parsed.category,
-							path: `${parsed.category}/${parsed.moduleId}`
+							category,
+							path: `${category}/${moduleId}`
 						});
 					}
 				}
 			}
 
-			// Now filter each module's combined content
+			// Filter each module's combined content
 			for (const [moduleKey, { content, category, path }] of moduleContents) {
 				modulesSearched++;
 				const moduleId = moduleKey.split('/')[1];

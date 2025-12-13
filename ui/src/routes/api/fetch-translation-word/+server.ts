@@ -172,7 +172,7 @@ async function handleFilterRequestWithR2(
 
 			console.log(`[fetch-translation-word] R2 found ${filesToFetch.length} word files to search`);
 
-			// Parallel fetch all markdown files
+			// Parallel fetch + parse + filter (interleaved I/O and CPU)
 			const fetchPromises = filesToFetch.map(async (key: string) => {
 				const fetchStart = Date.now();
 				try {
@@ -188,44 +188,54 @@ async function handleFilterRequestWithR2(
 							size: text.length,
 							cached: true
 						});
-						return { key, text, parsed, success: true };
+
+						// Parse and filter INSIDE the promise - interleaves with other fetches
+						if (parsed) {
+							const title = extractTitle(text, parsed.term);
+							const definition = extractDefinition(text);
+
+							// Check if content matches pattern
+							const searchText = `${parsed.term} ${title} ${definition} ${text}`;
+							pattern.lastIndex = 0;
+							const found: string[] = [];
+							let match;
+							while ((match = pattern.exec(searchText)) !== null) {
+								found.push(match[0]);
+							}
+
+							if (found.length > 0) {
+								return {
+									success: true,
+									match: {
+										term: parsed.term,
+										title,
+										category: parsed.category,
+										definition:
+											definition.slice(0, 200) + (definition.length > 200 ? '...' : ''),
+										matchedTerms: [...new Set(found)],
+										matchCount: found.length,
+										path: `bible/${parsed.category}/${parsed.term}.md`,
+										rcLink: `rc://${language}/tw/dict/bible/${parsed.category}/${parsed.term}`
+									}
+								};
+							}
+						}
+						return { success: true, match: null };
 					}
 				} catch {
 					// File fetch failed
 				}
-				return { key, text: null, parsed: null, success: false };
+				return { success: false, match: null };
 			});
 
 			const r2Results = await Promise.all(fetchPromises);
 
-			// Process results and filter
-			for (const { key, text, parsed, success } of r2Results) {
-				if (success && text && parsed) {
+			// Aggregate already-processed results
+			for (const { success, match } of r2Results) {
+				if (success) {
 					termsSearched++;
-
-					const title = extractTitle(text, parsed.term);
-					const definition = extractDefinition(text);
-
-					// Check if content matches pattern
-					const searchText = `${parsed.term} ${title} ${definition} ${text}`;
-					pattern.lastIndex = 0;
-					const found: string[] = [];
-					let match;
-					while ((match = pattern.exec(searchText)) !== null) {
-						found.push(match[0]);
-					}
-
-					if (found.length > 0) {
-						matches.push({
-							term: parsed.term,
-							title,
-							category: parsed.category,
-							definition: definition.slice(0, 200) + (definition.length > 200 ? '...' : ''),
-							matchedTerms: [...new Set(found)],
-							matchCount: found.length,
-							path: `bible/${parsed.category}/${parsed.term}.md`,
-							rcLink: `rc://${language}/tw/dict/bible/${parsed.category}/${parsed.term}`
-						});
+					if (match) {
+						matches.push(match);
 					}
 				} else {
 					termsFailed++;

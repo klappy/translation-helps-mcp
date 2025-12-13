@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.7](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.6...v7.20.7) (2025-12-13)
+
+### Performance
+
+- **parallelism:** Interleave I/O and CPU operations in all filter endpoints
+- **parallelism:** Parse and filter INSIDE fetch promises, not after Promise.all
+- **parallelism:** True JS parallelism - CPU work happens while other fetches in flight
+- **architecture:** All endpoints now: fetch → parse → filter in same async block
+
 ### [7.20.6](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.5...v7.20.6) (2025-12-13)
 
 ### Features
