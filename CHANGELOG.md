@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.10](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.9...v7.20.10) (2025-12-13)
+
+### Bug Fixes
+
+- **r2:** Fix R2 path discovery for questions/word-links - find actual .tsv file, not just any object
+- **r2:** Use full path regex matching like scripture endpoint (more robust)
+- **r2:** Questions filter now correctly discovers archive path from TSV files
+- **r2:** Word-links filter now correctly discovers archive path from TSV files
+
 ### [7.20.9](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.8...v7.20.9) (2025-12-13)
 
 ### Bug Fixes

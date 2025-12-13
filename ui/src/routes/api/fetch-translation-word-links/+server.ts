@@ -277,13 +277,20 @@ async function handleFilterRequestWithR2(
 		});
 
 		if (listResult.objects && listResult.objects.length > 0) {
-			// Find versioned path (e.g., archive/v86.zip/files/)
-			const sampleKey = listResult.objects[0].key;
-			const archiveMatch = sampleKey.match(/archive\/[^/]+\.zip\/files\//);
-			if (!archiveMatch) {
-				throw new Error('Could not determine R2 archive path');
+			// Find a .tsv file to extract the base path from (not just any object)
+			const tsvFile = listResult.objects.find((obj: any) => obj.key.endsWith('.tsv'));
+			if (!tsvFile) {
+				throw new Error('No TSV files found in R2 bucket');
 			}
-			const basePath = r2Prefix + archiveMatch[0];
+			const sampleKey = tsvFile.key;
+			// Extract full base path including archive version
+			const archiveMatch = sampleKey.match(
+				/^(by-url\/[^/]+\/[^/]+\/[^/]+\/archive\/[^/]+\.zip\/files\/)/
+			);
+			if (!archiveMatch) {
+				throw new Error('Could not determine R2 archive path from: ' + sampleKey);
+			}
+			const basePath = archiveMatch[1];
 
 			console.log(`[fetch-translation-word-links] R2 base path: ${basePath}`);
 
