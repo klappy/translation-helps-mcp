@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.2](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.1...v7.20.2) (2025-12-13)
+
+### Bug Fixes
+
+- **filter:** Prepend book name to references for proper statistics grouping
+- **filter:** Add missing testament destructuring in questions and word-links handlers
+- **filter:** Case-insensitive testament filter (ot/OT, nt/NT both work)
+
 ### [7.20.1](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.0...v7.20.1) (2025-12-13)
 
 ### Bug Fixes

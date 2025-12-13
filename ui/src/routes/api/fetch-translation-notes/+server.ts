@@ -126,14 +126,16 @@ async function handleFilterRequest(
 
 	// Determine books to search
 	let booksToSearch: string[];
+	const testamentLower = testament?.toLowerCase();
+
 	if (reference) {
 		// Single reference
 		booksToSearch = [reference];
 	} else {
-		// Filter by testament if specified
-		if (testament === 'ot') {
+		// Filter by testament if specified (case-insensitive)
+		if (testamentLower === 'ot') {
 			booksToSearch = OT_BOOKS;
-		} else if (testament === 'nt') {
+		} else if (testamentLower === 'nt') {
 			booksToSearch = NT_BOOKS;
 		} else {
 			booksToSearch = BOOKS_TO_SEARCH;
@@ -142,6 +144,10 @@ async function handleFilterRequest(
 
 	let booksSearched = 0;
 	let booksFailed = 0;
+
+	console.log(
+		`[fetch-translation-notes] Testament filter: "${testament}", Books to search: ${booksToSearch.length}`
+	);
 
 	// Process books in batches
 	const batchSize = 10;
@@ -166,8 +172,13 @@ async function handleFilterRequest(
 						}
 
 						if (found.length > 0) {
+							// Get the raw reference from the note (e.g., "3:16")
+							const rawRef = note.Reference || note.reference || '';
+							// Prepend book name to create full reference (e.g., "John 3:16")
+							const fullReference = rawRef ? `${book} ${rawRef}` : book;
+
 							bookMatches.push({
-								reference: note.Reference || note.reference || book,
+								reference: fullReference,
 								quote,
 								note: noteText,
 								matchedTerms: [...new Set(found)],
@@ -175,12 +186,12 @@ async function handleFilterRequest(
 							});
 						}
 					}
-					return { success: true, matches: bookMatches };
+					return { success: true, matches: bookMatches, book };
 				}
-				return { success: true, matches: [] };
+				return { success: true, matches: [], book };
 			} catch (error) {
 				console.warn(`[fetch-translation-notes] Filter failed for ${book}:`, error);
-				return { success: false, matches: [] };
+				return { success: false, matches: [], book };
 			}
 		});
 

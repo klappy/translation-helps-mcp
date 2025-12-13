@@ -105,7 +105,7 @@ async function handleFilterRequest(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { reference, language, organization } = params;
+	const { reference, language, organization, testament } = params;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`tq-filter-${Date.now()}`, 'translation-questions-filter');
@@ -127,12 +127,15 @@ async function handleFilterRequest(
 
 	// Determine books to search
 	let booksToSearch: string[];
+	const testamentLower = testament?.toLowerCase();
+
 	if (reference) {
 		booksToSearch = [reference];
 	} else {
-		if (testament === 'ot') {
+		// Filter by testament if specified (case-insensitive)
+		if (testamentLower === 'ot') {
 			booksToSearch = OT_BOOKS;
-		} else if (testament === 'nt') {
+		} else if (testamentLower === 'nt') {
 			booksToSearch = NT_BOOKS;
 		} else {
 			booksToSearch = BOOKS_TO_SEARCH;
@@ -141,6 +144,10 @@ async function handleFilterRequest(
 
 	let booksSearched = 0;
 	let booksFailed = 0;
+
+	console.log(
+		`[fetch-translation-questions] Testament filter: "${testament}", Books to search: ${booksToSearch.length}`
+	);
 
 	// Process books in batches
 	const batchSize = 10;
@@ -165,8 +172,13 @@ async function handleFilterRequest(
 						}
 
 						if (found.length > 0) {
+							// Get the raw reference from the question (e.g., "3:16")
+							const rawRef = q.Reference || q.reference || '';
+							// Prepend book name to create full reference (e.g., "John 3:16")
+							const fullReference = rawRef ? `${book} ${rawRef}` : book;
+
 							bookMatches.push({
-								reference: q.Reference || q.reference || book,
+								reference: fullReference,
 								question,
 								response,
 								matchedTerms: [...new Set(found)],
