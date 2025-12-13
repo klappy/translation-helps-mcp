@@ -263,7 +263,7 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 	
 	let results: Array<{ text: string; translation: string; book?: string }> = [];
-	let booksSearched: string[] = [];
+	const booksSearched: string[] = [];
 	let fetchMethod = 'per-book';
 	
 	if (reference) {
