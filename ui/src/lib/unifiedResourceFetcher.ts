@@ -335,18 +335,61 @@ export class UnifiedResourceFetcher {
 	}
 
 	/**
-	 * Browse Translation Words - Returns list of available words
-	 * NOTE: This requires adding a new method to ZipResourceFetcher2
-	 * to scan ZIP contents for available words
+	 * List all Translation Words - Returns list of available words
+	 * Used by filter functionality to iterate over all words
+	 */
+	async listTranslationWords(
+		language: string,
+		organization: string,
+		category?: string
+	): Promise<Array<{ term: string; category: string; path: string }>> {
+		// Call getMarkdownContent without identifier to get word list
+		const result = (await this.zipFetcher.getMarkdownContent(language, organization, 'tw')) as {
+			categories?: string[];
+			words?: Array<{ term: string; category: string; path: string }>;
+			totalWords?: number;
+		};
+
+		if (!result || !result.words) {
+			return [];
+		}
+
+		// Filter by category if specified
+		if (category) {
+			return result.words.filter((w) => w.category === category);
+		}
+
+		return result.words;
+	}
+
+	/**
+	 * Browse Translation Words - Returns list of available words with metadata
 	 */
 	async browseTranslationWords(
-		_language: string,
-		_organization: string,
-		_category?: string
+		language: string,
+		organization: string,
+		category?: string
 	): Promise<{ words: any[]; categories: string[]; totalWords: number }> {
-		// TODO: Implement ZIP scanning in ZipResourceFetcher2
-		// For now, throw honest error instead of returning mock data
-		throw new Error('Browse Translation Words not yet implemented - needs ZIP scanning capability');
+		const result = (await this.zipFetcher.getMarkdownContent(language, organization, 'tw')) as {
+			categories?: string[];
+			words?: Array<{ term: string; category: string; path: string }>;
+			totalWords?: number;
+		};
+
+		if (!result || !result.words) {
+			return { words: [], categories: [], totalWords: 0 };
+		}
+
+		let words = result.words;
+		if (category) {
+			words = words.filter((w) => w.category === category);
+		}
+
+		return {
+			words,
+			categories: result.categories || [],
+			totalWords: words.length
+		};
 	}
 
 	/**

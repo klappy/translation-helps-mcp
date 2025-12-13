@@ -7,11 +7,10 @@
  * Supports RC links from TWL, direct terms, and paths.
  * Provides Table of Contents when no specific term is requested.
  * Optional search parameter for filtering content relevance.
- *
- * NOTE: For searching ACROSS all words, use /api/fetch-translation-word-links?filter=term
- * which searches the word links (TWL) to find all verses/words matching a term.
+ * Filter parameter for stemmed regex matching across all words with statistics.
  */
 
+import { json } from '@sveltejs/kit';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
@@ -20,6 +19,13 @@ import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 import { UnifiedResourceFetcher, type TWArticleResult } from '$lib/unifiedResourceFetcher.js';
 import { parseRCLink, extractTerm, isRCLink } from '$lib/rcLinkParser.js';
 import { createSearchService } from '$lib/../../../src/services/SearchServiceFactory.js';
+
+// Import shared filter utilities
+import {
+	generateStemmedPattern,
+	computeFilterStatistics,
+	formatFilterResponseAsMarkdown
+} from '$lib/filterUtils.js';
 
 /**
  * Generate Table of Contents when no specific term is requested
@@ -56,16 +62,218 @@ function generateTableOfContents(language: string, organization: string) {
 			byRCLink: `?rcLink=rc://${language}/tw/dict/bible/kt/love`,
 			byTerm: '?term=love',
 			byPath: '?path=bible/kt/love.md',
-			searchAcrossWords:
-				'To search across all words, use /api/fetch-translation-word-links?filter=love'
+			byFilter: '?filter=love (searches all words for "love", "loving", "beloved", etc.)'
 		},
 		language,
 		organization
 	};
 }
 
+/**
+ * Handle filter requests - stemmed regex matching across all translation words
+ */
+async function handleFilterRequest(
+	filter: string,
+	params: Record<string, any>,
+	request: Request
+): Promise<any> {
+	const { language, organization, category: categoryFilter } = params;
+	const url = new URL(request.url);
+
+	// Create tracer for this request
+	const tracer = new EdgeXRayTracer(`tw-filter-${Date.now()}`, 'translation-word-filter');
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
+
+	// Generate stemmed pattern
+	const pattern = generateStemmedPattern(filter);
+	console.log(`[fetch-translation-word] Filter: "${filter}" Pattern: ${pattern}`);
+
+	// Get list of all words
+	const wordList = await fetcher.listTranslationWords(language, organization, categoryFilter);
+
+	if (!wordList || wordList.length === 0) {
+		throw new Error('No Translation Words found in repository');
+	}
+
+	console.log(`[fetch-translation-word] Searching ${wordList.length} words for filter: "${filter}"`);
+
+	// Collect matches
+	const matches: Array<{
+		term: string;
+		title: string;
+		category: string;
+		definition: string;
+		matchedTerms: string[];
+		matchCount: number;
+		path: string;
+		rcLink: string;
+	}> = [];
+
+	let termsSearched = 0;
+	let termsFailed = 0;
+
+	// Process words in batches
+	const batchSize = 20;
+	for (let i = 0; i < wordList.length; i += batchSize) {
+		const batch = wordList.slice(i, i + batchSize);
+
+		const batchPromises = batch.map(async (wordEntry) => {
+			try {
+				// Fetch the full word content
+				const result = await fetcher.fetchTranslationWord(
+					wordEntry.term,
+					language,
+					organization,
+					wordEntry.path
+				);
+
+				if (result && result.content) {
+					const mdContent = result.content;
+
+					// Extract title
+					const titleMatch = mdContent.match(/^#\s+(.+)$/m);
+					const termTitle = titleMatch ? titleMatch[1].trim() : wordEntry.term;
+
+					// Extract definition
+					let definition = '';
+					const defMatch = mdContent.match(/##\s*Definition:?\s*\n\n([\s\S]+?)(?=\n##|$)/i);
+					if (defMatch) {
+						definition = defMatch[1].trim().replace(/\n+/g, ' ').replace(/\s+/g, ' ');
+					} else {
+						const lines = mdContent.split('\n');
+						let foundTitle = false;
+						for (const line of lines) {
+							if (line.startsWith('#') && !foundTitle) {
+								foundTitle = true;
+								continue;
+							}
+							if (foundTitle && line.trim() && !line.startsWith('#')) {
+								definition = line.trim();
+								break;
+							}
+						}
+					}
+
+					// Check if content matches pattern
+					const searchText = `${wordEntry.term} ${termTitle} ${definition} ${mdContent}`;
+					pattern.lastIndex = 0;
+					const found: string[] = [];
+					let match;
+					while ((match = pattern.exec(searchText)) !== null) {
+						found.push(match[0]);
+					}
+
+					if (found.length > 0) {
+						return {
+							success: true,
+							match: {
+								term: wordEntry.term,
+								title: termTitle,
+								category: wordEntry.category,
+								definition: definition.slice(0, 200) + (definition.length > 200 ? '...' : ''),
+								matchedTerms: [...new Set(found)],
+								matchCount: found.length,
+								path: result.path || wordEntry.path,
+								rcLink: `rc://${language}/tw/dict/bible/${wordEntry.category}/${wordEntry.term}`
+							}
+						};
+					}
+				}
+				return { success: true, match: null };
+			} catch (error) {
+				return { success: false, match: null };
+			}
+		});
+
+		const batchResults = await Promise.all(batchPromises);
+		for (const result of batchResults) {
+			if (result.success) {
+				termsSearched++;
+				if (result.match) {
+					matches.push(result.match);
+				}
+			} else {
+				termsFailed++;
+			}
+		}
+	}
+
+	console.log(
+		`[fetch-translation-word] Filter complete: ${matches.length} matches from ${termsSearched} terms`
+	);
+
+	// Compute statistics by category
+	const statistics = computeFilterStatistics(matches, {
+		includeTestament: false,
+		includeBook: false,
+		includeCategory: true
+	});
+
+	// Build response
+	const response = {
+		filter,
+		pattern: pattern.toString(),
+		language,
+		organization,
+		totalMatches: matches.length,
+		statistics,
+		searchScope: {
+			category: categoryFilter || 'all',
+			termsSearched,
+			termsFailed
+		},
+		matches
+	};
+
+	// Check format parameter
+	const format = url.searchParams.get('format') || 'json';
+
+	if (format === 'md' || format === 'markdown') {
+		const markdown = formatFilterResponseAsMarkdown(
+			response,
+			statistics,
+			'translation-words',
+			(match: (typeof matches)[0]) => {
+				let md = `### ${match.title} (\`${match.term}\`)\n\n`;
+				md += `**Category:** ${match.category}\n\n`;
+				md += `${match.definition}\n\n`;
+				if (match.matchedTerms.length > 0) {
+					md += `*Matched: ${match.matchedTerms.join(', ')}*\n`;
+				}
+				md += `*Link: ${match.rcLink}*\n\n`;
+				md += '---\n\n';
+				return md;
+			}
+		);
+		return new Response(markdown, {
+			status: 200,
+			headers: {
+				'Content-Type': 'text/markdown; charset=utf-8',
+				'X-Format': 'md'
+			}
+		});
+	}
+
+	return json(response);
+}
+
 async function getTranslationWord(params: Record<string, any>, request: Request): Promise<any> {
-	const { term, path, rcLink, language = 'en', organization = 'unfoldingWord', search } = params;
+	const {
+		term,
+		path,
+		rcLink,
+		language = 'en',
+		organization = 'unfoldingWord',
+		search,
+		filter,
+		category
+	} = params;
+
+	// Handle filter requests first (stemmed regex matching across all words)
+	if (filter) {
+		return handleFilterRequest(filter, params, request);
+	}
 
 	// Create tracer for this request (moved up for debug use)
 	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'fetch-translation-word');
@@ -325,7 +533,19 @@ export const GET = createSimpleEndpoint({
 		},
 		COMMON_PARAMS.language,
 		COMMON_PARAMS.organization,
-		COMMON_PARAMS.search
+		COMMON_PARAMS.search,
+		{
+			name: 'filter',
+			required: false,
+			description:
+				'Stemmed regex filter to search all words (e.g., "love" matches "love", "loving", "beloved")'
+		},
+		{
+			name: 'category',
+			required: false,
+			validate: (value) => !value || ['kt', 'names', 'other'].includes(value.toLowerCase()),
+			description: 'Limit filter to category: kt (Key Terms), names, or other'
+		}
 	],
 
 	fetch: getTranslationWord,
@@ -351,6 +571,10 @@ export const GET = createSimpleEndpoint({
 		'No translation words catalog found': {
 			status: 404,
 			message: 'No Translation Words catalog available for the requested language/organization.'
+		},
+		'No Translation Words found': {
+			status: 404,
+			message: 'No Translation Words found in the repository to search.'
 		}
 	}),
 
