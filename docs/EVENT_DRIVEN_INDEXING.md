@@ -3,7 +3,7 @@
 This document describes the event-driven pipeline that automatically indexes Translation Helps content for Cloudflare AI Search.
 
 **Last Updated:** December 2025  
-**Version:** 7.19.1
+**Version:** 7.19.29
 
 ## Overview
 

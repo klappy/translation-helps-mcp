@@ -2,6 +2,177 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.29](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.28...v7.19.29) (2025-12-13)
+
+### Bug Fixes
+
+- **mcp:** Handle filter response format in scripture formatter
+
+### [7.19.28](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.27...v7.19.28) (2025-12-13)
+
+### Documentation
+
+- **endpoints:** Clarify filter param requirements
+
+### [7.19.27](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.26...v7.19.27) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Clean up R2 direct fetch method detection
+
+### [7.19.26](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.25...v7.19.26) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Find USFM file in R2 list for base path
+
+### [7.19.25](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.24...v7.19.25) (2025-12-13)
+
+### Features
+
+- **fetch-scripture:** Add R2 direct fetch for full-resource filter
+
+### [7.19.24](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.23...v7.19.24) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Use book code from fetch loop for proper names
+
+### [7.19.23](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.22...v7.19.23) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Fix book name extraction regex
+
+### [7.19.22](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.21...v7.19.22) (2025-12-13)
+
+### Features
+
+- **fetch-scripture:** Add full-resource filter search with parallel fetch
+
+### [7.19.21](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.20...v7.19.21) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Fix chapter extraction for filter param
+
+### [7.19.20](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.19...v7.19.20) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Handle translation prefix in verse parsing
+
+### [7.19.19](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.18...v7.19.19) (2025-12-13)
+
+### Features
+
+- **ui:** Add filter param to scripture endpoint config
+
+### [7.19.18](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.17...v7.19.18) (2025-12-10)
+
+### Bug Fixes
+
+- **fetch-scripture:** Fix verse parsing for filter param
+
+### [7.19.17](https://github.com/klappy/translation-helps-mcp/compare/v7.19.16...v7.19.17) (2025-12-10)
+
+### Features
+
+- **fetch-scripture:** Add `filter` parameter for stemmed regex search
+  - `search` = AutoRAG semantic (conceptually about X)
+  - `filter` = Stemmed regex (contains word X and variations)
+  - Example: `filter=love` matches love, loves, loved, loving, loveth
+  - Requires `reference` parameter (e.g., `reference=John`)
+  - Returns all matching verses with matched terms highlighted
+
+### [7.19.16](https://github.com/klappy/translation-helps-mcp/compare/v7.19.15...v7.19.16) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Infer language and organization from file path
+  - AutoRAG wasn't returning metadata, so language defaulted to 'en'
+  - Now extracts language/organization from path (e.g., `hi/translationCore-Create-BCS/...`)
+  - Fixes Hindi results appearing when searching for English
+  - Language and organization filters now work correctly
+
+### [7.19.15](https://github.com/klappy/translation-helps-mcp/compare/v7.19.14...v7.19.15) (2025-12-10)
+
+### Features
+
+- **indexer:** Chapter-level indexing for scripture
+  - Scripture now indexed at chapter level instead of book level
+  - Better search granularity - "love" will find more relevant chapters
+  - Each chapter is a separate searchable chunk with metadata
+  - Path structure: `{lang}/{org}/{resource}/{version}/{book}/{chapter}.md`
+  - Requires re-indexing: flush both R2 buckets to trigger workflow
+
+### Bug Fixes
+
+- **fetch-scripture:** Filter search results by requested language
+  - Was returning results from all languages when searching
+  - Now explicitly filters to match requested language parameter
+
+### [7.19.14](https://github.com/klappy/translation-helps-mcp/compare/v7.19.13...v7.19.14) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Respect AutoRAG's 50 result limit
+  - AutoRAG has a hard limit of 50 max_num_results
+  - Was trying to fetch 500 which caused "Too big" error
+  - Scripture filter now works but is limited by AutoRAG's 50 result cap
+
+### [7.19.13](https://github.com/klappy/translation-helps-mcp/compare/v7.19.12...v7.19.13) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Use actual resource codes instead of 'scripture' category
+  - `inferResourceFromPath` now returns actual codes (ult, ust, ueb, t4t) not 'scripture'
+  - Search results now show `resource: "ult"` instead of `resource: "scripture"`
+  - Consistent with how helps resources work (tn, tw, tq, ta)
+  - 'scripture' and 'bible' remain as convenience aliases for filtering
+  - Filter by specific resource: `resource=ult` or `resource=ust`
+  - Filter all scripture: `resource=scripture` (expands to ult, ust, ueb, t4t, glt, gst)
+
+### [7.19.12](https://github.com/klappy/translation-helps-mcp/compare/v7.19.11...v7.19.12) (2025-12-10)
+
+### Bug Fixes
+
+- **fetch-scripture:** Fix search delegation filtering out all results
+  - Changed filter from `hit.type === 'bible'` (non-existent field) to checking `hit.resource`
+  - Now correctly filters for scripture resources: ult, ust, ueb, t4t, glt, gst
+  - Added `resource=scripture` param when delegating to /api/search to trigger expanded fetching
+  - Fixed `owner` param to `organization` to match search endpoint expectations
+  - Request 50 results from search to increase scripture hit chances
+
+### [7.19.11](https://github.com/klappy/translation-helps-mcp/compare/v7.19.10...v7.19.11) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Fetch more results from AutoRAG for scripture filtering
+  - When filtering by `scripture` or `bible`, fetch 10x more results (min 100, max 500)
+  - Scripture ranks lower in vector search for single-word queries like "love"
+  - By fetching more results, we increase chances of getting scripture hits to filter
+  - Client-side filtering then returns only scripture resources up to requested limit
+
+### [7.19.10](https://github.com/klappy/translation-helps-mcp/compare/v7.19.9...v7.19.10) (2025-12-10)
+
+### Bug Fixes
+
+- **wrangler:** Add AI binding to preview environment for deploy previews
+  - Deploy previews were returning "AI binding not available"
+  - Added AI, KV, and R2 bindings to `[env.preview]` in wrangler.toml
+
+### [7.19.9](https://github.com/klappy/translation-helps-mcp/compare/v7.19.8...v7.19.9) (2025-12-10)
+
+### Bug Fixes
+
+- **search:** Fix client-side filtering causing empty results
+  - Made all client-side filters lenient for missing metadata fields
+  - Filters now only remove results that have a field AND it doesn't match
+  - Fixed `includeHelps` filter which was filtering out all hits with undefined resource
+  - Added diagnostic logging to track which filters AutoRAG isn't honoring server-side
+  - Filters affected: resource, language, organization, book, chapter, chunk_level, article_id
+
 ### [7.19.8](https://github.com/klappy/translation-helps-mcp/compare/v7.19.7...v7.19.8) (2025-12-06)
 
 ### Documentation

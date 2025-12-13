@@ -3,7 +3,7 @@
 This document provides a detailed reference for each specialist agent in the Translation Helps MCP multi-agent system.
 
 **Last Updated:** December 2025  
-**Version:** 7.19.1
+**Version:** 7.19.29
 
 ## Overview
 

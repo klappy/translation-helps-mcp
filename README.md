@@ -1,4 +1,4 @@
-# Translation Helps MCP Server v7.19.1
+# Translation Helps MCP Server v7.19.29
 
 A comprehensive MCP (Model Context Protocol) server that provides AI agents with access to Bible translation resources from Door43's Content Service (DCS). This server enables AI assistants to fetch, process, and intelligently work with translation helps including scripture texts, translation notes, translation words, and translation questions.
 

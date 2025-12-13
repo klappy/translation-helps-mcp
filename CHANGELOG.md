@@ -2,6 +2,78 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.19.29](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.28...v7.19.29) (2025-12-13)
+
+### Bug Fixes
+
+- **mcp:** Handle filter response format in scripture formatter
+
+### [7.19.28](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.27...v7.19.28) (2025-12-13)
+
+### Documentation
+
+- **endpoints:** Clarify filter param requirements
+
+### [7.19.27](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.26...v7.19.27) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Clean up R2 direct fetch method detection
+
+### [7.19.26](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.25...v7.19.26) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Find USFM file in R2 list for base path
+
+### [7.19.25](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.24...v7.19.25) (2025-12-13)
+
+### Features
+
+- **fetch-scripture:** Add R2 direct fetch for full-resource filter
+
+### [7.19.24](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.23...v7.19.24) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Use book code from fetch loop for proper names
+
+### [7.19.23](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.22...v7.19.23) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Fix book name extraction regex
+
+### [7.19.22](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.21...v7.19.22) (2025-12-13)
+
+### Features
+
+- **fetch-scripture:** Add full-resource filter search with parallel fetch
+
+### [7.19.21](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.20...v7.19.21) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Fix chapter extraction for filter param
+
+### [7.19.20](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.19...v7.19.20) (2025-12-13)
+
+### Bug Fixes
+
+- **fetch-scripture:** Handle translation prefix in verse parsing
+
+### [7.19.19](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.18...v7.19.19) (2025-12-13)
+
+### Features
+
+- **ui:** Add filter param to scripture endpoint config
+
+### [7.19.18](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.17...v7.19.18) (2025-12-10)
+
+### Bug Fixes
+
+- **fetch-scripture:** Fix verse parsing for filter param
+
 ### [7.19.17](https://github.com/klappy/translation-helps-mcp/compare/v7.19.16...v7.19.17) (2025-12-10)
 
 ### Features
