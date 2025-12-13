@@ -3,7 +3,7 @@
 This document provides a detailed guide to the multi-agent chat system in Translation Helps MCP.
 
 **Last Updated:** December 2025  
-**Version:** 7.19.1
+**Version:** 7.19.29
 
 ## Overview
 

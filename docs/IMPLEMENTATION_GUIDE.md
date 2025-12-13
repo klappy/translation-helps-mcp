@@ -1,7 +1,7 @@
 # Translation Helps MCP - Complete Implementation Guide
 
 **Last Updated:** December 2025  
-**Version:** 7.19.1
+**Version:** 7.19.29
 
 This guide covers everything from setup to advanced integration of the Translation Helps MCP server. **This is the "how to implement" guide** - for understanding what the translation resources are and how they work conceptually, see the [UW Translation Resources Guide](UW_TRANSLATION_RESOURCES_GUIDE.md).
 
