@@ -10,7 +10,6 @@
  * Filter parameter for stemmed regex matching across all words with statistics.
  */
 
-import { json } from '@sveltejs/kit';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
@@ -21,11 +20,7 @@ import { parseRCLink, extractTerm, isRCLink } from '$lib/rcLinkParser.js';
 import { createSearchService } from '$lib/../../../src/services/SearchServiceFactory.js';
 
 // Import shared filter utilities
-import {
-	generateStemmedPattern,
-	computeFilterStatistics,
-	formatFilterResponseAsMarkdown
-} from '$lib/filterUtils.js';
+import { generateStemmedPattern, computeFilterStatistics } from '$lib/filterUtils.js';
 
 /**
  * Generate Table of Contents when no specific term is requested
@@ -78,7 +73,6 @@ async function handleFilterRequest(
 	request: Request
 ): Promise<any> {
 	const { language, organization, category: categoryFilter } = params;
-	const url = new URL(request.url);
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`tw-filter-${Date.now()}`, 'translation-word-filter');
@@ -183,7 +177,7 @@ async function handleFilterRequest(
 					}
 				}
 				return { success: true, match: null };
-			} catch (error) {
+			} catch (_error) {
 				return { success: false, match: null };
 			}
 		});
@@ -228,36 +222,8 @@ async function handleFilterRequest(
 		matches
 	};
 
-	// Check format parameter
-	const format = url.searchParams.get('format') || 'json';
-
-	if (format === 'md' || format === 'markdown') {
-		const markdown = formatFilterResponseAsMarkdown(
-			response,
-			statistics,
-			'translation-words',
-			(match: (typeof matches)[0]) => {
-				let md = `### ${match.title} (\`${match.term}\`)\n\n`;
-				md += `**Category:** ${match.category}\n\n`;
-				md += `${match.definition}\n\n`;
-				if (match.matchedTerms.length > 0) {
-					md += `*Matched: ${match.matchedTerms.join(', ')}*\n`;
-				}
-				md += `*Link: ${match.rcLink}*\n\n`;
-				md += '---\n\n';
-				return md;
-			}
-		);
-		return new Response(markdown, {
-			status: 200,
-			headers: {
-				'Content-Type': 'text/markdown; charset=utf-8',
-				'X-Format': 'md'
-			}
-		});
-	}
-
-	return json(response);
+	// Return data object - let createSimpleEndpoint handle formatting
+	return response;
 }
 
 async function getTranslationWord(params: Record<string, any>, request: Request): Promise<any> {
@@ -268,8 +234,7 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 		language = 'en',
 		organization = 'unfoldingWord',
 		search,
-		filter,
-		category
+		filter
 	} = params;
 
 	// Handle filter requests first (stemmed regex matching across all words)

@@ -9,7 +9,6 @@
  * - Filter parameter for stemmed regex matching with statistics
  */
 
-import { json } from '@sveltejs/kit';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS, isValidReference } from '$lib/commonValidators.js';
@@ -22,11 +21,7 @@ import {
 } from '$lib/../../../src/services/SearchServiceFactory.js';
 
 // Import shared filter utilities
-import {
-	generateStemmedPattern,
-	computeFilterStatistics,
-	formatFilterResponseAsMarkdown
-} from '$lib/filterUtils.js';
+import { generateStemmedPattern, computeFilterStatistics } from '$lib/filterUtils.js';
 
 // Book names for full-resource filter
 const BOOKS_TO_SEARCH = [
@@ -110,8 +105,7 @@ async function handleFilterRequest(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { reference, language, organization, testament } = params;
-	const url = new URL(request.url);
+	const { reference, language, organization } = params;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`tq-filter-${Date.now()}`, 'translation-questions-filter');
@@ -228,37 +222,8 @@ async function handleFilterRequest(
 		(response as any).reference = reference;
 	}
 
-	// Check format parameter
-	const format = url.searchParams.get('format') || 'json';
-
-	if (format === 'md' || format === 'markdown') {
-		const markdown = formatFilterResponseAsMarkdown(
-			response,
-			statistics,
-			'translation-questions',
-			(match: (typeof matches)[0]) => {
-				let md = `**${match.reference}**\n`;
-				md += `**Q:** ${match.question}\n`;
-				if (match.response) {
-					md += `**A:** ${match.response}\n`;
-				}
-				if (match.matchedTerms.length > 0) {
-					md += `*Matched: ${match.matchedTerms.join(', ')}*\n`;
-				}
-				md += '\n';
-				return md;
-			}
-		);
-		return new Response(markdown, {
-			status: 200,
-			headers: {
-				'Content-Type': 'text/markdown; charset=utf-8',
-				'X-Format': 'md'
-			}
-		});
-	}
-
-	return json(response);
+	// Return data object - let createSimpleEndpoint handle formatting
+	return response;
 }
 
 /**
@@ -268,7 +233,7 @@ async function fetchTranslationQuestions(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { reference, language, organization, search, filter, testament } = params;
+	const { reference, language, organization, search, filter } = params;
 
 	// Handle filter requests first (stemmed regex matching)
 	if (filter) {

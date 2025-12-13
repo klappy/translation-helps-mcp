@@ -424,10 +424,162 @@ export function formatListResponse(data: any, options: FormatterOptions): string
 }
 
 /**
+ * Format filter response (stemmed regex search results)
+ */
+export function formatFilterResponse(data: any, options: FormatterOptions): string | object {
+	const { format, includeMetadata = true } = options;
+
+	if (format === 'json') {
+		return data;
+	}
+
+	const { filter, pattern, statistics, matches, searchScope } = data;
+
+	if (format === 'md') {
+		let md = '';
+
+		// YAML frontmatter
+		if (includeMetadata) {
+			md += '---\n';
+			md += `filter: "${filter}"\n`;
+			md += `pattern: "${pattern}"\n`;
+			md += `language: ${data.language || 'en'}\n`;
+			md += `organization: ${data.organization || 'unfoldingWord'}\n`;
+			md += `\n# Statistics\n`;
+			md += `total_results: ${statistics?.total || matches?.length || 0}\n`;
+
+			if (statistics?.byTestament) {
+				md += `old_testament: ${statistics.byTestament.ot}\n`;
+				md += `new_testament: ${statistics.byTestament.nt}\n`;
+			}
+
+			if (statistics?.byCategory && Object.keys(statistics.byCategory).length > 0) {
+				md += `\n# By Category\n`;
+				for (const [cat, count] of Object.entries(statistics.byCategory)) {
+					md += `${cat}: ${count}\n`;
+				}
+			}
+
+			if (statistics?.byBook && Object.keys(statistics.byBook).length > 0) {
+				const sortedBooks = Object.entries(statistics.byBook)
+					.sort((a, b) => (b[1] as number) - (a[1] as number))
+					.slice(0, 20);
+				md += `\n# Top Books\n`;
+				for (const [book, count] of sortedBooks) {
+					md += `${book}: ${count}\n`;
+				}
+			}
+
+			md += '---\n\n';
+		}
+
+		// Title
+		md += `# Filter Results: "${filter}"\n\n`;
+
+		// Summary
+		md += `## Summary\n\n`;
+		md += `- **Total Results**: ${statistics?.total || matches?.length || 0}\n`;
+		if (statistics?.byTestament) {
+			md += `- **Old Testament**: ${statistics.byTestament.ot}\n`;
+			md += `- **New Testament**: ${statistics.byTestament.nt}\n`;
+		}
+		if (searchScope) {
+			md += `- **Scope**: ${searchScope.testament || 'all'} (${searchScope.booksSearched || searchScope.termsSearched || searchScope.modulesSearched || 0} searched)\n`;
+		}
+		md += '\n';
+
+		// Matches
+		md += `## Matches\n\n`;
+
+		if (matches && matches.length > 0) {
+			// Group by book/category if available
+			const firstMatch = matches[0];
+
+			if (firstMatch.reference) {
+				// Group by book for reference-based matches
+				const byBook: Record<string, any[]> = {};
+				for (const match of matches) {
+					const book = match.reference?.split(/\s+\d/)[0] || 'Unknown';
+					if (!byBook[book]) byBook[book] = [];
+					byBook[book].push(match);
+				}
+
+				for (const [book, bookMatches] of Object.entries(byBook)) {
+					md += `### ${book} (${bookMatches.length})\n\n`;
+					for (const match of bookMatches.slice(0, 10)) {
+						md += `**${match.reference}**\n`;
+						if (match.quote) md += `> "${match.quote}"\n`;
+						if (match.note) md += `${match.note}\n`;
+						if (match.question) md += `**Q:** ${match.question}\n`;
+						if (match.response) md += `**A:** ${match.response}\n`;
+						if (match.matchedTerms?.length) {
+							md += `*Matched: ${match.matchedTerms.join(', ')}*\n`;
+						}
+						md += '\n';
+					}
+					if (bookMatches.length > 10) {
+						md += `*...and ${bookMatches.length - 10} more in ${book}*\n\n`;
+					}
+				}
+			} else if (firstMatch.term || firstMatch.title) {
+				// For term/title based matches (words, academy)
+				for (const match of matches.slice(0, 30)) {
+					md += `### ${match.title || match.term}\n\n`;
+					if (match.category) md += `**Category:** ${match.category}\n\n`;
+					if (match.definition) md += `${match.definition}\n\n`;
+					if (match.excerpt) md += `${match.excerpt}\n\n`;
+					if (match.matchedTerms?.length) {
+						md += `*Matched: ${match.matchedTerms.join(', ')}*\n`;
+					}
+					md += '---\n\n';
+				}
+				if (matches.length > 30) {
+					md += `\n*...and ${matches.length - 30} more results*\n`;
+				}
+			} else {
+				// Generic match display
+				for (const match of matches.slice(0, 50)) {
+					md += `- ${JSON.stringify(match)}\n`;
+				}
+				if (matches.length > 50) {
+					md += `\n*...and ${matches.length - 50} more results*\n`;
+				}
+			}
+		} else {
+			md += '*No matches found.*\n';
+		}
+
+		return md;
+	}
+
+	if (format === 'text') {
+		let text = `Filter Results: "${filter}"\n`;
+		text += `${'='.repeat(40)}\n\n`;
+		text += `Total: ${statistics?.total || matches?.length || 0}\n`;
+		if (statistics?.byTestament) {
+			text += `OT: ${statistics.byTestament.ot}, NT: ${statistics.byTestament.nt}\n`;
+		}
+		text += `\nMatches:\n`;
+		for (const match of (matches || []).slice(0, 100)) {
+			text += `- ${match.reference || match.term || match.title}: ${match.note || match.question || match.definition || ''}\n`;
+		}
+		return text;
+	}
+
+	return data;
+}
+
+/**
  * Main formatter function that delegates to specific formatters
  */
 export function formatResponse(data: any, options: FormatterOptions): string | object {
 	// Determine response type and delegate
+
+	// Check for filter response (has matches array and filter string)
+	if (data.filter && data.matches && data.statistics) {
+		return formatFilterResponse(data, options);
+	}
+
 	if (data.scripture || (Array.isArray(data) && data[0]?.text)) {
 		return formatScriptureResponse(data, options);
 	}

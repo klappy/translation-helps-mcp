@@ -8,7 +8,6 @@
  * Now supports filter parameter for stemmed regex matching with statistics.
  */
 
-import { json } from '@sveltejs/kit';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS } from '$lib/commonValidators.js';
@@ -17,11 +16,7 @@ import { createTranslationHelpsResponse } from '$lib/standardResponses.js';
 import { UnifiedResourceFetcher } from '$lib/unifiedResourceFetcher.js';
 
 // Import shared filter utilities
-import {
-	generateStemmedPattern,
-	computeFilterStatistics,
-	formatFilterResponseAsMarkdown
-} from '$lib/filterUtils.js';
+import { generateStemmedPattern, computeFilterStatistics } from '$lib/filterUtils.js';
 
 // Book names for full-resource filter
 const BOOKS_TO_SEARCH = [
@@ -105,8 +100,7 @@ async function handleFilterRequest(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { reference, language, organization, testament, category: categoryFilter } = params;
-	const url = new URL(request.url);
+	const { reference, language, organization, category: categoryFilter } = params;
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`twl-filter-${Date.now()}`, 'translation-word-links-filter');
@@ -245,34 +239,8 @@ async function handleFilterRequest(
 		(response as any).reference = reference;
 	}
 
-	// Check format parameter
-	const format = url.searchParams.get('format') || 'json';
-
-	if (format === 'md' || format === 'markdown') {
-		const markdown = formatFilterResponseAsMarkdown(
-			response,
-			statistics,
-			'translation-word-links',
-			(match: (typeof matches)[0]) => {
-				let md = `**${match.reference}** - \`${match.term}\` (${match.category})\n`;
-				if (match.quote) {
-					md += `> "${match.quote}"\n`;
-				}
-				md += `*Link: ${match.rcLink}*\n`;
-				md += '\n';
-				return md;
-			}
-		);
-		return new Response(markdown, {
-			status: 200,
-			headers: {
-				'Content-Type': 'text/markdown; charset=utf-8',
-				'X-Format': 'md'
-			}
-		});
-	}
-
-	return json(response);
+	// Return data object - let createSimpleEndpoint handle formatting
+	return response;
 }
 
 /**
@@ -283,7 +251,7 @@ async function fetchTranslationWordLinks(
 	params: Record<string, any>,
 	request: Request
 ): Promise<any> {
-	const { reference, language, organization, filter, testament, category } = params;
+	const { reference, language, organization, filter } = params;
 
 	// Handle filter requests first (stemmed regex matching)
 	if (filter) {

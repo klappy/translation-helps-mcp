@@ -7,7 +7,6 @@
  * Now supports filter parameter for stemmed regex matching with statistics.
  */
 
-import { json } from '@sveltejs/kit';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS, isValidReference } from '$lib/commonValidators.js';
@@ -20,13 +19,7 @@ import {
 } from '$lib/../../../src/services/SearchServiceFactory.js';
 
 // Import shared filter utilities
-import {
-	generateStemmedPattern,
-	getBooksForTestament,
-	computeFilterStatistics,
-	formatFilterResponseAsMarkdown,
-	type FilterStatistics
-} from '$lib/filterUtils.js';
+import { generateStemmedPattern, computeFilterStatistics } from '$lib/filterUtils.js';
 
 // Book names for full-resource filter
 const BOOKS_TO_SEARCH = [
@@ -104,6 +97,7 @@ const NT_BOOKS = BOOKS_TO_SEARCH.slice(39);
 
 /**
  * Handle filter requests - stemmed regex matching across notes
+ * Returns data object for createSimpleEndpoint to format
  */
 async function handleFilterRequest(
 	filter: string,
@@ -111,7 +105,6 @@ async function handleFilterRequest(
 	request: Request
 ): Promise<any> {
 	const { reference, language, organization, testament } = params;
-	const url = new URL(request.url);
 
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`tn-filter-${Date.now()}`, 'translation-notes-filter');
@@ -209,7 +202,7 @@ async function handleFilterRequest(
 	// Compute statistics using shared utility
 	const statistics = computeFilterStatistics(matches);
 
-	// Build response
+	// Build response DATA (not Response object - let createSimpleEndpoint handle formatting)
 	const response = {
 		filter,
 		pattern: pattern.toString(),
@@ -230,44 +223,14 @@ async function handleFilterRequest(
 		(response as any).reference = reference;
 	}
 
-	// Check format parameter
-	const format = url.searchParams.get('format') || 'json';
-
-	if (format === 'md' || format === 'markdown') {
-		const markdown = formatFilterResponseAsMarkdown(
-			response,
-			statistics,
-			'translation-notes',
-			(match: (typeof matches)[0]) => {
-				let md = `**${match.reference}**\n`;
-				if (match.quote) {
-					md += `> "${match.quote}"\n`;
-				}
-				md += `${match.note}\n`;
-				if (match.matchedTerms.length > 0) {
-					md += `*Matched: ${match.matchedTerms.join(', ')}*\n`;
-				}
-				md += '\n';
-				return md;
-			}
-		);
-		return new Response(markdown, {
-			status: 200,
-			headers: {
-				'Content-Type': 'text/markdown; charset=utf-8',
-				'X-Format': 'md'
-			}
-		});
-	}
-
-	return json(response);
+	return response;
 }
 
 /**
  * Fetch translation notes for a reference
  */
 async function fetchTranslationNotes(params: Record<string, any>, request: Request): Promise<any> {
-	const { reference, language, organization, search, filter, testament } = params;
+	const { reference, language, organization, search, filter } = params;
 
 	// Handle filter requests first (stemmed regex matching)
 	if (filter) {
