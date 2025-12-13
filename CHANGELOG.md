@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.20.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.29...v7.20.0) (2025-12-13)
+
+### Features
+
+- **filter:** Add stemmed regex filter to all translation resource endpoints
+- **filter:** Translation Notes filter with testament/book statistics and YAML frontmatter
+- **filter:** Translation Questions filter with testament/book statistics and YAML frontmatter
+- **filter:** Translation Word Links filter with testament/book/category statistics
+- **filter:** Translation Words filter with category statistics (searches all word definitions)
+- **filter:** Translation Academy filter with category statistics (searches all modules)
+- **shared:** Create shared filterUtils.ts module for DRY filter functionality
+- **zip:** Add word listing capability to ZipResourceFetcher2 for TW filter
+
+### Documentation
+
+- **config:** Update endpoint configurations with filter parameter definitions
+- **ui:** API Explorer automatically shows new filter parameters via mcp-config
+
 ### [7.19.29](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.28...v7.19.29) (2025-12-13)
 
 ### Bug Fixes
