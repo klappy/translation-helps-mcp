@@ -58,6 +58,11 @@ const BOOK_NAMES: Record<string, string> = {
 	'3jn': '3John', jud: 'Jude', rev: 'Revelation'
 };
 
+// Reverse mapping: display name -> book code
+const BOOK_CODES: Record<string, string> = Object.fromEntries(
+	Object.entries(BOOK_NAMES).map(([code, name]) => [name.toLowerCase(), code])
+);
+
 /**
  * Get display name for a book (handles both codes and names)
  */
@@ -67,6 +72,168 @@ function getBookDisplayName(book: string): string {
 	if (BOOK_NAMES[lower]) return BOOK_NAMES[lower];
 	// Already a name, return as-is
 	return book;
+}
+
+/**
+ * Get book code from display name or code
+ */
+function getBookCode(book: string): string {
+	const lower = book.toLowerCase();
+	// If it's already a code, return it
+	if (BOOK_NAMES[lower]) return lower;
+	// Try to find by display name
+	if (BOOK_CODES[lower]) return BOOK_CODES[lower];
+	// Handle variations like "1 John" vs "1John"
+	const normalized = lower.replace(/\s+/g, '');
+	if (BOOK_CODES[normalized]) return BOOK_CODES[normalized];
+	return lower;
+}
+
+/**
+ * Extract book name from a reference string like "Genesis 1:1" or "1John 3:16"
+ */
+function extractBookFromReference(reference: string): string {
+	// Remove chapter:verse part - match patterns like "Genesis 1:1" or "1 John 3:16-17"
+	const match = reference.match(/^(.+?)\s+\d+/);
+	if (match) return match[1].trim();
+	// Fallback: return the whole thing
+	return reference;
+}
+
+/**
+ * Get testament for a book code ('ot' or 'nt')
+ */
+function getTestament(bookCode: string): 'ot' | 'nt' {
+	return NT_BOOKS.includes(bookCode.toLowerCase()) ? 'nt' : 'ot';
+}
+
+/**
+ * Filter result statistics interface
+ */
+interface FilterStatistics {
+	total: number;
+	byTestament: {
+		ot: number;
+		nt: number;
+	};
+	byBook: Record<string, number>;
+}
+
+/**
+ * Compute statistics from filter matches
+ */
+function computeFilterStatistics(matches: Array<{ reference: string }>): FilterStatistics {
+	const stats: FilterStatistics = {
+		total: matches.length,
+		byTestament: { ot: 0, nt: 0 },
+		byBook: {}
+	};
+	
+	for (const match of matches) {
+		const bookName = extractBookFromReference(match.reference);
+		const bookCode = getBookCode(bookName);
+		const displayName = getBookDisplayName(bookCode);
+		const testament = getTestament(bookCode);
+		
+		// Count by testament
+		stats.byTestament[testament]++;
+		
+		// Count by book (use display name for readability)
+		stats.byBook[displayName] = (stats.byBook[displayName] || 0) + 1;
+	}
+	
+	return stats;
+}
+
+/**
+ * Format filter response as markdown with YAML frontmatter
+ */
+function formatFilterResponseAsMarkdown(
+	response: Record<string, any>,
+	statistics: FilterStatistics
+): string {
+	let md = '';
+	
+	// YAML frontmatter with statistics
+	md += '---\n';
+	md += `resource: Scripture Filter\n`;
+	md += `filter: "${response.filter}"\n`;
+	md += `language: ${response.language}\n`;
+	md += `organization: ${response.organization}\n`;
+	md += `translation: ${response.resource}\n`;
+	if (response.reference) {
+		md += `reference: ${response.reference}\n`;
+	}
+	md += `\n# Result Statistics\n`;
+	md += `total_results: ${statistics.total}\n`;
+	md += `\n# By Testament\n`;
+	md += `old_testament: ${statistics.byTestament.ot}\n`;
+	md += `new_testament: ${statistics.byTestament.nt}\n`;
+	md += `\n# By Book\n`;
+	// Sort books by count (descending) for easier reading
+	const sortedBooks = Object.entries(statistics.byBook)
+		.sort((a, b) => b[1] - a[1]);
+	for (const [book, count] of sortedBooks) {
+		md += `${book}: ${count}\n`;
+	}
+	md += '---\n\n';
+	
+	// Title
+	md += `# Scripture Filter Results: "${response.filter}"\n\n`;
+	
+	// Summary section
+	md += `## Summary\n\n`;
+	md += `- **Total Results**: ${statistics.total}\n`;
+	md += `- **Old Testament**: ${statistics.byTestament.ot}\n`;
+	md += `- **New Testament**: ${statistics.byTestament.nt}\n`;
+	md += `- **Pattern**: \`${response.pattern}\`\n`;
+	if (response.reference) {
+		md += `- **Reference**: ${response.reference}\n`;
+	}
+	md += '\n';
+	
+	// Results by book (top 10)
+	if (sortedBooks.length > 0) {
+		md += `## Results by Book\n\n`;
+		md += `| Book | Count |\n`;
+		md += `|------|-------|\n`;
+		for (const [book, count] of sortedBooks.slice(0, 15)) {
+			md += `| ${book} | ${count} |\n`;
+		}
+		if (sortedBooks.length > 15) {
+			md += `\n*...and ${sortedBooks.length - 15} more books*\n`;
+		}
+		md += '\n';
+	}
+	
+	// Matches section
+	md += `## Matches\n\n`;
+	
+	// Group matches by book for better readability
+	const matchesByBook: Record<string, typeof response.matches> = {};
+	for (const match of response.matches) {
+		const bookName = extractBookFromReference(match.reference);
+		const displayName = getBookDisplayName(getBookCode(bookName));
+		if (!matchesByBook[displayName]) {
+			matchesByBook[displayName] = [];
+		}
+		matchesByBook[displayName].push(match);
+	}
+	
+	// Output matches grouped by book
+	for (const [book, bookMatches] of Object.entries(matchesByBook)) {
+		md += `### ${book} (${bookMatches.length})\n\n`;
+		for (const match of bookMatches as any[]) {
+			md += `**${match.reference}** [${match.resource}]\n`;
+			md += `> ${match.text}\n`;
+			if (match.matchedTerms?.length > 0) {
+				md += `> *Matched: ${match.matchedTerms.join(', ')}*\n`;
+			}
+			md += '\n';
+		}
+	}
+	
+	return md;
 }
 
 /**
@@ -439,6 +606,9 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 		}
 	}
 	
+	// Compute statistics
+	const statistics = computeFilterStatistics(matches);
+	
 	const response: Record<string, any> = {
 		filter,
 		pattern: pattern.toString(),
@@ -446,6 +616,7 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 		organization,
 		resource: requestedResources.join(','),
 		totalMatches: matches.length,
+		statistics,
 		matches,
 		_trace: tracer.getTrace()
 	};
@@ -459,6 +630,20 @@ async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Re
 			booksSearched: booksSearched.length,
 			books: booksSearched
 		};
+	}
+	
+	// Check format parameter
+	const format = url.searchParams.get('format') || 'json';
+	
+	if (format === 'md' || format === 'markdown') {
+		const markdown = formatFilterResponseAsMarkdown(response, statistics);
+		return new Response(markdown, {
+			status: 200,
+			headers: {
+				'Content-Type': 'text/markdown; charset=utf-8',
+				'X-Format': 'md'
+			}
+		});
 	}
 	
 	return json(response);
