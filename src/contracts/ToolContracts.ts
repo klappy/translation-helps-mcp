@@ -38,6 +38,20 @@ export interface TranslationWordToolArgs {
 // Define the exact response formatters
 export const ToolFormatters = {
   scripture: (data: any): string => {
+    // Handle filter response format (has 'matches' array)
+    if (data.matches && Array.isArray(data.matches)) {
+      if (data.matches.length === 0) {
+        return `No matches found for filter: ${data.filter || 'unknown'}`;
+      }
+      // Format filter matches
+      const header = `# Filter Results: "${data.filter}"\n\nFound ${data.totalMatches} matches\n\n`;
+      const matches = data.matches
+        .slice(0, 50) // Limit to first 50 for readability
+        .map((m: any) => `**${m.reference}** (${m.resource}): ${m.text}`)
+        .join("\n\n");
+      return header + matches + (data.totalMatches > 50 ? `\n\n... and ${data.totalMatches - 50} more matches` : '');
+    }
+    
     // Check both 'scripture' (singular - standard response format) and 'scriptures' (plural - legacy)
     const scriptureArray = data.scripture || data.scriptures;
 

@@ -55,10 +55,27 @@ const SCRIPTURE_BASE_CONFIG: Partial<EndpointConfig> = {
       type: "string",
       required: false,
       description:
-        "Optional: Filter scripture by search query (e.g., 'love', 'believe'). Returns only verses matching the query.",
+        "Semantic search via AutoRAG - finds passages conceptually about the query (e.g., 'love' finds passages about love)",
       example: "love",
       min: 2,
       max: 100,
+    },
+    filter: {
+      type: "string",
+      required: false,
+      description:
+        "Keyword filter with stemming - finds verses containing the word and variations (e.g., 'love' matches love, loves, loved, loving, loveth). IMPORTANT: Requires either a 'reference' OR a specific 'resource' (ult/ust/t4t/ueb, NOT 'all'). Use testament=nt or testament=ot to limit scope.",
+      example: "love",
+      min: 2,
+      max: 50,
+    },
+    testament: {
+      type: "string",
+      required: false,
+      description:
+        "Limit full-resource filter search to Old or New Testament. Only applies when using filter without reference.",
+      example: "nt",
+      options: ["ot", "nt"],
     },
     format: {
       type: "string",

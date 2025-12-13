@@ -211,10 +211,10 @@ function formatHit(match: any, index: number, query: string): SearchHit {
 	// AutoRAG may use 'filename' instead of 'id' for the R2 path
 	const filePath = match.id || match.filename || metadata.original_path || '';
 
-	// Extract core metadata with fallbacks
-	const language = metadata.language || 'en';
+	// Extract core metadata with fallbacks - infer from path when metadata missing
+	const language = metadata.language || inferLanguageFromPath(filePath);
 	const languageName = metadata.language_name || language;
-	const organization = metadata.organization || 'unfoldingWord';
+	const organization = metadata.organization || inferOrganizationFromPath(filePath);
 	const resource = metadata.resource || inferResourceFromPath(filePath);
 	const resourceName = metadata.resource_name || resource;
 	const version = metadata.version || 'unknown';
@@ -367,15 +367,51 @@ function createPreview(content: string, query: string, maxLength: number): strin
  * Infer resource type from file path
  * New path structure: {language}/{organization}/{resource}/{version}/...
  */
+/**
+ * Infer language from file path
+ * Path structure: {language}/{organization}/{resource}/{version}/...
+ */
+function inferLanguageFromPath(path: string): string {
+	const parts = path.split('/');
+	if (parts.length >= 1 && parts[0]) {
+		// Language code is first part of path (e.g., "en", "hi", "es")
+		const lang = parts[0].toLowerCase();
+		// Basic validation - language codes are 2-3 chars
+		if (lang.length >= 2 && lang.length <= 3 && /^[a-z]+$/.test(lang)) {
+			return lang;
+		}
+	}
+	return 'en';
+}
+
+/**
+ * Infer organization from file path
+ * Path structure: {language}/{organization}/{resource}/{version}/...
+ */
+function inferOrganizationFromPath(path: string): string {
+	const parts = path.split('/');
+	if (parts.length >= 2 && parts[1]) {
+		return parts[1];
+	}
+	return 'unfoldingWord';
+}
+
+/**
+ * Infer resource type from file path
+ * Path structure: {language}/{organization}/{resource}/{version}/...
+ */
 function inferResourceFromPath(path: string): string {
+	// Extract actual resource code from path - don't convert to categories
 	const parts = path.split('/');
 	if (parts.length >= 3) {
 		const resource = parts[2].toLowerCase();
-		if (['ult', 'ust', 'ueb'].includes(resource)) return 'scripture';
-		if (resource === 'tn') return 'tn';
-		if (resource === 'tw') return 'tw';
-		if (resource === 'ta') return 'ta';
-		if (resource === 'tq') return 'tq';
+		// Return the actual resource code, not a category
+		// Scripture: ult, ust, ueb, t4t, glt, gst
+		// Helps: tn, tw, ta, tq
+		const knownResources = ['ult', 'ust', 'ueb', 't4t', 'glt', 'gst', 'tn', 'tw', 'ta', 'tq', 'twl', 'obs'];
+		if (knownResources.includes(resource)) {
+			return resource;
+		}
 	}
 	return 'unknown';
 }
@@ -500,7 +536,11 @@ async function executeSearch(
 		aiSearchFilter.organization = organization;
 
 		// Optional filters
-		if (resource && resource !== 'scripture') {
+		// Note: 'scripture' and 'bible' are convenience aliases that map to multiple resource codes
+		// (ult, ust, ueb, t4t, glt, gst) so we can't filter server-side - fetch more and filter client-side
+		const isScriptureAlias = resource === 'scripture' || resource === 'bible';
+		if (resource && !isScriptureAlias) {
+			// Direct resource code - can filter server-side
 			aiSearchFilter.resource = resource;
 		}
 		if (chunk_level) {
@@ -516,7 +556,7 @@ async function executeSearch(
 			aiSearchFilter.article_id = articleId.toLowerCase();
 		}
 
-		logger.info('[Search] AI Search filters', { aiSearchFilter, useAI });
+		logger.info('[Search] AI Search filters', { aiSearchFilter, useAI, isScriptureAlias });
 
 		// Execute search query with filters
 		// Default: Use .search() for fast vector-only retrieval (~2-4s)
@@ -529,11 +569,21 @@ async function executeSearch(
 			const aiSearchStart = Date.now();
 			const autorag = ai.autorag(AI_SEARCH_INDEX);
 
+			// When filtering by scripture/bible alias, request max results from AutoRAG
+			// since we need to filter client-side and scripture may rank lower in vector search
+			// Note: AutoRAG has a hard limit of 50 results max
+			const AUTORAG_MAX_RESULTS = 50;
+			const fetchLimit = isScriptureAlias 
+				? AUTORAG_MAX_RESULTS  // Always fetch max when client-side filtering
+				: Math.min(limit, AUTORAG_MAX_RESULTS);
+
 			const searchOptions = {
 				query,
 				filter: aiSearchFilter,
-				max_num_results: Math.min(limit, 100) // Limit at source
+				max_num_results: fetchLimit
 			};
+
+			logger.info('[Search] Fetching results', { requestedLimit: limit, fetchLimit, isScriptureAlias });
 
 			if (useAI) {
 				// Use aiSearch for LLM-enhanced response (slower but includes AI summary)
@@ -642,17 +692,105 @@ async function executeSearch(
 			hitsBeforeFilter: hits.length
 		});
 
-		// Client-side filtering (minimal - most filtering done by AI Search)
+		// Client-side filtering - safety net for when AutoRAG doesn't honor filters
 		const filterStart = Date.now();
+		const hitsBeforeFilter = hits.length;
 
-		// Scripture resource filter (AI Search may not handle "scripture" alias)
-		if (resource === 'scripture') {
-			hits = hits.filter((hit) => ['ult', 'ust', 'ueb', 'scripture'].includes(hit.resource));
+		// Track which filters needed client-side enforcement
+		const clientSideFiltersApplied: string[] = [];
+
+		// Scripture resource codes (actual codes, not a category)
+		const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'glt', 'gst'];
+
+		// Resource filter - only filter if hit has resource AND it doesn't match
+		if (resource) {
+			const beforeResourceFilter = hits.length;
+			// 'scripture' and 'bible' are convenience aliases for all scripture resources
+			if (resource === 'scripture' || resource === 'bible') {
+				hits = hits.filter((hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource));
+			} else {
+				// Direct resource code filter (ult, ust, tn, tw, etc.)
+				hits = hits.filter((hit) => !hit.resource || hit.resource === resource);
+			}
+			if (hits.length < beforeResourceFilter) {
+				clientSideFiltersApplied.push(`resource:${resource}`);
+			}
 		}
 
-		// Include helps filter (exclude helps if false)
+		// Language filter - only filter if hit has language AND it doesn't match
+		// (don't filter out hits missing the language field - AutoRAG may not return it)
+		if (language) {
+			const beforeLangFilter = hits.length;
+			hits = hits.filter((hit) => !hit.language || hit.language === language);
+			if (hits.length < beforeLangFilter) {
+				clientSideFiltersApplied.push(`language:${language}`);
+			}
+		}
+
+		// Organization filter - only filter if hit has org AND it doesn't match
+		// (don't filter out hits missing the organization field)
+		if (organization) {
+			const beforeOrgFilter = hits.length;
+			hits = hits.filter((hit) => !hit.organization || hit.organization === organization);
+			if (hits.length < beforeOrgFilter) {
+				clientSideFiltersApplied.push(`organization:${organization}`);
+			}
+		}
+
+		// Book filter - only filter if hit has book AND it doesn't match
+		const bookFilter = bookParam || parsedRef?.book;
+		if (bookFilter) {
+			const beforeBookFilter = hits.length;
+			hits = hits.filter((hit) => !hit.book || hit.book.toUpperCase() === bookFilter.toUpperCase());
+			if (hits.length < beforeBookFilter) {
+				clientSideFiltersApplied.push(`book:${bookFilter}`);
+			}
+		}
+
+		// Chapter filter - only filter if hit has chapter AND it doesn't match
+		const chapterFilter = chapterParam ?? parsedRef?.chapter;
+		if (chapterFilter !== undefined) {
+			const beforeChapterFilter = hits.length;
+			hits = hits.filter((hit) => hit.chapter === undefined || hit.chapter === chapterFilter);
+			if (hits.length < beforeChapterFilter) {
+				clientSideFiltersApplied.push(`chapter:${chapterFilter}`);
+			}
+		}
+
+		// Chunk level filter - only filter if hit has chunk_level AND it doesn't match
+		if (chunk_level) {
+			const beforeChunkFilter = hits.length;
+			hits = hits.filter((hit) => !hit.chunk_level || hit.chunk_level === chunk_level);
+			if (hits.length < beforeChunkFilter) {
+				clientSideFiltersApplied.push(`chunk_level:${chunk_level}`);
+			}
+		}
+
+		// Article ID filter - only filter if hit has article_id AND it doesn't match
+		if (articleId) {
+			const beforeArticleFilter = hits.length;
+			hits = hits.filter((hit) => !hit.article_id || hit.article_id.toLowerCase() === articleId.toLowerCase());
+			if (hits.length < beforeArticleFilter) {
+				clientSideFiltersApplied.push(`article_id:${articleId}`);
+			}
+		}
+
+		// Include helps filter (exclude helps if false, keep only scripture)
+		// Be lenient: if resource is missing, keep the hit (don't filter out)
 		if (!includeHelps) {
-			hits = hits.filter((hit) => ['ult', 'ust', 'ueb', 'scripture'].includes(hit.resource));
+			hits = hits.filter((hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource.toLowerCase()));
+		}
+
+		// Log diagnostic info about filter effectiveness
+		const filteredOut = hitsBeforeFilter - hits.length;
+		if (clientSideFiltersApplied.length > 0) {
+			logger.warn('[Search] Client-side filters had to remove results - AutoRAG may not be honoring these filters', {
+				clientSideFiltersApplied,
+				beforeFilter: hitsBeforeFilter,
+				afterFilter: hits.length,
+				filteredOut,
+				note: 'These filters were passed to AutoRAG but results still needed client-side filtering'
+			});
 		}
 
 		// Sort by score descending (AI Search should return sorted, but ensure)

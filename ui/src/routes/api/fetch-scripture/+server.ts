@@ -3,9 +3,16 @@
  *
  * The golden standard endpoint - fetches scripture text for any Bible reference.
  * Supports multiple translations and formats.
- * Now supports optional search parameter for in-reference searching.
+ * 
+ * Parameters:
+ * - search: AutoRAG semantic search (conceptually about X)
+ * - filter: Stemmed regex filter (contains word X)
+ *   - With reference: searches within that book/chapter
+ *   - Without reference: requires resource, searches entire translation (parallel fetch)
  */
 
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types.js';
 import { EdgeXRayTracer } from '$lib/../../../src/functions/edge-xray.js';
 import { createStandardErrorHandler } from '$lib/commonErrorHandlers.js';
 import { COMMON_PARAMS, isValidReference } from '$lib/commonValidators.js';
@@ -17,200 +24,444 @@ import {
 	type SearchDocument
 } from '$lib/../../../src/services/SearchServiceFactory.js';
 import { parseReference } from '$lib/referenceParser.js';
+import { generateStemmedPattern } from '$lib/stemmedFilter.js';
+import { initializeR2Env, getR2Env } from '$lib/../../../src/functions/r2-env.js';
+
+// All 66 book codes for full-resource search
+const ALL_BOOKS = [
+	'gen', 'exo', 'lev', 'num', 'deu', 'jos', 'jdg', 'rut', '1sa', '2sa',
+	'1ki', '2ki', '1ch', '2ch', 'ezr', 'neh', 'est', 'job', 'psa', 'pro',
+	'ecc', 'sng', 'isa', 'jer', 'lam', 'ezk', 'dan', 'hos', 'jol', 'amo',
+	'oba', 'jon', 'mic', 'nam', 'hab', 'zep', 'hag', 'zec', 'mal',
+	'mat', 'mrk', 'luk', 'jhn', 'act', 'rom', '1co', '2co', 'gal', 'eph',
+	'php', 'col', '1th', '2th', '1ti', '2ti', 'tit', 'phm', 'heb', 'jas',
+	'1pe', '2pe', '1jn', '2jn', '3jn', 'jud', 'rev'
+];
+const NT_BOOKS = ALL_BOOKS.slice(39);
+const OT_BOOKS = ALL_BOOKS.slice(0, 39);
+
+// Book code to display name mapping
+const BOOK_NAMES: Record<string, string> = {
+	gen: 'Genesis', exo: 'Exodus', lev: 'Leviticus', num: 'Numbers', deu: 'Deuteronomy',
+	jos: 'Joshua', jdg: 'Judges', rut: 'Ruth', '1sa': '1Samuel', '2sa': '2Samuel',
+	'1ki': '1Kings', '2ki': '2Kings', '1ch': '1Chronicles', '2ch': '2Chronicles',
+	ezr: 'Ezra', neh: 'Nehemiah', est: 'Esther', job: 'Job', psa: 'Psalms', pro: 'Proverbs',
+	ecc: 'Ecclesiastes', sng: 'SongOfSongs', isa: 'Isaiah', jer: 'Jeremiah', lam: 'Lamentations',
+	ezk: 'Ezekiel', dan: 'Daniel', hos: 'Hosea', jol: 'Joel', amo: 'Amos',
+	oba: 'Obadiah', jon: 'Jonah', mic: 'Micah', nam: 'Nahum', hab: 'Habakkuk',
+	zep: 'Zephaniah', hag: 'Haggai', zec: 'Zechariah', mal: 'Malachi',
+	mat: 'Matthew', mrk: 'Mark', luk: 'Luke', jhn: 'John', act: 'Acts',
+	rom: 'Romans', '1co': '1Corinthians', '2co': '2Corinthians', gal: 'Galatians', eph: 'Ephesians',
+	php: 'Philippians', col: 'Colossians', '1th': '1Thessalonians', '2th': '2Thessalonians',
+	'1ti': '1Timothy', '2ti': '2Timothy', tit: 'Titus', phm: 'Philemon', heb: 'Hebrews',
+	jas: 'James', '1pe': '1Peter', '2pe': '2Peter', '1jn': '1John', '2jn': '2John',
+	'3jn': '3John', jud: 'Jude', rev: 'Revelation'
+};
+
+/**
+ * Get display name for a book (handles both codes and names)
+ */
+function getBookDisplayName(book: string): string {
+	// If it's a code, convert to display name
+	const lower = book.toLowerCase();
+	if (BOOK_NAMES[lower]) return BOOK_NAMES[lower];
+	// Already a name, return as-is
+	return book;
+}
+
+/**
+ * Extract book name from scripture text (fallback for full-resource search)
+ * Looks for markdown header like "# Genesis" or "# 1 John"
+ */
+function extractBookFromText(text: string): string {
+	const headerMatch = text.match(/^#\s+([A-Za-z0-9\s]+?)\s*$/m);
+	if (headerMatch) return headerMatch[1].trim();
+	return 'Unknown';
+}
+
+/**
+ * Extract clean text from USFM format
+ * Preserves chapter/verse structure for parsing
+ */
+function extractFullBookFromUSFM(usfm: string): string {
+	try {
+		const bookText = usfm
+			// Preserve chapter markers
+			.replace(/\\c\s+(\d+)/g, '[[CHAPTER:$1]]')
+			// Preserve verse markers
+			.replace(/\\v\s+(\d+)\s*/g, '[[VERSE:$1]]')
+			// Remove alignment markers
+			.replace(/\\zaln-s\s*\|[^\\]+\\\*/g, '')
+			.replace(/\\zaln-e\\\*/g, '')
+			// Remove word markers
+			.replace(/\\w\s+([^|]+)\|[^\\]+\\w\*/g, '$1')
+			// Remove other USFM markers
+			.replace(/\\-s\s*\|[^\\]+\\\*/g, '')
+			.replace(/\\-e\\\*/g, '')
+			.replace(/\\[a-z]+\d*\s*/g, '')
+			// Remove asterisks and braces
+			.replace(/\*+/g, '')
+			.replace(/\{([^}]+)\}/g, '$1')
+			// Clean whitespace
+			.replace(/\s+/g, ' ')
+			.replace(/\s+([.,;:!?])/g, '$1')
+			// Format chapters and verses
+			.replace(/\[\[CHAPTER:(\d+)\]\]/g, '\n\n## Chapter $1\n\n')
+			.replace(/\[\[VERSE:(\d+)\]\]/g, '\n$1 ')
+			.trim();
+		return bookText;
+	} catch {
+		return '';
+	}
+}
 
 /**
  * Parse resource parameter
- * Supports both standard types (ult, ust, t4t, ueb) and gateway equivalents (glt, gst)
  */
 function parseResources(resourceParam: string | undefined): string[] {
-	// Include gateway equivalents: glt (equivalent to ult), gst (equivalent to ust)
 	const availableResources = ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'];
 
 	if (!resourceParam || resourceParam === 'all') {
-		// Return unique resources (don't include both ult/glt and ust/gst)
 		return ['ult', 'ust', 't4t', 'ueb'];
 	}
 
-	// Handle comma-separated resources
 	const requested = resourceParam
 		.split(',')
 		.map((r) => r.trim())
 		.filter((r) => availableResources.includes(r));
 
-	// Remove duplicates (e.g., if both ult and glt are requested)
 	const unique = new Set<string>();
 	for (const r of requested) {
-		// Map gateway resources to their equivalents
-		if (r === 'glt') {
-			unique.add('ult');
-		} else if (r === 'gst') {
-			unique.add('ust');
-		} else {
-			unique.add(r);
-		}
+		if (r === 'glt') unique.add('ult');
+		else if (r === 'gst') unique.add('ust');
+		else unique.add(r);
 	}
 
 	return Array.from(unique);
 }
 
 /**
- * Parse USFM text into individual verses with references
- * Used when searching book-only references to return individual verses instead of entire book
+ * Parse text into individual verses
+ * Handles multiple formats:
+ * - "3:16 For God so loved..." (chapter:verse prefix)
+ * - "16 For God so loved..." (verse only, after # Chapter X header)
  */
-function parseUSFMIntoVerses(
-	usfmText: string,
+function parseIntoVerses(
+	text: string,
 	book: string,
-	translation: string
-): Array<{ text: string; reference: string; translation: string }> {
-	const verses: Array<{ text: string; reference: string; translation: string }> = [];
+	translation: string,
+	knownChapter?: number
+): Array<{ text: string; reference: string; chapter: number; verse: number; translation: string }> {
+	const verses: Array<{ text: string; reference: string; chapter: number; verse: number; translation: string }> = [];
+	const lines = text.split('\n');
+	let currentChapter = knownChapter || 0;
 
-	// Split by chapter markers or verse markers
-	// Look for patterns like "## Chapter X" or verse numbers
-	const lines = usfmText.split(/\n+/);
-	let currentChapter = 0;
-	let currentVerse = 0;
-	let verseText = '';
+	for (const line of lines) {
+		const trimmedLine = line.trim();
+		if (!trimmedLine) continue;
 
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i].trim();
+		// Chapter header: "# Book Chapter 3" or "# 1John 4"
+		const chapterHeaderMatch = trimmedLine.match(/^#+\s+.*?(\d+)\s*$/);
+		if (chapterHeaderMatch) {
+			currentChapter = parseInt(chapterHeaderMatch[1], 10);
+			continue;
+		}
 
-		// Detect chapter markers (from extractFullBookFromUSFM output)
-		const chapterMatch = line.match(/^##\s+Chapter\s+(\d+)/i);
+		// Chapter header: "## Chapter 3"
+		const chapterMatch = trimmedLine.match(/^#+\s+Chapter\s+(\d+)/i);
 		if (chapterMatch) {
-			// Save previous verse if exists
-			if (currentVerse > 0 && verseText.trim()) {
-				verses.push({
-					text: verseText.trim(),
-					reference: `${book} ${currentChapter}:${currentVerse}`,
-					translation
-				});
-				verseText = '';
-			}
 			currentChapter = parseInt(chapterMatch[1], 10);
-			currentVerse = 0;
 			continue;
 		}
 
-		// Detect verse markers (from extractFullBookFromUSFM output or raw USFM)
-		// Match patterns like "[[VERSE:1]]", "1. text", or "1 text" (no period)
-		const verseMatch = line.match(/\[\[VERSE:(\d+)\]\]|^(\d+)[.\s]\s*/);
-		if (verseMatch) {
-			// Save previous verse if exists
-			if (currentVerse > 0 && verseText.trim()) {
+		// Verse line with chapter:verse prefix: "3:16 For God so loved..."
+		const fullVerseMatch = trimmedLine.match(/^(\d+):(\d+)\s+(.+)$/);
+		if (fullVerseMatch) {
+			const [, chapter, verse, verseText] = fullVerseMatch;
+			currentChapter = parseInt(chapter, 10);
+			verses.push({
+				text: verseText.trim(),
+				reference: `${book} ${chapter}:${verse}`,
+				chapter: parseInt(chapter, 10),
+				verse: parseInt(verse, 10),
+				translation
+			});
+			continue;
+		}
+
+		// Verse line with just verse number: "16 For God so loved..."
+		// Also handles: "[ULT v87...] 1 Beloved..." (translation prefix)
+		const verseOnlyMatch = trimmedLine.match(/^(?:\[[^\]]+\]\s*)?(\d+)\s+(.+)$/);
+		if (verseOnlyMatch && currentChapter > 0) {
+			const [, verse, verseText] = verseOnlyMatch;
+			// Skip if this looks like a chapter header (very short)
+			if (verseText.length > 10) {
 				verses.push({
 					text: verseText.trim(),
-					reference: `${book} ${currentChapter}:${currentVerse}`,
+					reference: `${book} ${currentChapter}:${verse}`,
+					chapter: currentChapter,
+					verse: parseInt(verse, 10),
 					translation
 				});
 			}
-			currentVerse = parseInt(verseMatch[1] || verseMatch[2], 10);
-			verseText = line.replace(/\[\[VERSE:\d+\]\]|^\d+[.\s]\s*/, '').trim();
-			continue;
 		}
-
-		// Continue collecting verse text
-		if (currentChapter > 0 && currentVerse > 0 && line) {
-			// Skip chapter headers and other metadata
-			if (!line.startsWith('##') && !line.startsWith('[')) {
-				verseText += (verseText ? ' ' : '') + line;
-			}
-		}
-	}
-
-	// Don't forget the last verse
-	if (currentChapter > 0 && currentVerse > 0 && verseText.trim()) {
-		verses.push({
-			text: verseText.trim(),
-			reference: `${book} ${currentChapter}:${currentVerse}`,
-			translation
-		});
-	}
-
-	// If no verses found using the formatted approach, try parsing raw USFM
-	if (verses.length === 0 && usfmText.includes('\\c ') && usfmText.includes('\\v ')) {
-		return parseRawUSFMIntoVerses(usfmText, book, translation);
 	}
 
 	return verses;
 }
 
 /**
- * Parse raw USFM format into individual verses
+ * Handle filter requests - stemmed regex matching
+ * Uses direct R2 access for full-resource search (much faster than per-book zip fetches)
  */
-function parseRawUSFMIntoVerses(
-	usfmText: string,
-	book: string,
-	translation: string
-): Array<{ text: string; reference: string; translation: string }> {
-	const verses: Array<{ text: string; reference: string; translation: string }> = [];
-	const lines = usfmText.split('\n');
-	let currentChapter = 0;
-	let currentVerse = 0;
-	let verseText = '';
-
-	for (const line of lines) {
-		// Chapter marker: \c 3
-		const chapterMatch = line.match(/\\c\s+(\d+)/);
-		if (chapterMatch) {
-			// Save previous verse
-			if (currentVerse > 0 && verseText.trim()) {
-				verses.push({
-					text: verseText.trim(),
-					reference: `${book} ${currentChapter}:${currentVerse}`,
-					translation
-				});
-				verseText = '';
+async function handleFilterRequest(request: Request, r2Bucket?: any): Promise<Response | null> {
+	const url = new URL(request.url);
+	const filter = url.searchParams.get('filter');
+	
+	if (!filter) return null;
+	
+	const reference = url.searchParams.get('reference');
+	const language = url.searchParams.get('language') || 'en';
+	const organization = url.searchParams.get('organization') || 'unfoldingWord';
+	const resourceParam = url.searchParams.get('resource');
+	const testament = url.searchParams.get('testament')?.toLowerCase();
+	
+	// Validate: need reference OR specific resource (not 'all')
+	if (!reference && (!resourceParam || resourceParam === 'all')) {
+		return json({
+			error: 'Filter requires either a reference OR a specific resource',
+			hints: [
+				'With reference: filter=love&reference=John',
+				'With resource: filter=love&resource=ult',
+				'Limit scope: filter=love&resource=ult&testament=nt'
+			],
+			availableResources: ['ult', 'ust', 't4t', 'ueb'],
+			availableTestaments: ['ot', 'nt']
+		}, { status: 400 });
+	}
+	
+	// For full-resource search, only allow single resource
+	const requestedResources = parseResources(resourceParam || 'ult');
+	if (!reference && requestedResources.length > 1) {
+		return json({
+			error: 'Full-resource search requires a single resource',
+			hints: [
+				'Use one resource: filter=love&resource=ult',
+				'Or add reference: filter=love&reference=John&resource=ult,ust'
+			]
+		}, { status: 400 });
+	}
+	
+	console.log(`[fetch-scripture] Filter: "${filter}" in ${reference || `full ${requestedResources[0]}`}`);
+	
+	// Generate stemmed pattern
+	const pattern = generateStemmedPattern(filter);
+	console.log(`[fetch-scripture] Pattern: ${pattern}`);
+	
+	const tracer = new EdgeXRayTracer(`scripture-filter-${Date.now()}`, 'fetch-scripture-filter');
+	const fetcher = new UnifiedResourceFetcher(tracer);
+	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
+	
+	let results: Array<{ text: string; translation: string; book?: string }> = [];
+	let booksSearched: string[] = [];
+	let fetchMethod = 'per-book';
+	
+	if (reference) {
+		// Single reference - simple fetch
+		const fetched = await fetcher.fetchScripture(reference, language, organization, requestedResources);
+		results = fetched.map(r => ({ ...r }));
+	} else if (r2Bucket) {
+		// Full resource search with R2 direct access - much faster!
+		fetchMethod = 'r2-direct';
+		const books = testament === 'nt' ? NT_BOOKS : testament === 'ot' ? OT_BOOKS : ALL_BOOKS;
+		const resource = requestedResources[0];
+		
+		console.log(`[fetch-scripture] R2 direct fetch for ${books.length} books in ${resource}`);
+		
+		// Build R2 prefix for this resource
+		// Files are stored at: by-url/git.door43.org/{org}/{lang}_{resource}/archive/{version}.zip/files/{bookfile}.usfm
+		// We need to discover the version by listing first
+		const r2Prefix = `by-url/git.door43.org/${organization}/${language}_${resource}/`;
+		
+		try {
+			// List to find the versioned path - need enough items to find a .usfm file
+			const listStart = Date.now();
+			const listResult = await r2Bucket.list({ prefix: r2Prefix, limit: 100 });
+			const listDuration = Date.now() - listStart;
+			tracer.addApiCall({ url: `r2://list/${r2Prefix}`, duration: listDuration, status: 200, size: listResult.objects?.length || 0, cached: true });
+			
+			if (listResult.objects && listResult.objects.length > 0) {
+				// Find a .usfm file to extract the base path from
+				// e.g., "by-url/git.door43.org/unfoldingWord/en_ult/archive/v87.zip/files/41-MAT.usfm"
+				const usfmFile = listResult.objects.find(obj => obj.key.endsWith('.usfm'));
+				const samplePath = usfmFile?.key || '';
+				const archiveMatch = samplePath.match(/^(by-url\/[^/]+\/[^/]+\/[^/]+\/archive\/[^/]+\.zip\/files\/)/);
+				
+				if (archiveMatch && usfmFile) {
+					// R2 direct path found!
+					const basePath = archiveMatch[1];
+					console.log(`[fetch-scripture] R2 base path: ${basePath}`);
+					
+					// Parallel fetch all book files from R2
+					const bookFileMap: Record<string, string> = {
+						gen: '01-GEN', exo: '02-EXO', lev: '03-LEV', num: '04-NUM', deu: '05-DEU',
+						jos: '06-JOS', jdg: '07-JDG', rut: '08-RUT', '1sa': '09-1SA', '2sa': '10-2SA',
+						'1ki': '11-1KI', '2ki': '12-2KI', '1ch': '13-1CH', '2ch': '14-2CH',
+						ezr: '15-EZR', neh: '16-NEH', est: '17-EST', job: '18-JOB', psa: '19-PSA', pro: '20-PRO',
+						ecc: '21-ECC', sng: '22-SNG', isa: '23-ISA', jer: '24-JER', lam: '25-LAM',
+						ezk: '26-EZK', dan: '27-DAN', hos: '28-HOS', jol: '29-JOL', amo: '30-AMO',
+						oba: '31-OBA', jon: '32-JON', mic: '33-MIC', nam: '34-NAM', hab: '35-HAB',
+						zep: '36-ZEP', hag: '37-HAG', zec: '38-ZEC', mal: '39-MAL',
+						mat: '41-MAT', mrk: '42-MRK', luk: '43-LUK', jhn: '44-JHN', act: '45-ACT',
+						rom: '46-ROM', '1co': '47-1CO', '2co': '48-2CO', gal: '49-GAL', eph: '50-EPH',
+						php: '51-PHP', col: '52-COL', '1th': '53-1TH', '2th': '54-2TH',
+						'1ti': '55-1TI', '2ti': '56-2TI', tit: '57-TIT', phm: '58-PHM', heb: '59-HEB',
+						jas: '60-JAS', '1pe': '61-1PE', '2pe': '62-2PE', '1jn': '63-1JN', '2jn': '64-2JN',
+						'3jn': '65-3JN', jud: '66-JUD', rev: '67-REV'
+					};
+					
+					const fetchPromises = books.map(async (bookCode) => {
+						const fileCode = bookFileMap[bookCode];
+						if (!fileCode) return { bookCode, text: null };
+						
+						const key = `${basePath}${fileCode}.usfm`;
+						const fetchStart = Date.now();
+						try {
+							const obj = await r2Bucket.get(key);
+							const fetchDuration = Date.now() - fetchStart;
+							if (obj) {
+								const text = await obj.text();
+								tracer.addApiCall({ url: `r2://get/${fileCode}.usfm`, duration: fetchDuration, status: 200, size: text.length, cached: true });
+								return { bookCode, text };
+							}
+						} catch {
+							// File not in R2
+						}
+						tracer.addApiCall({ url: `r2://get/${fileCode}.usfm`, duration: Date.now() - fetchStart, status: 404, size: 0, cached: false });
+						return { bookCode, text: null };
+					});
+					
+					const r2Results = await Promise.all(fetchPromises);
+					
+					// Process R2 results - extract full book content from USFM
+					for (const { bookCode, text } of r2Results) {
+						if (text) {
+							// Extract clean text from USFM
+							const cleanText = extractFullBookFromUSFM(text);
+							results.push({ text: cleanText, translation: resource.toUpperCase(), book: bookCode });
+							booksSearched.push(bookCode);
+						}
+					}
+				}
 			}
-			currentChapter = parseInt(chapterMatch[1], 10);
-			currentVerse = 0;
-			continue;
+		} catch (error) {
+			console.error('[fetch-scripture] R2 direct fetch failed:', error);
 		}
-
-		// Verse marker: \v 16
-		const verseMatch = line.match(/\\v\s+(\d+)\s*(.*)/);
-		if (verseMatch) {
-			// Save previous verse
-			if (currentVerse > 0 && verseText.trim()) {
-				verses.push({
-					text: verseText.trim(),
-					reference: `${book} ${currentChapter}:${currentVerse}`,
-					translation
-				});
-			}
-			currentVerse = parseInt(verseMatch[1], 10);
-			// Clean USFM markers from verse text
-			verseText = verseMatch[2]
-				.replace(/\\w\s+[^|]+\|[^\\]+\\w\*/g, '') // Word markers
-				.replace(/\\zaln-[se]\|[^\\]+\\*/g, '') // Alignment markers
-				.replace(/\\[a-z]+\d*\s*/g, '') // Other markers
-				.replace(/\s+/g, ' ')
-				.trim();
-			continue;
-		}
-
-		// Continue verse text (non-marker lines)
-		if (currentChapter > 0 && currentVerse > 0 && line.trim() && !line.match(/^\\[a-z]/)) {
-			const cleaned = line
-				.replace(/\\w\s+[^|]+\|[^\\]+\\w\*/g, '')
-				.replace(/\\zaln-[se]\|[^\\]+\\*/g, '')
-				.replace(/\\[a-z]+\d*\s*/g, '')
-				.trim();
-			if (cleaned) {
-				verseText += (verseText ? ' ' : '') + cleaned;
-			}
+		
+		// Fallback to per-book fetch if R2 didn't work
+		if (results.length === 0) {
+			console.log('[fetch-scripture] R2 direct failed, falling back to per-book fetch');
+			fetchMethod = 'per-book-fallback';
 		}
 	}
-
-	// Save last verse
-	if (currentChapter > 0 && currentVerse > 0 && verseText.trim()) {
-		verses.push({
-			text: verseText.trim(),
-			reference: `${book} ${currentChapter}:${currentVerse}`,
-			translation
+	
+	// Fallback: per-book fetch (slower but always works)
+	if (!reference && results.length === 0) {
+		const books = testament === 'nt' ? NT_BOOKS : testament === 'ot' ? OT_BOOKS : ALL_BOOKS;
+		console.log(`[fetch-scripture] Per-book fetch for ${books.length} books from ${requestedResources[0]}`);
+		
+		const fetchPromises = books.map(async (bookCode) => {
+			try {
+				const bookResults = await fetcher.fetchScripture(bookCode, language, organization, requestedResources);
+				return { bookCode, results: (bookResults || []).map(r => ({ ...r, book: bookCode })) };
+			} catch {
+				return { bookCode, results: [] };
+			}
 		});
+		
+		const allBookResults = await Promise.all(fetchPromises);
+		for (const { bookCode, results: bookResults } of allBookResults) {
+			if (bookResults.length > 0) {
+				results.push(...bookResults);
+				booksSearched.push(bookCode);
+			}
+		}
 	}
-
-	return verses;
+	
+	if (!results || results.length === 0) {
+		return json({
+			error: reference
+				? `Scripture not found for reference: ${reference}`
+				: `No scripture found for resource: ${resourceParam}`,
+			filter,
+			pattern: pattern.toString(),
+			hints: ['Check resource exists: ult, ust, t4t, ueb']
+		}, { status: 404 });
+	}
+	
+	// Parse into verses and filter
+	const matches: Array<{
+		reference: string;
+		text: string;
+		resource: string;
+		matchedTerms: string[];
+		matchCount: number;
+	}> = [];
+	
+	// For single reference, use parsed book/chapter; for full resource, use tagged book
+	const parsedRef = reference ? parseReference(reference) : null;
+	const singleBook = parsedRef?.book || (reference ? reference.replace(/\s+\d+.*$/, '').trim() : null);
+	const singleChapter = parsedRef?.chapter;
+	
+	for (const result of results) {
+		// Use result.book (from full-resource) or singleBook (from reference) or extract from text
+		const bookRaw = result.book || singleBook || extractBookFromText(result.text);
+		const book = getBookDisplayName(bookRaw);
+		const verses = parseIntoVerses(result.text, book, result.translation, singleChapter);
+		
+		for (const verse of verses) {
+			pattern.lastIndex = 0;
+			const found: string[] = [];
+			let match;
+			while ((match = pattern.exec(verse.text)) !== null) {
+				found.push(match[0]);
+			}
+			
+			if (found.length > 0) {
+				matches.push({
+					reference: verse.reference,
+					text: verse.text,
+					resource: result.translation,
+					matchedTerms: [...new Set(found)],
+					matchCount: found.length
+				});
+			}
+		}
+	}
+	
+	const response: Record<string, any> = {
+		filter,
+		pattern: pattern.toString(),
+		language,
+		organization,
+		resource: requestedResources.join(','),
+		totalMatches: matches.length,
+		matches,
+		_trace: tracer.getTrace()
+	};
+	
+	if (reference) {
+		response.reference = reference;
+	} else {
+		response.searchScope = {
+			fetchMethod,
+			testament: testament || 'all',
+			booksSearched: booksSearched.length,
+			books: booksSearched
+		};
+	}
+	
+	return json(response);
 }
 
 /**
@@ -219,57 +470,47 @@ function parseRawUSFMIntoVerses(
 async function fetchScripture(params: Record<string, any>, request: Request): Promise<any> {
 	const { reference, language, organization, resource: resourceParam, search } = params;
 
-	// Create tracer and fetcher FIRST - needed by all code paths
 	const tracer = new EdgeXRayTracer(`scripture-${Date.now()}`, 'fetch-scripture');
 	const fetcher = new UnifiedResourceFetcher(tracer);
 	fetcher.setRequestHeaders(Object.fromEntries(request.headers.entries()));
 
-	// Get requested resources
 	const requestedResources = parseResources(resourceParam);
 
-	// If no reference but has search, delegate to /api/search (DRY - uses cached indexes)
+	// If no reference but has search, delegate to /api/search
 	if (!reference && search) {
-		console.log(
-			'[fetch-scripture-v2] No reference provided, delegating to /api/search for:',
-			search
-		);
+		console.log('[fetch-scripture-v2] No reference, delegating to /api/search:', search);
 
 		const startTime = Date.now();
-
-		// Build the search URL - use internal fetch to the search endpoint
 		const searchUrl = new URL('/api/search', request.url);
 		searchUrl.searchParams.set('query', search);
 		searchUrl.searchParams.set('language', language || 'en');
-		searchUrl.searchParams.set('owner', organization || 'unfoldingWord');
-		// Only search Bible resources for scripture endpoint
+		searchUrl.searchParams.set('organization', organization || 'unfoldingWord');
+		searchUrl.searchParams.set('resource', 'scripture');
 		searchUrl.searchParams.set('includeHelps', 'false');
+		searchUrl.searchParams.set('limit', '50');
 
 		try {
-			// Call the search endpoint internally (shares cached indexes!)
-			const searchResponse = await fetch(searchUrl.toString(), {
-				headers: request.headers
-			});
-
-			if (!searchResponse.ok) {
-				throw new Error(`Search endpoint returned ${searchResponse.status}`);
-			}
+			const searchResponse = await fetch(searchUrl.toString(), { headers: request.headers });
+			if (!searchResponse.ok) throw new Error(`Search returned ${searchResponse.status}`);
 
 			const searchData = await searchResponse.json();
 			const totalTime = Date.now() - startTime;
 
-			console.log(
-				`[fetch-scripture-v2] Search via /api/search complete in ${totalTime}ms: ${searchData.hits?.length || 0} hits`
-			);
-
-			// Transform search results to scripture format
+			const SCRIPTURE_RESOURCES = ['ult', 'ust', 'ueb', 't4t', 'scripture', 'glt', 'gst'];
+			const requestedLang = (language || 'en').toLowerCase();
+			
 			const scriptureResults = (searchData.hits || [])
-				.filter((hit: any) => hit.type === 'bible')
+				.filter((hit: any) => {
+					const resource = (hit.resource || '').toLowerCase();
+					const hitLang = (hit.language || '').toLowerCase();
+					return SCRIPTURE_RESOURCES.includes(resource) && (!hitLang || hitLang === requestedLang);
+				})
 				.map((hit: any) => ({
 					text: hit.preview?.replace(/\*\*/g, '') || hit.content || '',
-					reference: hit.path || '',
+					reference: hit.reference || hit.path || '',
 					translation: hit.resource || '',
-					searchScore: hit.score,
-					matchedTerms: hit.match?.terms
+					language: hit.language || language || 'en',
+					searchScore: hit.score
 				}));
 
 			return {
@@ -282,144 +523,56 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 					searchQuery: search,
 					searchApplied: true,
 					searchTime: totalTime,
-					delegatedTo: '/api/search',
-					resourcesSearched: searchData.resourceCount || 0
+					delegatedTo: '/api/search'
 				}
 			};
 		} catch (error) {
-			console.error('[fetch-scripture-v2] Failed to delegate to /api/search:', error);
 			throw new Error(`Search failed: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
 
-	// Require reference if not searching
 	if (!reference && !search) {
 		throw new Error('Reference is required when not searching');
 	}
 
-	// Parse reference to check if it's book-only or chapter-only
-	const parsedRef = parseReference(reference);
-	const isBookOnly = parsedRef && !parsedRef.chapter;
-	const isChapterOnly = parsedRef && parsedRef.chapter && !parsedRef.verse;
-
-	// Fetch using unified fetcher
+	// Fetch scripture
 	let results = await fetcher.fetchScripture(reference, language, organization, requestedResources);
 
 	if (!results || results.length === 0) {
 		throw new Error(`Scripture not found for reference: ${reference}`);
 	}
 
-	// Apply search if query provided (ephemeral, in-memory only)
+	// Apply search if provided
 	if (search && search.trim().length > 0) {
-		const totalBeforeSearch = results.length;
-
-		// If book-only or chapter-only reference, parse into individual verses first
-		if ((isBookOnly || isChapterOnly) && parsedRef) {
-			const parsedVerses: Array<{ text: string; reference: string; translation: string }> = [];
-
-			// Parse each translation's text into individual verses
-			for (const result of results) {
-				// For chapter-only references, the text is already pre-formatted
-				// but we still need to parse it into individual verses
-				if (isChapterOnly) {
-					// Parse the chapter text into verses
-					const lines = result.text.split(/\n+/);
-					let currentVerse = 0;
-					let verseText = '';
-
-					for (const line of lines) {
-						// Check for verse number at start of line (format: "16 text...")
-						const verseMatch = line.match(/^(\d+)\s+(.+)/);
-						if (verseMatch) {
-							// Save previous verse if exists
-							if (currentVerse > 0 && verseText.trim()) {
-								// Clean up trailing backslashes and whitespace
-								const cleanText = verseText.replace(/\\+\s*$/, '').trim();
-								if (cleanText) {
-									parsedVerses.push({
-										text: cleanText,
-										reference: `${parsedRef.book} ${parsedRef.chapter}:${currentVerse}`,
-										translation: result.translation
-									});
-								}
-							}
-							currentVerse = parseInt(verseMatch[1], 10);
-							verseText = verseMatch[2];
-						} else if (currentVerse > 0 && line.trim()) {
-							// Continue current verse text
-							verseText += ' ' + line.trim();
-						}
-					}
-
-					// Don't forget the last verse
-					if (currentVerse > 0 && verseText.trim()) {
-						// Clean up trailing backslashes and whitespace
-						const cleanText = verseText.replace(/\\+\s*$/, '').trim();
-						if (cleanText) {
-							parsedVerses.push({
-								text: cleanText,
-								reference: `${parsedRef.book} ${parsedRef.chapter}:${currentVerse}`,
-								translation: result.translation
-							});
-						}
-					}
-				} else {
-					// Book-only reference - use existing parser
-					const verses = parseUSFMIntoVerses(result.text, parsedRef.book, result.translation);
-					parsedVerses.push(...verses);
-				}
+		const parsedRef = parseReference(reference);
+		const book = parsedRef?.book || reference.replace(/\s+\d+.*$/, '').trim();
+		const chapter = parsedRef?.chapter;
+		
+		const parsedVerses: Array<{ text: string; reference: string; translation: string }> = [];
+		for (const result of results) {
+			const verses = parseIntoVerses(result.text, book, result.translation, chapter);
+			for (const v of verses) {
+				parsedVerses.push({ text: v.text, reference: v.reference, translation: v.translation });
 			}
+		}
 
-			if (parsedVerses.length === 0) {
-				console.error(`[fetch-scripture-v2] No verses parsed from content!`, {
-					reference,
-					resultsCount: results.length
-				});
-				// Return empty results if no verses parsed
-				results = [];
-			} else {
-				// Now search the individual verses
-				results = await applySearch(
-					parsedVerses,
-					search,
-					'scripture',
-					(item: any, index: number): SearchDocument => ({
-						id: `${item.translation}-${item.reference}-${index}`,
-						content: item.text,
-						path: item.reference,
-						resource: item.translation,
-						type: 'bible'
-					})
-				);
-			}
-		} else {
-			// Normal search for specific verse references (e.g., John 3:16)
+		if (parsedVerses.length > 0) {
 			results = await applySearch(
-				results,
+				parsedVerses,
 				search,
 				'scripture',
 				(item: any, index: number): SearchDocument => ({
-					id: `${item.translation}-${item.reference || reference}-${index}`,
+					id: `${item.translation}-${item.reference}-${index}`,
 					content: item.text,
-					path: item.reference || reference,
+					path: item.reference,
 					resource: item.translation,
 					type: 'bible'
 				})
 			);
 		}
-
-		console.log(
-			`[fetch-scripture-v2] Search "${search}" filtered ${totalBeforeSearch} results to ${results.length}`
-		);
-	} else {
-		// Log for debugging - verify all versions are being returned
-		console.log(
-			`[fetch-scripture-v2] Fetched ${results.length} scripture versions:`,
-			results.map((s: any) => s.translation || 'Unknown')
-		);
 	}
 
-	// Deduplicate results by translation + reference combination
+	// Deduplicate
 	const uniqueResults = results.reduce((acc: any[], curr: any) => {
 		const key = `${curr.translation}-${curr.reference || reference}`;
 		if (!acc.some((r) => `${r.translation}-${r.reference || reference}` === key)) {
@@ -428,70 +581,60 @@ async function fetchScripture(params: Record<string, any>, request: Request): Pr
 		return acc;
 	}, []);
 
-	// Return in standard format with trace data
 	const baseResponse = createScriptureResponse(uniqueResults, {
 		reference,
 		requestedResources,
-		foundResources: [
-			...new Set(uniqueResults.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase()))
-		]
+		foundResources: [...new Set(uniqueResults.map((s: any) => s.translation?.split(' ')[0]?.toLowerCase()))]
 	});
 
-	// Add search metadata if search was applied
-	const response = {
+	return {
 		...baseResponse,
-		metadata: search
-			? addSearchMetadata(baseResponse.metadata, search, results.length)
-			: baseResponse.metadata,
+		metadata: search ? addSearchMetadata(baseResponse.metadata, search, results.length) : baseResponse.metadata,
 		_trace: fetcher.getTrace()
 	};
-
-	// Log the response structure to verify all scriptures are included
-	console.log(
-		`[fetch-scripture-v2] Response contains ${response.scripture?.length || 0} scriptures in response.scripture array`
-	);
-
-	return response;
 }
 
-// Create the endpoint with format support
-export const GET = createSimpleEndpoint({
-	name: 'fetch-scripture-v2',
+/**
+ * GET handler - check for filter first, then normal endpoint
+ */
+export const GET: RequestHandler = async (event) => {
+	// Initialize R2 environment before any operations
+	const r2Bucket = (event.platform as any)?.env?.ZIP_FILES;
+	const caches: CacheStorage | undefined = (event.platform as any)?.caches;
+	if (r2Bucket || caches) {
+		initializeR2Env(r2Bucket, caches);
+	}
+	
+	// Check for filter param first
+	const filterResponse = await handleFilterRequest(event.request, r2Bucket);
+	if (filterResponse) return filterResponse;
+	
+	// Otherwise use normal endpoint
+	return normalEndpoint(event);
+};
 
+// Normal endpoint (used when no filter param)
+const normalEndpoint = createSimpleEndpoint({
+	name: 'fetch-scripture-v2',
 	params: [
-		{
-			name: 'reference',
-			required: false, // Optional when search is provided
-			validate: isValidReference
-		},
+		{ name: 'reference', required: false, validate: isValidReference },
 		COMMON_PARAMS.language,
 		COMMON_PARAMS.organization,
 		{
 			name: 'resource',
 			default: 'all',
 			validate: (value) => {
-				if (!value) return true;
-				if (value === 'all') return true;
-				const resources = value.split(',').map((r) => r.trim());
-				// Include gateway equivalents: glt (equivalent to ult), gst (equivalent to ust)
-				return resources.every((r) => ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'].includes(r));
+				if (!value || value === 'all') return true;
+				return value.split(',').every((r) => ['ult', 'ust', 't4t', 'ueb', 'glt', 'gst'].includes(r.trim()));
 			}
 		},
-		COMMON_PARAMS.search // Add optional search parameter
+		COMMON_PARAMS.search
 	],
-
-	// Enable format support - format parameter will be added automatically
 	supportsFormats: true,
-
 	fetch: fetchScripture,
-
 	onError: createStandardErrorHandler({
-		'Scripture not found for reference': {
-			status: 404,
-			message: 'No scripture available for the specified reference.'
-		}
+		'Scripture not found for reference': { status: 404, message: 'No scripture available for the specified reference.' }
 	})
 });
 
-// CORS handler
 export const OPTIONS = createCORSHandler();
