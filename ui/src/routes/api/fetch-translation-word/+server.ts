@@ -164,17 +164,13 @@ async function handleFilterRequestWithR2(
 				.map((obj: any) => obj.key);
 
 			// Filter by category if specified
-			const categoriesToSearch = categoryFilter
-				? [categoryFilter.toLowerCase()]
-				: TW_CATEGORIES;
+			const categoriesToSearch = categoryFilter ? [categoryFilter.toLowerCase()] : TW_CATEGORIES;
 
 			const filesToFetch = mdFiles.filter((key: string) =>
 				categoriesToSearch.some((cat) => key.includes(`/bible/${cat}/`))
 			);
 
-			console.log(
-				`[fetch-translation-word] R2 found ${filesToFetch.length} word files to search`
-			);
+			console.log(`[fetch-translation-word] R2 found ${filesToFetch.length} word files to search`);
 
 			// Parallel fetch all markdown files
 			const fetchPromises = filesToFetch.map(async (key: string) => {
@@ -293,7 +289,9 @@ async function handleFilterRequestFallback(
 		throw new Error('No Translation Words found in repository');
 	}
 
-	console.log(`[fetch-translation-word] Searching ${wordList.length} words for filter: "${filter}"`);
+	console.log(
+		`[fetch-translation-word] Searching ${wordList.length} words for filter: "${filter}"`
+	);
 
 	const matches: Array<{
 		term: string;
@@ -440,14 +438,7 @@ function formatFilterResponseAsMarkdown(response: any): string {
  * Fetch translation word for a specific term (non-filter requests)
  */
 async function getTranslationWord(params: Record<string, any>, request: Request): Promise<any> {
-	const {
-		term,
-		path,
-		rcLink,
-		language = 'en',
-		organization = 'unfoldingWord',
-		search
-	} = params;
+	const { term, path, rcLink, language = 'en', organization = 'unfoldingWord', search } = params;
 
 	const tracer = new EdgeXRayTracer(`tw-${Date.now()}`, 'fetch-translation-word');
 
@@ -541,7 +532,11 @@ async function getTranslationWord(params: Record<string, any>, request: Request)
 
 		const categoryMatch = result.path?.match(/bible\/(kt|names|other)\//);
 		const categoryKey = categoryMatch ? categoryMatch[1] : searchCategory || 'other';
-		const categoryNames: Record<string, string> = { kt: 'Key Terms', names: 'Names', other: 'Other' };
+		const categoryNames: Record<string, string> = {
+			kt: 'Key Terms',
+			names: 'Names',
+			other: 'Other'
+		};
 
 		const article = {
 			term: wordKey,

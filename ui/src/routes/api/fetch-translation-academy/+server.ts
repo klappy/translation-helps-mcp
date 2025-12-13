@@ -95,18 +95,13 @@ async function handleFilterRequestWithR2(
 
 		if (listResult.objects && listResult.objects.length > 0) {
 			// Filter by category if specified
-			const categoriesToSearch = categoryFilter
-				? [categoryFilter.toLowerCase()]
-				: TA_CATEGORIES;
+			const categoriesToSearch = categoryFilter ? [categoryFilter.toLowerCase()] : TA_CATEGORIES;
 
 			// Find all .md files in category directories
 			const mdFiles = listResult.objects
 				.filter((obj: any) => {
 					const key = obj.key;
-					return (
-						key.endsWith('.md') &&
-						categoriesToSearch.some((cat) => key.includes(`/${cat}/`))
-					);
+					return key.endsWith('.md') && categoriesToSearch.some((cat) => key.includes(`/${cat}/`));
 				})
 				.map((obj: any) => obj.key);
 
@@ -415,7 +410,10 @@ function formatFilterResponseAsMarkdown(response: any): string {
 /**
  * Fetch a specific translation academy module (non-filter requests)
  */
-async function fetchTranslationAcademy(params: Record<string, any>, request: Request): Promise<any> {
+async function fetchTranslationAcademy(
+	params: Record<string, any>,
+	request: Request
+): Promise<any> {
 	const {
 		moduleId,
 		path,
@@ -508,7 +506,9 @@ async function fetchTranslationAcademy(params: Record<string, any>, request: Req
 
 			const results = await searchService.search(search, { maxResults: 1 });
 			if (results.length === 0) {
-				throw new Error(`Translation Academy module "${id}" does not match search query "${search}"`);
+				throw new Error(
+					`Translation Academy module "${id}" does not match search query "${search}"`
+				);
 			}
 
 			article.metadata.searchScore = results[0].score;

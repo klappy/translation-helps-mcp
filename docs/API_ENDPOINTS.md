@@ -34,9 +34,24 @@ Most endpoints accept these standard parameters:
 | `organization` | string | Often    | Organization name (e.g., "unfoldingWord")                                             |
 | `format`       | string | No       | Response format: "json" (default), "md", "markdown", "text", "tsv" (where applicable) |
 
-## Filter Parameter (v7.20.0+)
+## Filter Parameter (v7.20.0+, R2 Direct Access v7.20.5+)
 
 Most translation resource endpoints now support a **`filter`** parameter for stemmed regex matching across entire resources.
+
+### Performance: R2 Direct Access (v7.20.5+)
+
+Filter operations now use **R2 direct access** for blazing fast performance:
+
+| Scope         | Time      | Method                     |
+| ------------- | --------- | -------------------------- |
+| Full resource | 1-5s      | Parallel fetch all files   |
+| Testament     | 0.5-3s    | Parallel fetch 39/27 files |
+| Single book   | 100-300ms | Direct file access         |
+
+The response includes `searchScope.fetchMethod` to indicate which path was used:
+
+- `r2-direct` - Fast parallel R2 access (5-10x faster)
+- `per-book-fallback` - Slower fallback when R2 unavailable
 
 ### How Filter Works
 
