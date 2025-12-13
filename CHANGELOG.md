@@ -2,14 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### [7.20.4](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.3...v7.20.4) (2025-12-13)
+### [7.20.5](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.4...v7.20.5) (2025-12-13)
+
+### Features
+
+- **filter:** R2 DIRECT ACCESS for translation notes filter - blazing fast parallel fetch!
+- **filter:** Notes filter now fetches all 66 TSV files in parallel from R2 storage
+- **filter:** Same architecture as scripture filter - no per-book catalog/ZIP overhead
 
 ### Bug Fixes
 
-- **filter:** Require testament scope for notes/questions/word-links full-resource filter (prevents 30s timeout)
-- **filter:** Notes filter now returns helpful error instead of timing out when no scope provided
-- **filter:** Questions filter now requires reference OR testament to limit scope
-- **filter:** Word links filter now requires reference OR testament to limit scope
+- **filter:** Revert scope validation - R2 direct access makes full-resource search fast
+- **filter:** Remove testament requirement from notes/questions/word-links filters
 
 ### [7.20.3](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.2...v7.20.3) (2025-12-13)
 

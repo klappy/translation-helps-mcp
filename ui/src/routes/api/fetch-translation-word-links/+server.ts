@@ -102,14 +102,6 @@ async function handleFilterRequest(
 ): Promise<any> {
 	const { reference, language, organization, testament, category: categoryFilter } = params;
 
-	// Require reference OR testament to limit scope (prevents timeout on 66 books)
-	if (!reference && !testament) {
-		throw new Error(
-			'Filter requires either a reference OR a testament (ot/nt) to limit scope. ' +
-				'Examples: filter=love&reference=John OR filter=love&testament=nt'
-		);
-	}
-
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`twl-filter-${Date.now()}`, 'translation-word-links-filter');
 	const fetcher = new UnifiedResourceFetcher(tracer);
@@ -376,11 +368,6 @@ export const GET = createSimpleEndpoint({
 		'Reference is required': {
 			status: 400,
 			message: 'Reference parameter is required for non-filter requests.'
-		},
-		'Filter requires either a reference OR a testament': {
-			status: 400,
-			message:
-				'Filter requires a reference OR testament to limit scope. Use filter=love&reference=John OR filter=love&testament=nt'
 		}
 	}),
 
