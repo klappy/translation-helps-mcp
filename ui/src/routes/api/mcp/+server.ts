@@ -93,11 +93,23 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						{
 							name: 'fetch_translation_notes',
 							description:
-								'Fetch translation notes for a specific Bible reference. Supports optional search parameter to filter results.',
+								'Fetch translation notes for a specific Bible reference, or use filter param to search across all notes.',
 							inputSchema: {
 								type: 'object',
 								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
+									reference: {
+										type: 'string',
+										description: 'Bible reference (optional when using filter)'
+									},
+									filter: {
+										type: 'string',
+										description:
+											'Stemmed regex filter to search all notes (e.g., "metaphor" matches "metaphor", "metaphors", "metaphorical")'
+									},
+									testament: {
+										type: 'string',
+										description: 'Limit filter to Old Testament (ot) or New Testament (nt)'
+									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' },
 									format: {
@@ -109,17 +121,29 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 									},
 									search: { type: 'string', description: 'Optional: Filter notes by search query' }
 								},
-								required: ['reference']
+								required: []
 							}
 						},
 						{
 							name: 'fetch_translation_questions',
 							description:
-								'Fetch translation questions for a specific Bible reference. Supports optional search parameter to filter results.',
+								'Fetch translation questions for a specific Bible reference, or use filter param to search across all questions.',
 							inputSchema: {
 								type: 'object',
 								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
+									reference: {
+										type: 'string',
+										description: 'Bible reference (optional when using filter)'
+									},
+									filter: {
+										type: 'string',
+										description:
+											'Stemmed regex filter to search all questions (e.g., "faith" matches "faith", "faithful", "faithfulness")'
+									},
+									testament: {
+										type: 'string',
+										description: 'Limit filter to Old Testament (ot) or New Testament (nt)'
+									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' },
 									search: {
@@ -127,55 +151,90 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 										description: 'Optional: Filter questions by search query'
 									}
 								},
-								required: ['reference']
+								required: []
 							}
 						},
 						{
 							name: 'fetch_translation_word',
 							description:
-								'Get Translation Word articles including key biblical terms, names of people, names of places, and other important words. The library contains thousands of articles.',
+								'Get Translation Word articles including key biblical terms, names of people, names of places, and other important words. The library contains thousands of articles. Use filter param to search across all words.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									term: {
 										type: 'string',
-										description: 'The term, name, or word to look up'
+										description: 'The term, name, or word to look up (optional when using filter)'
+									},
+									filter: {
+										type: 'string',
+										description:
+											'Stemmed regex filter to search all words (e.g., "love" matches "love", "loving", "beloved")'
+									},
+									category: {
+										type: 'string',
+										description: 'Limit filter to word category: kt, names, or other'
 									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' }
 								},
-								required: ['term']
+								required: []
 							}
 						},
 						{
 							name: 'fetch_translation_word_links',
-							description: 'Get the list of translation words linked to a specific Bible reference',
+							description:
+								'Get translation word links for a Bible reference, or use filter to search across all word links.',
 							inputSchema: {
 								type: 'object',
 								properties: {
-									reference: { type: 'string', description: 'Bible reference' },
+									reference: {
+										type: 'string',
+										description: 'Bible reference (optional when using filter)'
+									},
+									filter: {
+										type: 'string',
+										description:
+											'Stemmed regex filter to search all word links (e.g., "love" matches "love", "loved", "beloved")'
+									},
+									testament: {
+										type: 'string',
+										description: 'Limit filter to Old Testament (ot) or New Testament (nt)'
+									},
+									category: {
+										type: 'string',
+										description: 'Limit filter to word category: kt, names, or other'
+									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' }
 								},
-								required: ['reference']
+								required: []
 							}
 						},
 						{
 							name: 'fetch_translation_academy',
 							description:
-								'Get Translation Academy articles about translation concepts, techniques, and best practices',
+								'Get Translation Academy articles, or use filter to search across all modules.',
 							inputSchema: {
 								type: 'object',
 								properties: {
 									moduleId: {
 										type: 'string',
 										description:
-											'Academy module ID (e.g., "figs-metaphor", "figs-idiom", "translate-names")'
+											'Academy module ID (e.g., "figs-metaphor") - optional when using filter'
+									},
+									filter: {
+										type: 'string',
+										description:
+											'Stemmed regex filter to search all modules (e.g., "metaphor" matches "metaphor", "metaphors", "metaphorical")'
+									},
+									category: {
+										type: 'string',
+										description: 'Limit filter to category: translate, checking, process, or intro'
 									},
 									language: { type: 'string', default: 'en' },
 									organization: { type: 'string', default: 'unfoldingWord' }
 								},
-								required: ['moduleId']
+								required: []
 							}
 						},
 						{

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.1](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.0...v7.20.1) (2025-12-13)
+
+### Bug Fixes
+
+- **mcp:** Remove required params from filter-enabled endpoints
+- **mcp:** Add filter, testament, category params to MCP tool schemas
+- **filter:** Fix empty {} response by returning data objects instead of Response
+
 ## [7.20.0](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.19.29...v7.20.0) (2025-12-13)
 
 ### Features
