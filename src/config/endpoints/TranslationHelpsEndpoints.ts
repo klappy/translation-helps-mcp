@@ -119,10 +119,25 @@ export const FETCH_TRANSLATION_QUESTIONS_CONFIG: EndpointConfig = {
   path: "/fetch-translation-questions",
   title: "Fetch Translation Questions",
   description:
-    "Retrieve comprehension and checking questions for scripture passages",
+    "Retrieve comprehension and checking questions for scripture passages. Supports filter for stemmed regex matching across all questions.",
   category: "core",
   responseShape: TRANSLATION_QUESTIONS_SHAPE,
-  params: REFERENCE_PARAMS,
+  params: {
+    ...REFERENCE_PARAMS,
+    filter: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Stemmed regex filter to search all questions (e.g., 'faith' matches 'faith', 'faithful', 'faithfulness')",
+      example: "faith",
+    },
+    testament: {
+      type: "string" as const,
+      required: false,
+      description: "Limit filter to Old Testament (ot) or New Testament (nt)",
+      options: ["ot", "nt"],
+    },
+  },
   dataSource: {
     type: "zip-cached",
     cacheTtl: 7200,
@@ -211,11 +226,27 @@ export const FETCH_TRANSLATION_WORD_CONFIG: EndpointConfig = {
   path: "/fetch-translation-word",
   title: "Fetch Translation Word",
   description:
-    "Retrieve biblical terms and definitions from Translation Words (TW) or get a Table of Contents.",
+    "Retrieve biblical terms and definitions from Translation Words (TW) or get a Table of Contents. Supports filter for stemmed regex matching across all words.",
   category: "core",
   responseShape: TRANSLATION_WORDS_SHAPE,
 
-  params: TERM_PARAMS,
+  params: {
+    ...TERM_PARAMS,
+    filter: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Stemmed regex filter to search all words (e.g., 'love' matches 'love', 'loving', 'beloved')",
+      example: "love",
+    },
+    category: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Limit filter to word category: kt (Key Terms), names, or other",
+      options: ["kt", "names", "other"],
+    },
+  },
 
   dataSource: {
     type: "zip-cached",
@@ -620,11 +651,26 @@ export const FETCH_TRANSLATION_NOTES_CONFIG: EndpointConfig = {
   path: "/fetch-translation-notes",
   title: "Fetch Translation Notes",
   description:
-    "Retrieve detailed translation notes explaining difficult passages and terms. Each note includes the original Greek or Hebrew text (in the 'quote' field) along with explanations of what that text means.",
+    "Retrieve detailed translation notes explaining difficult passages and terms. Each note includes the original Greek or Hebrew text (in the 'quote' field) along with explanations of what that text means. Supports filter for stemmed regex matching across all notes.",
   category: "core",
   responseShape: TRANSLATION_NOTES_SHAPE,
 
-  params: REFERENCE_PARAMS,
+  params: {
+    ...REFERENCE_PARAMS,
+    filter: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Stemmed regex filter to search all notes (e.g., 'metaphor' matches 'metaphor', 'metaphors', 'metaphorical')",
+      example: "metaphor",
+    },
+    testament: {
+      type: "string" as const,
+      required: false,
+      description: "Limit filter to Old Testament (ot) or New Testament (nt)",
+      options: ["ot", "nt"],
+    },
+  },
 
   dataSource: {
     type: "zip-cached",
