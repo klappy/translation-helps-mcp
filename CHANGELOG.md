@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.12](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.11...v7.20.12) (2025-12-13)
+
+### Performance
+
+- **words:** Increase batch size from 50 to 100 for better throughput
+- **academy:** Increase batch size from 50 to 100 for better throughput
+
 ### [7.20.11](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.10...v7.20.11) (2025-12-13)
 
 ### Performance

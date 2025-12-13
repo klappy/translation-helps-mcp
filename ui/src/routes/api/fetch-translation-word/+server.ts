@@ -172,8 +172,8 @@ async function handleFilterRequestWithR2(
 
 			console.log(`[fetch-translation-word] R2 found ${filesToFetch.length} word files to search`);
 
-			// BATCHED concurrency - process in groups of 50 to avoid overwhelming R2
-			const BATCH_SIZE = 50;
+			// BATCHED concurrency - process in groups of 100 for optimal throughput
+			const BATCH_SIZE = 100;
 			const processBatch = async (keys: string[]) => {
 				return Promise.all(
 					keys.map(async (key: string) => {
