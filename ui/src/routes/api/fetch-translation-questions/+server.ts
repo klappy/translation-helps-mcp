@@ -107,6 +107,14 @@ async function handleFilterRequest(
 ): Promise<any> {
 	const { reference, language, organization, testament } = params;
 
+	// Require reference OR testament to limit scope (prevents timeout on 66 books)
+	if (!reference && !testament) {
+		throw new Error(
+			'Filter requires either a reference OR a testament (ot/nt) to limit scope. ' +
+				'Examples: filter=love&reference=John OR filter=love&testament=nt'
+		);
+	}
+
 	// Create tracer for this request
 	const tracer = new EdgeXRayTracer(`tq-filter-${Date.now()}`, 'translation-questions-filter');
 	const fetcher = new UnifiedResourceFetcher(tracer);
@@ -423,6 +431,11 @@ export const GET = createSimpleEndpoint({
 		'No translation questions found': {
 			status: 404,
 			message: 'No translation questions available for this reference.'
+		},
+		'Filter requires either a reference OR a testament': {
+			status: 400,
+			message:
+				'Filter requires a reference OR testament to limit scope. Use filter=love&reference=John OR filter=love&testament=nt'
 		}
 	})
 });

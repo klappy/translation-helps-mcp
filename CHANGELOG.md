@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.4](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.3...v7.20.4) (2025-12-13)
+
+### Bug Fixes
+
+- **filter:** Require testament scope for notes/questions/word-links full-resource filter (prevents 30s timeout)
+- **filter:** Notes filter now returns helpful error instead of timing out when no scope provided
+- **filter:** Questions filter now requires reference OR testament to limit scope
+- **filter:** Word links filter now requires reference OR testament to limit scope
+
 ### [7.20.3](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.2...v7.20.3) (2025-12-13)
 
 ### Bug Fixes
