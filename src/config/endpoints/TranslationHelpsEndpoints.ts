@@ -295,7 +295,7 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
   path: "/fetch-translation-academy",
   title: "Fetch Translation Academy",
   description:
-    "Retrieve translation training modules with support for moduleId, directory path, or RC link. Returns all markdown files in directory concatenated.",
+    "Retrieve translation training modules with support for moduleId, directory path, or RC link. Supports filter for stemmed regex matching across all modules.",
   category: "core",
   responseShape: TRANSLATION_ACADEMY_SHAPE,
 
@@ -336,6 +336,20 @@ export const FETCH_TRANSLATION_ACADEMY_CONFIG: EndpointConfig = {
       example: "metaphor",
       min: 2,
       max: 100,
+    },
+    filter: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Stemmed regex filter to search all modules (e.g., 'metaphor' matches 'metaphor', 'metaphors', 'metaphorical')",
+      example: "metaphor",
+    },
+    category: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Limit filter to category: translate, checking, process, or intro",
+      options: ["translate", "checking", "process", "intro"],
     },
     language: REFERENCE_PARAMS.language,
     organization: REFERENCE_PARAMS.organization,
@@ -521,11 +535,33 @@ export const FETCH_TRANSLATION_WORD_LINKS_CONFIG: EndpointConfig = {
   path: "/fetch-translation-word-links",
   title: "Fetch Translation Word Links",
   description:
-    "Retrieve links between scripture references and translation word articles",
+    "Retrieve links between scripture references and translation word articles. Supports filter for stemmed regex matching across all word links.",
   category: "core",
   responseShape: TRANSLATION_WORD_LINKS_SHAPE,
 
-  params: REFERENCE_PARAMS,
+  params: {
+    ...REFERENCE_PARAMS,
+    filter: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Stemmed regex filter to find word links (e.g., 'love' matches 'love', 'loved', 'beloved')",
+      example: "love",
+    },
+    testament: {
+      type: "string" as const,
+      required: false,
+      description: "Limit filter to Old Testament (ot) or New Testament (nt)",
+      options: ["ot", "nt"],
+    },
+    category: {
+      type: "string" as const,
+      required: false,
+      description:
+        "Limit filter to word category: kt (Key Terms), names, or other",
+      options: ["kt", "names", "other"],
+    },
+  },
 
   dataSource: {
     type: "zip-cached",

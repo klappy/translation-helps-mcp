@@ -420,7 +420,8 @@ export const GET = createSimpleEndpoint({
 		{
 			name: 'filter',
 			required: false,
-			description: 'Stemmed regex filter (e.g., "metaphor" matches "metaphor", "metaphors", "metaphorical")'
+			description:
+				'Stemmed regex filter (e.g., "metaphor" matches "metaphor", "metaphors", "metaphorical")'
 		},
 		{
 			name: 'testament',

@@ -155,11 +155,7 @@ async function handleFilterRequest(
 
 		const batchPromises = batch.map(async (book) => {
 			try {
-				const bookQuestions = await fetcher.fetchTranslationQuestions(
-					book,
-					language,
-					organization
-				);
+				const bookQuestions = await fetcher.fetchTranslationQuestions(book, language, organization);
 				if (bookQuestions && bookQuestions.length > 0) {
 					const bookMatches: typeof matches = [];
 					for (const q of bookQuestions) {

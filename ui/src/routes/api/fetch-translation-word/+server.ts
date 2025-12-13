@@ -96,7 +96,9 @@ async function handleFilterRequest(
 		throw new Error('No Translation Words found in repository');
 	}
 
-	console.log(`[fetch-translation-word] Searching ${wordList.length} words for filter: "${filter}"`);
+	console.log(
+		`[fetch-translation-word] Searching ${wordList.length} words for filter: "${filter}"`
+	);
 
 	// Collect matches
 	const matches: Array<{

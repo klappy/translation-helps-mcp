@@ -95,15 +95,16 @@ export const FETCH_TRANSLATION_QUESTIONS_ZIP_CONFIG: EndpointConfig = {
   name: "fetch-translation-questions",
   path: "/fetch-translation-questions",
   title: "Fetch Translation Questions (ZIP Cached)",
-  description: "Retrieve comprehension questions from cached ZIP files",
+  description:
+    "Retrieve comprehension questions from cached ZIP files. Supports filter for stemmed regex matching across all questions.",
   category: "core",
   responseShape: TRANSLATION_QUESTIONS_SHAPE,
 
   params: {
     reference: {
       type: "string",
-      required: true,
-      description: "Scripture reference",
+      required: false,
+      description: "Scripture reference (optional when using filter)",
       example: "John 3:16",
     },
     language: {
@@ -115,6 +116,26 @@ export const FETCH_TRANSLATION_QUESTIONS_ZIP_CONFIG: EndpointConfig = {
       type: "string",
       required: false,
       default: "unfoldingWord",
+    },
+    filter: {
+      type: "string",
+      required: false,
+      description:
+        "Stemmed regex filter to search all questions (e.g., 'faith' matches 'faith', 'faithful', 'faithfulness')",
+      example: "faith",
+    },
+    testament: {
+      type: "string",
+      required: false,
+      description: "Limit filter to Old Testament (ot) or New Testament (nt)",
+      options: ["ot", "nt"],
+    },
+    format: {
+      type: "string",
+      required: false,
+      description:
+        "Response format: json (default) or md/markdown for YAML frontmatter",
+      options: ["json", "md", "markdown"],
     },
   },
 
@@ -141,15 +162,16 @@ export const FETCH_TRANSLATION_NOTES_ZIP_CONFIG: EndpointConfig = {
   name: "fetch-translation-notes",
   path: "/fetch-translation-notes",
   title: "Fetch Translation Notes (ZIP Cached)",
-  description: "Retrieve translation notes from cached ZIP files",
+  description:
+    "Retrieve translation notes from cached ZIP files. Supports filter for stemmed regex matching across all notes.",
   category: "core",
   responseShape: TRANSLATION_NOTES_SHAPE,
 
   params: {
     reference: {
       type: "string",
-      required: true,
-      description: "Scripture reference",
+      required: false,
+      description: "Scripture reference (optional when using filter)",
       example: "John 3:16",
     },
     language: {
@@ -161,6 +183,26 @@ export const FETCH_TRANSLATION_NOTES_ZIP_CONFIG: EndpointConfig = {
       type: "string",
       required: false,
       default: "unfoldingWord",
+    },
+    filter: {
+      type: "string",
+      required: false,
+      description:
+        "Stemmed regex filter to search all notes (e.g., 'metaphor' matches 'metaphor', 'metaphors', 'metaphorical')",
+      example: "metaphor",
+    },
+    testament: {
+      type: "string",
+      required: false,
+      description: "Limit filter to Old Testament (ot) or New Testament (nt)",
+      options: ["ot", "nt"],
+    },
+    format: {
+      type: "string",
+      required: false,
+      description:
+        "Response format: json (default) or md/markdown for YAML frontmatter",
+      options: ["json", "md", "markdown"],
     },
   },
 
@@ -187,7 +229,8 @@ export const FETCH_TRANSLATION_WORD_ZIP_CONFIG: EndpointConfig = {
   name: "fetch-translation-word",
   path: "/fetch-translation-word",
   title: "Get Translation Word (ZIP Cached)",
-  description: "Retrieve translation word articles from cached ZIP files",
+  description:
+    "Retrieve translation word articles from cached ZIP files. Supports filter for stemmed regex matching across all words.",
   category: "core",
   responseShape: TRANSLATION_WORDS_SHAPE,
 
@@ -214,6 +257,27 @@ export const FETCH_TRANSLATION_WORD_ZIP_CONFIG: EndpointConfig = {
       type: "string",
       required: false,
       default: "unfoldingWord",
+    },
+    filter: {
+      type: "string",
+      required: false,
+      description:
+        "Stemmed regex filter to search all words (e.g., 'love' matches 'love', 'loving', 'beloved')",
+      example: "love",
+    },
+    category: {
+      type: "string",
+      required: false,
+      description:
+        "Limit filter to word category: kt (Key Terms), names, or other",
+      options: ["kt", "names", "other"],
+    },
+    format: {
+      type: "string",
+      required: false,
+      description:
+        "Response format: json (default) or md/markdown for YAML frontmatter",
+      options: ["json", "md", "markdown"],
     },
   },
 
