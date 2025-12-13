@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.3](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.2...v7.20.3) (2025-12-13)
+
+### Bug Fixes
+
+- **tool-registry:** Remove term from fetch_translation_word requiredParams (filter mode doesn't need term)
+- **tool-registry:** Remove reference from fetch_translation_word_links requiredParams (filter mode doesn't need reference)
+- **ui:** Remove misleading required field asterisks from API Explorer form inputs
+
 ### [7.20.2](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.1...v7.20.2) (2025-12-13)
 
 ### Bug Fixes

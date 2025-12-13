@@ -525,12 +525,12 @@ export const ToolRegistry = {
   fetch_translation_word: {
     endpoint: "/api/fetch-translation-word",
     formatter: ToolFormatters.words,
-    requiredParams: ["term"],
+    requiredParams: [], // term optional when using filter
   },
   fetch_translation_word_links: {
     endpoint: "/api/fetch-translation-word-links",
     formatter: ToolFormatters.words, // Uses same formatter as words
-    requiredParams: ["reference"],
+    requiredParams: [], // reference optional when using filter
   },
   fetch_translation_academy: {
     endpoint: "/api/fetch-translation-academy",

@@ -193,9 +193,6 @@
 							class="mb-2 block text-sm font-medium text-gray-300"
 						>
 							{param.name}
-							{#if param.required}
-								<span class="text-red-400">*</span>
-							{/if}
 						</label>
 
 						{#if param.type === 'boolean'}
