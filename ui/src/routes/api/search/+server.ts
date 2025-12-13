@@ -408,7 +408,20 @@ function inferResourceFromPath(path: string): string {
 		// Return the actual resource code, not a category
 		// Scripture: ult, ust, ueb, t4t, glt, gst
 		// Helps: tn, tw, ta, tq
-		const knownResources = ['ult', 'ust', 'ueb', 't4t', 'glt', 'gst', 'tn', 'tw', 'ta', 'tq', 'twl', 'obs'];
+		const knownResources = [
+			'ult',
+			'ust',
+			'ueb',
+			't4t',
+			'glt',
+			'gst',
+			'tn',
+			'tw',
+			'ta',
+			'tq',
+			'twl',
+			'obs'
+		];
 		if (knownResources.includes(resource)) {
 			return resource;
 		}
@@ -573,8 +586,8 @@ async function executeSearch(
 			// since we need to filter client-side and scripture may rank lower in vector search
 			// Note: AutoRAG has a hard limit of 50 results max
 			const AUTORAG_MAX_RESULTS = 50;
-			const fetchLimit = isScriptureAlias 
-				? AUTORAG_MAX_RESULTS  // Always fetch max when client-side filtering
+			const fetchLimit = isScriptureAlias
+				? AUTORAG_MAX_RESULTS // Always fetch max when client-side filtering
 				: Math.min(limit, AUTORAG_MAX_RESULTS);
 
 			const searchOptions = {
@@ -583,7 +596,11 @@ async function executeSearch(
 				max_num_results: fetchLimit
 			};
 
-			logger.info('[Search] Fetching results', { requestedLimit: limit, fetchLimit, isScriptureAlias });
+			logger.info('[Search] Fetching results', {
+				requestedLimit: limit,
+				fetchLimit,
+				isScriptureAlias
+			});
 
 			if (useAI) {
 				// Use aiSearch for LLM-enhanced response (slower but includes AI summary)
@@ -769,7 +786,9 @@ async function executeSearch(
 		// Article ID filter - only filter if hit has article_id AND it doesn't match
 		if (articleId) {
 			const beforeArticleFilter = hits.length;
-			hits = hits.filter((hit) => !hit.article_id || hit.article_id.toLowerCase() === articleId.toLowerCase());
+			hits = hits.filter(
+				(hit) => !hit.article_id || hit.article_id.toLowerCase() === articleId.toLowerCase()
+			);
 			if (hits.length < beforeArticleFilter) {
 				clientSideFiltersApplied.push(`article_id:${articleId}`);
 			}
@@ -778,19 +797,24 @@ async function executeSearch(
 		// Include helps filter (exclude helps if false, keep only scripture)
 		// Be lenient: if resource is missing, keep the hit (don't filter out)
 		if (!includeHelps) {
-			hits = hits.filter((hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource.toLowerCase()));
+			hits = hits.filter(
+				(hit) => !hit.resource || SCRIPTURE_RESOURCES.includes(hit.resource.toLowerCase())
+			);
 		}
 
 		// Log diagnostic info about filter effectiveness
 		const filteredOut = hitsBeforeFilter - hits.length;
 		if (clientSideFiltersApplied.length > 0) {
-			logger.warn('[Search] Client-side filters had to remove results - AutoRAG may not be honoring these filters', {
-				clientSideFiltersApplied,
-				beforeFilter: hitsBeforeFilter,
-				afterFilter: hits.length,
-				filteredOut,
-				note: 'These filters were passed to AutoRAG but results still needed client-side filtering'
-			});
+			logger.warn(
+				'[Search] Client-side filters had to remove results - AutoRAG may not be honoring these filters',
+				{
+					clientSideFiltersApplied,
+					beforeFilter: hitsBeforeFilter,
+					afterFilter: hits.length,
+					filteredOut,
+					note: 'These filters were passed to AutoRAG but results still needed client-side filtering'
+				}
+			);
 		}
 
 		// Sort by score descending (AI Search should return sorted, but ensure)
