@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.6](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.5...v7.20.6) (2025-12-13)
+
+### Features
+
+- **filter:** R2 DIRECT ACCESS for Translation Words filter - parallel fetch all markdown files
+- **filter:** R2 DIRECT ACCESS for Translation Academy filter - parallel fetch all modules
+- **filter:** R2 DIRECT ACCESS for Translation Questions filter - parallel fetch all TSV files
+- **filter:** R2 DIRECT ACCESS for Translation Word Links filter - parallel fetch all TSV files
+- **performance:** ALL filter endpoints now bypass ZIP/catalog overhead entirely
+- **architecture:** Consistent R2 direct access pattern across all translation helps filters
+
 ### [7.20.5](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.4...v7.20.5) (2025-12-13)
 
 ### Features
