@@ -103,9 +103,9 @@ The filter generates a pattern from the search term:
 3. **Parallel Fetch + Parse + Filter**: Each promise does ALL work:
    ```javascript
    const fetchPromises = files.map(async (file) => {
-     const obj = await r2Bucket.get(file);     // I/O - async
-     const text = await obj.text();             // I/O - async
-     const rows = parseTSV(text);               // CPU - runs while other fetches in flight
+     const obj = await r2Bucket.get(file); // I/O - async
+     const text = await obj.text(); // I/O - async
+     const rows = parseTSV(text); // CPU - runs while other fetches in flight
      const matches = filterRows(rows, pattern); // CPU - interleaved with I/O
      return matches;
    });
@@ -120,7 +120,6 @@ JavaScript is single-threaded, but I/O operations are non-blocking. The optimal 
 
 - **Before (v7.20.5-7.20.6)**: Fetch all → wait → parse all → filter all
   - All I/O completes first, then CPU blocks the event loop
-  
 - **After (v7.20.7)**: Fetch+parse+filter per file in same promise
   - When file 1's fetch completes, parse it while files 2-66 are still downloading
   - Event loop switches between I/O callbacks and CPU work

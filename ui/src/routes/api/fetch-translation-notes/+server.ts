@@ -315,9 +315,7 @@ async function handleFilterRequestWithR2(
 								}
 
 								if (found.length > 0) {
-									const fullReference = row.Reference
-										? `${bookName} ${row.Reference}`
-										: bookName;
+									const fullReference = row.Reference ? `${bookName} ${row.Reference}` : bookName;
 									bookMatches.push({
 										reference: fullReference,
 										quote: row.Quote,

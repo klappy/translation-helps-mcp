@@ -210,8 +210,7 @@ async function handleFilterRequestWithR2(
 										term: parsed.term,
 										title,
 										category: parsed.category,
-										definition:
-											definition.slice(0, 200) + (definition.length > 200 ? '...' : ''),
+										definition: definition.slice(0, 200) + (definition.length > 200 ? '...' : ''),
 										matchedTerms: [...new Set(found)],
 										matchCount: found.length,
 										path: `bible/${parsed.category}/${parsed.term}.md`,

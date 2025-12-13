@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.8](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.7...v7.20.8) (2025-12-13)
+
+### Bug Fixes
+
+- **mcp:** Remove incorrect `required: ['reference']` from fetch_scripture MCP schema
+- **mcp:** Scripture endpoint no longer rejects calls without reference (search/filter supported)
+- **mcp:** Add missing filter and testament params to fetch_scripture MCP schema
+- **error:** Add proper 400 error handler for "Reference is required" message
+
 ### [7.20.7](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.6...v7.20.7) (2025-12-13)
 
 ### Performance

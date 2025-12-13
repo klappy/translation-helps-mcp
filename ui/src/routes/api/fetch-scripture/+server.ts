@@ -25,7 +25,7 @@ import {
 } from '$lib/../../../src/services/SearchServiceFactory.js';
 import { parseReference } from '$lib/referenceParser.js';
 import { generateStemmedPattern } from '$lib/stemmedFilter.js';
-import { initializeR2Env, getR2Env } from '$lib/../../../src/functions/r2-env.js';
+import { initializeR2Env } from '$lib/../../../src/functions/r2-env.js';
 
 // All 66 book codes for full-resource search
 const ALL_BOOKS = [
@@ -1044,6 +1044,11 @@ const normalEndpoint = createSimpleEndpoint({
 		'Scripture not found for reference': {
 			status: 404,
 			message: 'No scripture available for the specified reference.'
+		},
+		'Reference is required': {
+			status: 400,
+			message:
+				'Reference parameter is required. Example: reference=John 3:16. Or use search parameter for semantic search.'
 		}
 	})
 });

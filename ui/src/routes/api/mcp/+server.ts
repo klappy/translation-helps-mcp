@@ -63,11 +63,15 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 						{
 							name: 'fetch_scripture',
 							description:
-								'Fetch Bible scripture text for a specific reference. ALWAYS use format: "md" for best results.',
+								'Fetch Bible scripture text. Use reference for specific passages, or search/filter for discovery. ALWAYS use format: "md" for best results.',
 							inputSchema: {
 								type: 'object',
 								properties: {
-									reference: { type: 'string', description: "Bible reference (e.g., 'John 3:16')" },
+									reference: {
+										type: 'string',
+										description:
+											"Bible reference (e.g., 'John 3:16'). Required unless using search or filter."
+									},
 									format: {
 										type: 'string',
 										enum: ['json', 'md', 'markdown', 'text'],
@@ -84,10 +88,19 @@ export const POST: RequestHandler = async ({ request, url, fetch: eventFetch }) 
 									organization: { type: 'string', default: 'unfoldingWord' },
 									search: {
 										type: 'string',
-										description: 'Optional: Filter scripture by search query'
+										description: 'Semantic search query to find passages about a topic'
+									},
+									filter: {
+										type: 'string',
+										description:
+											'Keyword filter with stemming (e.g., "love" matches love, loves, loved). Requires reference OR specific resource.'
+									},
+									testament: {
+										type: 'string',
+										description: 'Limit filter/search to Old Testament (ot) or New Testament (nt)'
 									}
 								},
-								required: ['reference']
+								required: []
 							}
 						},
 						{
