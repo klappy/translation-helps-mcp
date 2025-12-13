@@ -172,72 +172,82 @@ async function handleFilterRequestWithR2(
 
 			console.log(`[fetch-translation-word] R2 found ${filesToFetch.length} word files to search`);
 
-			// Parallel fetch + parse + filter (interleaved I/O and CPU)
-			const fetchPromises = filesToFetch.map(async (key: string) => {
-				const fetchStart = Date.now();
-				try {
-					const obj = await r2Bucket.get(key);
-					const fetchDuration = Date.now() - fetchStart;
-					if (obj) {
-						const text = await obj.text();
-						const parsed = parseWordPath(key);
-						tracer.addApiCall({
-							url: `r2://get/${parsed?.term || 'unknown'}.md`,
-							duration: fetchDuration,
-							status: 200,
-							size: text.length,
-							cached: true
-						});
+			// BATCHED concurrency - process in groups of 50 to avoid overwhelming R2
+			const BATCH_SIZE = 50;
+			const processBatch = async (keys: string[]) => {
+				return Promise.all(
+					keys.map(async (key: string) => {
+						const fetchStart = Date.now();
+						try {
+							const obj = await r2Bucket.get(key);
+							const fetchDuration = Date.now() - fetchStart;
+							if (obj) {
+								const text = await obj.text();
+								const parsed = parseWordPath(key);
+								tracer.addApiCall({
+									url: `r2://get/${parsed?.term || 'unknown'}.md`,
+									duration: fetchDuration,
+									status: 200,
+									size: text.length,
+									cached: true
+								});
 
-						// Parse and filter INSIDE the promise - interleaves with other fetches
-						if (parsed) {
-							const title = extractTitle(text, parsed.term);
-							const definition = extractDefinition(text);
+								// Parse and filter INSIDE the promise - interleaves with other fetches
+								if (parsed) {
+									const title = extractTitle(text, parsed.term);
+									const definition = extractDefinition(text);
 
-							// Check if content matches pattern
-							const searchText = `${parsed.term} ${title} ${definition} ${text}`;
-							pattern.lastIndex = 0;
-							const found: string[] = [];
-							let match;
-							while ((match = pattern.exec(searchText)) !== null) {
-								found.push(match[0]);
-							}
-
-							if (found.length > 0) {
-								return {
-									success: true,
-									match: {
-										term: parsed.term,
-										title,
-										category: parsed.category,
-										definition: definition.slice(0, 200) + (definition.length > 200 ? '...' : ''),
-										matchedTerms: [...new Set(found)],
-										matchCount: found.length,
-										path: `bible/${parsed.category}/${parsed.term}.md`,
-										rcLink: `rc://${language}/tw/dict/bible/${parsed.category}/${parsed.term}`
+									// Check if content matches pattern
+									const searchText = `${parsed.term} ${title} ${definition} ${text}`;
+									pattern.lastIndex = 0;
+									const found: string[] = [];
+									let match;
+									while ((match = pattern.exec(searchText)) !== null) {
+										found.push(match[0]);
 									}
-								};
+
+									if (found.length > 0) {
+										return {
+											success: true,
+											match: {
+												term: parsed.term,
+												title,
+												category: parsed.category,
+												definition:
+													definition.slice(0, 200) + (definition.length > 200 ? '...' : ''),
+												matchedTerms: [...new Set(found)],
+												matchCount: found.length,
+												path: `bible/${parsed.category}/${parsed.term}.md`,
+												rcLink: `rc://${language}/tw/dict/bible/${parsed.category}/${parsed.term}`
+											}
+										};
+									}
+								}
+								return { success: true, match: null };
 							}
+						} catch {
+							// File fetch failed
 						}
-						return { success: true, match: null };
-					}
-				} catch {
-					// File fetch failed
-				}
-				return { success: false, match: null };
-			});
+						return { success: false, match: null };
+					})
+				);
+			};
 
-			const r2Results = await Promise.all(fetchPromises);
+			// Process in batches
+			for (let i = 0; i < filesToFetch.length; i += BATCH_SIZE) {
+				const batch = filesToFetch.slice(i, i + BATCH_SIZE);
+				const batchResults = await processBatch(batch);
 
-			// Aggregate already-processed results
-			for (const { success, match } of r2Results) {
-				if (success) {
-					termsSearched++;
-					if (match) {
-						matches.push(match);
+				// Aggregate batch results immediately
+				for (const { success, match } of batchResults) {
+					if (success) {
+						termsSearched++;
+						if (match) {
+							matches.push(match);
+						}
+					} else {
+						termsFailed++;
 					}
-				} else {
-					termsFailed++;
 				}
 			}
 

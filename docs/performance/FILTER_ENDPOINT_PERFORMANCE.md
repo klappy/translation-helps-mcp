@@ -1,4 +1,4 @@
-# Filter Endpoint Performance Report (v7.20.7)
+# Filter Endpoint Performance Report (v7.20.11)
 
 ## Overview
 
@@ -74,25 +74,29 @@ The filter generates a pattern from the search term:
 
 ### Translation Words (`/fetch-translation-word`)
 
-| Scope            | R2 Direct | Fallback | Notes               |
-| ---------------- | --------- | -------- | ------------------- |
-| Full resource    | 1-4s      | 10-20s   | ~350 markdown files |
-| Category (kt)    | 0.5-2s    | 5-10s    | ~100 key terms      |
-| Category (names) | 0.5-2s    | 5-10s    | ~200 proper names   |
-| Category (other) | 0.3-1s    | 3-5s     | ~50 other terms     |
+| Scope            | R2 Direct | Fallback | Notes                             |
+| ---------------- | --------- | -------- | --------------------------------- |
+| Full resource    | 3-5s      | 10-20s   | ~1000 markdown files (batched 50) |
+| Category (kt)    | 1-2s      | 5-10s    | ~200 key terms                    |
+| Category (names) | 1-2s      | 5-10s    | ~500 proper names                 |
+| Category (other) | 0.5-1s    | 3-5s     | ~300 other terms                  |
 
 **Searchable fields:** `term`, `title`, `definition`, `content`
 
+**Optimization (v7.20.11):** Uses batched concurrency (50 files at a time) to avoid overwhelming R2 connections.
+
 ### Translation Academy (`/fetch-translation-academy`)
 
-| Scope                    | R2 Direct | Fallback | Notes            |
-| ------------------------ | --------- | -------- | ---------------- |
-| Full resource            | 1-4s      | 10-20s   | ~250 modules     |
-| Category (translate)     | 0.5-2s    | 5-10s    | ~150 modules     |
-| Category (checking)      | 0.3-1.5s  | 3-6s     | ~50 modules      |
-| Category (process/intro) | 0.2-0.5s  | 1-3s     | ~20 modules each |
+| Scope                    | R2 Direct | Fallback | Notes                      |
+| ------------------------ | --------- | -------- | -------------------------- |
+| Full resource            | 3-5s      | 10-20s   | ~500 md files (batched 50) |
+| Category (translate)     | 1-2s      | 5-10s    | ~200 modules               |
+| Category (checking)      | 0.5-1.5s  | 3-6s     | ~100 modules               |
+| Category (process/intro) | 0.3-0.5s  | 1-3s     | ~50 modules each           |
 
 **Searchable fields:** `moduleId`, `title`, `content`
+
+**Optimization (v7.20.11):** Uses batched concurrency (50 files at a time) to avoid overwhelming R2 connections.
 
 ## R2 Direct Access Architecture
 

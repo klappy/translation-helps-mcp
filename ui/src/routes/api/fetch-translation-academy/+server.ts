@@ -74,7 +74,7 @@ async function handleFilterRequestWithR2(
 	}> = [];
 
 	let modulesSearched = 0;
-	let modulesFailed = 0;
+	const modulesFailed = 0;
 	let fetchMethod = 'r2-direct';
 
 	// Track unique modules (may have multiple .md files per module)
@@ -107,55 +107,62 @@ async function handleFilterRequestWithR2(
 
 			console.log(`[fetch-translation-academy] R2 found ${mdFiles.length} files to search`);
 
-			// Parallel fetch + parse (interleaved I/O and CPU)
-			// Note: Academy modules can have multiple files, so we fetch and parse in parallel,
-			// then aggregate by module before filtering
-			const fetchPromises = mdFiles.map(async (key: string) => {
-				const fetchStart = Date.now();
-				try {
-					const obj = await r2Bucket.get(key);
-					const fetchDuration = Date.now() - fetchStart;
-					if (obj) {
-						const text = await obj.text();
-						const parsed = parseModulePath(key);
-						tracer.addApiCall({
-							url: `r2://get/${parsed?.moduleId || 'unknown'}.md`,
-							duration: fetchDuration,
-							status: 200,
-							size: text.length,
-							cached: true
-						});
-						// Return parsed data for aggregation
-						if (parsed) {
-							return {
-								moduleKey: `${parsed.category}/${parsed.moduleId}`,
-								text,
-								category: parsed.category,
-								moduleId: parsed.moduleId,
-								success: true
-							};
+			// BATCHED concurrency - process in groups of 50 to avoid overwhelming R2
+			const BATCH_SIZE = 50;
+			const processBatch = async (keys: string[]) => {
+				return Promise.all(
+					keys.map(async (key: string) => {
+						const fetchStart = Date.now();
+						try {
+							const obj = await r2Bucket.get(key);
+							const fetchDuration = Date.now() - fetchStart;
+							if (obj) {
+								const text = await obj.text();
+								const parsed = parseModulePath(key);
+								tracer.addApiCall({
+									url: `r2://get/${parsed?.moduleId || 'unknown'}.md`,
+									duration: fetchDuration,
+									status: 200,
+									size: text.length,
+									cached: true
+								});
+								// Return parsed data for aggregation
+								if (parsed) {
+									return {
+										moduleKey: `${parsed.category}/${parsed.moduleId}`,
+										text,
+										category: parsed.category,
+										moduleId: parsed.moduleId,
+										success: true
+									};
+								}
+							}
+						} catch {
+							// File fetch failed
 						}
-					}
-				} catch {
-					// File fetch failed
-				}
-				return { moduleKey: null, text: null, category: null, moduleId: null, success: false };
-			});
+						return { moduleKey: null, text: null, category: null, moduleId: null, success: false };
+					})
+				);
+			};
 
-			const r2Results = await Promise.all(fetchPromises);
+			// Process in batches and aggregate immediately
+			for (let i = 0; i < mdFiles.length; i += BATCH_SIZE) {
+				const batch = mdFiles.slice(i, i + BATCH_SIZE);
+				const batchResults = await processBatch(batch);
 
-			// Aggregate content by module (concatenate multiple .md files)
-			for (const { moduleKey, text, category, moduleId, success } of r2Results) {
-				if (success && text && moduleKey && category && moduleId) {
-					const existing = moduleContents.get(moduleKey);
-					if (existing) {
-						existing.content += '\n\n' + text;
-					} else {
-						moduleContents.set(moduleKey, {
-							content: text,
-							category,
-							path: `${category}/${moduleId}`
-						});
+				// Aggregate content by module (concatenate multiple .md files)
+				for (const { moduleKey, text, category, moduleId, success } of batchResults) {
+					if (success && text && moduleKey && category && moduleId) {
+						const existing = moduleContents.get(moduleKey);
+						if (existing) {
+							existing.content += '\n\n' + text;
+						} else {
+							moduleContents.set(moduleKey, {
+								content: text,
+								category,
+								path: `${category}/${moduleId}`
+							});
+						}
 					}
 				}
 			}

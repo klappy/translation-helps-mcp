@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.20.11](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.10...v7.20.11) (2025-12-13)
+
+### Performance
+
+- **words:** Batched concurrency (50 files at a time) instead of all-at-once for R2 fetches
+- **academy:** Batched concurrency (50 files at a time) instead of all-at-once for R2 fetches
+- **performance:** Prevents overwhelming R2 connections, should reduce response times by 2-3s
+
 ### [7.20.10](https://github.com/unfoldingWord/translation-helps-mcp/compare/v7.20.9...v7.20.10) (2025-12-13)
 
 ### Bug Fixes
